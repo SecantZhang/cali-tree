@@ -1,0 +1,653 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+.top-bar-shell {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.top-bar {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.top-bar .spacer {
+  flex: 1 1 auto;
+}
+
+.run-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.app-body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.left-panel {
+  width: 260px;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--border);
+  background: var(--panel-bg);
+  overflow-y: auto;
+  transition: width 0.15s ease;
+}
+
+.left-panel.collapsed {
+  width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.left-panel .tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.left-panel .tabs button {
+  flex: 1 1 auto;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.left-panel .tabs button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.left-panel .tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.left-panel .tab-body {
+  padding: 12px;
+}
+
+.canvas-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+.right-panel {
+  width: 300px;
+  flex: 0 0 auto;
+  border-left: 1px solid var(--border);
+  background: var(--panel-bg);
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.bottom-panel {
+  height: 180px;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border);
+  background: var(--panel-bg);
+  overflow-y: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.node-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+  cursor: grab;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.node-palette-item:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.node-palette-item:active {
+  transform: scale(0.98);
+}
+
+.node-palette-item .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.empty-hint {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- React Flow node chrome --- */
+.rf-node {
+  min-width: 200px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rf-node.is-running {
+  border-color: var(--status-running-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-running-border) 25%, transparent);
+}
+
+.rf-node-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #fff;
+  font-weight: 600;
+  /* .rf-node itself is overflow:visible (its Handles poke outside the border and must stay
+     clickable), so the header's own rounded corners have to match the outer border here
+     instead of relying on the parent clipping a square header down to size. */
+  border-radius: 8px 8px 0 0;
+}
+
+.rf-node-title {
+  flex: 1 1 auto;
+}
+
+.node-collapse-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  font-size: 10px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.node-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.rf-node-body {
+  padding: 10px 14px;
+  position: relative;
+  min-height: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rf-node-param {
+  color: var(--text-muted);
+  font-size: 11px;
+  word-break: break-word;
+  margin-right: 10px;
+}
+
+/* Connection points: default React Flow handles sit flush on the border and are tiny —
+   give them a bit more presence and push them slightly outside the node so they read
+   as distinct sockets rather than overlapping the border/content (interface.md's
+   node anatomy calls these out as a first-class element, not decoration). */
+.rf-node .react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--bg);
+}
+
+.rf-node .react-flow__handle-left {
+  left: -6px;
+}
+
+.rf-node .react-flow__handle-right {
+  right: -6px;
+}
+
+/* --- Progress bars (shared by node chrome + top bar; see ProgressBar.tsx) --- */
+.progress-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.progress-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.progress-bar-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-bar-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--status-running-border);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.progress-bar-indeterminate {
+  width: 40%;
+  animation: progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.node-progress-bar {
+  padding: 0 10px;
+  margin-top: -2px;
+}
+
+.node-progress-bar .progress-bar-track {
+  height: 3px;
+}
+
+.status-dot {
+  /* inline-block, not the bare default `inline` a <span> gets — a purely inline,
+     non-replaced element ignores width/height, and this dot is also reused standalone
+     (the top bar's "API Key" button) outside the node header's flex container, where
+     flex-item sizing rules wouldn't rescue it. */
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-idle);
+  flex: 0 0 auto;
+}
+
+.status-dot.status-queued {
+  background: var(--status-idle);
+}
+
+.status-dot.status-running {
+  background: var(--status-running);
+}
+
+.status-dot.status-done {
+  background: var(--status-done);
+}
+
+.status-dot.status-error {
+  background: var(--status-error);
+}
+
+/* --- Inspector param form --- */
+.param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.param-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkbox-list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.node-id {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+/* --- Run controls (top bar) --- */
+.run-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 85%, #000);
+}
+
+.dry-run-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* --- Console --- */
+.console-header {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.console-error {
+  color: var(--status-error);
+}
+
+.filter-hint {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.console-line {
+  white-space: pre-wrap;
+}
+
+/* --- Workflows tab --- */
+.workflow-save-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.workflow-save-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.workflow-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.workflow-item:hover {
+  background: var(--surface-hover);
+}
+
+.workflow-item span {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Datasets tab --- */
+.dataset-item-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.dataset-item-list li {
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Secondary tab modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-panel {
+  width: min(900px, 90vw);
+  height: min(600px, 85vh);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 12px;
+}
+
+/* --- Credentials modal (a small form, not a rich per-node view) --- */
+.modal-panel-small {
+  width: min(420px, 90vw);
+  height: auto;
+  max-height: 85vh;
+}
+
+.credentials-token-row {
+  display: flex;
+  gap: 4px;
+}
+
+.credentials-token-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.credentials-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.secondary-split {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+}
+
+.secondary-item-list {
+  width: 220px;
+  flex: 0 0 auto;
+  max-height: none;
+}
+
+.secondary-item-list li {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: background-color 0.15s ease;
+}
+
+.secondary-item-list li:hover {
+  background: var(--surface-hover);
+}
+
+.secondary-item-list li.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--surface);
+}
+
+.json-preview {
+  margin: 6px 0 0;
+  overflow: auto;
+  font-size: 11px;
+  background: var(--panel-bg);
+  padding: 8px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+}
+
+.rationale-view {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* --- Secondary tab summary header + structured item preview --- */
+.secondary-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: var(--surface);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.secondary-summary > .progress-bar-wrap {
+  flex: 1 1 100%;
+}
+
+.item-preview {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.item-preview h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.item-field {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.mono-path {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.item-preview details {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.item-preview summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rationale-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.rationale-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.tag-error {
+  background: var(--status-error);
+  color: #fff;
+}
+
+.reasoning {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.rationale-error {
+  font-size: 12px;
+  color: var(--status-error);
+}
+
+/* A node can finish "done" and still have done nothing useful (0 items matched/aligned) —
+   amber (the same hue as --status-running) reads as "worth a look", distinct from the red
+   used for actual errors. */
+.meta-warning {
+  font-size: 12px;
+  color: var(--status-running);
+  background: color-mix(in srgb, var(--status-running) 12%, transparent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-top: 4px;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.metrics-table th,
+.metrics-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}

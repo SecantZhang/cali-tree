@@ -1,5 +1,7 @@
+from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
 from vejudge.postprocessing.align import (
     ALIGNMENT,
+    build_aligned_rows,
     derive_overall,
     judge_signal_for_dimension,
 )
@@ -42,3 +44,33 @@ def test_signal_missing_returns_none():
 def test_derive_overall_mean():
     # mean of M3=4, M4=3, M5=5, M6 overall=3 -> 3.75
     assert derive_overall(_judge_results()) == 3.75
+
+
+def test_build_aligned_rows():
+    item_id = "prj-x::0::peanut"
+    agg = AggregatedHumanRecord(
+        item_id=item_id,
+        project="prj-x",
+        prompt_idx=0,
+        model="peanut",
+        use_case="visual montage",
+        scores={"video_addresses_prompt": 4.0, "story_flow_visuals": 5.0},
+    )
+    rows = build_aligned_rows(
+        [item_id], {item_id: agg}, {item_id: _judge_results()}
+    )
+    by_dim = {r["dimension"]: r for r in rows}
+    assert by_dim["video_addresses_prompt"]["human"] == 4.0
+    assert by_dim["video_addresses_prompt"]["judge_raw"] == 4.0
+    assert by_dim["story_flow_visuals"]["human"] == 5.0
+    assert by_dim["story_flow_visuals"]["judge_raw"] == 5.0
+    assert by_dim["video_addresses_prompt"]["use_case"] == "visual montage"
+
+
+def test_build_aligned_rows_skips_missing_scores():
+    item_id = "prj-x::0::peanut"
+    agg = AggregatedHumanRecord(
+        item_id=item_id, project="prj-x", prompt_idx=0, model="peanut",
+    )
+    rows = build_aligned_rows([item_id], {item_id: agg}, {item_id: _judge_results()})
+    assert rows == []

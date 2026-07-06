@@ -33,10 +33,17 @@ HUMAN_ANNOTATIONS_ROOT: Path = _env_path(
     "VEJUDGE_HUMAN_ANNOTATIONS_ROOT", EVALUATION_ROOT / "human_annotations"
 )
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
+# Credentials entered manually via the interface's Settings modal — takes top precedence
+# over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient
+# config. Gitignored, same spirit as .env-raw.
+CREDENTIALS_FILE: Path = _env_path(
+    "VEJUDGE_CREDENTIALS_FILE", PROJECT_ROOT / ".interface_credentials.json"
+)
 LOGS_ROOT: Path = _env_path("VEJUDGE_LOGS_ROOT", PROJECT_ROOT / "logs")
 USE_CASES_CONFIG: Path = _env_path(
     "VEJUDGE_USE_CASES_CONFIG", DATA_ROOT / "use_cases_config.json"
 )
+WORKFLOWS_ROOT: Path = _env_path("VEJUDGE_WORKFLOWS_ROOT", PROJECT_ROOT / "workflows")
 
 # --- Model defaults -----------------------------------------------------------
 DEFAULT_VIDEO_MODEL: str = os.environ.get("VEJUDGE_VIDEO_MODEL", "gemini-2.5-pro")

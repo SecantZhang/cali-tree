@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
+from ..database.dl_human_annotations import HUMAN_DIMENSIONS
+
 # human dimension -> (metric_id, extractor over that metric's parsed dict)
 JudgeExtractor = Callable[[dict[str, Any]], Optional[float]]
 
@@ -84,3 +86,38 @@ def derive_overall(judge_results: dict[str, Any]) -> Optional[float]:
         if isinstance(ov, (int, float)) and not isinstance(ov, bool):
             vals.append(float(ov))
     return sum(vals) / len(vals) if vals else None
+
+
+def build_aligned_rows(
+    items: list[str],
+    human: dict[str, Any],
+    per_item_judges: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Pair human scores with aligned judge signals, one row per (item, dimension).
+
+    Shared by the CLI benchmark (``benchmark/human_gap/runner.py``) and the interface's
+    Eval Node executor, so both compute the human-vs-judge gap the same way.
+    """
+    rows: list[dict[str, Any]] = []
+    for item_id in items:
+        agg = human[item_id]
+        judge_results = per_item_judges.get(item_id, {})
+        for dim in HUMAN_DIMENSIONS:
+            if dim not in ALIGNMENT:
+                continue
+            human_score = agg.scores.get(dim)
+            judge_score = judge_signal_for_dimension(judge_results, dim)
+            if human_score is None or judge_score is None:
+                continue
+            rows.append(
+                {
+                    "item_id": item_id,
+                    "project": agg.project,
+                    "model": agg.model,
+                    "use_case": agg.use_case,
+                    "dimension": dim,
+                    "human": human_score,
+                    "judge_raw": judge_score,
+                }
+            )
+    return rows

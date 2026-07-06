@@ -18,11 +18,10 @@ from typing import Any, Optional
 
 from ... import config
 from ...checkpoint import CheckpointStore
-from ...core.eval import metrics as M
+from ...core.eval.report import per_dimension_agreement
 from ...core.judge import make_judge
 from ...core.judge.registry import ALL_JUDGES, JUDGE_MODALITY
 from ...database.dl_human_annotations import (
-    HUMAN_DIMENSIONS,
     aggregate_annotations,
     load_human_annotations,
 )
@@ -30,11 +29,7 @@ from ...database.dl_peanut_eval import PeanutEvalLoader
 from ...database.dl_peanut_eval.loader import use_case_for
 from ...lm_engine import get_engine, load_creds, require_live
 from ...logging.exp_logger import ExperimentRun, make_exp_run
-from ...postprocessing.align import (
-    ALIGNMENT,
-    JUDGE_SIGNAL_LABEL,
-    derive_overall,
-)
+from ...postprocessing.align import build_aligned_rows, derive_overall
 from ...workflow import JudgeEngines
 from ..bench_template import BenchmarkRunner
 
@@ -180,7 +175,7 @@ class HumanGapBenchmark(BenchmarkRunner):
                 f"(e.g. {sample_err}). See {run.run_dir}/llm-histories.log."
             )
 
-        aligned_rows = _build_aligned_rows(items, human, per_item_judges)
+        aligned_rows = build_aligned_rows(items, human, per_item_judges)
 
         gap = self._compute_gap(aligned_rows, human, per_item_judges, cfg)
         run.write_json("gap_result.json", gap)
@@ -318,35 +313,11 @@ class HumanGapBenchmark(BenchmarkRunner):
         per_item_judges: dict[str, dict[str, Any]],
         cfg: dict[str, Any],
     ) -> dict[str, Any]:
-        per_dimension: dict[str, Any] = {}
-        for dim in ALIGNMENT:
-            drows = [r for r in rows if r["dimension"] == dim]
-            h = [r["human"] for r in drows]
-            j = [r["judge_raw"] for r in drows]
-            per_dimension[dim] = {
-                "judge_signal": JUDGE_SIGNAL_LABEL[dim],
-                "n": len(drows),
-                "spearman": M.spearman(h, j),
-                "kendall": M.kendall(h, j),
-                "mae": M.mae(h, j),
-                "qwk": M.quadratic_weighted_kappa(h, j),
-                "by_category": {
-                    "use_case": M.by_category(
-                        drows, category_key="use_case", metric_fn=M.spearman,
-                        x_key="human", y_key="judge_raw",
-                    ),
-                    "model": M.by_category(
-                        drows, category_key="model", metric_fn=M.spearman,
-                        x_key="human", y_key="judge_raw",
-                    ),
-                },
-            }
-
         return {
             "benchmark_id": self.run.run_id if self.run else None,
             "config": cfg,
             "n_items": len({r["item_id"] for r in rows}),
-            "per_dimension": per_dimension,
+            "per_dimension": per_dimension_agreement(rows),
             "pairwise_preference_accuracy": _pairwise(human, per_item_judges),
             "calibration_error": None,
             "aligned_pairs_path": "aligned_pairs.csv",
@@ -399,37 +370,6 @@ def _slim_judge_outputs(
     return out
 
 
-def _build_aligned_rows(
-    items: list[str],
-    human: dict[str, Any],
-    per_item_judges: dict[str, dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Pair human scores with aligned judge signals, one row per (item, dimension)."""
-    rows: list[dict[str, Any]] = []
-    for item_id in items:
-        agg = human[item_id]
-        judge_results = per_item_judges.get(item_id, {})
-        for dim in HUMAN_DIMENSIONS:
-            if dim not in ALIGNMENT:
-                continue
-            human_score = agg.scores.get(dim)
-            judge_score = _judge_signal(judge_results, dim)
-            if human_score is None or judge_score is None:
-                continue
-            rows.append(
-                {
-                    "item_id": item_id,
-                    "project": agg.project,
-                    "model": agg.model,
-                    "use_case": agg.use_case,
-                    "dimension": dim,
-                    "human": human_score,
-                    "judge_raw": judge_score,
-                }
-            )
-    return rows
-
-
 def _progress_bar(*, total: int, desc: str):
     """Return a tqdm bar, or None if tqdm is unavailable (e.g. in tests)."""
     try:
@@ -449,12 +389,6 @@ def _quiet_console(logger) -> None:
     for h in logger.handlers:
         if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
             h.setLevel(logging.WARNING)
-
-
-def _judge_signal(judge_results: dict[str, Any], dimension: str) -> Optional[float]:
-    from ...postprocessing.align import judge_signal_for_dimension
-
-    return judge_signal_for_dimension(judge_results, dimension)
 
 
 def _pairwise(

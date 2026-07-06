@@ -81,6 +81,49 @@ see `docs/benchmark.md` for the result schema.
 
 ---
 
+## Testing the Interface (End-to-End)
+
+`vejudge/interface/` (FastAPI backend + `web/` React frontend) has three layers of test
+coverage, and only the third drives a real browser:
+
+- `pytest tests/unit tests/integration` — backend logic, mocked engines, no browser.
+- `cd web && npm run test` — frontend component logic against jsdom, no browser (jsdom
+  never enforces real CORS and never computes real CSS — see below for why that matters).
+- `./run/run_e2e_tests.sh` — **Playwright**, a real Chromium browser driving the real
+  built frontend against a real running FastAPI backend. This is the only layer that can
+  catch bugs in real click/drag interaction, real computed layout/CSS, and real CORS
+  enforcement. It has already caught three bugs invisible to the other two layers: a CORS
+  origin mismatch, a `overflow: hidden` rule clipping every connection socket, and a race
+  in the run-status websocket resync path that dropped per-node status on fast runs.
+
+**Cost & safety:** every Judge Node HTTP call in this suite goes to a local mock gateway
+(`tests/e2e/mock_gateway.py`, a stdlib `http.server` returning a fixed valid judge
+response), started and torn down automatically by `web/e2e/global-setup.ts` /
+`global-teardown.ts`. The suite makes **no real (billable) gateway calls** and needs no
+credentials — this mirrors the dry-run/`--live` gating pattern used everywhere else in
+this file, just with a fake server standing in for Pluto instead of a `--live` flag.
+
+**How to run it:**
+
+```bash
+cd web && npx playwright install chromium   # once: download the browser binary (~170MB)
+./run/run_e2e_tests.sh                      # builds web/, runs the full Playwright suite
+./run/run_e2e_tests.sh shell-and-theme.spec.ts  # pass-through args to `playwright test`
+```
+
+Specs live in `web/e2e/specs/`: `shell-and-theme` (app shell + real computed theme
+colors), `graph-build-and-workflow` (palette → canvas → socket connections → inline
+params → collapse → save/reload/load workflow round trip), `dry-run-pipeline` (a fully
+wired 4-node graph run with zero gateway calls), `mocked-live-pipeline` (the real Judge
+Node HTTP path against the mock gateway, asserting real scores and a real MAE — the
+"complete pipeline" test), and `error-path` (an unwired Judge Node's real backend error
+message reaching the UI).
+
+**Enforcement:** any change touching `vejudge/interface/` or `web/` should run this suite
+before the change is considered done — see the Updates logging rules below.
+
+---
+
 ## Module Conventions
 
 ### Templates / Abstract Bases
@@ -185,3 +228,6 @@ Lives in `logs/updates/`. Every change a coding agent makes to the codebase writ
 - `updates_summary.md` is an **index**, not a store: keep the full record in the detail file, one block per update in the summary.
 - Never reuse a timestamp id; never overwrite an existing detail file or summary block.
 - Append newest entries at the top of `updates_summary.md` so the latest state is visible first.
+- Any update touching `vejudge/interface/` or `web/` must run the End-to-End suite (see
+  "Testing the Interface (End-to-End)" above) and note the result in that update's
+  Verification section — pytest and vitest alone cannot see real CSS/CORS/click bugs.
