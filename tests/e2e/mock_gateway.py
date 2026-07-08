@@ -10,8 +10,15 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
+
+# A small, deliberate delay on every response — real gateways aren't instant either, and
+# it gives specs that need to observe a run "still in flight" (e.g. clicking Stop mid-run)
+# a reliable window, at a cost (a few hundred ms per test) too small to matter for the
+# rest of the suite.
+RESPONSE_DELAY_S = 0.2
 
 # A single combined response body whose keys are the union of every M1-M6 schema, so it
 # validates cleanly (per vejudge/core/judge/validate.py's required-field/score-range/
@@ -50,6 +57,7 @@ class Handler(BaseHTTPRequestHandler):
 
         length = int(self.headers.get("Content-Length", 0))
         self.rfile.read(length)  # request body is ignored — always returns the same content
+        time.sleep(RESPONSE_DELAY_S)
 
         body = json.dumps({
             "choices": [{"message": {"content": json.dumps(MOCK_JUDGE_CONTENT)}}],

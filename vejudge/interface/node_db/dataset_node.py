@@ -1,38 +1,44 @@
-"""Dataset Node executor — wraps a ``DataLoader`` (``dl_peanut_eval`` or
-``dl_human_annotations``), per ``interface.md``'s Dataset Node spec.
+"""Dataset Node executor — samples/filters an already-loaded ``raw_dataset`` stream and
+joins matching human-annotation labels for exactly the resulting item set.
 
-Produces the ``dataset`` socket (item_id -> JudgeSample dict) for ``peanut_eval``, or the
-``labels`` socket (item_id -> AggregatedHumanRecord) for ``human_annotations`` — only one
-socket is populated per run, chosen by the ``loader`` param.
+Per the Data Source / Dataset split: loading lives one step upstream (Peanut Source Node,
+or a future source node for another model), this node owns sampling/filtering —
+``raw_dataset`` is a distinct socket type from ``dataset`` specifically so a source's raw
+output can never be wired directly into a Judge node, forcing sampling to always be an
+explicit step.
+
+Human annotation labels are looked up by item id for this node's own sampled items rather
+than sampled independently by a separate node: human annotation records use the identical
+``project::prompt_idx::model`` item id format as the peanut side (see
+``dl_human_annotations.loader.HumanAnnotationRecord.item_id`` and
+``dl_peanut_eval.loader.parse_item_id``), so an earlier design that sampled each side on
+its own (a standalone Human Annotations node with its own ratio/mode params) could silently
+select a different item set on each branch — this node's sampling now runs once, and labels
+are a lookup against that one set, guaranteeing judge results and human labels always
+describe the same items by construction.
 """
 
 from __future__ import annotations
 
-import re
-from typing import Any, Optional
+from typing import Any
 
 from ...database.dl_human_annotations import aggregate_annotations, load_human_annotations
-from ...database.dl_peanut_eval import PeanutEvalLoader
-from ...database.dl_peanut_eval.loader import parse_item_id, use_case_for
+from ...database.dl_peanut_eval.loader import use_case_for
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
-from .sampling import select_items
-
-LOADER_KINDS = {"peanut_eval", "human_annotations"}
+from .sampling import apply_filters, select_items
+from .warnings import zero_items_warning
 
 
 @register
 class DatasetNodeExecutor(NodeExecutor):
     node_type = "dataset"
     category = "node_db"
-    input_sockets: dict[str, str] = {}
+    input_sockets = {"raw_dataset": "raw_dataset"}
     output_sockets = {"dataset": "dataset", "labels": "labels"}
     param_schema = {
-        "loader": {"type": "enum", "options": sorted(LOADER_KINDS), "default": "peanut_eval"},
-        "model": {"type": "string", "default": "peanut"},
-        "projects": {"type": "list[string]", "default": None},
         "sampling_ratio": {"type": "number", "default": 1.0, "min": 0.0, "max": 1.0},
         "sampling_mode": {
-            "type": "enum", "options": ["full", "unified", "stratified"], "default": "full",
+            "type": "enum", "options": ["unified", "stratified"], "default": "unified",
         },
         "use_case_filter": {"type": "list[string]", "default": None},
         "item_id_pattern": {"type": "string", "default": None},
@@ -40,104 +46,48 @@ class DatasetNodeExecutor(NodeExecutor):
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         p = ctx.params
-        loader_kind = p.get("loader", "peanut_eval")
-        if loader_kind not in LOADER_KINDS:
+        raw_dataset = ctx.inputs.get("raw_dataset")
+        if raw_dataset is None:
             return NodeRunResult(
                 status="error",
-                error=f"Unknown loader '{loader_kind}'. Options: {sorted(LOADER_KINDS)}",
+                error="Dataset Node requires a 'raw_dataset' input (wire a source node's "
+                "`raw_dataset` output, e.g. a Peanut Source Node)",
             )
-        if loader_kind == "peanut_eval":
-            return self._run_peanut_eval(p, ctx)
-        return self._run_human_annotations(p, ctx)
 
-    def _selected_items(
-        self, all_items: list[str], item_use_case: dict[str, str], p: dict[str, Any]
-    ) -> list[str]:
-        items = _apply_filters(
-            all_items,
+        # Every JudgeSample already carries its own `use_case` (set by the source loader
+        # via the same `use_case_for` lookup) — no need to re-derive it from the item id.
+        item_use_case = {
+            iid: sample.get("use_case", "unknown") for iid, sample in raw_dataset.items()
+        }
+        items = apply_filters(
+            list(raw_dataset),
             use_case_filter=p.get("use_case_filter"),
             item_id_pattern=p.get("item_id_pattern"),
             item_use_case=item_use_case,
         )
-        return select_items(
+        items = select_items(
             items,
             ratio=float(p.get("sampling_ratio", 1.0)),
-            mode=p.get("sampling_mode", "full"),
+            mode=p.get("sampling_mode", "unified"),
             use_case_lookup=item_use_case,
         )
 
-    def _run_peanut_eval(self, p: dict[str, Any], ctx: NodeRunContext) -> NodeRunResult:
-        model = p.get("model", "peanut")
-        loader = PeanutEvalLoader(model=model, projects=p.get("projects") or None)
-        all_items = loader.list_items()
-        item_use_case = {iid: use_case_for(parse_item_id(iid)[0]) for iid in all_items}
-        items = self._selected_items(all_items, item_use_case, p)
+        dataset: dict[str, Any] = {iid: raw_dataset[iid] for iid in items}
 
-        samples: dict[str, Any] = {}
-        skipped: list[str] = []
-        for iid in items:
-            try:
-                samples[iid] = loader.load_sample(iid)
-            except Exception as e:  # noqa: BLE001 - one bad item must not drop the rest
-                skipped.append(iid)
-                ctx.run.logger.warning(
-                    "Dataset[%s]: skipping '%s' (%s: %s)",
-                    ctx.node_id, iid, type(e).__name__, e,
-                )
-
-        ctx.run.logger.info(
-            "Dataset[%s]: %d items (peanut_eval, model=%s)%s",
-            ctx.node_id, len(samples), model,
-            f", skipped {len(skipped)}" if skipped else "",
-        )
-        meta: dict[str, Any] = {
-            "n_items": len(samples), "loader": "peanut_eval", "skipped_items": skipped,
-        }
-        if not samples:
-            meta["warning"] = _zero_items_warning("peanut_eval")
-        return NodeRunResult(outputs={"dataset": samples}, meta=meta)
-
-    def _run_human_annotations(self, p: dict[str, Any], ctx: NodeRunContext) -> NodeRunResult:
-        model = p.get("model", "peanut")
-        projects = p.get("projects") or None
-        records = load_human_annotations(models=[model], projects=projects)
+        records = load_human_annotations()
         use_case_by_project = {r.project: use_case_for(r.project) for r in records}
         aggregated = aggregate_annotations(records, use_case_lookup=use_case_by_project)
+        labels: dict[str, Any] = {iid: aggregated[iid] for iid in items if iid in aggregated}
 
-        item_use_case = {iid: agg.use_case for iid, agg in aggregated.items()}
-        items = self._selected_items(list(aggregated.keys()), item_use_case, p)
-
-        labels = {iid: aggregated[iid] for iid in items}
         ctx.run.logger.info(
-            "Dataset[%s]: %d items (human_annotations, model=%s)",
-            ctx.node_id, len(items), model,
+            "Dataset[%s]: %d / %d item(s) selected, %d with human labels",
+            ctx.node_id, len(dataset), len(raw_dataset), len(labels),
         )
-        meta: dict[str, Any] = {"n_items": len(items), "loader": "human_annotations"}
-        if not labels:
-            meta["warning"] = _zero_items_warning("human_annotations")
-        return NodeRunResult(outputs={"labels": labels}, meta=meta)
-
-
-def _zero_items_warning(loader_kind: str) -> str:
-    return (
-        f"Matched 0 items for loader '{loader_kind}'. Check the project/use_case/item_id "
-        "filters, and that VEJUDGE_REPO_ROOT (or VEJUDGE_DATA_ROOT/VEJUDGE_EVALUATION_ROOT) "
-        "points at a real data checkout — a run can silently do nothing otherwise."
-    )
-
-
-def _apply_filters(
-    items: list[str],
-    *,
-    use_case_filter: Optional[list[str]],
-    item_id_pattern: Optional[str],
-    item_use_case: dict[str, str],
-) -> list[str]:
-    out = items
-    if use_case_filter:
-        allowed = set(use_case_filter)
-        out = [i for i in out if item_use_case.get(i) in allowed]
-    if item_id_pattern:
-        rx = re.compile(item_id_pattern)
-        out = [i for i in out if rx.search(i)]
-    return out
+        meta: dict[str, Any] = {
+            "n_items": len(dataset),
+            "n_raw_items": len(raw_dataset),
+            "n_labels": len(labels),
+        }
+        if not dataset:
+            meta["warning"] = zero_items_warning("dataset")
+        return NodeRunResult(outputs={"dataset": dataset, "labels": labels}, meta=meta)

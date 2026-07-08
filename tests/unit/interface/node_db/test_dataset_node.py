@@ -1,199 +1,170 @@
-import json
-
 import pytest
 
-import vejudge.config as config
-from vejudge.database.dl_peanut_eval.loader import _use_cases
+from vejudge.database.dl_human_annotations.loader import HumanAnnotationRecord
+from vejudge.interface.node_db import dataset_node
 from vejudge.interface.node_db.dataset_node import DatasetNodeExecutor
 
-PROJECTS = {
-    "prj-a": ("visual montage", 2),  # (use_case, n_prompts)
-    "prj-b": ("speech-driven", 2),
-}
+
+def _raw_item(item_id, use_case="visual montage"):
+    return {
+        "item_id": item_id,
+        "project": item_id.split("::")[0],
+        "prompt_idx": int(item_id.split("::")[1]),
+        "model": "peanut",
+        "use_case": use_case,
+        "input": {"user_prompt": "do a thing"},
+        "algorithm": "peanut",
+        "output": {"output_video_path": ""},
+    }
 
 
-def _build_peanut_tree(root, data_root):
-    for project, (_, n_prompts) in PROJECTS.items():
-        (data_root / project).mkdir(parents=True, exist_ok=True)
-        (data_root / project / "user_query.json").write_text(
-            json.dumps({"prompts": [{"user_request": f"req {i}"} for i in range(n_prompts)]})
-        )
-        base = root / "peanut-v4-multi-track-gpt-5-1-medium" / project
-        (base / "videos").mkdir(parents=True)
-        (base / "notes").mkdir(parents=True)
-        for i in range(n_prompts):
-            (base / "videos" / f"20260101_000000_prompt_{i}_final.mp4").write_text("x")
-            (base / "notes" / f"20260101_000000_prompt_{i}_notes.json").write_text("{}")
-
-    use_cases_path = data_root / "use_cases_config.json"
-    use_cases_path.write_text(
-        json.dumps({p: {"use_case": uc} for p, (uc, _) in PROJECTS.items()})
-    )
-    return use_cases_path
+def _raw_dataset():
+    return {
+        "prj-a::0::peanut": _raw_item("prj-a::0::peanut", "visual montage"),
+        "prj-a::1::peanut": _raw_item("prj-a::1::peanut", "visual montage"),
+        "prj-b::0::peanut": _raw_item("prj-b::0::peanut", "speech-driven"),
+        "prj-b::1::peanut": _raw_item("prj-b::1::peanut", "speech-driven"),
+    }
 
 
-@pytest.fixture
-def peanut_fixture(tmp_path, monkeypatch):
-    data_root = tmp_path / "data"
-    rendered_root = tmp_path / "rendered"
-    use_cases_path = _build_peanut_tree(rendered_root, data_root)
-    monkeypatch.setattr(config, "DATA_ROOT", data_root)
-    monkeypatch.setattr(config, "RENDERED_ROOT", rendered_root)
-    monkeypatch.setattr(config, "USE_CASES_CONFIG", use_cases_path)
-    _use_cases.cache_clear()
-    yield
-    _use_cases.cache_clear()
-
-
-def _humaneval_file(root, *, annotator, project, prompt_idx, model, scores):
-    path = root / project / f"{annotator}_prompt{prompt_idx}_{project}_{model}_humaneval.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    ann = dict(scores)
-    ann["_complete"] = True
-    path.write_text(
-        json.dumps(
-            {
-                "annotator": annotator,
-                "project": project,
-                "model": model,
-                "prompt_idx": prompt_idx,
-                "cell_key": f"prompt_{prompt_idx}__{model}",
-                "output_slot": 1,
-                "annotation": ann,
-            }
-        )
+def _human_record(item_id, score, annotator="a1"):
+    project, prompt_idx, model = item_id.split("::")
+    return HumanAnnotationRecord(
+        path="x",
+        annotator=annotator,
+        project=project,
+        model=model,
+        prompt_idx=int(prompt_idx),
+        cell_key=f"prompt_{prompt_idx}__{model}",
+        output_slot=1,
+        complete=True,
+        annotation={"video_addresses_prompt": str(score), "_complete": True},
     )
 
 
-@pytest.fixture
-def human_annotations_fixture(tmp_path, monkeypatch):
-    data_root = tmp_path / "data"
-    annotations_root = tmp_path / "human_annotations"
-    use_cases_path = data_root / "use_cases_config.json"
-    data_root.mkdir(parents=True, exist_ok=True)
-    use_cases_path.write_text(
-        json.dumps({p: {"use_case": uc} for p, (uc, _) in PROJECTS.items()})
-    )
-    for project, (_, n_prompts) in PROJECTS.items():
-        for i in range(n_prompts):
-            _humaneval_file(
-                annotations_root, annotator="ann1", project=project, prompt_idx=i,
-                model="peanut", scores={"video_addresses_prompt": "4"},
-            )
-    monkeypatch.setattr(config, "DATA_ROOT", data_root)
-    monkeypatch.setattr(config, "HUMAN_ANNOTATIONS_ROOT", annotations_root)
-    monkeypatch.setattr(config, "USE_CASES_CONFIG", use_cases_path)
-    _use_cases.cache_clear()
-    yield
-    _use_cases.cache_clear()
+@pytest.fixture(autouse=True)
+def _no_real_human_annotations_by_default(monkeypatch):
+    # Every test below runs against a synthetic `raw_dataset` with no real data checkout on
+    # disk — stub the loader so `load_human_annotations()` never hits the real filesystem;
+    # tests that care about the labels join opt in via `monkeypatch.setattr` themselves.
+    monkeypatch.setattr(dataset_node, "load_human_annotations", lambda **kw: [])
 
 
-def test_peanut_eval_loads_all_items(peanut_fixture, make_ctx):
-    ctx = make_ctx(params={"loader": "peanut_eval", "model": "peanut"})
+def test_default_sampling_passes_every_item_through(make_ctx):
+    # No sampling_mode/ratio params set at all — defaults (unified, ratio=1.0) must still
+    # select every item, same as the old dedicated "full" mode used to (now removed).
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()})
     result = DatasetNodeExecutor().run(ctx)
     assert result.status == "done"
-    dataset = result.outputs["dataset"]
-    assert set(dataset) == {
-        "prj-a::0::peanut", "prj-a::1::peanut", "prj-b::0::peanut", "prj-b::1::peanut",
-    }
-    assert dataset["prj-a::0::peanut"]["use_case"] == "visual montage"
-    assert "labels" not in result.outputs
+    assert set(result.outputs["dataset"]) == set(_raw_dataset())
+    assert result.outputs["labels"] == {}
+    assert result.meta == {"n_items": 4, "n_raw_items": 4, "n_labels": 0}
 
 
-def test_peanut_eval_use_case_filter(peanut_fixture, make_ctx):
-    ctx = make_ctx(
-        params={"loader": "peanut_eval", "model": "peanut", "use_case_filter": ["speech-driven"]}
-    )
+def test_use_case_filter(make_ctx):
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["speech-driven"]})
     result = DatasetNodeExecutor().run(ctx)
     assert set(result.outputs["dataset"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
 
 
-def test_peanut_eval_item_id_pattern(peanut_fixture, make_ctx):
-    ctx = make_ctx(params={"loader": "peanut_eval", "item_id_pattern": r"^prj-a::"})
+def test_item_id_pattern(make_ctx):
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"item_id_pattern": r"^prj-a::"})
     result = DatasetNodeExecutor().run(ctx)
     assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
 
 
-def test_peanut_eval_sampling_ratio_unified(peanut_fixture, make_ctx):
+def test_sampling_ratio_unified(make_ctx):
     ctx = make_ctx(
-        params={"loader": "peanut_eval", "sampling_ratio": 0.5, "sampling_mode": "unified"}
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"sampling_ratio": 0.5, "sampling_mode": "unified"},
     )
     result = DatasetNodeExecutor().run(ctx)
     assert len(result.outputs["dataset"]) == 2
 
 
-def test_unknown_loader_is_a_node_error(peanut_fixture, make_ctx):
-    ctx = make_ctx(params={"loader": "nope"})
+def test_sampling_ratio_alone_takes_effect_without_an_explicit_mode(make_ctx):
+    # Regression guard: sampling_mode used to default to a "full" mode that silently
+    # ignored ratio entirely — setting only sampling_ratio (leaving mode unset) must
+    # actually narrow the selection now that "full" no longer exists.
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 0.5})
+    result = DatasetNodeExecutor().run(ctx)
+    assert len(result.outputs["dataset"]) == 2
+
+
+def test_sampling_uses_use_case_already_on_each_item_not_a_re_derivation(make_ctx):
+    # Confirms the Dataset Node reads `use_case` straight off each already-loaded item
+    # (set upstream, e.g. by a source node) rather than trying to recompute it — stratified
+    # sampling here must split evenly across the two use_cases already present.
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"sampling_ratio": 0.5, "sampling_mode": "stratified"},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    dataset = result.outputs["dataset"]
+    assert len(dataset) == 2
+    use_cases = {item["use_case"] for item in dataset.values()}
+    assert use_cases == {"visual montage", "speech-driven"}  # one from each group
+
+
+def test_missing_raw_dataset_input_is_a_node_error(make_ctx):
+    ctx = make_ctx(inputs={})
     result = DatasetNodeExecutor().run(ctx)
     assert result.status == "error"
-    assert "nope" in result.error
 
 
-def test_peanut_eval_skips_a_bad_item_instead_of_failing_the_whole_node(
-    peanut_fixture, make_ctx, tmp_path
-):
-    # A rendered notes file exists for prompt_idx=2, but user_query.json only defines
-    # 1 prompt (indices out of range) — a real data inconsistency found via prj-duygu-interview
-    # in production data. One bad item must not drop the rest of a project-less (all-projects)
-    # Dataset Node's output.
-    data_root = config.DATA_ROOT
-    rendered_root = config.RENDERED_ROOT
-    project = "prj-broken"
-    (data_root / project).mkdir(parents=True)
-    (data_root / project / "user_query.json").write_text(
-        json.dumps({"prompts": [{"user_request": "only one prompt"}]})
-    )
-    base = rendered_root / "peanut-v4-multi-track-gpt-5-1-medium" / project
-    (base / "videos").mkdir(parents=True)
-    (base / "notes").mkdir(parents=True)
-    for i in (0, 2):  # index 2 has a render but no matching prompt entry
-        (base / "videos" / f"20260101_000000_prompt_{i}_final.mp4").write_text("x")
-        (base / "notes" / f"20260101_000000_prompt_{i}_notes.json").write_text("{}")
-    use_cases = json.loads(config.USE_CASES_CONFIG.read_text())
-    use_cases[project] = {"use_case": "unknown"}
-    config.USE_CASES_CONFIG.write_text(json.dumps(use_cases))
-
-    ctx = make_ctx(params={"loader": "peanut_eval"})
-    result = DatasetNodeExecutor().run(ctx)
-
-    assert result.status == "done"
-    dataset = result.outputs["dataset"]
-    assert "prj-broken::0::peanut" in dataset  # the good item still loads
-    assert "prj-broken::2::peanut" not in dataset  # the bad one is skipped, not fatal
-    assert {"prj-a::0::peanut", "prj-a::1::peanut", "prj-b::0::peanut", "prj-b::1::peanut"} <= set(
-        dataset
-    )  # unrelated projects are unaffected
-    assert result.meta["skipped_items"] == ["prj-broken::2::peanut"]
-
-
-def test_human_annotations_loads_labels(human_annotations_fixture, make_ctx):
-    ctx = make_ctx(params={"loader": "human_annotations", "model": "peanut"})
-    result = DatasetNodeExecutor().run(ctx)
-    assert result.status == "done"
-    labels = result.outputs["labels"]
-    assert set(labels) == {
-        "prj-a::0::peanut", "prj-a::1::peanut", "prj-b::0::peanut", "prj-b::1::peanut",
-    }
-    assert labels["prj-a::0::peanut"].scores["video_addresses_prompt"] == 4.0
-    assert labels["prj-a::0::peanut"].use_case == "visual montage"
-    assert "dataset" not in result.outputs
-    assert "warning" not in result.meta
-
-
-def test_peanut_eval_zero_items_gets_a_warning(peanut_fixture, make_ctx):
-    # A filter that matches nothing — the exact shape of the real bug this guards against:
-    # a misconfigured/misresolved data root (or an overly narrow filter) silently produces
-    # an empty dataset with status "done" and no other signal that anything is wrong.
-    ctx = make_ctx(params={"loader": "peanut_eval", "use_case_filter": ["nonexistent"]})
+def test_zero_items_after_sampling_gets_a_warning(make_ctx):
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["nonexistent"]})
     result = DatasetNodeExecutor().run(ctx)
     assert result.status == "done"
     assert result.outputs["dataset"] == {}
     assert "Matched 0 items" in result.meta["warning"]
 
 
-def test_human_annotations_zero_items_gets_a_warning(human_annotations_fixture, make_ctx):
-    ctx = make_ctx(params={"loader": "human_annotations", "model": "nonexistent-model"})
+def test_labels_are_joined_by_item_id_for_exactly_the_sampled_items(make_ctx, monkeypatch):
+    # Only prj-a's two items have human annotation records; prj-b has none. Sampling is
+    # further restricted to prj-a only, so the label lookup must match exactly those two
+    # sampled ids, never independently re-sampling the annotation side.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [
+            _human_record("prj-a::0::peanut", 5),
+            _human_record("prj-a::1::peanut", 3),
+        ],
+    )
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
     result = DatasetNodeExecutor().run(ctx)
-    assert result.status == "done"
-    assert result.outputs["labels"] == {}
-    assert "Matched 0 items" in result.meta["warning"]
+    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert set(result.outputs["labels"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert result.outputs["labels"]["prj-a::0::peanut"].scores["video_addresses_prompt"] == 5.0
+    assert result.meta["n_labels"] == 2
+
+
+def test_labels_dont_include_items_outside_the_sampled_set(make_ctx, monkeypatch):
+    # A human annotation record exists for prj-b, but prj-b is filtered out of the dataset
+    # sample — its label must not leak into the output even though it was loaded.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [
+            _human_record("prj-a::0::peanut", 5),
+            _human_record("prj-b::0::peanut", 2),
+        ],
+    )
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
+    result = DatasetNodeExecutor().run(ctx)
+    assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}
+
+
+def test_items_without_a_matching_human_record_are_simply_absent_from_labels(make_ctx, monkeypatch):
+    # No annotation exists yet for one of two sampled items — that's a legitimate partial
+    # state (not an error): `labels` just has fewer entries than `dataset`.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [_human_record("prj-a::0::peanut", 5)],
+    )
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
+    result = DatasetNodeExecutor().run(ctx)
+    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}

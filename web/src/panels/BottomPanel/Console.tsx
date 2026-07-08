@@ -1,16 +1,15 @@
-import { useGraphStore } from '../../store/graphStore'
-import { useRunStore } from '../../store/runStore'
+import { useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
 
-export function Console() {
-  const logs = useRunStore((s) => s.logs)
-  const status = useRunStore((s) => s.status)
-  const runError = useRunStore((s) => s.error)
-  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
+export function Console({ height }: { height: number }) {
+  const logs = useActiveRunStore((s) => s.logs)
+  const status = useActiveRunStore((s) => s.status)
+  const runError = useActiveRunStore((s) => s.error)
+  const selectedNodeId = useActiveGraphStore((s) => s.selectedNodeId)
 
   const visible = selectedNodeId ? logs.filter((l) => l.nodeId === selectedNodeId) : logs
 
   return (
-    <div className="bottom-panel">
+    <div className="bottom-panel" style={{ height }}>
       <div className="console-header">
         <span>Run status: {status}</span>
         {runError && <span className="console-error"> — {runError}</span>}

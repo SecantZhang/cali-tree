@@ -1,45 +1,37 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { useGraphStore } from '../store/graphStore'
-import { useRunStore } from '../store/runStore'
-import { NodeChrome } from './NodeChrome'
-import { ParamField } from './ParamField'
+import type { NodeProps } from '@xyflow/react'
 import { NODE_PARAM_SCHEMAS } from './paramSchemas'
+import { SimpleParamNode } from './SimpleParamNode'
+import { SocketHandle, socketTop } from './SocketHandle'
 import { SOCKET_COLORS } from './socketTypes'
 import type { VeNodeData } from './types'
 
-const SCHEMA = NODE_PARAM_SCHEMAS.dataset
-
-export function DatasetNode({ id, data }: NodeProps) {
+export function DatasetNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
-  const updateNodeParams = useGraphStore((s) => s.updateNodeParams)
-  const toggleNodeCollapsed = useGraphStore((s) => s.toggleNodeCollapsed)
-  const progress = useRunStore((s) => s.nodeProgress[id])
-  const loader = String(d.params.loader ?? 'peanut_eval')
-
   return (
-    <NodeChrome
-      title="Dataset" color="var(--node-db)" status={d.status} error={d.error}
-      collapsed={d.collapsed} onToggleCollapse={() => toggleNodeCollapsed(id)}
-      progress={progress}
-    >
-      {d.collapsed ? (
-        <div className="rf-node-param">loader: {loader}</div>
-      ) : (
-        Object.entries(SCHEMA).map(([key, field]) => (
-          <ParamField
-            key={key} name={key} field={field} value={d.params[key]}
-            onChange={(v) => updateNodeParams(id, { [key]: v })}
+    <SimpleParamNode
+      id={id}
+      data={d}
+      selected={selected}
+      title="Dataset"
+      color="var(--node-db)"
+      schema={NODE_PARAM_SCHEMAS.dataset}
+      summaryLine={(p) => `sampling: ${p.sampling_mode ?? 'unified'}`}
+      sockets={
+        <>
+          <SocketHandle
+            kind="target" id="raw_dataset" label="raw_dataset" top={socketTop(0, 1)}
+            color={SOCKET_COLORS.raw_dataset}
           />
-        ))
-      )}
-      <Handle
-        type="source" position={Position.Right} id="dataset"
-        style={{ top: '38%', background: SOCKET_COLORS.dataset }}
-      />
-      <Handle
-        type="source" position={Position.Right} id="labels"
-        style={{ top: '68%', background: SOCKET_COLORS.labels }}
-      />
-    </NodeChrome>
+          <SocketHandle
+            kind="source" id="dataset" label="dataset" top={socketTop(0, 2)}
+            color={SOCKET_COLORS.dataset}
+          />
+          <SocketHandle
+            kind="source" id="labels" label="labels" top={socketTop(1, 2)}
+            color={SOCKET_COLORS.labels}
+          />
+        </>
+      }
+    />
   )
 }

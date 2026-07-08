@@ -1,20 +1,31 @@
 import type { Locator, Page } from '@playwright/test'
 
+export type NodeTypeName =
+  | 'peanut_source' | 'dataset' | 'preprocessing' | 'lm_engine'
+  | 'judge_text' | 'judge_video' | 'eval'
+
 // `page.getByText('dataset')` is a case-insensitive substring match by default, which
 // also matches unrelated static UI text ("Datasets" tab label, "VEJudge" title) —
 // scoping to the actual palette item first avoids that false-positive class of bug.
-export function paletteItem(page: Page, nodeType: 'dataset' | 'judge' | 'eval'): Locator {
-  return page.locator('.node-palette-item', { hasText: nodeType })
+// Uses an exact match: 'judge_text'/'judge_video' would otherwise substring-match each
+// other.
+export function paletteItem(page: Page, nodeType: NodeTypeName): Locator {
+  return page.locator('.node-palette-item').filter({ hasText: new RegExp(`^${nodeType}$`) })
 }
 
-export async function addNode(page: Page, nodeType: 'dataset' | 'judge' | 'eval'): Promise<void> {
+export async function addNode(page: Page, nodeType: NodeTypeName): Promise<void> {
   await paletteItem(page, nodeType).click()
 }
 
 export async function waitForPaletteLoaded(page: Page): Promise<void> {
-  await paletteItem(page, 'dataset').waitFor({ state: 'visible', timeout: 10000 })
-  await paletteItem(page, 'judge').waitFor({ state: 'visible' })
-  await paletteItem(page, 'eval').waitFor({ state: 'visible' })
+  const types: NodeTypeName[] = [
+    'peanut_source', 'dataset', 'preprocessing', 'lm_engine',
+    'judge_text', 'judge_video', 'eval',
+  ]
+  await paletteItem(page, types[0]).waitFor({ state: 'visible', timeout: 10000 })
+  for (const t of types.slice(1)) {
+    await paletteItem(page, t).waitFor({ state: 'visible' })
+  }
 }
 
 // React Flow renders a full-canvas `.react-flow__pane` overlay while a connection drag is

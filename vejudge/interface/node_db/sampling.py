@@ -1,13 +1,33 @@
-"""Deterministic item sampling for the Dataset Node (ratio + mode, per interface.md).
+"""Deterministic item filtering + sampling, shared by the Dataset and Human Annotations
+node executors (ratio + mode, per interface.md).
 
-Pure functions, no I/O — the executor resolves item ids and use_case lookups first.
+Pure functions, no I/O — each caller resolves item ids and use_case lookups first.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Optional
 
-VALID_MODES = {"full", "unified", "stratified"}
+VALID_MODES = {"unified", "stratified"}
+
+
+def apply_filters(
+    items: list[str],
+    *,
+    use_case_filter: Optional[list[str]],
+    item_id_pattern: Optional[str],
+    item_use_case: dict[str, str],
+) -> list[str]:
+    """Narrows ``items`` by use_case membership and/or an ``item_id`` regex, in that order."""
+    out = items
+    if use_case_filter:
+        allowed = set(use_case_filter)
+        out = [i for i in out if item_use_case.get(i) in allowed]
+    if item_id_pattern:
+        rx = re.compile(item_id_pattern)
+        out = [i for i in out if rx.search(i)]
+    return out
 
 
 def _evenly_spaced_indices(n: int, k: int) -> list[int]:
@@ -46,12 +66,16 @@ def select_items(
     items: list[str],
     *,
     ratio: float = 1.0,
-    mode: str = "full",
+    mode: str = "unified",
     use_case_lookup: Optional[dict[str, str]] = None,
 ) -> list[str]:
     """Deterministically pick a subset of ``items`` per sampling mode and ratio.
 
-    - ``"full"``: ignore ``ratio``, return every item.
+    There is no separate "full" mode — ``ratio=1.0`` (the default) already selects every
+    item under either mode below, so a dedicated mode that ignored ``ratio`` entirely was
+    redundant and, worse, a footgun: it silently no-oped ``ratio`` for anyone who changed
+    the ratio without also changing the mode off its default.
+
     - ``"unified"``: evenly-spaced selection across the sorted item list.
     - ``"stratified"``: group by ``use_case_lookup`` (item id -> use_case, missing ->
       ``"unknown"``), allocate the ratio-derived target count proportionally across
@@ -61,9 +85,6 @@ def select_items(
         raise ValueError(f"Unknown sampling mode '{mode}'. Options: {sorted(VALID_MODES)}")
 
     ordered = sorted(items)
-    if mode == "full":
-        return ordered
-
     target = _target_count(len(ordered), ratio)
     if target == 0:
         return []

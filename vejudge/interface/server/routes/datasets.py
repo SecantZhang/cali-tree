@@ -10,9 +10,13 @@ from fastapi import APIRouter, HTTPException, Query
 from ....database.dl_human_annotations import aggregate_annotations, load_human_annotations
 from ....database.dl_peanut_eval import PeanutEvalLoader
 from ....database.dl_peanut_eval.loader import parse_item_id, use_case_for
-from ...node_db.dataset_node import LOADER_KINDS
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
+
+# This route is the left-panel Datasets tab's read-only browser (per interface.md,
+# independent of any one graph/node) — it talks to the loaders directly, not through a
+# node executor, so this list lives here rather than on any particular node type.
+LOADER_KINDS = {"peanut_eval", "human_annotations"}
 
 
 @router.get("/loaders")

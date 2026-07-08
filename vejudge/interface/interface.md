@@ -124,35 +124,74 @@ Every node shares the same chrome, regardless of category:
 
 ### Nodes list
 
+#### Peanut Source Node
+
+*Category: `node_db`*
+
+Description: wraps `dl_peanut_eval`'s `DataLoader` (`vejudge/database/dl_template/base.py`) —
+loading only, no sampling/filtering. Loads every item's full `JudgeSample` up front so the same
+source can feed multiple differently-sampled Dataset nodes without re-loading. Other model
+outputs (`coconut`, `grapenut`, `loopedit` — see `docs/data.md`) would each get their own Data
+Source node type alongside this one if/when they get real loaders; there's deliberately no
+generic "pick a loader" dropdown, so each source node's identity is unambiguous on the canvas.
+
+Input: None.
+
+Output: `raw_dataset` — a stream of `JudgeSample`-shaped items:
+`{item_id, project, prompt_idx, model, use_case, input: {user_prompt, a_roll_transcript_text, b_roll_captions_excerpt, initial_timeline_text, notes_path, asset_filepaths, ...}, algorithm, output: {output_video_path, assembly_json}}`.
+`raw_dataset` is a distinct socket type from `dataset` (below) specifically so a source's raw
+output can never be wired directly into a Judge node — sampling is always an explicit step.
+
+Node parameters:
+* **Model**: which rendered-output model directory to read (default `peanut`).
+* **Projects**: multi-select project filter, default all.
+
+Secondary tab: a summary header (loader, model, project filter, and — once this node has
+actually run — the last run's item count and skipped-item count) above a table/grid browser of
+the loader's items. Selecting an item shows a structured preview rather than a flat JSON dump:
+the prompt/use_case pulled to the top, a real `<video controls>` player for
+`output_video_path` (streamed through the path-confined `GET /api/media` route — see
+`vejudge/interface/server/routes/media.py`), with the large embedded blobs (B-roll
+captions, A-roll transcript, assembly JSON) each in their own collapsible section — a raw-JSON
+fallback is still one click away. Shows a live (indeterminate) progress line while the node is
+`running`. A frame-thumbnail-only fallback (for items whose video hasn't rendered) isn't
+implemented — the video element is simply omitted when `output_video_path` is empty.
+
 #### Dataset Node
 
 *Category: `node_db`*
 
-Description: the data node is a node of aggregation of individual data. For example, one dataset node should contain multiple items drawn from one `DataLoader` (`vejudge/database/dl_template/base.py`) — e.g. `dl_peanut_eval` (rendered outputs) or `dl_human_annotations` (human labels). Concrete loaders never bypass the abstract base, so this node is dataset-agnostic: swapping the loader parameter swaps the data source without changing anything downstream.
+Description: samples/filters an already-loaded `raw_dataset` stream — the second half of the
+old combined Dataset Node, split out specifically so a Peanut Source's raw output can be
+sampled multiple different ways (e.g. compare `full` vs `stratified` in one graph) without
+re-loading, and so sampling is always an explicit, visible step rather than bundled into
+loading. It also looks up matching human-annotation labels (`dl_human_annotations`'s
+loader/aggregator) **by item id, for exactly the items it just sampled** — an earlier design
+gave human annotations their own standalone node with its own independent sampling
+ratio/mode, which could silently select a different item set than whatever the Peanut side
+sampled (human annotation item ids use the identical `project::prompt_idx::model` format, so
+the two sides only lined up by coincidence, not by construction); joining by id off this
+node's own sampled set closes that gap.
 
-Input: None, or a `preprocessing` output socket (to re-aggregate an already-preprocessed stream, e.g. after filtering).
+Input: `raw_dataset` (a Data Source node's output, e.g. Peanut Source Node).
 
-Output: `dataset` — a stream of `JudgeSample`-shaped items:
-`{item_id, project, prompt_idx, model, use_case, input: {user_prompt, a_roll_transcript_text, b_roll_captions_excerpt, initial_timeline_text, notes_path, asset_filepaths, ...}, algorithm, output: {output_video_path, assembly_json}}`,
-plus (for `dl_human_annotations`) an aggregated `labels` socket keyed by the same `item_id`.
+Outputs: `dataset` — the sampled subset of the input, same item shape. `labels` — the
+aggregated human-annotation record for each sampled item that has one (items with no
+annotation yet are simply absent, not an error).
 
 Node parameters:
-* **Loader**: dropdown over registered loaders (`dl_peanut_eval`, `dl_human_annotations`, or a custom loader module path).
 * **Sampling ratio**: percentage, default to 100%.
-* **Sampling mode**: stratified, unified (uniform), full.
+* **Sampling mode**: stratified, or unified (uniform, the default). No separate "full"
+  mode — a ratio of 100% under either mode already selects every item, so a mode that
+  ignored ratio entirely was redundant and a footgun (silently no-oping ratio for anyone
+  who changed it without also changing the mode off its old "full" default).
 * **Category filter**: `use_case ∈ {visual montage, speech-driven, voiceover-heavy}`, multi-select, default all.
-* **Split**: none / seed-calibration / validation / held-out-test (per `docs/research.md` § First Experiment Checklist) — tags each item so downstream Calibration/Eval nodes can assert train/test disjointness.
 * **Item id filter**: optional glob/regex over `item_id` (e.g. limit to one project), for the quick-subset style of iteration (`run/run_quick_subset.sh`).
 
-Secondary tab: a summary header (loader, model, project filter, sampling mode/ratio, and — once
-this node has actually run — the last run's item count, skipped-item count, and a `use_case`
-breakdown) above a table/grid browser of the loader's items. Selecting an item shows a
-structured preview rather than a flat JSON dump: the prompt/use_case/output path pulled to the
-top, with the large embedded blobs (B-roll captions, A-roll transcript, assembly JSON) each in
-their own collapsible section — a raw-JSON fallback is still one click away. Shows a live
-(indeterminate) progress line while the node is `running`. Thumbnail (first frame, if
-`output_video_path` resolves) and a human-score-distribution histogram are not implemented yet —
-they need frame extraction (Preprocessing Node territory) and are tracked as follow-ups.
+Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
+count against the raw input's total count, and how many of those got a matching human label.
+No item browser of its own (it has no loader to browse against); double-click the upstream
+source node for that.
 
 #### Preprocessing Node
 
@@ -176,49 +215,98 @@ Secondary tab: per-item artifact viewer — a frame filmstrip, the ASR transcrip
 
 *Category: `node_vejudge`*
 
-Description: a configured handle onto one `lm_engine` backend (`lm_gemini`, `lm_gpt`, `lm_qwen`, or a custom engine subclassing `lm_engine/lm_template/base.py`'s unified `generate(prompt, media_inputs, schema) -> dict` interface). Judge nodes attach to an engine handle rather than embedding model config themselves, so the same graph can be re-pointed at a different model/version without touching the Judge nodes.
+Description: a reusable, swappable engine config — a Judge node no longer embeds its own
+model/temperature/concurrency; it takes a required `engine_config` input from an LM Engine
+Node instead, so the same graph can be re-pointed at a different model/version without
+touching the Judge nodes, and one config can feed multiple Judge nodes at once. The output
+is a **plain JSON-safe dict**, not a live `lm_engine.LMEngine` instance — an `LMEngine`
+holds an open `LLMHistoryWriter` file handle and lazily-loaded credentials, neither of
+which would survive the run-status HTTP route's per-poll JSON serialization or the
+websocket's `partial_result` event, both hard JSON-encode boundaries every node output
+already passes through. Judge nodes call `get_engine(**config)` themselves from this
+dict's fields, exactly as they already did with their own inline params before this split
+— only the source of those kwargs moved upstream.
 
-Input: None (configuration-only node); optionally a credentials/config node if one is added later.
+Input: None (configuration-only node).
 
-Output: `engine` — a reusable model connector consumable by one or more Judge nodes.
+Output: `engine_config` — `{engine_kind, model, temperature, max_tokens, concurrency}`,
+consumed by one or more Judge nodes.
 
 Node parameters:
-* **Engine**: gemini / gpt / qwen / custom module path.
-* **Model name / version**.
-* **Temperature**, **max tokens**.
-* **Concurrency cap** (maps to `--concurrency` / `--video-concurrency`).
-* **Health-check toggle** (maps to `--no-health-check`) and endpoint override.
+* **Engine kind**: gemini / gpt / qwen.
+* **Model** (defaults to `config.DEFAULT_TEXT_MODEL`, shown directly rather than a blank
+  field, since that's the actual value `LMEngine` falls back to when unset).
+* **Temperature** (defaults to `0.3`), **max tokens** (defaults to `4096`).
+* **Concurrency** (defaults to `1`; moved here from the Judge nodes' old
+  `text_concurrency`/`video_concurrency` params, per this node's original spec).
+* **Health-check toggle**: present but inert — `vejudge/lm_engine/health.py` exists at the
+  engine layer but isn't wired into the interface's Judge nodes at all yet, matching the
+  Preprocessing Node's existing precedent of shipping a param before its behavior lands.
 
-Secondary tab: a live tail of this engine's slice of `llm-histories.log` — prompt hash, token counts (`promptTokens`/`completionTokens`/`totalTokens`), latency, and the retry/failover timeline (transient-error retries on the same endpoint, then failover to the mirror).
+Secondary tab: not implemented yet — a live tail of this engine's slice of
+`llm-histories.log` (prompt hash, token counts, latency, retry/failover timeline) is the
+eventual plan, but no route currently serves that log to the frontend. Today the tab just
+points back at the params panel, which already shows everything this node carries.
 
-#### Judge Node
+#### Text Judge Node / Video Judge Node
 
 *Category: `node_vejudge`*
 
-Description: runs one metric judge (M1–M6, `vejudge/core/judge/base_judge.py`'s `Judge` class parametrized by `metric_id`) or all six, over an incoming dataset stream. Builds the versioned prompt (`vejudge/core/prompts/m{n}_*.py`) for each item, calls the attached engine, parses the JSON response, and validates it (score range 1–5, required fields, non-empty rationale — invalid output is flagged, never silently defaulted).
+Description: runs the M1–M6 judges (`vejudge/core/judge/base_judge.py`'s `Judge` class
+parametrized by `metric_id`) over an incoming dataset stream, split into two node types along
+the modality boundary that already existed internally (separate text/video engine configs,
+separate concurrency knobs) — **Text Judge Node** covers M1/M3 (text modality), **Video Judge
+Node** covers M2/M4/M5/M6 (video modality). Each builds the versioned prompt
+(`vejudge/core/prompts/m{n}_*.py`) for each item, calls its own attached engine, parses the JSON
+response, and validates it (score range 1–5, required fields, non-empty rationale — invalid
+output is flagged, never silently defaulted). Both share one concurrent-execution helper
+(`node_vejudge/_concurrent_judging.py`) rather than duplicating the (item, metric) thread-pool
+loop, checkpointing, and streaming-batch-eval logic.
 
-Input: `dataset` (post-preprocessing, or directly from a Dataset node for text-only metrics), `engine` (text) and `engine` (video) — the node auto-routes each selected metric to the correct one:
+Splitting by modality (not per-metric — M1–M6 would need six nodes) keeps each node's engine
+config unambiguous (one engine per node, not two conditionally-used ones) while avoiding the
+much higher structural cost a full per-metric split would add (a six-way merge before Eval, and
+six single-purpose nodes to wire for what's usually one judging step). The trade-off: today's
+graph executor runs nodes strictly sequentially, so text and video judging — which used to
+overlap within one node's two internal thread pools — now run one after the other unless a
+future executor change adds concurrent sibling-node execution.
 
-| Metric | Modality | Engine input used |
-|---|---|---|
-| M1 Assembly Failure, M3 Prompt Completeness | text | text `engine` |
-| M2 Render Failure, M4 Visual Alignment, M5 Edit Coherence, M6 AV Sync | video | video `engine` |
+Input: `dataset` (post-Preprocessing, or directly from a Dataset node) and a required
+`engine_config` (an LM Engine Node's output — see that entry above for why this moved out
+of each Judge node's own params).
 
-Output: `judge_result` — per item, per selected metric: `{judge, metric_id, prompt_version, parsed, raw_content, validation_flags, valid, promptTokens, completionTokens, totalTokens, model}`.
+Output: `judge_result` — per item, per selected metric: `{judge, metric_id, prompt_version, prompt_system, prompt_user, parsed, raw_content, validation_flags, valid, promptTokens, completionTokens, totalTokens, model}`.
+`prompt_system`/`prompt_user` are the exact text sent to the LM for that item/metric (not
+just the parsed response) — shown in the secondary tab below.
+A Text Judge Node's and a Video Judge Node's outputs are meant to both feed the same Eval Node
+(on its separate `judge_result_text`/`judge_result_video` inputs), which merges them per item —
+either one alone is also a fully supported shape (a text-only or video-only graph).
 
-Node parameters:
-* **Metrics**: multi-select M1–M6, default all.
-* **Skip video**: bool — skip video-modality metrics entirely (mirrors `run/run_text_only.sh`), or auto-skip per item when it has no `output_video_path`.
-* **Prompt version pin**: optional, to reproduce an older run.
-* **Retry/backoff**: inherited from the transport by default; overridable per node.
+Node parameters (Text Judge Node): **Metrics** (multi-select, M1/M3 only, default all text
+metrics), **batch size** (streaming batch-eval — see the Eval Node entry). Engine
+kind/model/temperature/concurrency all come from the required `engine_config` input instead
+of this node's own params.
 
-Secondary tab: while `running`, a live readout — the current `{completed, total}` progress
-(determinate; see Run controls above) plus the most recent item/metric log line, so you can see
-what's actively being judged without leaving the node. Once done, a summary strip (item count,
-valid-call count, invalid/errored count, average `score_1_to_5`) sits above a per-item rationale
-viewer — score, `reasoning_lines`, `evidence`/`issues`, and validation flags. A frame scrubber
-alongside the rationale for video metrics is not implemented yet (tracked as a follow-up); today
-the rationale text and the source item id are the way to cross-reference it against the actual
+Node parameters (Video Judge Node): **Metrics** (multi-select, M2/M4/M5/M6 only, default all
+video metrics), **batch size**. Same as Text Judge Node, engine config comes from the
+required `engine_config` input. There is deliberately no "skip video" toggle: unlike the
+CLI's `--skip-video` flag (an orthogonal safety net alongside a single `--judges` list that
+can span both modalities), a Video Judge node's `metrics` param is already restricted to
+video-only options — "skip video entirely" is already fully expressed by not adding/wiring
+the node at all (see Quick Subset below), so a second in-node toggle for the same state
+would just be redundant, ambiguous surface (the automatic per-item skip when an item has no
+`output_video_path` is unrelated and stays).
+
+Secondary tab (both): a live-updating score-distribution histogram (recharts, sourced from
+the node's own in-flight partial results while `running`, falling back to the terminal
+result once done — the same batch-eval streaming mechanism the Eval Node uses, extended so
+a Judge node's own tab benefits from it too, not just downstream previews) sits above a
+summary strip (item count, valid-call count, invalid/errored count, average
+`score_1_to_5`) and a per-item rationale viewer — score, `reasoning_lines`,
+`evidence`/`issues`, validation flags, and a collapsible **Prompt** section (the exact
+`prompt_system`/`prompt_user` text sent for that item/metric). A frame scrubber alongside
+the rationale for video metrics is not implemented yet (tracked as a follow-up); today the
+rationale text and the source item id are the way to cross-reference it against the actual
 rendered video.
 
 #### Ensemble Node
@@ -291,7 +379,8 @@ Description: computes human-vs-judge agreement (`vejudge/core/eval/metrics.py`,
 kappa, pairwise preference accuracy, and calibration error — always broken down per category
 (`use_case`), since a judge can look strong overall while failing on one category.
 
-Input: `judge_result` (raw and/or calibrated — can take both to compare) + `labels`.
+Input: `judge_result_text` + `judge_result_video` (each optional — a text-only or video-only
+graph only needs one wired; both are merged per item when both are present) + `labels`.
 
 Output: a metrics report (per-category table) and, for the robustness workflow, bootstrap confidence intervals.
 
@@ -301,7 +390,26 @@ Node parameters:
 * **Comparison baseline**: raw vs. calibrated, or judge A vs. judge B.
 * **Bootstrap CI**: bool, with repeat count (mirrors `vejudge-robust`'s temperature × repeats grid).
 
-Secondary tab: a metrics dashboard — judge-vs-human correlation scatter, a per-category bar chart, and a worst-disagreement item list that drill through to the originating Judge node's rationale for that item.
+Streaming preview: if a wired Judge node's **batch size** param is set, this node re-runs
+(recomputing the whole report from scratch, not incrementally — Spearman/Kendall/QWK have no
+simple incremental update, and at this data scale a full recompute is cheap) against each
+in-flight batch and streams a live preview while the Judge node is still running, instead of
+only ever showing the final report once the whole run finishes.
+
+Secondary tab: a live-updating human-vs-judge scatter plot (recharts, one series per
+dimension — sourced from `metrics_report`'s `rows` field, the raw per-item pairs
+`build_aligned_rows` already computes) above the per-dimension metrics table, then a
+per-item picker with a real `<video controls>` player for the selected aligned item.
+Eval's own inputs (`judge_result_text/video`, `labels`) never carry a file path, so the
+video is resolved client-side by tracing the wired graph backward — through whichever
+Judge node(s) feed this Eval node, to the Dataset node upstream of *that* — and reading
+that Dataset node's own cached `dataset` output by item id, rather than adding a `dataset`
+input socket to Eval purely for this display lookup. If every dimension ends up with zero
+aligned rows despite real item-id overlap (a metric that was never selected, an
+invalid/skipped judge result, a non-numeric score, etc.), `meta.diagnostics` explains
+exactly why per dimension instead of leaving the panel silently empty. A per-category bar
+chart and a worst-disagreement item list (drilling through to the originating Judge
+node's rationale) are not implemented yet.
 
 ## Workflows
 
@@ -311,18 +419,21 @@ workflow must round-trip to an equivalent CLI invocation — the interface is a 
 
 ### Workflows list
 
-* **Base Benchmark** — `Dataset(peanut) + Dataset(human_annotations)` → `Preprocessing` →
-  `Judge(M1–M6, text engine + video engine)` → `Aggregation` → `Eval`. Equivalent to
-  `run/run_base_benchmark.sh`.
-* **Robustness Sweep** — Base Benchmark with the Judge node's engine temperature and an outer
+* **Base Benchmark** — `Peanut Source` → `Dataset` → `Preprocessing` → `Text Judge` (M1–M6's
+  text half) and `Video Judge` (M1–M6's video half) → `Aggregation` → `Eval`, plus `Dataset`'s
+  own `labels` output → `Eval` directly, plus one `LM Engine` node (gpt) feeding `Text
+  Judge` and a second (gemini) feeding `Video Judge`. Equivalent to `run/run_base_benchmark.sh`.
+* **Robustness Sweep** — Base Benchmark with both LM Engine nodes' temperature and an outer
   repeat count swept as a grid, feeding the Eval node's bootstrap-CI mode. Equivalent to
   `run/run_base_benchmark_robust.sh` (`vejudge-robust`).
-* **Quick Subset** — `Dataset` (small sampling ratio or item-id filter) → `Judge` (`skip video`
-  on, or text engine only) → `Aggregation`. Equivalent to `run/run_quick_subset.sh --limit N` /
-  `run/run_text_only.sh`.
+* **Quick Subset** — `Peanut Source` → `Dataset` (small sampling ratio or item-id filter) →
+  `Text Judge` only (fed by one `LM Engine` node; no Video Judge node wired at all — a graph
+  doesn't need a `skip video` toggle when the node itself is simply absent) → `Aggregation`.
+  Equivalent to `run/run_quick_subset.sh --limit N` / `run/run_text_only.sh`.
 * **Calibration Fit + Apply** — two linked subgraphs sharing one Calibration node's registry
-  version: `Dataset(seed-calibration split)` → `Judge` → `Calibration(fit)` → registry; then
-  `Dataset(held-out split)` → `Judge` → `Calibration(apply, same version)` → `Eval`.
+  version: `Peanut Source(seed-calibration split)` → `Dataset` → `Text/Video Judge` →
+  `Calibration(fit)` → registry; then `Peanut Source(held-out split)` → `Dataset` →
+  `Text/Video Judge` → `Calibration(apply, same version)` → `Eval`.
 * **Cost Estimate / Dry Run** — any of the above with the dry-run toggle on; runs item matching
   and reports estimated call counts per Judge node without contacting the gateway. Equivalent to
   `run/estimate_cost.sh`.

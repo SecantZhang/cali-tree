@@ -1,30 +1,41 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { useRunStore } from '../store/runStore'
-import { NodeChrome } from './NodeChrome'
+import type { NodeProps } from '@xyflow/react'
+import { NODE_PARAM_SCHEMAS } from './paramSchemas'
+import { SimpleParamNode } from './SimpleParamNode'
+import { SocketHandle, socketTop } from './SocketHandle'
 import { SOCKET_COLORS } from './socketTypes'
 import type { VeNodeData } from './types'
 
-export function EvalNode({ id, data }: NodeProps) {
+export function EvalNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
-  const progress = useRunStore((s) => s.nodeProgress[id])
-
   return (
-    <NodeChrome
-      title="Eval" color="var(--node-eval)" status={d.status} error={d.error} progress={progress}
-    >
-      <Handle
-        type="target" position={Position.Left} id="judge_result"
-        style={{ top: '35%', background: SOCKET_COLORS.judge_result }}
-      />
-      <Handle
-        type="target" position={Position.Left} id="labels"
-        style={{ top: '65%', background: SOCKET_COLORS.labels }}
-      />
-      <div className="rf-node-param">human-vs-judge agreement</div>
-      <Handle
-        type="source" position={Position.Right} id="metrics_report"
-        style={{ top: '50%', background: SOCKET_COLORS.metrics_report }}
-      />
-    </NodeChrome>
+    <SimpleParamNode
+      id={id}
+      data={d}
+      selected={selected}
+      title="Eval"
+      color="var(--node-eval)"
+      schema={NODE_PARAM_SCHEMAS.eval}
+      staticBody={<div className="rf-node-param">human-vs-judge agreement</div>}
+      sockets={
+        <>
+          <SocketHandle
+            kind="target" id="judge_result_text" label="judge_result_text" top={socketTop(0, 3)}
+            color={SOCKET_COLORS.judge_result}
+          />
+          <SocketHandle
+            kind="target" id="judge_result_video" label="judge_result_video" top={socketTop(1, 3)}
+            color={SOCKET_COLORS.judge_result}
+          />
+          <SocketHandle
+            kind="target" id="labels" label="labels" top={socketTop(2, 3)}
+            color={SOCKET_COLORS.labels}
+          />
+          <SocketHandle
+            kind="source" id="metrics_report" label="metrics_report" top={socketTop(0, 1)}
+            color={SOCKET_COLORS.metrics_report}
+          />
+        </>
+      }
+    />
   )
 }

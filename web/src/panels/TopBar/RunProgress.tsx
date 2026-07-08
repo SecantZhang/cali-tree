@@ -1,8 +1,14 @@
 import { ProgressBar } from '../../components/ProgressBar'
-import { useGraphStore } from '../../store/graphStore'
-import { useRunStore } from '../../store/runStore'
+import { useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
 
-const TITLE_FOR_TYPE: Record<string, string> = { dataset: 'Dataset', judge: 'Judge', eval: 'Eval' }
+const TITLE_FOR_TYPE: Record<string, string> = {
+  peanut_source: 'Peanut Source',
+  dataset: 'Dataset',
+  preprocessing: 'Preprocessing',
+  judge_text: 'Text Judge',
+  judge_video: 'Video Judge',
+  eval: 'Eval',
+}
 
 /**
  * Bars (b) and (c) from interface.md's Run controls section: overall workflow progress
@@ -11,12 +17,12 @@ const TITLE_FOR_TYPE: Record<string, string> = { dataset: 'Dataset', judge: 'Jud
  * also visible here so you don't need the node in view. Renders nothing while idle.
  */
 export function RunProgress() {
-  const status = useRunStore((s) => s.status)
-  const totalNodes = useRunStore((s) => s.totalNodes)
-  const completedCount = useRunStore((s) => s.completedNodeIds.size)
-  const currentRunningNodeId = useRunStore((s) => s.currentRunningNodeId)
-  const nodeProgress = useRunStore((s) => s.nodeProgress)
-  const currentNode = useGraphStore((s) => s.nodes.find((n) => n.id === currentRunningNodeId))
+  const status = useActiveRunStore((s) => s.status)
+  const totalNodes = useActiveRunStore((s) => s.totalNodes)
+  const completedCount = useActiveRunStore((s) => s.completedNodeIds.size)
+  const currentRunningNodeId = useActiveRunStore((s) => s.currentRunningNodeId)
+  const nodeProgress = useActiveRunStore((s) => s.nodeProgress)
+  const currentNode = useActiveGraphStore((s) => s.nodes.find((n) => n.id === currentRunningNodeId))
 
   if (status !== 'running') return null
 

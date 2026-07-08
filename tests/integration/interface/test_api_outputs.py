@@ -1,6 +1,6 @@
 """Node `outputs` (added to NodeResultOut for the secondary-tab viewers) must survive a
-real HTTP round-trip — including a Dataset(human_annotations) node's `labels` output,
-whose values are `AggregatedHumanRecord` dataclass instances, not plain dicts.
+real HTTP round-trip — including the Dataset node's `labels` output, whose values are
+`AggregatedHumanRecord` dataclass instances, not plain dicts.
 """
 
 import time
@@ -41,7 +41,7 @@ def test_node_outputs_serialize_over_http(
     final = _wait_for_run(client, run_id)
 
     assert final["status"] == "done", final
-    labels = final["node_results"]["ds_human"]["outputs"]["labels"]
+    labels = final["node_results"]["ds"]["outputs"]["labels"]
     assert set(labels) == {"prj-a::0::peanut", "prj-b::0::peanut"}
     assert labels["prj-a::0::peanut"]["scores"]["video_addresses_prompt"] == 4.0
     assert labels["prj-a::0::peanut"]["use_case"] == "visual montage"

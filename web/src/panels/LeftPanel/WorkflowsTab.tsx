@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { deleteWorkflow, getWorkflow, listWorkflows, saveWorkflow } from '../../api/workflows'
-import { useGraphStore } from '../../store/graphStore'
+import { deleteWorkflow, getWorkflow, listWorkflows } from '../../api/workflows'
+import { saveTabAs } from '../../lib/saveTab'
+import { useTabsStore } from '../../store/tabsStore'
 
 export function WorkflowsTab() {
   const queryClient = useQueryClient()
@@ -12,7 +13,11 @@ export function WorkflowsTab() {
   const [name, setName] = useState('')
 
   const saveMutation = useMutation({
-    mutationFn: () => saveWorkflow(name, useGraphStore.getState().toJSON()),
+    mutationFn: () => {
+      const tab = useTabsStore.getState().getActiveTab()
+      if (!tab) throw new Error('no active tab')
+      return saveTabAs(tab, name)
+    },
     onSuccess: () => {
       setName('')
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
@@ -23,9 +28,11 @@ export function WorkflowsTab() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workflows'] }),
   })
 
+  // Loading a workflow always opens a new tab — the same saved workflow can be open in
+  // more than one tab at once as independent, separately-edited copies.
   const handleLoad = async (n: string) => {
     const wf = await getWorkflow(n)
-    useGraphStore.getState().loadGraph(wf.graph)
+    useTabsStore.getState().openWorkflowTab(n, wf.graph)
   }
 
   if (isLoading) return <p className="empty-hint">Loading workflows…</p>

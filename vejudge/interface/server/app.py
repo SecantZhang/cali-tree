@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import datasets, graphs, nodes, runs, settings, workflows, ws
+from .routes import datasets, graphs, media, nodes, runs, settings, workflows, ws
 
 # Matches http://localhost:<any port> and http://127.0.0.1:<any port>.
 LOCAL_ORIGIN_REGEX = r"^http://(localhost|127\.0\.0\.1):\d+$"
@@ -33,4 +33,5 @@ def create_app() -> FastAPI:
     app.include_router(ws.router)
     app.include_router(datasets.router)
     app.include_router(settings.router)
+    app.include_router(media.router)
     return app

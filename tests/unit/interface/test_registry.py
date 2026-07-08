@@ -61,8 +61,11 @@ def test_node_type_infos_reflects_registered_sockets():
         NODE_EXECUTORS.pop("__fake_b__", None)
 
 
-def test_only_the_3_in_scope_node_types_are_registered():
+def test_only_the_in_scope_node_types_are_registered():
     import vejudge.interface.node_types  # noqa: F401 - import side effect
 
     real_types = {t for t in NODE_EXECUTORS if not t.startswith("__fake")}
-    assert real_types == {"dataset", "judge", "eval"}
+    assert real_types == {
+        "peanut_source", "dataset", "preprocessing", "lm_engine",
+        "judge_text", "judge_video", "eval",
+    }

@@ -54,6 +54,11 @@ class Judge:
             "judge": self.full_id,
             "metric_id": self.metric_id,
             "prompt_version": spec.version,
+            # The exact text sent to the LM for this item — surfaced (not just logged to
+            # llm-histories.log) so the interface's Judge Node secondary tab can show it
+            # per item/metric, not just the parsed output.
+            "prompt_system": spec.system,
+            "prompt_user": spec.user,
             "parsed": None,
             "raw_content": "",
         }

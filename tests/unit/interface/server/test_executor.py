@@ -99,6 +99,218 @@ def test_invalid_graph_short_circuits(make_ctx):
     assert result.node_results == {}
 
 
+def test_should_stop_halts_before_remaining_nodes(make_ctx):
+    ran = []
+    _register("__fx_a__", run_fn=lambda ctx: (ran.append("a"), NodeRunResult(outputs={}))[1])
+    _register("__fx_b__", run_fn=lambda ctx: (ran.append("b"), NodeRunResult(outputs={}))[1])
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_a__"), NodeSpec(id="b", type="__fx_b__")], edges=[],
+    )
+    ctx = make_ctx()
+    # Stop is already requested before the run even starts — the first node ("a") should
+    # never execute, and both nodes end up marked "stopped".
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint, should_stop=lambda: True,
+    )
+    result = engine.execute()
+
+    assert result.status == "stopped"
+    assert ran == []
+    assert result.node_results["a"].status == "stopped"
+    assert result.node_results["b"].status == "stopped"
+
+
+def test_should_stop_lets_a_node_already_running_finish(make_ctx):
+    ran = []
+    _register("__fx_a__", run_fn=lambda ctx: (ran.append("a"), NodeRunResult(outputs={}))[1])
+    _register("__fx_b__", run_fn=lambda ctx: (ran.append("b"), NodeRunResult(outputs={}))[1])
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_a__"), NodeSpec(id="b", type="__fx_b__")], edges=[],
+    )
+    ctx = make_ctx()
+    # Stop only becomes true after "a" has already been checked — "a" still runs to
+    # completion (it was already past the stop check for this iteration), "b" is stopped.
+    calls = {"n": 0}
+
+    def _should_stop():
+        calls["n"] += 1
+        return calls["n"] > 1
+
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint, should_stop=_should_stop,
+    )
+    result = engine.execute()
+
+    assert result.status == "stopped"
+    assert ran == ["a"]
+    assert result.node_results["a"].status == "done"
+    assert result.node_results["b"].status == "stopped"
+
+
+def test_error_status_is_not_overwritten_by_a_later_stop(make_ctx):
+    _register(
+        "__fx_bad__", run_fn=lambda ctx: NodeRunResult(status="error", error="boom"),
+    )
+    _register("__fx_b__", run_fn=lambda ctx: NodeRunResult(outputs={}))
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_bad__"), NodeSpec(id="b", type="__fx_b__")], edges=[],
+    )
+    ctx = make_ctx()
+    calls = {"n": 0}
+
+    def _should_stop():
+        calls["n"] += 1
+        return calls["n"] > 1  # stop kicks in only before node "b"
+
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint, should_stop=_should_stop,
+    )
+    result = engine.execute()
+
+    assert result.status == "error"  # error takes priority over a later stop
+    assert result.node_results["a"].status == "error"
+    assert result.node_results["b"].status == "stopped"
+
+
+def test_on_batch_triggers_a_preview_of_a_supports_partial_input_downstream_node(make_ctx):
+    _register(
+        "__fx_driver__", outputs={"out": "judge_result"},
+        run_fn=lambda ctx: (ctx.on_batch("out", {"a": 1}), NodeRunResult(outputs={"out": {"a": 1, "b": 2}}))[1],
+    )
+    seen_inputs = []
+
+    class _Sink(NodeExecutor):
+        node_type = "__fx_sink__"
+        category = "node_eval"
+        input_sockets = {"in": "judge_result"}
+        supports_partial_input = True
+
+        def run(self, ctx):
+            seen_inputs.append(ctx.inputs["in"])
+            return NodeRunResult(outputs={"report": len(ctx.inputs["in"])}, meta={"preview": ctx.is_preview})
+
+    register(_Sink)
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_driver__"), NodeSpec(id="b", type="__fx_sink__")],
+        edges=[EdgeSpec("a", "out", "b", "in")],
+    )
+    events = []
+    ctx = make_ctx()
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint,
+        progress_cb=lambda event, payload: events.append((event, payload)),
+    )
+    result = engine.execute()
+
+    assert result.status == "done"
+    # "b" is called twice: once for the preview (the in-flight batch value), once more for
+    # its own normal, authoritative run at its regular topological position (against node
+    # "a"'s eventual, final output) — the preview is a pure side effect, not a replacement.
+    assert seen_inputs == [{"a": 1}, {"a": 1, "b": 2}]
+    partials = [p for e, p in events if e == "partial_result"]
+    # Two partial_result events per on_batch call: the calling node's own in-flight
+    # snapshot (so e.g. a Judge Node's own secondary tab can render live), plus the
+    # existing downstream-preview mechanism (unchanged).
+    assert len(partials) == 2
+    assert partials[0] == {"node_id": "a", "outputs": {"out": {"a": 1}}, "meta": {}}
+    assert partials[1] == {"node_id": "b", "outputs": {"report": 1}, "meta": {"preview": True}}
+    # Node "b"'s own, normal, authoritative run afterward is completely unaffected — it
+    # still runs once, at its regular topological position, against the real final input.
+    assert result.node_results["b"].outputs == {"report": 2}
+    assert result.node_results["b"].meta == {"preview": False}
+
+
+def test_on_batch_is_a_no_op_downstream_for_a_node_that_does_not_opt_in(make_ctx):
+    _register(
+        "__fx_driver__", outputs={"out": "judge_result"},
+        run_fn=lambda ctx: (ctx.on_batch("out", {"a": 1}), NodeRunResult(outputs={"out": {}}))[1],
+    )
+    _register(
+        "__fx_plain_sink__", inputs={"in": "judge_result"}, run_fn=lambda ctx: NodeRunResult(outputs={}),
+    )
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_driver__"), NodeSpec(id="b", type="__fx_plain_sink__")],
+        edges=[EdgeSpec("a", "out", "b", "in")],
+    )
+    events = []
+    ctx = make_ctx()
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint,
+        progress_cb=lambda event, payload: events.append((event, payload)),
+    )
+    result = engine.execute()
+
+    assert result.status == "done"
+    # The calling node "a" still emits its own snapshot (see the dedicated test below) —
+    # only the downstream, non-opted-in "b" gets no preview event of its own.
+    assert [p for e, p in events if e == "partial_result" and p["node_id"] == "b"] == []
+
+
+def test_on_batch_always_emits_the_calling_nodes_own_snapshot(make_ctx):
+    # Independent of whether anything downstream opts into previews at all — this is what
+    # lets e.g. a Judge Node's own secondary tab render a live-updating view of its own
+    # in-flight results, not just downstream nodes'.
+    _register(
+        "__fx_solo_driver__", outputs={"out": "judge_result"},
+        run_fn=lambda ctx: (ctx.on_batch("out", {"a": 1}), NodeRunResult(outputs={"out": {"a": 1, "b": 2}}))[1],
+    )
+    graph = GraphSpec(nodes=[NodeSpec(id="a", type="__fx_solo_driver__")], edges=[])
+    events = []
+    ctx = make_ctx()
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint,
+        progress_cb=lambda event, payload: events.append((event, payload)),
+    )
+    result = engine.execute()
+
+    assert result.status == "done"
+    partials = [p for e, p in events if e == "partial_result"]
+    assert partials == [{"node_id": "a", "outputs": {"out": {"a": 1}}, "meta": {}}]
+
+
+def test_on_batch_skips_a_downstream_node_whose_other_input_is_not_ready_yet(make_ctx):
+    _register(
+        "__fx_driver__", outputs={"out": "judge_result"},
+        run_fn=lambda ctx: (ctx.on_batch("out", {"a": 1}), NodeRunResult(outputs={"out": {}}))[1],
+    )
+
+    class _NeedsTwo(NodeExecutor):
+        node_type = "__fx_needs_two__"
+        category = "node_eval"
+        input_sockets = {"judge_result": "judge_result", "labels": "labels"}
+        supports_partial_input = True
+
+        def run(self, ctx):
+            # Mirrors EvalNodeExecutor's own real validation: a declared input socket
+            # that was never wired at all is simply absent from ctx.inputs, not None-filled
+            # by the executor — each node validates its own required inputs.
+            if ctx.inputs.get("labels") is None:
+                return NodeRunResult(status="error", error="missing labels")
+            return NodeRunResult(outputs={})
+
+    register(_NeedsTwo)
+    # "b" also needs a "labels" input that never gets wired — the preview must be skipped
+    # entirely rather than calling the downstream node with a missing socket.
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_driver__"), NodeSpec(id="b", type="__fx_needs_two__")],
+        edges=[EdgeSpec("a", "out", "b", "judge_result")],
+    )
+    events = []
+    ctx = make_ctx()
+    engine = GraphExecutionEngine(
+        graph, run=ctx.run, checkpoint=ctx.checkpoint,
+        progress_cb=lambda event, payload: events.append((event, payload)),
+    )
+    result = engine.execute()
+
+    # "b" is missing its "labels" input for real, so its own authoritative run errors —
+    # that's an unrelated, pre-existing behavior; the point here is just that no preview
+    # was attempted for it while that input was still missing (the calling node "a" still
+    # emits its own snapshot regardless — see test_on_batch_always_emits_the_calling_nodes_own_snapshot).
+    assert result.node_results["b"].status == "error"
+    assert [p for e, p in events if e == "partial_result" and p["node_id"] == "b"] == []
+
+
 def test_progress_cb_receives_node_status_events(make_ctx):
     _register("__fx_solo__", run_fn=lambda ctx: NodeRunResult(outputs={}))
     graph = GraphSpec(nodes=[NodeSpec(id="a", type="__fx_solo__")], edges=[])

@@ -23,3 +23,15 @@ export function saveWorkflow(name: string, graph: GraphSpecJSON): Promise<Workfl
 export function deleteWorkflow(name: string): Promise<{ deleted: string }> {
   return api.delete(`/api/workflows/${encodeURIComponent(name)}`)
 }
+
+export interface WorkflowRunSummary {
+  run_id: string
+  status: string
+  dry_run: boolean
+  allow_live: boolean
+  n_checkpointed: number
+}
+
+export function listWorkflowRuns(name: string): Promise<WorkflowRunSummary[]> {
+  return api.get(`/api/workflows/${encodeURIComponent(name)}/runs`)
+}

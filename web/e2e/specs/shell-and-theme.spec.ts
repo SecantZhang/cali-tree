@@ -9,8 +9,12 @@ test.describe('app shell and theme', () => {
     // The palette only shows real entries once GET /api/nodes has returned from the
     // real backend — proves the frontend build + backend + fixture wiring all work.
     await waitForPaletteLoaded(page)
+    await expect(paletteItem(page, 'peanut_source')).toBeVisible()
     await expect(paletteItem(page, 'dataset')).toBeVisible()
-    await expect(paletteItem(page, 'judge')).toBeVisible()
+    await expect(paletteItem(page, 'preprocessing')).toBeVisible()
+    await expect(paletteItem(page, 'lm_engine')).toBeVisible()
+    await expect(paletteItem(page, 'judge_text')).toBeVisible()
+    await expect(paletteItem(page, 'judge_video')).toBeVisible()
     await expect(paletteItem(page, 'eval')).toBeVisible()
 
     await expect(page.locator('.left-panel')).toBeVisible()

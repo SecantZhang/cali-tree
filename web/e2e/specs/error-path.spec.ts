@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { addNode, waitForPaletteLoaded } from '../helpers'
 
 // addNode's module-level id counter (graphStore.ts) resets on every fresh page load.
-const JUDGE = 'judge-1'
+const JUDGE = 'judge_text-1'
 
 test.describe('error path', () => {
   test('a Judge Node with no dataset input wired fails with the real backend error message', async ({
@@ -11,7 +11,7 @@ test.describe('error path', () => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    await addNode(page, 'judge')
+    await addNode(page, 'judge_text')
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     await expect(judgeNode).toBeVisible()
 
@@ -27,7 +27,7 @@ test.describe('error path', () => {
     await expect(statusDot).toHaveClass(/status-error/)
     await expect(statusDot).toHaveAttribute(
       'title',
-      "Judge Node requires a 'dataset' input (wire a Dataset Node's `dataset` output, not `labels`)",
+      "Text Judge Node requires a 'dataset' input (wire a Dataset Node's `dataset` output)",
     )
 
     // The top-level run error banner (.console-error) only carries graph-level failures

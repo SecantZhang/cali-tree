@@ -9,25 +9,37 @@ import {
 import '@xyflow/react/dist/style.css'
 import { DatasetNode } from '../nodes/DatasetNode'
 import { EvalNode } from '../nodes/EvalNode'
-import { JudgeNode } from '../nodes/JudgeNode'
+import { LMEngineNode } from '../nodes/LMEngineNode'
+import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
+import { PreprocessingNode } from '../nodes/PreprocessingNode'
+import { TextJudgeNode } from '../nodes/TextJudgeNode'
+import { VideoJudgeNode } from '../nodes/VideoJudgeNode'
 import { isValidSocketConnection } from '../nodes/socketTypes'
-import { useGraphStore } from '../store/graphStore'
+import { activeGraphStore, useActiveGraphStore } from '../store/activeTab'
 import { useTheme } from '../theme/ThemeProvider'
 
-const NODE_TYPES = { dataset: DatasetNode, judge: JudgeNode, eval: EvalNode }
+const NODE_TYPES = {
+  peanut_source: PeanutSourceNode,
+  dataset: DatasetNode,
+  preprocessing: PreprocessingNode,
+  lm_engine: LMEngineNode,
+  judge_text: TextJudgeNode,
+  judge_video: VideoJudgeNode,
+  eval: EvalNode,
+}
 
 export function GraphCanvas() {
   const { theme } = useTheme()
-  const nodes = useGraphStore((s) => s.nodes)
-  const edges = useGraphStore((s) => s.edges)
-  const onNodesChange = useGraphStore((s) => s.onNodesChange)
-  const onEdgesChange = useGraphStore((s) => s.onEdgesChange)
-  const onConnect = useGraphStore((s) => s.onConnect)
-  const selectNode = useGraphStore((s) => s.selectNode)
-  const openSecondaryTab = useGraphStore((s) => s.openSecondaryTab)
+  const nodes = useActiveGraphStore((s) => s.nodes)
+  const edges = useActiveGraphStore((s) => s.edges)
+  const onNodesChange = useActiveGraphStore((s) => s.onNodesChange)
+  const onEdgesChange = useActiveGraphStore((s) => s.onEdgesChange)
+  const onConnect = useActiveGraphStore((s) => s.onConnect)
+  const selectNode = useActiveGraphStore((s) => s.selectNode)
+  const openSecondaryTab = useActiveGraphStore((s) => s.openSecondaryTab)
 
   const checkValidConnection = (connection: Connection | Edge): boolean => {
-    const nodesNow = useGraphStore.getState().nodes
+    const nodesNow = activeGraphStore().getState().nodes
     const sourceType = nodesNow.find((n) => n.id === connection.source)?.type
     const targetType = nodesNow.find((n) => n.id === connection.target)?.type
     return isValidSocketConnection(

@@ -11,11 +11,14 @@ const TABS: { id: LeftTab; label: string }[] = [
   { id: 'datasets', label: 'Datasets' },
 ]
 
-export function LeftPanel({ collapsed }: { collapsed: boolean }) {
+export function LeftPanel({ collapsed, width }: { collapsed: boolean; width: number }) {
   const [tab, setTab] = useState<LeftTab>('nodes')
 
   return (
-    <aside className={`left-panel${collapsed ? ' collapsed' : ''}`}>
+    <aside
+      className={`left-panel${collapsed ? ' collapsed' : ''}`}
+      style={{ width: collapsed ? 0 : width }}
+    >
       <div className="tabs">
         {TABS.map((t) => (
           <button

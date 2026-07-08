@@ -2,7 +2,7 @@
 // controls section). Base URL is dev-server-configurable via VITE_API_BASE_URL so the
 // two local processes (Vite + uvicorn) can run on different ports.
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 
 export class ApiError extends Error {
   status: number

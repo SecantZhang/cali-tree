@@ -1,9 +1,10 @@
 """Node executor contract + registry.
 
-Only the 3 in-scope node types (Dataset, Judge, Eval — see ``interface.md``) register here.
-Concrete node modules (``node_db.dataset_node``, ``node_vejudge.judge_node``,
-``node_eval.eval_node``) import ``register``/``NodeExecutor`` from this module and decorate
-their executor class; this module never imports them back, so there's no import cycle.
+Only the in-scope node types (Peanut Source, Human Annotations, Dataset, Preprocessing,
+Text/Video Judge, Eval — see ``interface.md``) register here. Concrete node modules
+(``node_db.*``, ``node_preprocessing.*``, ``node_vejudge.*``, ``node_eval.*``) import
+``register``/``NodeExecutor`` from this module and decorate their executor class; this
+module never imports them back, so there's no import cycle.
 """
 
 from __future__ import annotations
@@ -29,6 +30,20 @@ class NodeRunContext:
     dry_run: bool = True
     allow_live: bool = False
     progress_cb: Optional[Callable[[str, dict[str, Any]], None]] = None
+    # Graceful-stop check: a node loop that iterates external calls (e.g. Judge Node's
+    # per-item loop) should poll this between calls and wind down rather than starting new
+    # work once it returns True. None means "never asked to stop" (e.g. in tests).
+    should_stop: Optional[Callable[[], bool]] = None
+    # Streaming batch-eval hook (Judge Node only calls this today): a node whose output
+    # arrives incrementally can call `on_batch(output_socket, partial_value)` at a batch
+    # boundary to trigger a preview re-run of any directly-downstream node that opts in via
+    # `NodeExecutor.supports_partial_input`. None for every node except the one the graph
+    # executor is currently driving (see GraphExecutionEngine._run_node).
+    on_batch: Optional[Callable[[str, Any], None]] = None
+    # True only on the synthetic context GraphExecutionEngine builds to re-run a
+    # `supports_partial_input` node against an in-flight upstream batch — never true for a
+    # node's own normal, authoritative run at its regular position in topological order.
+    is_preview: bool = False
 
 
 @dataclass
@@ -47,6 +62,11 @@ class NodeExecutor(ABC):
     input_sockets: ClassVar[dict[str, str]] = {}
     output_sockets: ClassVar[dict[str, str]] = {}
     param_schema: ClassVar[dict[str, Any]] = {}
+    # Opt-in for streaming batch-eval: only a node whose `run()` is cheap and safe to call
+    # repeatedly against a growing, still-incomplete upstream input should set this True
+    # (only EvalNodeExecutor does). GraphExecutionEngine uses this to decide which
+    # downstream nodes get a preview re-run when an upstream node calls `ctx.on_batch`.
+    supports_partial_input: ClassVar[bool] = False
 
     @abstractmethod
     def run(self, ctx: NodeRunContext) -> NodeRunResult: ...

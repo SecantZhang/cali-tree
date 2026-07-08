@@ -16,10 +16,24 @@ from pydantic import BaseModel, Field
 from . import graph as graph_mod
 
 
+class PositionIn(BaseModel):
+    x: float
+    y: float
+
+
+class SizeIn(BaseModel):
+    width: float
+    height: float
+
+
 class NodeIn(BaseModel):
     id: str
     type: str
     params: dict[str, Any] = Field(default_factory=dict)
+    # Wire-layer only — canvas layout, never touched by graph.NodeSpec/execution (see
+    # module docstring). Optional so older saved workflows (no layout yet) still load.
+    position: Optional[PositionIn] = None
+    size: Optional[SizeIn] = None
 
 
 class EdgeIn(BaseModel):
@@ -69,9 +83,14 @@ class NodeTypeOut(BaseModel):
 
 
 class RunRequest(BaseModel):
-    graph: GraphIn
+    # Either a graph to run fresh, or resume_from (a prior run_id) — never both. When
+    # resuming, the graph is reconstructed server-side from that run's own saved
+    # workflow_graph.json, never from whatever the client sends (see run_manager.py).
+    graph: Optional[GraphIn] = None
     dry_run: bool = True
     allow_live: bool = False
+    resume_from: Optional[str] = None
+    workflow_name: Optional[str] = None
 
 
 class NodeResultOut(BaseModel):
@@ -98,6 +117,14 @@ class WorkflowOut(BaseModel):
     graph: GraphIn
     created_at: str
     updated_at: str
+
+
+class WorkflowRunSummary(BaseModel):
+    run_id: str
+    status: str  # "running" | "stopping" | "done" | "error" | "stopped" | "interrupted"
+    dry_run: bool
+    allow_live: bool
+    n_checkpointed: int  # how many (item, metric) results are already in judge_results.jsonl
 
 
 def utcnow_iso() -> str:

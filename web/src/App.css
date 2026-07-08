@@ -31,6 +31,88 @@
   padding: 0 12px 10px;
 }
 
+/* --- Tab bar (ComfyUI-style workflow tabs) --- */
+.tab-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px 0;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 8px 8px 0 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tab-item:hover {
+  background: var(--surface-hover);
+}
+
+.tab-item.active {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab-title {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  background: none;
+  border: none;
+  color: inherit;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tab-close:hover {
+  background: var(--border);
+}
+
+.tab-add {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin: 0 0 4px 4px;
+}
+
+.tab-add:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.close-tab-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
 .app-body {
   flex: 1 1 auto;
   display: flex;
@@ -38,7 +120,8 @@
 }
 
 .left-panel {
-  width: 260px;
+  /* width comes from prefsStore (see App.tsx) — user-resizable via the drag handle next
+     to it, persisted like the theme choice. */
   flex: 0 0 auto;
   border-right: 1px solid var(--border);
   background: var(--panel-bg);
@@ -47,7 +130,6 @@
 }
 
 .left-panel.collapsed {
-  width: 0;
   overflow: hidden;
   border-right: none;
 }
@@ -90,7 +172,7 @@
 }
 
 .right-panel {
-  width: 300px;
+  /* width comes from prefsStore (see App.tsx) — user-resizable, see .left-panel above. */
   flex: 0 0 auto;
   border-left: 1px solid var(--border);
   background: var(--panel-bg);
@@ -99,7 +181,7 @@
 }
 
 .bottom-panel {
-  height: 180px;
+  /* height comes from prefsStore (see App.tsx) — user-resizable, see .left-panel above. */
   flex: 0 0 auto;
   border-top: 1px solid var(--border);
   background: var(--panel-bg);
@@ -107,6 +189,70 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
   padding: 8px 12px;
+}
+
+/* --- Resize handles (App.tsx wires these to prefsStore) --- */
+.resize-handle {
+  flex: 0 0 auto;
+  background: transparent;
+  transition: background-color 0.1s ease;
+}
+
+.resize-handle:hover {
+  background: var(--accent);
+}
+
+.resize-handle-vertical {
+  width: 5px;
+  cursor: col-resize;
+}
+
+.resize-handle-horizontal {
+  height: 5px;
+  cursor: row-resize;
+}
+
+/* Suppress the collapse/expand width transition while actively dragging a resize handle
+   (see ResizeHandle.tsx) — otherwise every step of the drag animates instead of tracking
+   the mouse instantly. */
+body.is-resizing .left-panel,
+body.is-resizing .right-panel,
+body.is-resizing .bottom-panel {
+  transition: none !important;
+}
+
+.node-palette-category {
+  margin-bottom: 10px;
+}
+
+.node-palette-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.node-palette-category-header:hover {
+  color: var(--text);
+}
+
+.category-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+
+.category-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .node-palette-item {
@@ -117,6 +263,7 @@
   border-radius: 6px;
   border: 1px solid var(--border);
   margin-bottom: 6px;
+  margin-left: 4px;
   cursor: grab;
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
@@ -144,7 +291,14 @@
 
 /* --- React Flow node chrome --- */
 .rf-node {
+  /* NodeResizer (see NodeChrome.tsx) sets an explicit height on the outer xyflow node
+     wrapper once resized — height:100% + flex-column here lets .rf-node-body actually
+     grow into that extra space (or shrink and scroll) instead of staying auto-sized. */
   min-width: 200px;
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   border: 2px solid var(--border);
   border-radius: 10px;
   background: var(--bg);
@@ -153,12 +307,35 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.rf-node-resize-line {
+  border-color: var(--accent) !important;
+}
+
+.rf-node-resize-handle {
+  background: var(--accent) !important;
+  border: 1px solid var(--bg) !important;
+}
+
 .rf-node.is-running {
   border-color: var(--status-running-border);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-running-border) 25%, transparent);
+  border-width: 3px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--status-running-border) 40%, transparent);
+  animation: rf-node-running-pulse 1.5s ease-in-out infinite;
+}
+
+/* A breathing glow, not just a static ring — much easier to spot in peripheral vision
+   than a fixed-intensity border, especially across several nodes on a busy canvas. */
+@keyframes rf-node-running-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--status-running-border) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 9px color-mix(in srgb, var(--status-running-border) 15%, transparent);
+  }
 }
 
 .rf-node-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -192,10 +369,39 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
+/* Sockets get their own fixed-height zone, separate from the params body below — the top
+   of a node is purely "what connects here", the bottom is purely "how it's configured". */
+.rf-node-sockets {
+  flex: 0 0 auto;
+  position: relative;
+  height: 44px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.rf-node-socket-label {
+  position: absolute;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rf-node-socket-label-left {
+  left: 10px;
+}
+
+.rf-node-socket-label-right {
+  right: 10px;
+}
+
 .rf-node-body {
   padding: 10px 14px;
   position: relative;
   min-height: 24px;
+  flex: 1 1 auto;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -269,6 +475,7 @@
 }
 
 .node-progress-bar {
+  flex: 0 0 auto;
   padding: 0 10px;
   margin-top: -2px;
 }
@@ -537,6 +744,13 @@
   overflow-y: auto;
 }
 
+.prompt-label {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* --- Secondary tab summary header + structured item preview --- */
 .secondary-summary {
   display: flex;
@@ -551,6 +765,13 @@
 
 .secondary-summary > .progress-bar-wrap {
   flex: 1 1 100%;
+}
+
+.secondary-chart {
+  margin-bottom: 10px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 4px 8px;
 }
 
 .item-preview {
@@ -574,6 +795,15 @@
   font-size: 11px;
   color: var(--text-muted);
   word-break: break-all;
+}
+
+.item-video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  margin: 4px 0;
+  border-radius: 6px;
+  background: #000;
 }
 
 .item-preview details {
@@ -637,6 +867,20 @@
   border-radius: 6px;
   padding: 4px 8px;
   margin-top: 4px;
+}
+
+.eval-diagnostics {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.eval-diagnostics ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.eval-diagnostics li {
+  margin-bottom: 4px;
 }
 
 .metrics-table {

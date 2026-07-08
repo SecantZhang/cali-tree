@@ -1,11 +1,11 @@
 import { ParamField } from '../../nodes/ParamField'
 import { NODE_PARAM_SCHEMAS } from '../../nodes/paramSchemas'
-import { useGraphStore } from '../../store/graphStore'
+import { useActiveGraphStore } from '../../store/activeTab'
 
 export function Inspector() {
-  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
-  const node = useGraphStore((s) => s.nodes.find((n) => n.id === s.selectedNodeId))
-  const updateNodeParams = useGraphStore((s) => s.updateNodeParams)
+  const selectedNodeId = useActiveGraphStore((s) => s.selectedNodeId)
+  const node = useActiveGraphStore((s) => s.nodes.find((n) => n.id === s.selectedNodeId))
+  const updateNodeParams = useActiveGraphStore((s) => s.updateNodeParams)
 
   if (!selectedNodeId || !node) {
     return <p className="empty-hint">Select a node to inspect its parameters.</p>

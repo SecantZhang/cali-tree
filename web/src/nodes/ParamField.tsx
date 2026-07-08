@@ -30,12 +30,17 @@ export function ParamField({
   }
 
   if (field.type === 'number') {
+    // Falls back to the schema default for display when the stored value is null/unset
+    // (e.g. an older saved workflow that predates this param, or a field the user never
+    // touched) — the executor applies the exact same fallback at run time, so showing it
+    // here means the node always displays what will actually run, never a blank box.
+    const display = value == null ? (field.default as number | null | undefined) : (value as number)
     return (
       <div className="param-row nodrag nopan">
         {label}
         <input
           type="number"
-          value={value == null ? '' : (value as number)}
+          value={display == null ? '' : display}
           min={field.min}
           max={field.max}
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
@@ -59,7 +64,11 @@ export function ParamField({
   }
 
   if (field.type === 'list[enum]') {
-    const selected = new Set((value as string[] | null) ?? [])
+    // A null/empty selection means "every option" at run time for every list[enum] param
+    // that currently exists (e.g. an unset `metrics` runs every judge of that modality) —
+    // so an unset value displays as every box checked, not none, for the same
+    // "show what will actually run" reason as the number/string fallback above.
+    const selected = value == null ? new Set(field.options ?? []) : new Set(value as string[])
     return (
       <div className="param-row param-row-list nodrag nopan">
         {label}
@@ -101,12 +110,14 @@ export function ParamField({
     )
   }
 
+  // Same schema-default fallback as the number field above, for the same reason.
+  const display = (value as string | null | undefined) ?? (field.default as string | null | undefined) ?? ''
   return (
     <div className="param-row nodrag nopan">
       {label}
       <input
         type="text"
-        value={(value as string | null) ?? ''}
+        value={display}
         onChange={(e) => onChange(e.target.value || null)}
       />
     </div>

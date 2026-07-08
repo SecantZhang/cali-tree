@@ -1,4 +1,6 @@
-"""End-to-end 3-node graph (Dataset x2 -> Judge -> Eval), no network, no HTTP.
+"""End-to-end 4-node graph (Peanut Source -> Dataset -> Judge Text -> Eval, with Dataset's
+`labels` output, joined by item id against its own sampled items, also feeding Eval), no
+network, no HTTP.
 
 Proves the graph engine's wiring against real vejudge modules (loaders, judge prompt
 building/parsing, alignment, metrics) before any FastAPI layer exists. The only thing
@@ -21,8 +23,9 @@ def test_graph_end_to_end(tmp_path, fixture_tree, fake_engine, quick_eval_graph)
     result = engine.execute()
 
     assert result.status == "done", {nid: r.error for nid, r in result.node_results.items()}
-    assert result.node_results["ds_peanut"].outputs["dataset"]
-    assert result.node_results["ds_human"].outputs["labels"]
+    assert result.node_results["peanut_src"].outputs["raw_dataset"]
+    assert result.node_results["ds"].outputs["dataset"]
+    assert result.node_results["ds"].outputs["labels"]
 
     report = result.node_results["eval"].outputs["metrics_report"]
     assert report["n_items"] == 2  # prj-a::0::peanut, prj-b::0::peanut

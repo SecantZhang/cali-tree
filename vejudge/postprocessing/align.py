@@ -88,6 +88,75 @@ def derive_overall(judge_results: dict[str, Any]) -> Optional[float]:
     return sum(vals) / len(vals) if vals else None
 
 
+def diagnose_missing_rows(
+    items: list[str],
+    human: dict[str, Any],
+    per_item_judges: dict[str, dict[str, Any]],
+    *,
+    sample_size: int = 20,
+) -> list[dict[str, Any]]:
+    """Explain why (item, dimension) pairs failed to produce an aligned row.
+
+    ``build_aligned_rows`` silently ``continue``s past several distinct causes (missing
+    human score, the judge metric never having run at all, an invalid/skipped judge
+    result, or a parsed result with no numeric score at the expected field) — useful for
+    a human/live run that overlaps by item id but still yields zero (or unexpectedly few)
+    aligned rows, since none of those causes is otherwise visible anywhere. Grouped by
+    (dimension, reason) rather than emitted per item, since the same cause typically
+    applies to every item at once (e.g. a metric simply wasn't selected on the Judge
+    node) — a flat per-item list would just repeat the same line dozens of times.
+    """
+    counts: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def _record(dim: str, reason: str, item_id: str) -> None:
+        key = (dim, reason)
+        entry = counts.setdefault(
+            key, {"dimension": dim, "reason": reason, "count": 0, "example_item_ids": []}
+        )
+        entry["count"] += 1
+        if len(entry["example_item_ids"]) < 3:
+            entry["example_item_ids"].append(item_id)
+
+    for item_id in items[:sample_size]:
+        agg = human.get(item_id)
+        if agg is None:
+            continue
+        judge_results = per_item_judges.get(item_id, {})
+        for dim in HUMAN_DIMENSIONS:
+            if dim not in ALIGNMENT:
+                _record(dim, "dimension has no ALIGNMENT crosswalk entry", item_id)
+                continue
+            metric_id, extractor = ALIGNMENT[dim]
+            if agg.scores.get(dim) is None:
+                _record(dim, "no human score for this dimension on this item", item_id)
+                continue
+            res = judge_results.get(metric_id)
+            if res is None:
+                _record(
+                    dim,
+                    f"judge metric {metric_id} was never produced for this item (not "
+                    "selected on the Judge node, or the item was skipped)",
+                    item_id,
+                )
+                continue
+            parsed = res.get("parsed")
+            if not isinstance(parsed, dict):
+                status = "skipped" if res.get("skipped") else (res.get("error") or "invalid/unparsed")
+                _record(
+                    dim, f"judge metric {metric_id} has no valid parsed output ({status})", item_id
+                )
+                continue
+            if extractor(parsed) is None:
+                _record(
+                    dim,
+                    f"judge metric {metric_id}'s parsed output has no numeric score at "
+                    "the expected field for this dimension",
+                    item_id,
+                )
+
+    return sorted(counts.values(), key=lambda e: -e["count"])
+
+
 def build_aligned_rows(
     items: list[str],
     human: dict[str, Any],

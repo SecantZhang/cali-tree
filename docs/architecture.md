@@ -23,7 +23,7 @@ root/
 │   ├── integration/              # Small end-to-end pipeline runs on fixtures
 │   └── fixtures/                  # Tiny sample media + golden expected outputs
 ├── workflows/                     # Saved node-graph workflows (JSON), config.WORKFLOWS_ROOT
-│   └── examples/quick_eval.json   # Dataset(peanut)+Dataset(human_annotations)->Judge->Eval
+│   └── examples/quick_eval.json   # Peanut Source->Dataset(dataset+labels)->Judge->Eval
 ├── web/                           # React frontend for the node-graph interface (npm-managed;
 │   │                              #   excluded from the Python wheel — see web/README.md)
 │   └── src/
@@ -64,15 +64,21 @@ root/
     └── interface/                 # ComfyUI-style node interface (see interface.md)
         ├── server/                # FastAPI backend: graph model, node registry,
         │                          #   execution engine, run registry, HTTP/WS routes
-        ├── node_db/               # Dataset Node executor (wraps a DataLoader)
-        ├── node_vejudge/          # Judge Node executor (folds in text/video engine config)
+        ├── node_db/               # Peanut Source / Dataset executors (Dataset also joins
+        │                          #   matching human-annotation labels by item id)
+        ├── node_preprocessing/    # Preprocessing Node executor (pass-through stub — see below)
+        ├── node_vejudge/          # LM Engine + Text/Video Judge Node executors + shared
+        │                          #   concurrent-judging helper
         ├── node_eval/             # Eval Node executor (human-vs-judge agreement)
-        └── node_types.py          # import-side-effect module registering the 3 above
+        └── node_types.py          # import-side-effect module registering the 7 above
 ```
 
-`node_preprocessing/` and `node_postprocessing/` (and the other 5 node types from
-`interface.md`) are **not implemented** — the `interface` branch deliberately proves the
-architecture with only Dataset/Judge/Eval before widening to the rest of the spec.
+`node_postprocessing/` (and the other 3 node types from `interface.md` — Ensemble,
+Calibration, Aggregation) are **not implemented**. `node_preprocessing/` exists but is a
+pass-through stub (no real artifact extraction) — the `interface` branch deliberately proves
+the architecture with a minimal node set before widening to the rest of the spec. LM Engine
+*is* implemented (`node_vejudge/lm_engine_node.py`) — Judge nodes take its `engine_config`
+output as a required input rather than embedding engine params themselves.
 
 ---
 

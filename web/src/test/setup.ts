@@ -1,8 +1,7 @@
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { useGraphStore } from '../store/graphStore'
-import { useRunStore } from '../store/runStore'
+import { useTabsStore } from '../store/tabsStore'
 
 // Without vitest's `globals: true`, testing-library's auto-cleanup-on-afterEach
 // never registers, so each test would leak its rendered DOM into the next one.
@@ -10,13 +9,11 @@ afterEach(() => {
   cleanup()
 })
 
-// useGraphStore/useRunStore are module-level singletons (zustand), so they persist
-// across `it()` blocks in the same test file unless explicitly reset.
+// useTabsStore is a module-level singleton (zustand) that persists across `it()` blocks in
+// the same test file — reset it so each test's App mount creates exactly one fresh blank
+// tab (see App.tsx's bootstrap effect) instead of accumulating tabs across tests.
 afterEach(() => {
-  useGraphStore.setState({
-    nodes: [], edges: [], selectedNodeId: null, secondaryTabNodeId: null,
-  })
-  useRunStore.getState().reset()
+  useTabsStore.setState({ tabs: [], activeTabId: null })
 })
 
 // jsdom doesn't implement ResizeObserver, which @xyflow/react needs internally.
