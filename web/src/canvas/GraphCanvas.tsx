@@ -8,7 +8,8 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { DatasetNode } from '../nodes/DatasetNode'
-import { EvalNode } from '../nodes/EvalNode'
+import { EvalTextNode } from '../nodes/EvalTextNode'
+import { EvalVideoNode } from '../nodes/EvalVideoNode'
 import { LMEngineNode } from '../nodes/LMEngineNode'
 import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
 import { PreprocessingNode } from '../nodes/PreprocessingNode'
@@ -25,7 +26,8 @@ const NODE_TYPES = {
   lm_engine: LMEngineNode,
   judge_text: TextJudgeNode,
   judge_video: VideoJudgeNode,
-  eval: EvalNode,
+  eval_text: EvalTextNode,
+  eval_video: EvalVideoNode,
 }
 
 export function GraphCanvas() {

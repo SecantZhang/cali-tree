@@ -18,6 +18,7 @@ from typing import Any, Optional
 from ...logging.exp_logger import ExperimentRun
 from .executor import GraphExecutionEngine, GraphRunResult
 from .graph import GraphSpec
+from .registry import NodeRunResult
 from .run_manager import start_run
 from .schemas import utcnow_iso
 
@@ -61,6 +62,8 @@ class RunRegistry:
         allow_live: bool,
         resume_from: Optional[Path] = None,
         workflow_name: Optional[str] = None,
+        target_node_id: Optional[str] = None,
+        seed_results: Optional[dict[str, NodeRunResult]] = None,
     ) -> RunHandle:
         run, checkpoint = start_run(
             graph, dry_run=dry_run, allow_live=allow_live,
@@ -77,6 +80,7 @@ class RunRegistry:
                     graph, run=run, checkpoint=checkpoint, dry_run=dry_run,
                     allow_live=allow_live, progress_cb=progress_cb,
                     should_stop=handle.stop_event.is_set,
+                    target_node_id=target_node_id, seed_results=seed_results,
                 )
                 result = engine.execute()
             finally:

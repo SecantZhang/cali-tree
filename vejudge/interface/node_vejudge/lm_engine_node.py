@@ -19,7 +19,7 @@ from typing import Any
 from ... import config
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
 
-ENGINE_KINDS = ["gemini", "gpt", "qwen"]
+ENGINE_KINDS = ["gemini", "gpt", "qwen", "claude", "deepseek", "llama", "kimi"]
 
 
 @register

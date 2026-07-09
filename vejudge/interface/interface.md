@@ -66,10 +66,13 @@ currently active and its base URL (never the token, which is never echoed back b
 "Clear" removes the manual override and reverts to whatever's next in that order.
 
 **0-items warning** — a Dataset Node whose loader/filters matched nothing, or a live (non-dry-run)
-Eval Node whose Judge and human-label item ids never overlapped, still reports `status: "done"`
-(matching nothing isn't necessarily wrong) but adds a `meta.warning` string — surfaced as a log
-line in the bottom console and as a highlighted line in that node's secondary tab, so a run that
-silently did nothing doesn't look identical to one that actually worked.
+Eval Text/Eval Video Node whose Judge and human-label item ids never overlapped, still reports
+`status: "done"` (matching nothing isn't necessarily wrong) but adds a `meta.warning` string —
+surfaced as a log line in the bottom console and as a highlighted line in that node's secondary
+tab, so a run that silently did nothing doesn't look identical to one that actually worked. The
+Dataset Node also warns proactively, before Eval ever runs, when its sample lands on zero
+human-labeled items despite the pre-sampling pool having some (naming the coverage gap and
+pointing at the **require_labels** param, which guarantees a labeled sample).
 
 ### Interface themes
 
@@ -110,6 +113,25 @@ Every node shares the same chrome, regardless of category:
   green, separate from the "done" status color, so "currently executing" is never confused
   with "finished") and a thin **progress bar** directly under the header — see the Run
   controls section above for the determinate/indeterminate distinction.
+- **Execution-order badge** — top-left of the header, `[n]`: this node's 1-based position in
+  the *most recently launched* run's actual scope, Jupyter-cell-style. Shown only for a node
+  that was actually part of that run — a full-graph run badges every node; a per-node **Run**
+  badges just that node's ancestor chain + itself; a **Re-run** badges only that one node.
+  Replaced wholesale each time a new run starts, so it always reflects the latest run, never a
+  running union of past ones.
+- **Run (▶) / Re-run (↻)** — top-right of the header, next to the status dot. **Run** executes
+  this node's full ancestor chain plus itself, from scratch (same "graph or a selected
+  subgraph" mentioned in the Run controls section above, scoped by clicking a node rather than
+  a canvas selection). **Re-run** executes *only* this node, reusing the most recently launched
+  run's already-computed outputs for everything upstream — disabled, with a tooltip explaining
+  why, until at least one run exists to reuse. Both respect the same dry-run/`--live`
+  confirmation as the global Run button, since a per-node run is just as capable of making
+  real, billable gateway calls.
+- **Stale flag** — a dashed border + a small "stale" badge next to the status dot: this node's
+  last real result predates a since-changed ancestor (an upstream node was Run/Re-run after
+  this node last ran). The old result keeps displaying — this is an "outdated, not wrong"
+  signal, not an error — and clears the moment this node itself completes a run, by any scope.
+  Set immediately when a downstream node's ancestor is (re-)run, not once that run finishes.
 - **Double-click → secondary tab** — see each node's "Secondary tab" entry below.
 
 **Node categories** (matching the `interface/` package layout in `docs/architecture.md`):
@@ -187,6 +209,11 @@ Node parameters:
   who changed it without also changing the mode off its old "full" default).
 * **Category filter**: `use_case ∈ {visual montage, speech-driven, voiceover-heavy}`, multi-select, default all.
 * **Item id filter**: optional glob/regex over `item_id` (e.g. limit to one project), for the quick-subset style of iteration (`run/run_quick_subset.sh`).
+* **Require labels**: bool, default off. When set, the sampling pool is restricted to items
+  with a human label *before* ratio/mode is applied — guarantees a downstream Eval node
+  never lands on zero overlap by an unlucky small sample. `meta.n_pool_labeled` (the
+  pre-sampling pool's label coverage) is always reported regardless of this toggle, and a
+  warning fires when it's off and the sample happens to land on zero labeled items anyway.
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
@@ -233,9 +260,18 @@ Output: `engine_config` — `{engine_kind, model, temperature, max_tokens, concu
 consumed by one or more Judge nodes.
 
 Node parameters:
-* **Engine kind**: gemini / gpt / qwen.
+* **Engine kind**: gemini / gpt / qwen / claude / deepseek / llama / kimi — one per real
+  provider family (`vejudge/lm_engine/_ENGINES`), each a thin `LMEngine` subclass declaring
+  only `name`/`default_model`/`supports_video`, all routed through the same shared
+  OpenAI-compatible transport. `model` is never validated against `engine_kind`
+  server-side (a pure pass-through string to the gateway) — the frontend dropdown groups
+  the full model catalog by family purely for UI convenience (`web/src/nodes/
+  modelCatalog.ts`), and switching **Engine kind** resets **Model** to the new family's
+  first option whenever the current value isn't in its list, so the two params never drift
+  out of sync (e.g. a stale `gpt-4.1` left over after switching to `claude`).
 * **Model** (defaults to `config.DEFAULT_TEXT_MODEL`, shown directly rather than a blank
-  field, since that's the actual value `LMEngine` falls back to when unset).
+  field, since that's the actual value `LMEngine` falls back to when unset) — rendered as a
+  dropdown scoped to the selected **Engine kind**, not a free-text input.
 * **Temperature** (defaults to `0.3`), **max tokens** (defaults to `4096`).
 * **Concurrency** (defaults to `1`; moved here from the Judge nodes' old
   `text_concurrency`/`video_concurrency` params, per this node's original spec).
@@ -278,12 +314,13 @@ of each Judge node's own params).
 Output: `judge_result` — per item, per selected metric: `{judge, metric_id, prompt_version, prompt_system, prompt_user, parsed, raw_content, validation_flags, valid, promptTokens, completionTokens, totalTokens, model}`.
 `prompt_system`/`prompt_user` are the exact text sent to the LM for that item/metric (not
 just the parsed response) — shown in the secondary tab below.
-A Text Judge Node's and a Video Judge Node's outputs are meant to both feed the same Eval Node
-(on its separate `judge_result_text`/`judge_result_video` inputs), which merges them per item —
-either one alone is also a fully supported shape (a text-only or video-only graph).
+A Text Judge Node's `judge_result` feeds an Eval Text Node; a Video Judge Node's feeds an Eval
+Video Node — each Eval node type takes a single `judge_result` input scoped to its own
+modality's dimensions, so there's no cross-modality merge to reason about (see the Eval
+Text/Eval Video Node entry below).
 
 Node parameters (Text Judge Node): **Metrics** (multi-select, M1/M3 only, default all text
-metrics), **batch size** (streaming batch-eval — see the Eval Node entry). Engine
+metrics), **batch size** (streaming batch-eval — see the Eval Text/Eval Video Node entry). Engine
 kind/model/temperature/concurrency all come from the required `engine_config` input instead
 of this node's own params.
 
@@ -299,7 +336,7 @@ would just be redundant, ambiguous surface (the automatic per-item skip when an 
 
 Secondary tab (both): a live-updating score-distribution histogram (recharts, sourced from
 the node's own in-flight partial results while `running`, falling back to the terminal
-result once done — the same batch-eval streaming mechanism the Eval Node uses, extended so
+result once done — the same batch-eval streaming mechanism the Eval Text/Eval Video Node uses, extended so
 a Judge node's own tab benefits from it too, not just downstream previews) sits above a
 summary strip (item count, valid-call count, invalid/errored count, average
 `score_1_to_5`) and a per-item rationale viewer — score, `reasoning_lines`,
@@ -370,27 +407,33 @@ Node parameters:
 
 Secondary tab: per-item score breakdown showing each weighted segment and whether the severe-error cap was triggered (highlighted when it overrides the weighted average), plus an export preview.
 
-#### Eval Node
+#### Eval Text Node / Eval Video Node
 
 *Category: `node_eval`*
 
 Description: computes human-vs-judge agreement (`vejudge/core/eval/metrics.py`,
 `vejudge/benchmark/human_gap/runner.py`) — Spearman/Kendall correlation, MAE, quadratic weighted
 kappa, pairwise preference accuracy, and calibration error — always broken down per category
-(`use_case`), since a judge can look strong overall while failing on one category.
+(`use_case`), since a judge can look strong overall while failing on one category. Split into
+two node types along the same modality boundary as the Judge nodes: **Eval Text Node** covers
+the text dimension (`video_addresses_prompt`, aligned to M3); **Eval Video Node** covers the 8
+video dimensions (aligned to M5/M6). The two never needed to be one node — every dimension in
+the human-annotation ↔ judge-metric crosswalk (`vejudge/postprocessing/align.py`'s `ALIGNMENT`)
+maps to exactly one modality's metric, so there's no cross-modality computation being split
+apart, just a merge (`judge_result_text` + `judge_result_video` into one dict) that no longer
+needs to happen. A Judge node's `judge_result` output now wires straight into the matching Eval
+node's single `judge_result` input.
 
-Input: `judge_result_text` + `judge_result_video` (each optional — a text-only or video-only
-graph only needs one wired; both are merged per item when both are present) + `labels`.
+Input: `judge_result` (from the matching-modality Judge node) + `labels` (from a Dataset node).
 
-Output: a metrics report (per-category table) and, for the robustness workflow, bootstrap confidence intervals.
+Output: a metrics report (per-category table, scoped to this node's own modality's dimensions)
+and, for the robustness workflow, bootstrap confidence intervals.
 
-Node parameters:
-* **Metrics**: multi-select over the metric list above.
-* **Breakdown key**: `use_case` (default) or a custom category field.
-* **Comparison baseline**: raw vs. calibrated, or judge A vs. judge B.
-* **Bootstrap CI**: bool, with repeat count (mirrors `vejudge-robust`'s temperature × repeats grid).
+Node parameters: none beyond the shared ones below — **Breakdown key**: `use_case` (default)
+or a custom category field. **Comparison baseline**: raw vs. calibrated, or judge A vs. judge B.
+**Bootstrap CI**: bool, with repeat count (mirrors `vejudge-robust`'s temperature × repeats grid).
 
-Streaming preview: if a wired Judge node's **batch size** param is set, this node re-runs
+Streaming preview: if the wired Judge node's **batch size** param is set, this node re-runs
 (recomputing the whole report from scratch, not incrementally — Spearman/Kendall/QWK have no
 simple incremental update, and at this data scale a full recompute is cheap) against each
 in-flight batch and streams a live preview while the Judge node is still running, instead of
@@ -400,9 +443,9 @@ Secondary tab: a live-updating human-vs-judge scatter plot (recharts, one series
 dimension — sourced from `metrics_report`'s `rows` field, the raw per-item pairs
 `build_aligned_rows` already computes) above the per-dimension metrics table, then a
 per-item picker with a real `<video controls>` player for the selected aligned item.
-Eval's own inputs (`judge_result_text/video`, `labels`) never carry a file path, so the
-video is resolved client-side by tracing the wired graph backward — through whichever
-Judge node(s) feed this Eval node, to the Dataset node upstream of *that* — and reading
+This node's own inputs (`judge_result`, `labels`) never carry a file path, so the
+video is resolved client-side by tracing the wired graph backward — through the
+Judge node that feeds this Eval node, to the Dataset node upstream of *that* — and reading
 that Dataset node's own cached `dataset` output by item id, rather than adding a `dataset`
 input socket to Eval purely for this display lookup. If every dimension ends up with zero
 aligned rows despite real item-id overlap (a metric that was never selected, an
@@ -420,20 +463,22 @@ workflow must round-trip to an equivalent CLI invocation — the interface is a 
 ### Workflows list
 
 * **Base Benchmark** — `Peanut Source` → `Dataset` → `Preprocessing` → `Text Judge` (M1–M6's
-  text half) and `Video Judge` (M1–M6's video half) → `Aggregation` → `Eval`, plus `Dataset`'s
-  own `labels` output → `Eval` directly, plus one `LM Engine` node (gpt) feeding `Text
-  Judge` and a second (gemini) feeding `Video Judge`. Equivalent to `run/run_base_benchmark.sh`.
+  text half) and `Video Judge` (M1–M6's video half) → `Aggregation` → `Eval Text`/`Eval Video`,
+  plus `Dataset`'s own `labels` output → each Eval node directly, plus one `LM Engine` node
+  (gpt) feeding `Text Judge` and a second (gemini) feeding `Video Judge`. Equivalent to
+  `run/run_base_benchmark.sh`.
 * **Robustness Sweep** — Base Benchmark with both LM Engine nodes' temperature and an outer
-  repeat count swept as a grid, feeding the Eval node's bootstrap-CI mode. Equivalent to
+  repeat count swept as a grid, feeding the Eval nodes' bootstrap-CI mode. Equivalent to
   `run/run_base_benchmark_robust.sh` (`vejudge-robust`).
 * **Quick Subset** — `Peanut Source` → `Dataset` (small sampling ratio or item-id filter) →
   `Text Judge` only (fed by one `LM Engine` node; no Video Judge node wired at all — a graph
-  doesn't need a `skip video` toggle when the node itself is simply absent) → `Aggregation`.
+  doesn't need a `skip video` toggle when the node itself is simply absent) → `Aggregation`
+  → `Eval Text` (no `Eval Video` node needed for a text-only graph).
   Equivalent to `run/run_quick_subset.sh --limit N` / `run/run_text_only.sh`.
 * **Calibration Fit + Apply** — two linked subgraphs sharing one Calibration node's registry
   version: `Peanut Source(seed-calibration split)` → `Dataset` → `Text/Video Judge` →
   `Calibration(fit)` → registry; then `Peanut Source(held-out split)` → `Dataset` →
-  `Text/Video Judge` → `Calibration(apply, same version)` → `Eval`.
+  `Text/Video Judge` → `Calibration(apply, same version)` → `Eval Text`/`Eval Video`.
 * **Cost Estimate / Dry Run** — any of the above with the dry-run toggle on; runs item matching
   and reports estimated call counts per Judge node without contacting the gateway. Equivalent to
   `run/estimate_cost.sh`.

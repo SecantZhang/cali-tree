@@ -3,24 +3,13 @@ import { useEffect, useState } from 'react'
 import { resumeRun, startRun, stopRun } from '../../api/runs'
 import { listWorkflowRuns } from '../../api/workflows'
 import { activeGraphStore, useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
-import { useTabsStore } from '../../store/tabsStore'
+import { liveRunInAnotherTab } from '../../store/liveRunGuard'
 
 // A workflow's latest run is worth offering to resume only if it left work unfinished —
 // resuming a cleanly "done" run (or one that's still "running" elsewhere in this same
 // server process) has nothing useful to continue.
 const RESUMABLE_STATUSES = new Set(['error', 'stopped', 'interrupted'])
 const TERMINAL_RUN_STATUSES = new Set(['done', 'error', 'stopped'])
-
-// Checked before showing the --live confirm dialog — a same-window, zero-round-trip scan
-// of every OTHER open tab's own runStore for a live run still in flight.
-function liveRunInAnotherTab(): boolean {
-  const { tabs, activeTabId } = useTabsStore.getState()
-  return tabs.some((t) => {
-    if (t.tabId === activeTabId) return false
-    const rs = t.runStore.getState()
-    return rs.status === 'running' && rs.isLive
-  })
-}
 
 export function RunControls() {
   const queryClient = useQueryClient()

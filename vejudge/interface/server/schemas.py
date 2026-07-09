@@ -9,7 +9,7 @@ the request/response DTOs at the API boundary, converted to/from the internal mo
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -91,6 +91,15 @@ class RunRequest(BaseModel):
     allow_live: bool = False
     resume_from: Optional[str] = None
     workflow_name: Optional[str] = None
+    # Per-node Run/Re-run (see NodeChrome.tsx's ▶/↻ buttons). `target_node_id` names the
+    # node the button was clicked on; `run_mode` selects the scope: "ancestors" reduces the
+    # submitted `graph` to that node's ancestor closure and runs it fresh (Run), "self_only"
+    # runs *only* that node, seeding every other node's inputs from `seed_run_id`'s own
+    # already-completed results (Re-run). `None` (the default) preserves today's
+    # whole-graph behavior — every existing caller is unaffected.
+    target_node_id: Optional[str] = None
+    run_mode: Optional[Literal["ancestors", "self_only"]] = None
+    seed_run_id: Optional[str] = None
 
 
 class NodeResultOut(BaseModel):
@@ -105,6 +114,10 @@ class RunStatusOut(BaseModel):
     status: str
     error: Optional[str] = None
     node_results: dict[str, NodeResultOut] = Field(default_factory=dict)
+    # This run's actual execution order/scope, once known (empty while still running or on
+    # a structural pre-execution error) — see GraphRunResult.order's docstring for why this
+    # is on the REST response too, not just the `run_order` WS event.
+    order: list[str] = Field(default_factory=list)
 
 
 class WorkflowIn(BaseModel):

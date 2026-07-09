@@ -39,12 +39,16 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     input: { dataset: 'dataset', engine_config: 'engine_config' },
     output: { judge_result: 'judge_result' },
   },
-  eval: {
-    input: {
-      judge_result_text: 'judge_result',
-      judge_result_video: 'judge_result',
-      labels: 'labels',
-    },
+  // Each Eval node type takes a single `judge_result` input scoped to its own modality
+  // (text: M3-derived dimensions; video: M5/M6-derived) — no more merging two
+  // `judge_result_text`/`judge_result_video` inputs into one dict, since a Judge node's
+  // single output now wires straight into the matching-modality Eval node.
+  eval_text: {
+    input: { judge_result: 'judge_result', labels: 'labels' },
+    output: { metrics_report: 'metrics_report' },
+  },
+  eval_video: {
+    input: { judge_result: 'judge_result', labels: 'labels' },
     output: { metrics_report: 'metrics_report' },
   },
 }

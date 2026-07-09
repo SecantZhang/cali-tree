@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
 
 // addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval in that order
+// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
 // deterministically yields these ids. Peanut Source's raw_dataset must pass through a
 // Dataset node before it can reach Judge (raw_dataset is a distinct socket type,
 // specifically so sampling is always an explicit step) — Dataset also joins matching
@@ -14,7 +14,7 @@ const PEANUT_SOURCE = 'peanut_source-1'
 const DATASET = 'dataset-2'
 const LM_ENGINE = 'lm_engine-3'
 const JUDGE = 'judge_text-4'
-const EVAL = 'eval-5'
+const EVAL = 'eval_text-5'
 
 async function connect(
   page: import('@playwright/test').Page,
@@ -37,7 +37,7 @@ test.describe('dry-run pipeline', () => {
     await addNode(page, 'dataset')
     await addNode(page, 'lm_engine')
     await addNode(page, 'judge_text')
-    await addNode(page, 'eval')
+    await addNode(page, 'eval_text')
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
@@ -49,6 +49,15 @@ test.describe('dry-run pipeline', () => {
     await expect(lmEngineNode).toBeVisible()
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
+
+    // The model dropdown is scoped to the sibling engine_kind param (modelCatalog.ts) —
+    // switching families must repopulate the model options and land on a valid default
+    // for the new family, not leave a stale model string from the old one selected.
+    const modelSelect = lmEngineNode.locator('.param-row', { hasText: 'model' }).locator('select')
+    await expect(modelSelect).toHaveValue('gpt-4.1')
+    await lmEngineNode.locator('.param-row', { hasText: 'engine_kind' }).locator('select').selectOption('claude')
+    await expect(modelSelect).toHaveValue('claude-haiku-4.5')
+    await expect(modelSelect.locator('option')).toHaveCount(7)
 
     // Fit View before collapsing (not after) — matching the other specs in this suite;
     // computing the fit against Judge's still-expanded height first, then collapsing,
@@ -63,12 +72,12 @@ test.describe('dry-run pipeline', () => {
     await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
     await connect(page, DATASET, 'dataset', JUDGE, 'dataset')
     await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result_text')
+    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
     await connect(page, DATASET, 'labels', EVAL, 'labels')
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:dataset->${JUDGE}:dataset`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result_text`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:labels->${EVAL}:labels`)).toHaveCount(1)
 
     // Dry run is on by default — no confirm dialog, no gateway calls.

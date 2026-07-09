@@ -69,8 +69,9 @@ root/
         ├── node_preprocessing/    # Preprocessing Node executor (pass-through stub — see below)
         ├── node_vejudge/          # LM Engine + Text/Video Judge Node executors + shared
         │                          #   concurrent-judging helper
-        ├── node_eval/             # Eval Node executor (human-vs-judge agreement)
-        └── node_types.py          # import-side-effect module registering the 7 above
+        ├── node_eval/             # Eval Text / Eval Video Node executors (human-vs-judge
+        │                          #   agreement, split by modality)
+        └── node_types.py          # import-side-effect module registering the 8 above
 ```
 
 `node_postprocessing/` (and the other 3 node types from `interface.md` — Ensemble,

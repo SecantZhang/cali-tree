@@ -96,4 +96,43 @@ describe('runStore progress tracking', () => {
     store.getState().reset()
     expect(store.getState().partialResults).toEqual({})
   })
+
+  it('setLastNodeResults merges into the existing map rather than replacing it', () => {
+    const fake = (v: number) => ({ status: 'done', error: null, meta: {}, outputs: { v } })
+    store.getState().setLastNodeResults({ a: fake(1), b: fake(2) })
+    // A scoped run's node_results only ever covers its own reduced scope — it must not
+    // wipe out node 'b's last-known result, which a plain replace would do.
+    store.getState().setLastNodeResults({ a: fake(3) })
+
+    const results = store.getState().lastNodeResults
+    expect(results.a).toEqual(fake(3))
+    expect(results.b).toEqual(fake(2))
+  })
+
+  it('setRunOrder replaces the order wholesale on each new run', () => {
+    store.getState().setRunOrder(['a', 'b', 'c'])
+    expect(store.getState().runOrder).toEqual(['a', 'b', 'c'])
+    store.getState().setRunOrder(['judge-1'])
+    expect(store.getState().runOrder).toEqual(['judge-1'])
+  })
+
+  it('beginRun clears runOrder for the new run', () => {
+    store.getState().setRunOrder(['a', 'b'])
+    store.getState().beginRun('run-3', 2)
+    expect(store.getState().runOrder).toEqual([])
+  })
+
+  it('markNodesStale adds ids and clearStale removes one, leaving the rest', () => {
+    store.getState().markNodesStale(['eval-1', 'eval-2'])
+    expect(store.getState().staleNodeIds).toEqual(new Set(['eval-1', 'eval-2']))
+
+    store.getState().clearStale('eval-1')
+    expect(store.getState().staleNodeIds).toEqual(new Set(['eval-2']))
+  })
+
+  it('reset clears staleNodeIds', () => {
+    store.getState().markNodesStale(['eval-1'])
+    store.getState().reset()
+    expect(store.getState().staleNodeIds.size).toBe(0)
+  })
 })

@@ -6,6 +6,7 @@ import { SourceSecondaryTab } from './SourceSecondaryTab'
 
 const SOURCE_TYPES = new Set(['peanut_source'])
 const JUDGE_TYPES = new Set(['judge_text', 'judge_video'])
+const EVAL_TYPES = new Set(['eval_text', 'eval_video'])
 
 export function SecondaryTabModal() {
   const nodeId = useActiveGraphStore((s) => s.secondaryTabNodeId)
@@ -29,7 +30,7 @@ export function SecondaryTabModal() {
           {SOURCE_TYPES.has(type) && <SourceSecondaryTab node={node} />}
           {type === 'dataset' && <DatasetSecondaryTab node={node} />}
           {JUDGE_TYPES.has(type) && <JudgeSecondaryTab node={node} />}
-          {type === 'eval' && <EvalSecondaryTab node={node} />}
+          {EVAL_TYPES.has(type) && <EvalSecondaryTab node={node} />}
           {type === 'preprocessing' && (
             <p className="empty-hint">
               Pass-through stub — no artifacts are extracted yet, so there's nothing to

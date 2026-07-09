@@ -43,6 +43,7 @@ export function ParamField({
           value={display == null ? '' : display}
           min={field.min}
           max={field.max}
+          step={field.step}
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         />
       </div>

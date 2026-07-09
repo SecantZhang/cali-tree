@@ -58,7 +58,9 @@ def test_default_sampling_passes_every_item_through(make_ctx):
     assert result.status == "done"
     assert set(result.outputs["dataset"]) == set(_raw_dataset())
     assert result.outputs["labels"] == {}
-    assert result.meta == {"n_items": 4, "n_raw_items": 4, "n_labels": 0}
+    assert result.meta == {
+        "n_items": 4, "n_raw_items": 4, "n_labels": 0, "n_pool_labeled": 0,
+    }
 
 
 def test_use_case_filter(make_ctx):
@@ -168,3 +170,63 @@ def test_items_without_a_matching_human_record_are_simply_absent_from_labels(mak
     result = DatasetNodeExecutor().run(ctx)
     assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
     assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}
+
+
+def test_require_labels_restricts_the_sampling_pool_to_annotated_items(make_ctx, monkeypatch):
+    # Only one of the four raw items has a human record; require_labels must guarantee the
+    # entire sample (regardless of ratio) is drawn only from that annotated subset — a
+    # sample can never land on 0 label overlap by bad luck.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [_human_record("prj-a::0::peanut", 5)],
+    )
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"require_labels": True, "sampling_ratio": 1.0},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut"}
+    assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}
+    assert result.meta["n_pool_labeled"] == 1
+    assert "warning" not in result.meta
+
+
+def test_zero_label_overlap_after_filtering_has_no_warning_when_the_pool_has_no_labels(make_ctx, monkeypatch):
+    # The pool itself has no labels at all after filtering (prj-a is the only labeled
+    # project, and it's filtered out here) — nothing to guarantee against, so no warning.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [_human_record("prj-a::0::peanut", 5)],
+    )
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()}, params={"item_id_pattern": r"^prj-b::"},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    assert set(result.outputs["dataset"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
+    assert result.outputs["labels"] == {}
+    assert result.meta["n_pool_labeled"] == 0
+    assert "warning" not in result.meta
+
+
+def test_zero_label_overlap_on_a_sample_warns_when_the_pool_had_labels(make_ctx, monkeypatch):
+    # The pool has one labeled item (prj-b::1, the last item in sorted order), but ratio
+    # 0.25 only selects the evenly-spaced first item (prj-a::0) — this is exactly the
+    # failure mode from the reported "0 aligned items" bug: the sample misses every labeled
+    # item even though the pre-sampling pool has one, and require_labels is off, so it must
+    # surface as a warning rather than silently producing an unaligned sample.
+    monkeypatch.setattr(
+        dataset_node,
+        "load_human_annotations",
+        lambda **kw: [_human_record("prj-b::1::peanut", 5)],
+    )
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 0.25},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut"}
+    assert result.outputs["labels"] == {}
+    assert result.meta["n_pool_labeled"] == 1
+    assert "none have human labels" in result.meta["warning"]
+    assert "require_labels" in result.meta["warning"]

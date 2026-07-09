@@ -5,29 +5,25 @@ import { SocketHandle, socketTop } from './SocketHandle'
 import { SOCKET_COLORS } from './socketTypes'
 import type { VeNodeData } from './types'
 
-export function EvalNode({ id, data, selected }: NodeProps) {
+export function EvalVideoNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
   return (
     <SimpleParamNode
       id={id}
       data={d}
       selected={selected}
-      title="Eval"
+      title="Eval Video"
       color="var(--node-eval)"
-      schema={NODE_PARAM_SCHEMAS.eval}
-      staticBody={<div className="rf-node-param">human-vs-judge agreement</div>}
+      schema={NODE_PARAM_SCHEMAS.eval_video}
+      staticBody={<div className="rf-node-param">human-vs-judge agreement (video)</div>}
       sockets={
         <>
           <SocketHandle
-            kind="target" id="judge_result_text" label="judge_result_text" top={socketTop(0, 3)}
+            kind="target" id="judge_result" label="judge_result" top={socketTop(0, 2)}
             color={SOCKET_COLORS.judge_result}
           />
           <SocketHandle
-            kind="target" id="judge_result_video" label="judge_result_video" top={socketTop(1, 3)}
-            color={SOCKET_COLORS.judge_result}
-          />
-          <SocketHandle
-            kind="target" id="labels" label="labels" top={socketTop(2, 3)}
+            kind="target" id="labels" label="labels" top={socketTop(1, 2)}
             color={SOCKET_COLORS.labels}
           />
           <SocketHandle

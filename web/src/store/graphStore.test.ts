@@ -105,6 +105,30 @@ describe('graphStore', () => {
     expect(restored.height).toBe(220)
   })
 
+  it('toggleNodeCollapsed shrinks a resized node and restores its size on expand', () => {
+    const s = store.getState()
+    s.addNode('judge_text', { x: 0, y: 0 })
+    const [judge] = store.getState().nodes
+    store.setState({
+      nodes: store.getState().nodes.map((n) =>
+        n.id === judge.id ? { ...n, width: 300, height: 220 } : n,
+      ),
+    })
+
+    s.toggleNodeCollapsed(judge.id)
+    const collapsed = store.getState().nodes[0]
+    expect(collapsed.data.collapsed).toBe(true)
+    expect(collapsed.width).toBeUndefined()
+    expect(collapsed.height).toBeUndefined()
+    expect(collapsed.data.expandedSize).toEqual({ width: 300, height: 220 })
+
+    s.toggleNodeCollapsed(judge.id)
+    const expanded = store.getState().nodes[0]
+    expect(expanded.data.collapsed).toBe(false)
+    expect(expanded.width).toBe(300)
+    expect(expanded.height).toBe(220)
+  })
+
   it('loadGraph falls back to a grid position when a saved node has none', () => {
     store.getState().loadGraph({
       nodes: [{ id: 'ds-1', type: 'dataset', params: {} }],

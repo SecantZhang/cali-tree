@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from .. import run_manager
-from ..graph import GraphError, topological_sort, validate_edges
+from ..graph import GraphError, ancestors_closure, topological_sort, validate_edges
 from ..registry import node_type_infos
 from ..run_registry import REGISTRY, RunHandle
 from ..schemas import GraphIn, NodeResultOut, RunRequest, RunStatusOut, to_graph_spec
@@ -30,6 +30,7 @@ def _status_out(handle: RunHandle) -> RunStatusOut:
         status=handle.status,
         error=handle.result.error if handle.result else None,
         node_results=node_results,
+        order=handle.result.order if handle.result else [],
     )
 
 
@@ -41,6 +42,51 @@ def create_run(req: RunRequest) -> RunStatusOut:
     if req.graph is None:
         raise HTTPException(status_code=400, detail="graph is required")
     spec = to_graph_spec(req.graph)
+
+    target_node_id = req.target_node_id
+    seed_results = None
+
+    if req.run_mode == "ancestors":
+        if not target_node_id:
+            raise HTTPException(
+                status_code=400, detail="target_node_id is required when run_mode='ancestors'"
+            )
+        try:
+            spec = ancestors_closure(spec, target_node_id)
+        except GraphError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        # The reduced graph is executed like any other whole-graph run below — the
+        # executor needs no target/seed once the reduction has already happened here.
+        target_node_id = None
+    elif req.run_mode == "self_only":
+        if not target_node_id:
+            raise HTTPException(
+                status_code=400, detail="target_node_id is required when run_mode='self_only'"
+            )
+        if not req.seed_run_id:
+            raise HTTPException(
+                status_code=400, detail="seed_run_id is required when run_mode='self_only'"
+            )
+        seed_handle = REGISTRY.get(req.seed_run_id)
+        if seed_handle is None or seed_handle.result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No completed prior run '{req.seed_run_id}' to re-run from",
+            )
+        seed_results = seed_handle.result.node_results
+        try:
+            ancestor_ids = {n.id for n in ancestors_closure(spec, target_node_id).nodes}
+        except GraphError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        ancestor_ids.discard(target_node_id)
+        missing = sorted(ancestor_ids - set(seed_results))
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Prior run '{req.seed_run_id}' doesn't cover this node's dependencies "
+                f"{missing} — run the full ancestor chain first (e.g. via Run).",
+            )
+
     try:
         validate_edges(spec, node_type_infos())
         topological_sort(spec)
@@ -49,6 +95,7 @@ def create_run(req: RunRequest) -> RunStatusOut:
 
     handle = REGISTRY.start(
         spec, dry_run=req.dry_run, allow_live=req.allow_live, workflow_name=req.workflow_name,
+        target_node_id=target_node_id, seed_results=seed_results,
     )
     return _status_out(handle)
 

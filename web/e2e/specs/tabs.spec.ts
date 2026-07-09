@@ -8,7 +8,7 @@ const PEANUT_SOURCE = 'peanut_source-1'
 const DATASET = 'dataset-2'
 const LM_ENGINE = 'lm_engine-3'
 const JUDGE = 'judge_text-4'
-const EVAL = 'eval-5'
+const EVAL = 'eval_text-5'
 
 async function connect(
   page: import('@playwright/test').Page,
@@ -36,7 +36,7 @@ test.describe('tabbed workflows', () => {
     await addNode(page, 'dataset')
     await addNode(page, 'lm_engine')
     await addNode(page, 'judge_text')
-    await addNode(page, 'eval')
+    await addNode(page, 'eval_text')
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
@@ -57,7 +57,7 @@ test.describe('tabbed workflows', () => {
     await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
     await connect(page, DATASET, 'dataset', JUDGE, 'dataset')
     await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result_text')
+    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
     await connect(page, DATASET, 'labels', EVAL, 'labels')
 
     await page.locator('.dry-run-toggle input[type="checkbox"]').uncheck()

@@ -6,6 +6,7 @@ from vejudge.interface.server.graph import (
     GraphSpec,
     NodeSpec,
     NodeTypeInfo,
+    ancestors_closure,
     topological_sort,
     validate_edges,
 )
@@ -110,6 +111,46 @@ def test_validate_edges_type_mismatch():
     )
     with pytest.raises(GraphError, match="Type mismatch"):
         validate_edges(graph, NODE_TYPES)
+
+
+def _diamond_graph() -> GraphSpec:
+    return GraphSpec(
+        nodes=[
+            NodeSpec(id="ds1", type="dataset"),
+            NodeSpec(id="ds2", type="dataset"),
+            NodeSpec(id="judge", type="judge"),
+            NodeSpec(id="eval", type="eval"),
+        ],
+        edges=[
+            EdgeSpec("ds1", "dataset", "judge", "dataset"),
+            EdgeSpec("judge", "judge_result", "eval", "judge_result"),
+            EdgeSpec("ds2", "dataset", "eval", "labels"),
+        ],
+    )
+
+
+def test_ancestors_closure_includes_target_and_every_transitive_ancestor():
+    reduced = ancestors_closure(_diamond_graph(), "eval")
+    assert {n.id for n in reduced.nodes} == {"ds1", "ds2", "judge", "eval"}
+    assert len(reduced.edges) == 3  # every edge among the kept nodes
+
+
+def test_ancestors_closure_excludes_unrelated_siblings():
+    # "judge"'s ancestor closure is just ds1 + judge — ds2/eval are downstream, not upstream.
+    reduced = ancestors_closure(_diamond_graph(), "judge")
+    assert {n.id for n in reduced.nodes} == {"ds1", "judge"}
+    assert reduced.edges == [EdgeSpec("ds1", "dataset", "judge", "dataset")]
+
+
+def test_ancestors_closure_of_a_source_node_is_just_itself():
+    reduced = ancestors_closure(_diamond_graph(), "ds1")
+    assert {n.id for n in reduced.nodes} == {"ds1"}
+    assert reduced.edges == []
+
+
+def test_ancestors_closure_rejects_unknown_target():
+    with pytest.raises(GraphError, match="Unknown target node"):
+        ancestors_closure(_diamond_graph(), "not-a-node")
 
 
 def test_validate_edges_rejects_fan_in():

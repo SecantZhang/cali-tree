@@ -29,8 +29,13 @@ const NODE_TYPES = [
     output_sockets: { judge_result: 'judge_result' }, param_schema: {},
   },
   {
-    type: 'eval', category: 'node_eval',
-    input_sockets: { judge_result_text: 'judge_result', judge_result_video: 'judge_result', labels: 'labels' },
+    type: 'eval_text', category: 'node_eval',
+    input_sockets: { judge_result: 'judge_result', labels: 'labels' },
+    output_sockets: { metrics_report: 'metrics_report' }, param_schema: {},
+  },
+  {
+    type: 'eval_video', category: 'node_eval',
+    input_sockets: { judge_result: 'judge_result', labels: 'labels' },
     output_sockets: { metrics_report: 'metrics_report' }, param_schema: {},
   },
 ]
@@ -65,6 +70,7 @@ function mockJsonFor(url: string): unknown {
           outputs: { dataset: {} },
         },
       },
+      order: [warnRunNodeId],
     }
   }
   return {}

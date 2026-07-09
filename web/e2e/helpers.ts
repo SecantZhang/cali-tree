@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test'
 
 export type NodeTypeName =
   | 'peanut_source' | 'dataset' | 'preprocessing' | 'lm_engine'
-  | 'judge_text' | 'judge_video' | 'eval'
+  | 'judge_text' | 'judge_video' | 'eval_text' | 'eval_video'
 
 // `page.getByText('dataset')` is a case-insensitive substring match by default, which
 // also matches unrelated static UI text ("Datasets" tab label, "VEJudge" title) —
@@ -20,7 +20,7 @@ export async function addNode(page: Page, nodeType: NodeTypeName): Promise<void>
 export async function waitForPaletteLoaded(page: Page): Promise<void> {
   const types: NodeTypeName[] = [
     'peanut_source', 'dataset', 'preprocessing', 'lm_engine',
-    'judge_text', 'judge_video', 'eval',
+    'judge_text', 'judge_video', 'eval_text', 'eval_video',
   ]
   await paletteItem(page, types[0]).waitFor({ state: 'visible', timeout: 10000 })
   for (const t of types.slice(1)) {

@@ -3,60 +3,119 @@
   "graph": {
     "nodes": [
       {
+        "id": "peanut_src",
+        "type": "peanut_source",
+        "params": {
+          "model": "peanut",
+          "projects": null
+        }
+      },
+      {
         "id": "ds_peanut",
         "type": "dataset",
         "params": {
-          "loader": "peanut_eval",
-          "model": "peanut",
-          "projects": null
+          "sampling_ratio": 1.0,
+          "sampling_mode": "unified",
+          "use_case_filter": null,
+          "item_id_pattern": null
         }
       },
       {
-        "id": "ds_human",
-        "type": "dataset",
+        "id": "engine_text",
+        "type": "lm_engine",
         "params": {
-          "loader": "human_annotations",
-          "model": "peanut",
-          "projects": null
+          "engine_kind": "gpt"
         }
       },
       {
-        "id": "judge",
-        "type": "judge",
+        "id": "engine_video",
+        "type": "lm_engine",
         "params": {
-          "metrics": null,
-          "skip_video": false,
-          "text_engine_kind": "gpt",
-          "video_engine_kind": "gemini"
+          "engine_kind": "gemini"
         }
       },
       {
-        "id": "eval",
-        "type": "eval",
+        "id": "judge_text",
+        "type": "judge_text",
+        "params": {
+          "metrics": null
+        }
+      },
+      {
+        "id": "judge_video",
+        "type": "judge_video",
+        "params": {
+          "metrics": null
+        }
+      },
+      {
+        "id": "eval_text",
+        "type": "eval_text",
+        "params": {}
+      },
+      {
+        "id": "eval_video",
+        "type": "eval_video",
         "params": {}
       }
     ],
     "edges": [
       {
+        "source": "peanut_src",
+        "source_socket": "raw_dataset",
+        "target": "ds_peanut",
+        "target_socket": "raw_dataset"
+      },
+      {
         "source": "ds_peanut",
         "source_socket": "dataset",
-        "target": "judge",
+        "target": "judge_text",
         "target_socket": "dataset"
       },
       {
-        "source": "judge",
+        "source": "ds_peanut",
+        "source_socket": "dataset",
+        "target": "judge_video",
+        "target_socket": "dataset"
+      },
+      {
+        "source": "engine_text",
+        "source_socket": "engine_config",
+        "target": "judge_text",
+        "target_socket": "engine_config"
+      },
+      {
+        "source": "engine_video",
+        "source_socket": "engine_config",
+        "target": "judge_video",
+        "target_socket": "engine_config"
+      },
+      {
+        "source": "judge_text",
         "source_socket": "judge_result",
-        "target": "eval",
+        "target": "eval_text",
         "target_socket": "judge_result"
       },
       {
-        "source": "ds_human",
+        "source": "judge_video",
+        "source_socket": "judge_result",
+        "target": "eval_video",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "ds_peanut",
         "source_socket": "labels",
-        "target": "eval",
+        "target": "eval_text",
+        "target_socket": "labels"
+      },
+      {
+        "source": "ds_peanut",
+        "source_socket": "labels",
+        "target": "eval_video",
         "target_socket": "labels"
       }
     ]
   },
   "created_at": "2026-07-06T03:34:52.831876Z",
-  "updated_at": "2026-07-06T03:34:52.831876Z"
+  "updated_at": "2026-07-07T18:00:00.000000Z"
 }

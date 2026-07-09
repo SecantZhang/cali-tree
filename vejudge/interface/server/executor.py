@@ -24,6 +24,11 @@ class GraphRunResult:
     status: str  # "done" | "error" | "stopped"
     node_results: dict[str, NodeRunResult] = field(default_factory=dict)
     error: Optional[str] = None
+    # This run's actual execution order/scope (Jupyter-style order badge — see
+    # NodeChrome.tsx). Also carried here, not just as the `run_order` WS event, so a run
+    # that finishes before the frontend's websocket even connects (common for a tiny/dry
+    # run) still has a way to learn it, via the plain REST response.
+    order: list[str] = field(default_factory=list)
 
 
 class GraphExecutionEngine:
@@ -39,6 +44,15 @@ class GraphExecutionEngine:
         allow_live: bool = False,
         progress_cb: Optional[ProgressCb] = None,
         should_stop: Optional[Callable[[], bool]] = None,
+        # Per-node Re-run (self_only mode — see schemas.RunRequest): when both are set,
+        # `graph` stays the FULL graph (so this node's real upstream edges still resolve),
+        # but only `target_node_id` actually executes — `seed_results` pre-populates every
+        # other node's outputs from a prior run, standing in for a real execution. Per-node
+        # Run (ancestors mode) needs no engine changes at all: the caller (routes/runs.py)
+        # just passes an already-reduced `graph` (see graph.ancestors_closure) and leaves
+        # these two None, so it runs like any other whole-graph execution.
+        target_node_id: Optional[str] = None,
+        seed_results: Optional[dict[str, NodeRunResult]] = None,
     ) -> None:
         self.graph = graph
         self.run = run
@@ -47,6 +61,8 @@ class GraphExecutionEngine:
         self.allow_live = allow_live
         self.progress_cb = progress_cb
         self.should_stop = should_stop
+        self.target_node_id = target_node_id
+        self.seed_results = seed_results
 
     def _emit(self, event: str, payload: dict[str, Any]) -> None:
         if self.progress_cb:
@@ -59,6 +75,17 @@ class GraphExecutionEngine:
         except GraphError as e:
             return GraphRunResult(status="error", error=str(e))
 
+        # Re-run (self_only): only the target node actually executes — everything else's
+        # output comes from `seed_results` instead, so this run's real scope is just that
+        # one node. `run_order` is emitted against the actual execution order (after this
+        # reduction, not before) so the frontend's order badge reflects what this specific
+        # run actually did, per-node — a Run (ancestors mode) or a normal whole-graph run
+        # never hits this branch, so their emitted order is the full (possibly
+        # already-reduced-by-the-caller) topological order.
+        if self.seed_results is not None and self.target_node_id is not None:
+            order = [self.target_node_id]
+        self._emit("run_order", {"order": order})
+
         nodes_by_id = {n.id: n for n in self.graph.nodes}
         # incoming[node_id] = [(target_socket, source_node_id, source_socket), ...]
         incoming: dict[str, list[tuple[str, str, str]]] = {n.id: [] for n in self.graph.nodes}
@@ -70,7 +97,7 @@ class GraphExecutionEngine:
             incoming[e.target].append((e.target_socket, e.source, e.source_socket))
             outgoing[e.source].append((e.source_socket, e.target, e.target_socket))
 
-        node_results: dict[str, NodeRunResult] = {}
+        node_results: dict[str, NodeRunResult] = dict(self.seed_results or {})
         overall_status = "done"
 
         for i, node_id in enumerate(order):
@@ -104,7 +131,7 @@ class GraphExecutionEngine:
                 {"node_id": node_id, "status": result.status, "error": result.error},
             )
 
-        return GraphRunResult(status=overall_status, node_results=node_results)
+        return GraphRunResult(status=overall_status, node_results=node_results, order=order)
 
     def _run_node(
         self,

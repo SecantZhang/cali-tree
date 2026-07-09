@@ -16,6 +16,7 @@ interface RunEvent {
   total?: number
   outputs?: Record<string, unknown>
   meta?: Record<string, unknown>
+  order?: string[]
 }
 
 // "stopping" is an in-between state — not running-as-normal, but not terminal either (it
@@ -66,11 +67,33 @@ export function useRunSocket(
     let cancelled = false
     let ws: WebSocket | null = null
 
+    // Applies a terminal RunStatusOut's per-node statuses, exactly like a live WS
+    // node_status event would have. Needed because the WS resync path (below) can observe
+    // an already-terminal run and only ever sets the *overall* status + fetches results —
+    // if that resync fires before any `node_status` events reached this client (a real,
+    // reproducible race: the run finishes between the WS accepting and its own internal
+    // status check, so its whole `handle.events` queue is skipped and never drained — see
+    // `routes/ws.py`), individual nodes would otherwise be stuck showing a stale status
+    // dot forever despite the overall run correctly reading "done".
+    function applyFinalNodeStatuses(nodeResults: RunStatusOut['node_results']) {
+      const { setNodeStatus } = graphStore.getState()
+      for (const [nodeId, result] of Object.entries(nodeResults)) {
+        setNodeStatus(nodeId, result.status as NodeStatus, result.error ?? null)
+      }
+    }
+
     async function finalizeRun() {
       const final = await getRun(id).catch(() => null)
       if (!cancelled && final) {
+        applyFinalNodeStatuses(final.node_results)
         runStore.getState().setLastNodeResults(final.node_results)
         appendWarningLogs(runStore, final.node_results)
+        // Redundant with the `run_order` WS event in the common case (both fire), but this
+        // is the only source of truth once the run has already finished — cheap to repeat.
+        if (final.order?.length) {
+          runStore.getState().setRunOrder(final.order)
+          for (const nodeId of final.order) runStore.getState().clearStale(nodeId)
+        }
       }
     }
 
@@ -88,12 +111,18 @@ export function useRunSocket(
           setCurrentRunningNode(event.node_id)
         } else if (TERMINAL_STATUSES.has(status)) {
           markNodeCompleted(event.node_id)
+          // This node just produced a fresh result (any terminal outcome, not only
+          // "done" — even an error/stop means it was actually re-attempted) — clear its
+          // stale flag regardless of which run scope (full/ancestors/self_only) did it.
+          runStore.getState().clearStale(event.node_id)
         }
         appendLog({
           ts: Date.now(),
           nodeId: event.node_id,
           text: `${event.node_id}: ${event.status}${event.error ? ` (${event.error})` : ''}`,
         })
+      } else if (event.type === 'run_order') {
+        runStore.getState().setRunOrder(event.order ?? [])
       } else if (event.type === 'judge_progress_init' && event.node_id && event.total != null) {
         setNodeProgressTotal(event.node_id, event.total)
       } else if (event.type === 'judge_item_start' || event.type === 'judge_metric') {
@@ -122,11 +151,18 @@ export function useRunSocket(
 
       if (TERMINAL_STATUSES.has(current.status)) {
         // The run can finish before this very first GET fires (a trivial or fast-failing
-        // graph, e.g. a single unwired node) — no WS events ever arrive in that case, so
-        // per-node statuses have to be applied here too, not just the overall run status.
-        const { setNodeStatus } = graphStore.getState()
-        for (const [nodeId, result] of Object.entries(current.node_results ?? {})) {
-          setNodeStatus(nodeId, result.status as NodeStatus, result.error ?? null)
+        // graph, e.g. a single unwired node, or a scoped Run/Re-run over a tiny/dry-run
+        // graph) — no WS events ever arrive in that case, so per-node statuses (and the
+        // order/stale bookkeeping below) have to be applied here too, not just the overall
+        // run status. `current.order` is exactly this run's real execution scope (mirrors
+        // the `run_order` WS event, just via REST — see GraphRunResult.order), so — unlike
+        // a blind loop over every key in `node_results` (which, for a self_only re-run,
+        // also includes seeded/not-actually-executed nodes) — it's safe to clear stale
+        // flags for precisely these nodes and no others.
+        applyFinalNodeStatuses(current.node_results ?? {})
+        if (current.order?.length) {
+          runStore.getState().setRunOrder(current.order)
+          for (const nodeId of current.order) runStore.getState().clearStale(nodeId)
         }
         runStore.getState().setStatus(current.status as RunStatus, current.error)
         runStore.getState().setLastNodeResults(current.node_results)

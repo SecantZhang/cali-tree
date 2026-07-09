@@ -45,6 +45,17 @@ export interface RunState {
   currentRunningNodeId: string | null
   totalNodes: number
   completedNodeIds: Set<string>
+  // The most recently *launched* run's actual execution scope and order (Jupyter-style
+  // order badge — see NodeChrome.tsx): a full graph run carries every node id; a per-node
+  // Run carries that node's ancestor closure; a Re-run carries just that one node id.
+  // Replaced wholesale at the start of every run (`beginRun`/`setRunOrder`), so the badge
+  // always reflects the latest launched run, not a running union of past runs.
+  runOrder: string[]
+  // Nodes whose last real result predates a since-changed ancestor (a per-node Run/Re-run
+  // elsewhere in the graph) — flagged the moment such a run is *launched* (not on
+  // completion), and cleared the moment that specific node itself completes a run (see
+  // useRunSocket.ts's node_status handling), regardless of which run scope did it.
+  staleNodeIds: Set<string>
   setDryRun: (v: boolean) => void
   beginRun: (runId: string, totalNodes: number, isLive?: boolean) => void
   appendLog: (line: LogLine) => void
@@ -55,6 +66,9 @@ export interface RunState {
   setNodeProgressTotal: (nodeId: string, total: number) => void
   incrementNodeProgress: (nodeId: string) => void
   markNodeCompleted: (nodeId: string) => void
+  setRunOrder: (order: string[]) => void
+  markNodesStale: (nodeIds: Iterable<string>) => void
+  clearStale: (nodeId: string) => void
   reset: () => void
 }
 
@@ -75,19 +89,27 @@ export function createRunStore(): RunStoreApi {
     currentRunningNodeId: null,
     totalNodes: 0,
     completedNodeIds: new Set(),
+    runOrder: [],
+    staleNodeIds: new Set(),
 
     setDryRun: (v) => set({ dryRun: v }),
 
     beginRun: (runId, totalNodes, isLive = false) => set({
       runId, status: 'running', error: null, logs: [], isLive, partialResults: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes, completedNodeIds: new Set(),
+      runOrder: [],
     }),
 
     appendLog: (line) => set((s) => ({ logs: [...s.logs, line] })),
 
     setStatus: (status, error = null) => set({ status, error }),
 
-    setLastNodeResults: (results) => set({ lastNodeResults: results }),
+    // Merged, not replaced: a scoped Run/Re-run's node_results only ever covers that run's
+    // reduced scope (see api/runs.ts's ScopedRunOptions), so replacing the whole map here
+    // would wipe out every other node's last-known result the moment a scoped run finishes.
+    // A no-op-equivalent difference for a full graph run, whose results already cover
+    // every node anyway.
+    setLastNodeResults: (results) => set((s) => ({ lastNodeResults: { ...s.lastNodeResults, ...results } })),
 
     setPartialResult: (nodeId, outputs, meta) => {
       set((s) => ({ partialResults: { ...s.partialResults, [nodeId]: { outputs, meta } } }))
@@ -128,9 +150,34 @@ export function createRunStore(): RunStoreApi {
       })
     },
 
+    // Also corrects `totalNodes` (the overall progress bar's denominator — RunProgress.tsx)
+    // to the run's real scope: `beginRun`'s own `totalNodes` argument is only a rough
+    // initial guess for a scoped Run/Re-run (the caller doesn't know the ancestor-closure
+    // size without asking the backend), and this event is the backend's authoritative
+    // answer, arriving moments after the run starts.
+    setRunOrder: (order) => set({ runOrder: order, totalNodes: order.length }),
+
+    markNodesStale: (nodeIds) => {
+      set((s) => {
+        const next = new Set(s.staleNodeIds)
+        for (const id of nodeIds) next.add(id)
+        return { staleNodeIds: next }
+      })
+    },
+
+    clearStale: (nodeId) => {
+      set((s) => {
+        if (!s.staleNodeIds.has(nodeId)) return s
+        const next = new Set(s.staleNodeIds)
+        next.delete(nodeId)
+        return { staleNodeIds: next }
+      })
+    },
+
     reset: () => set({
       runId: null, status: 'idle', error: null, logs: [], isLive: false, partialResults: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes: 0, completedNodeIds: new Set(),
+      runOrder: [], staleNodeIds: new Set(),
     }),
   }))
 }

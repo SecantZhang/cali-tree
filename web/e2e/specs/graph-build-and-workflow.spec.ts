@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test'
 import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
 
 // addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval in that order
+// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
 // deterministically yields these ids.
 const PEANUT_SOURCE = 'peanut_source-1'
 const DATASET = 'dataset-2'
 const LM_ENGINE = 'lm_engine-3'
 const JUDGE = 'judge_text-4'
-const EVAL = 'eval-5'
+const EVAL = 'eval_text-5'
 
 function paramRow(node: ReturnType<import('@playwright/test').Page['getByTestId']>, label: string) {
   return node.locator('.param-row', { hasText: label })
@@ -25,7 +25,7 @@ test.describe('graph building and workflow persistence', () => {
     await addNode(page, 'dataset')
     await addNode(page, 'lm_engine')
     await addNode(page, 'judge_text')
-    await addNode(page, 'eval')
+    await addNode(page, 'eval_text')
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)

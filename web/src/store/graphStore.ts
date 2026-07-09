@@ -154,9 +154,34 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
 
     toggleNodeCollapsed: (id) => {
       set({
-        nodes: get().nodes.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, collapsed: !n.data.collapsed } } : n,
-        ),
+        nodes: get().nodes.map((n) => {
+          if (n.id !== id) return n
+          const collapsed = !n.data.collapsed
+          if (collapsed) {
+            // Capture whatever explicit size the node currently has (a manual resize, or a
+            // loaded workflow's saved `size`) before clearing it, so the node can shrink to
+            // its one-line collapsed summary instead of staying pinned to that pixel size —
+            // then restore it below on expand.
+            const width = n.width ?? n.measured?.width
+            const height = n.height ?? n.measured?.height
+            return {
+              ...n,
+              width: undefined,
+              height: undefined,
+              data: {
+                ...n.data,
+                collapsed,
+                ...(width != null && height != null ? { expandedSize: { width, height } } : {}),
+              },
+            }
+          }
+          const { expandedSize } = n.data
+          return {
+            ...n,
+            ...(expandedSize ? { width: expandedSize.width, height: expandedSize.height } : {}),
+            data: { ...n.data, collapsed },
+          }
+        }),
       })
       onDirty()
     },

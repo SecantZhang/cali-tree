@@ -123,3 +123,34 @@ def topological_sort(graph: GraphSpec) -> list[str]:
         remaining = sorted(set(node_ids) - set(order))
         raise GraphError(f"Graph has a cycle involving: {remaining}")
     return order
+
+
+def ancestors_closure(graph: GraphSpec, target_id: str) -> GraphSpec:
+    """Reduces ``graph`` to ``target_id`` plus every transitive ancestor of it.
+
+    Backs the per-node "Run" button (ancestors + self, from scratch): ``topological_sort``/
+    ``validate_edges`` need no changes to operate on the result, since it's just a smaller,
+    still-valid ``GraphSpec``. Raises ``GraphError`` if ``target_id`` isn't a node in
+    ``graph`` — the same error type every other structural graph problem raises.
+    """
+    node_by_id = {n.id: n for n in graph.nodes}
+    if target_id not in node_by_id:
+        raise GraphError(f"Unknown target node '{target_id}'")
+
+    incoming: dict[str, list[str]] = {n.id: [] for n in graph.nodes}
+    for e in graph.edges:
+        incoming[e.target].append(e.source)
+
+    keep: set[str] = {target_id}
+    frontier = [target_id]
+    while frontier:
+        nid = frontier.pop()
+        for src in incoming.get(nid, []):
+            if src not in keep:
+                keep.add(src)
+                frontier.append(src)
+
+    return GraphSpec(
+        nodes=[n for n in graph.nodes if n.id in keep],
+        edges=[e for e in graph.edges if e.source in keep and e.target in keep],
+    )

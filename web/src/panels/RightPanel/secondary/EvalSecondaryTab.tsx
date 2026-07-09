@@ -51,20 +51,19 @@ function fmt(v: number | null): string {
   return v === null ? '—' : v.toFixed(3)
 }
 
-// Eval's own inputs (judge_result_text/video, labels) never carry a file path — neither
+// Eval's own inputs (judge_result, labels) never carry a file path — neither
 // Judge.run()'s result nor AggregatedHumanRecord has one. Rather than adding a `dataset`
 // input socket to Eval purely for this display lookup (forcing a new edge in every
 // workflow for something that's cosmetic, not part of the alignment computation), trace
-// the already-wired graph backward from Eval, through whichever Judge node(s) feed it, to
-// the Dataset node upstream of them, and read that node's own cached `dataset` output —
+// the already-wired graph backward from Eval, through the Judge node that feeds it, to
+// the Dataset node upstream of it, and read that node's own cached `dataset` output —
 // every node's last outputs are already available client-side in `lastNodeResults`
 // (a flat map, not scoped to any one component) once a run has completed.
 function findVideoPath(
   evalNodeId: string, itemId: string, edges: Edge[], lastNodeResults: Record<string, NodeResultOut>,
 ): string | null {
   const judgeEdges = edges.filter(
-    (e) => e.target === evalNodeId
-      && (e.targetHandle === 'judge_result_text' || e.targetHandle === 'judge_result_video'),
+    (e) => e.target === evalNodeId && e.targetHandle === 'judge_result',
   )
   for (const je of judgeEdges) {
     const datasetEdge = edges.find((e) => e.target === je.source && e.targetHandle === 'dataset')

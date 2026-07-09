@@ -11,6 +11,7 @@ export interface ParamField {
   options?: string[]
   min?: number
   max?: number
+  step?: number
 }
 
 // M1/M3 = text modality, M2/M4/M5/M6 = video modality (vejudge/core/rubric/definitions.py).
@@ -26,12 +27,15 @@ const PREPROCESSING_ARTIFACT_TYPES = [
 // either mode below, so a dedicated mode that ignored ratio entirely was redundant and a
 // footgun (it silently no-oped ratio for anyone who changed the ratio but not the mode).
 const SAMPLING_FIELDS: Record<string, ParamField> = {
-  sampling_ratio: { type: 'number', default: 1.0, min: 0, max: 1 },
+  sampling_ratio: { type: 'number', default: 1.0, min: 0, max: 1, step: 0.05 },
   sampling_mode: {
     type: 'enum', options: ['unified', 'stratified'], default: 'unified',
   },
   use_case_filter: { type: 'list[string]', default: null },
   item_id_pattern: { type: 'string', default: null },
+  // Restricts the sampling pool to items with a human label before ratio/mode is applied
+  // — guarantees a downstream Eval node never lands on 0 overlap by bad luck.
+  require_labels: { type: 'bool', default: false },
 }
 
 export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
@@ -52,7 +56,14 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   // shown explicitly rather than as a blank field so editing the node shows what will
   // really run, not an ambiguous empty box.
   lm_engine: {
-    engine_kind: { type: 'enum', options: ['gemini', 'gpt', 'qwen'], default: 'gpt' },
+    engine_kind: {
+      type: 'enum',
+      options: ['gemini', 'gpt', 'qwen', 'claude', 'deepseek', 'llama', 'kimi'],
+      default: 'gpt',
+    },
+    // Rendered as a dropdown scoped to the selected engine_kind (see modelCatalog.ts and
+    // LMEngineNode.tsx's fieldOverrides), not a free-text input — `default` here only
+    // seeds `defaultParamsFor`'s initial value.
     model: { type: 'string', default: 'gpt-4.1' },
     temperature: { type: 'number', default: 0.3 },
     max_tokens: { type: 'number', default: 4096, min: 1 },
@@ -69,7 +80,8 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     metrics: { type: 'list[enum]', options: VIDEO_JUDGES, default: null },
     batch_size: { type: 'number', default: 1, min: 1 },
   },
-  eval: {},
+  eval_text: {},
+  eval_video: {},
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

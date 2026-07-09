@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
+from ..core.rubric.definitions import JUDGE_METRICS
 from ..database.dl_human_annotations import HUMAN_DIMENSIONS
 
 # human dimension -> (metric_id, extractor over that metric's parsed dict)
@@ -40,6 +41,19 @@ ALIGNMENT: dict[str, tuple[str, JudgeExtractor]] = {
     "section_placement_middle": ("M5", _top_score),
     "section_placement_closing": ("M5", _top_score),
 }
+
+# Splits ALIGNMENT's dimensions by modality, derived from each dimension's metric_id's own
+# `JUDGE_METRICS[metric_id].modality` (core/rubric/definitions.py) rather than a second
+# hardcoded copy of the M1/M3 vs M2/M4/M5/M6 split — used by the Eval Text/Eval Video node
+# executors to each compute only their own modality's dimensions.
+TEXT_DIMENSIONS: frozenset[str] = frozenset(
+    dim for dim, (metric_id, _extractor) in ALIGNMENT.items()
+    if JUDGE_METRICS[metric_id].modality == "text"
+)
+VIDEO_DIMENSIONS: frozenset[str] = frozenset(
+    dim for dim, (metric_id, _extractor) in ALIGNMENT.items()
+    if JUDGE_METRICS[metric_id].modality == "video"
+)
 
 JUDGE_SIGNAL_LABEL: dict[str, str] = {
     "video_addresses_prompt": "M3.score_1_to_5",
@@ -94,6 +108,7 @@ def diagnose_missing_rows(
     per_item_judges: dict[str, dict[str, Any]],
     *,
     sample_size: int = 20,
+    dimensions: Optional[frozenset[str]] = None,
 ) -> list[dict[str, Any]]:
     """Explain why (item, dimension) pairs failed to produce an aligned row.
 
@@ -105,6 +120,10 @@ def diagnose_missing_rows(
     (dimension, reason) rather than emitted per item, since the same cause typically
     applies to every item at once (e.g. a metric simply wasn't selected on the Judge
     node) — a flat per-item list would just repeat the same line dozens of times.
+
+    ``dimensions`` restricts the diagnosis to a subset of ``HUMAN_DIMENSIONS`` (e.g. the
+    Eval Text/Eval Video node split) — ``None`` (the default) covers all of them, matching
+    the CLI benchmark's unified gap report.
     """
     counts: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -117,12 +136,13 @@ def diagnose_missing_rows(
         if len(entry["example_item_ids"]) < 3:
             entry["example_item_ids"].append(item_id)
 
+    dims = dimensions if dimensions is not None else HUMAN_DIMENSIONS
     for item_id in items[:sample_size]:
         agg = human.get(item_id)
         if agg is None:
             continue
         judge_results = per_item_judges.get(item_id, {})
-        for dim in HUMAN_DIMENSIONS:
+        for dim in dims:
             if dim not in ALIGNMENT:
                 _record(dim, "dimension has no ALIGNMENT crosswalk entry", item_id)
                 continue
@@ -161,17 +181,23 @@ def build_aligned_rows(
     items: list[str],
     human: dict[str, Any],
     per_item_judges: dict[str, dict[str, Any]],
+    *,
+    dimensions: Optional[frozenset[str]] = None,
 ) -> list[dict[str, Any]]:
     """Pair human scores with aligned judge signals, one row per (item, dimension).
 
     Shared by the CLI benchmark (``benchmark/human_gap/runner.py``) and the interface's
-    Eval Node executor, so both compute the human-vs-judge gap the same way.
+    Eval Text/Eval Video node executors, so all compute the human-vs-judge gap the same
+    way. ``dimensions`` restricts the output to a subset of ``HUMAN_DIMENSIONS`` (e.g. one
+    modality's dimensions) — ``None`` (the default) covers all of them, matching the CLI
+    benchmark's unified gap report.
     """
+    dims = dimensions if dimensions is not None else HUMAN_DIMENSIONS
     rows: list[dict[str, Any]] = []
     for item_id in items:
         agg = human[item_id]
         judge_results = per_item_judges.get(item_id, {})
-        for dim in HUMAN_DIMENSIONS:
+        for dim in dims:
             if dim not in ALIGNMENT:
                 continue
             human_score = agg.scores.get(dim)

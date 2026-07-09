@@ -1,4 +1,4 @@
-from vejudge.interface.node_vejudge.lm_engine_node import LMEngineNodeExecutor
+from vejudge.interface.node_vejudge.lm_engine_node import ENGINE_KINDS, LMEngineNodeExecutor
 
 
 def test_default_params_produce_a_json_safe_config_dict(make_ctx):
@@ -42,3 +42,19 @@ def test_unknown_engine_kind_is_a_node_error(make_ctx):
 
 def test_no_input_sockets():
     assert LMEngineNodeExecutor.input_sockets == {}
+
+
+def test_engine_kinds_cover_all_provider_families():
+    # Expanded from the original 3 (gemini/gpt/qwen) to provider-accurate families so the
+    # frontend model dropdown can group the full model catalog by real provider.
+    assert set(ENGINE_KINDS) == {
+        "gemini", "gpt", "qwen", "claude", "deepseek", "llama", "kimi",
+    }
+
+
+def test_new_provider_family_engine_kind_flows_through(make_ctx):
+    ctx = make_ctx(params={"engine_kind": "claude", "model": "claude-sonnet-4.5"})
+    result = LMEngineNodeExecutor().run(ctx)
+    assert result.status == "done"
+    assert result.outputs["engine_config"]["engine_kind"] == "claude"
+    assert result.outputs["engine_config"]["model"] == "claude-sonnet-4.5"

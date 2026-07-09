@@ -13,13 +13,13 @@ def _graph():
             NodeSpec(id="ds", type="dataset", params={}),
             NodeSpec(id="engine", type="lm_engine", params={"engine_kind": "gpt"}),
             NodeSpec(id="judge_text", type="judge_text", params={"metrics": ["M3"]}),
-            NodeSpec(id="eval", type="eval", params={}),
+            NodeSpec(id="eval", type="eval_text", params={}),
         ],
         edges=[
             EdgeSpec("peanut_src", "raw_dataset", "ds", "raw_dataset"),
             EdgeSpec("ds", "dataset", "judge_text", "dataset"),
             EdgeSpec("engine", "engine_config", "judge_text", "engine_config"),
-            EdgeSpec("judge_text", "judge_result", "eval", "judge_result_text"),
+            EdgeSpec("judge_text", "judge_result", "eval", "judge_result"),
             EdgeSpec("ds", "labels", "eval", "labels"),
         ],
     )
