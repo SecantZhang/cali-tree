@@ -24,7 +24,7 @@ def test_graph_end_to_end(tmp_path, fixture_tree, fake_engine, quick_eval_graph)
 
     assert result.status == "done", {nid: r.error for nid, r in result.node_results.items()}
     assert result.node_results["peanut_src"].outputs["raw_dataset"]
-    assert result.node_results["ds"].outputs["dataset"]
+    assert result.node_results["ds"].outputs["samples"]
     assert result.node_results["ds"].outputs["labels"]
 
     report = result.node_results["eval"].outputs["metrics_report"]

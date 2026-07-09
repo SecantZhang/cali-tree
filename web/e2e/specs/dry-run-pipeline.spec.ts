@@ -70,12 +70,12 @@ test.describe('dry-run pipeline', () => {
     // `labels` output straight to eval (the Eval node needs both a judge_result AND
     // human labels to align).
     await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'dataset', JUDGE, 'dataset')
+    await connect(page, DATASET, 'samples', JUDGE, 'samples')
     await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
     await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
     await connect(page, DATASET, 'labels', EVAL, 'labels')
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${DATASET}:dataset->${JUDGE}:dataset`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:labels->${EVAL}:labels`)).toHaveCount(1)
@@ -83,23 +83,20 @@ test.describe('dry-run pipeline', () => {
     // Dry run is on by default — no confirm dialog, no gateway calls.
     await expect(page.locator('.dry-run-toggle input[type="checkbox"]')).toBeChecked()
 
+    // The top-bar progress bars are always mounted now (they show a flat "Idle" state
+    // before/after a run instead of disappearing), so the run-progress container is present
+    // regardless of run state.
+    const runProgress = page.locator('.run-progress')
+    await expect(runProgress).toBeVisible()
+    await expect(runProgress.getByText('Idle — no run in progress')).toBeVisible()
+
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
     await runButton.click()
 
-    // The 3 progress bars (interface.md's Run controls): overall workflow progress and the
-    // currently-running node's own bar, both in the top bar, plus the per-node bar on the
-    // canvas — all only render while status === 'running', so this is a best-effort catch of
-    // a run that may finish in well under a polling interval on a tiny dry-run graph.
-    const runProgress = page.locator('.run-progress')
-    await runProgress
-      .waitFor({ state: 'visible', timeout: 2000 })
-      .catch(() => {
-        // A dry run over the tiny fixture dataset can complete before the first poll — that's
-        // a legitimate outcome, not a bug; the real assertion is the end state below.
-      })
-
     await expect(runButton).toHaveText('Run', { timeout: 10000 })
-    await expect(runProgress).toHaveCount(0)
+    // Back to the idle state once the run completes — still present, not removed.
+    await expect(runProgress).toBeVisible()
+    await expect(runProgress.getByText('Idle — no run in progress')).toBeVisible()
 
     for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()

@@ -22,7 +22,11 @@ export function Inspector() {
       {entries.length === 0 && <p className="empty-hint">This node has no parameters.</p>}
       {entries.map(([key, field]) => (
         <ParamField
-          key={key}
+          // Scoped by node id, not just field name: this component stays mounted across a
+          // node selection change, so a bare `key={key}` would reuse the same ParamField
+          // instance (and its internal typing state, e.g. NumberParamField's `raw`) when
+          // switching between two nodes of the same type that share a field name.
+          key={`${node.id}-${key}`}
           name={key}
           field={field}
           value={params[key]}

@@ -28,13 +28,13 @@ describe('graphStore', () => {
     const [ds, judge] = store.getState().nodes
 
     s.onConnect({
-      source: ds.id, sourceHandle: 'dataset', target: judge.id, targetHandle: 'dataset',
+      source: ds.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
     })
     expect(store.getState().edges).toHaveLength(1)
 
-    // labels -> dataset is a type mismatch; must be silently rejected.
+    // labels -> samples is a type mismatch; must be silently rejected.
     s.onConnect({
-      source: ds.id, sourceHandle: 'labels', target: judge.id, targetHandle: 'dataset',
+      source: ds.id, sourceHandle: 'labels', target: judge.id, targetHandle: 'samples',
     })
     expect(store.getState().edges).toHaveLength(1)
   })
@@ -47,10 +47,10 @@ describe('graphStore', () => {
     const [ds1, ds2, judge] = store.getState().nodes
 
     s.onConnect({
-      source: ds1.id, sourceHandle: 'dataset', target: judge.id, targetHandle: 'dataset',
+      source: ds1.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
     })
     s.onConnect({
-      source: ds2.id, sourceHandle: 'dataset', target: judge.id, targetHandle: 'dataset',
+      source: ds2.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
     })
     const edges = store.getState().edges
     expect(edges).toHaveLength(1)
@@ -64,13 +64,13 @@ describe('graphStore', () => {
     const [ds, judge] = store.getState().nodes
     s.updateNodeParams(judge.id, { batch_size: 5 })
     s.onConnect({
-      source: ds.id, sourceHandle: 'dataset', target: judge.id, targetHandle: 'dataset',
+      source: ds.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
     })
 
     const json: GraphSpecJSON = store.getState().toJSON()
     expect(json.nodes).toHaveLength(2)
     expect(json.edges).toEqual([
-      { source: ds.id, source_socket: 'dataset', target: judge.id, target_socket: 'dataset' },
+      { source: ds.id, source_socket: 'samples', target: judge.id, target_socket: 'samples' },
     ])
 
     store.setState({ nodes: [], edges: [], selectedNodeId: null })
@@ -129,6 +129,47 @@ describe('graphStore', () => {
     expect(expanded.height).toBe(220)
   })
 
+  it('toJSON/loadGraph round-trip restores cosmetic view state (status/collapsed/expandedSize/stale)', () => {
+    const s = store.getState()
+    s.addNode('judge_text', { x: 0, y: 0 })
+    const [judge] = store.getState().nodes
+    store.setState({
+      nodes: store.getState().nodes.map((n) =>
+        n.id === judge.id ? { ...n, width: 300, height: 220 } : n,
+      ),
+    })
+    s.setNodeStatus(judge.id, 'error', 'boom')
+    s.toggleNodeCollapsed(judge.id) // captures expandedSize from the resize above
+
+    const json = store.getState().toJSON(new Set([judge.id]))
+    const savedNode = json.nodes[0]
+    expect(savedNode.status).toBe('error')
+    expect(savedNode.error).toBe('boom')
+    expect(savedNode.collapsed).toBe(true)
+    expect(savedNode.expanded_size).toEqual({ width: 300, height: 220 })
+    expect(savedNode.stale).toBe(true)
+
+    store.setState({ nodes: [], edges: [], selectedNodeId: null })
+    store.getState().loadGraph(json)
+    const restored = store.getState().nodes[0]
+    expect(restored.data.status).toBe('error')
+    expect(restored.data.error).toBe('boom')
+    expect(restored.data.collapsed).toBe(true)
+    expect(restored.data.expandedSize).toEqual({ width: 300, height: 220 })
+    // `stale` isn't graphStore's concern (it lives in the separate runStore) — loadGraph
+    // itself doesn't restore it; the tabsStore caller reads it straight off the saved JSON.
+  })
+
+  it('loadGraph sanitizes a stale "running" status back to "idle"', () => {
+    // A node can never genuinely be "running" the instant a workflow is (re)loaded — no
+    // run is actually in flight yet — so a workflow saved mid-run must not lie about that.
+    store.getState().loadGraph({
+      nodes: [{ id: 'judge-1', type: 'judge_text', params: {}, status: 'running' }],
+      edges: [],
+    })
+    expect(store.getState().nodes[0].data.status).toBe('idle')
+  })
+
   it('loadGraph falls back to a grid position when a saved node has none', () => {
     store.getState().loadGraph({
       nodes: [{ id: 'ds-1', type: 'dataset', params: {} }],
@@ -143,7 +184,7 @@ describe('graphStore', () => {
     s.addNode('judge_text', { x: 200, y: 0 })
     const [ds, judge] = store.getState().nodes
     s.onConnect({
-      source: ds.id, sourceHandle: 'dataset', target: judge.id, targetHandle: 'dataset',
+      source: ds.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
     })
 
     s.removeNode(ds.id)

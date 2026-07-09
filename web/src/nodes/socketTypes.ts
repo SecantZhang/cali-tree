@@ -2,13 +2,13 @@
 // NODE_EXECUTORS).
 
 export type SocketType =
-  | 'raw_dataset' | 'dataset' | 'labels' | 'engine_config' | 'judge_result' | 'metrics_report'
+  | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_result' | 'metrics_report'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
-  dataset: 'var(--node-db)',
+  samples: 'var(--node-db)',
   labels: 'var(--node-db)',
-  engine_config: 'var(--node-vejudge)',
+  engine_config: 'var(--node-lm-engine)',
   judge_result: 'var(--node-vejudge)',
   metrics_report: 'var(--node-eval)',
 }
@@ -20,23 +20,25 @@ export interface NodeTypeSockets {
 
 export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   peanut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
-  // `raw_dataset` is a distinct type from `dataset` specifically so a source's raw
+  // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
   // independently re-sampled), so judge results and human labels always describe the
-  // same items by construction.
+  // same items by construction. The sampled-item output is named `samples`, not
+  // `dataset` — that name collided with the node's own name and its sibling `labels`
+  // output, making the two easy to conflate.
   dataset: {
     input: { raw_dataset: 'raw_dataset' },
-    output: { dataset: 'dataset', labels: 'labels' },
+    output: { samples: 'samples', labels: 'labels' },
   },
-  preprocessing: { input: { dataset: 'dataset' }, output: { dataset: 'dataset' } },
+  preprocessing: { input: { samples: 'samples' }, output: { samples: 'samples' } },
   lm_engine: { input: {}, output: { engine_config: 'engine_config' } },
   judge_text: {
-    input: { dataset: 'dataset', engine_config: 'engine_config' },
+    input: { samples: 'samples', engine_config: 'engine_config' },
     output: { judge_result: 'judge_result' },
   },
   judge_video: {
-    input: { dataset: 'dataset', engine_config: 'engine_config' },
+    input: { samples: 'samples', engine_config: 'engine_config' },
     output: { judge_result: 'judge_result' },
   },
   // Each Eval node type takes a single `judge_result` input scoped to its own modality

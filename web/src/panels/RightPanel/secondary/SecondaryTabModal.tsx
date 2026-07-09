@@ -1,7 +1,10 @@
+import { ResizeHandle } from '../../../components/ResizeHandle'
 import { useActiveGraphStore } from '../../../store/activeTab'
+import { usePrefsStore } from '../../../store/prefsStore'
 import { DatasetSecondaryTab } from './DatasetSecondaryTab'
 import { EvalSecondaryTab } from './EvalSecondaryTab'
 import { JudgeSecondaryTab } from './JudgeSecondaryTab'
+import { LMEngineSecondaryTab } from './LMEngineSecondaryTab'
 import { SourceSecondaryTab } from './SourceSecondaryTab'
 
 const SOURCE_TYPES = new Set(['peanut_source'])
@@ -12,14 +15,31 @@ export function SecondaryTabModal() {
   const nodeId = useActiveGraphStore((s) => s.secondaryTabNodeId)
   const node = useActiveGraphStore((s) => s.nodes.find((n) => n.id === s.secondaryTabNodeId))
   const close = useActiveGraphStore((s) => s.closeSecondaryTab)
+  const modalWidth = usePrefsStore((s) => s.modalWidth)
+  const modalHeight = usePrefsStore((s) => s.modalHeight)
+  const setModalWidth = usePrefsStore((s) => s.setModalWidth)
+  const setModalHeight = usePrefsStore((s) => s.setModalHeight)
 
   if (!nodeId || !node) return null
 
   const type = node.type ?? ''
 
+  // Ending a resize drag (below) can leave the cursor past the panel's new edge, over this
+  // backdrop — the modal centers itself, so widening it moves both edges toward the cursor,
+  // not just the one being dragged. The resulting click must not close the modal; guarded
+  // by the same 'is-resizing' class ResizeHandle already toggles during any drag (see its
+  // own comment on why the class removal is deferred a tick past the drag's mouseup).
+  const handleOverlayClick = () => {
+    if (!document.body.classList.contains('is-resizing')) close()
+  }
+
   return (
-    <div className="modal-overlay" onClick={close}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
+      <div
+        className="modal-panel"
+        style={{ width: modalWidth, height: modalHeight, maxWidth: '95vw', maxHeight: '92vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <strong>
             {node.type} — {node.id}
@@ -37,14 +57,16 @@ export function SecondaryTabModal() {
               inspect here.
             </p>
           )}
-          {type === 'lm_engine' && (
-            <p className="empty-hint">
-              Configuration only — the params panel already shows everything this node
-              carries. A live tail of this engine's llm-histories.log slice (per
-              interface.md's spec) isn't implemented yet.
-            </p>
-          )}
+          {type === 'lm_engine' && <LMEngineSecondaryTab node={node} />}
         </div>
+        <ResizeHandle
+          orientation="vertical"
+          onResize={(delta) => setModalWidth(usePrefsStore.getState().modalWidth + delta)}
+        />
+        <ResizeHandle
+          orientation="horizontal"
+          onResize={(delta) => setModalHeight(usePrefsStore.getState().modalHeight + delta)}
+        />
       </div>
     </div>
   )

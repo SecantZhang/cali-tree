@@ -1,20 +1,13 @@
 import { ProgressBar } from '../../components/ProgressBar'
+import { nodeTitle } from '../../nodes/nodeTitles'
 import { useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
-
-const TITLE_FOR_TYPE: Record<string, string> = {
-  peanut_source: 'Peanut Source',
-  dataset: 'Dataset',
-  preprocessing: 'Preprocessing',
-  judge_text: 'Text Judge',
-  judge_video: 'Video Judge',
-  eval: 'Eval',
-}
 
 /**
  * Bars (b) and (c) from interface.md's Run controls section: overall workflow progress
  * (nodes completed / total), and directly below it, the currently-running node's own
  * progress — the same data driving that node's bar on the canvas (NodeChrome), just
- * also visible here so you don't need the node in view. Renders nothing while idle.
+ * also visible here so you don't need the node in view. Both bars stay visible at all
+ * times, showing a flat "Idle" state before/between runs rather than disappearing.
  */
 export function RunProgress() {
   const status = useActiveRunStore((s) => s.status)
@@ -24,20 +17,22 @@ export function RunProgress() {
   const nodeProgress = useActiveRunStore((s) => s.nodeProgress)
   const currentNode = useActiveGraphStore((s) => s.nodes.find((n) => n.id === currentRunningNodeId))
 
-  if (status !== 'running') return null
+  const running = status === 'running'
 
-  const overall = { completed: completedCount, total: totalNodes || null }
-  const current = currentRunningNodeId ? nodeProgress[currentRunningNodeId] : null
-  const currentLabel = currentNode
-    ? `${TITLE_FOR_TYPE[currentNode.type ?? ''] ?? currentNode.type} (${currentNode.id})`
-    : null
+  const overall = running ? { completed: completedCount, total: totalNodes || null } : null
+  const current = running && currentRunningNodeId ? nodeProgress[currentRunningNodeId] ?? null : null
+  const currentLabel = running && currentNode
+    ? `Running: ${nodeTitle(currentNode.type)} (${currentNode.id})`
+    : 'Idle — no run in progress'
 
   return (
     <div className="run-progress">
-      <ProgressBar progress={overall} label="Workflow progress" />
-      {current && currentLabel && (
-        <ProgressBar progress={current} label={`Running: ${currentLabel}`} />
-      )}
+      <ProgressBar
+        inline
+        progress={overall}
+        label={running ? 'Workflow progress' : 'Workflow progress — Idle'}
+      />
+      <ProgressBar inline progress={current} label={currentLabel} />
     </div>
   )
 }

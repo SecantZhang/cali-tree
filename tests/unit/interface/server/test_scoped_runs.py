@@ -32,7 +32,7 @@ def _graph():
         ],
         "edges": [
             {"source": "src", "source_socket": "raw_dataset", "target": "ds", "target_socket": "raw_dataset"},
-            {"source": "ds", "source_socket": "dataset", "target": "judge", "target_socket": "dataset"},
+            {"source": "ds", "source_socket": "samples", "target": "judge", "target_socket": "samples"},
             {"source": "engine", "source_socket": "engine_config", "target": "judge", "target_socket": "engine_config"},
             {"source": "judge", "source_socket": "judge_result", "target": "eval", "target_socket": "judge_result"},
             {"source": "ds", "source_socket": "labels", "target": "eval", "target_socket": "labels"},

@@ -2,6 +2,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  PanOnScrollMode,
   ReactFlow,
   type Connection,
   type Edge,
@@ -17,6 +18,7 @@ import { TextJudgeNode } from '../nodes/TextJudgeNode'
 import { VideoJudgeNode } from '../nodes/VideoJudgeNode'
 import { isValidSocketConnection } from '../nodes/socketTypes'
 import { activeGraphStore, useActiveGraphStore } from '../store/activeTab'
+import { usePrefsStore } from '../store/prefsStore'
 import { useTheme } from '../theme/ThemeProvider'
 
 const NODE_TYPES = {
@@ -32,6 +34,7 @@ const NODE_TYPES = {
 
 export function GraphCanvas() {
   const { theme } = useTheme()
+  const panOnScroll = usePrefsStore((s) => s.panOnScroll)
   const nodes = useActiveGraphStore((s) => s.nodes)
   const edges = useActiveGraphStore((s) => s.edges)
   const onNodesChange = useActiveGraphStore((s) => s.onNodesChange)
@@ -63,6 +66,14 @@ export function GraphCanvas() {
       onNodeDoubleClick={(_, node) => openSecondaryTab(node.id)}
       onPaneClick={() => selectNode(null)}
       fitView
+      // Configurable via the top bar's Settings menu (SettingsMenu.tsx) — pan-on-scroll
+      // defaults to on, matching a trackpad's two-finger scroll to "move the board" rather
+      // than react-flow's own default of zooming. Pinch-to-zoom and Ctrl/Cmd+scroll always
+      // still zoom regardless of this setting.
+      panOnScroll={panOnScroll}
+      panOnScrollMode={PanOnScrollMode.Free}
+      zoomOnScroll={!panOnScroll}
+      zoomOnPinch
     >
       <Background />
       <Controls />

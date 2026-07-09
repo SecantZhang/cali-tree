@@ -4,7 +4,7 @@ Per interface.md's Preprocessing Node spec (frame/keyframe/clip sampling, ASR tr
 OCR, captions, shot boundaries, blur/flicker metrics, input strategies A-E) — none of
 which has a concrete implementation yet (`vejudge/preprocessing/pp_template/base.py` is
 still just an abstract `Preprocessor` base with no subclasses). This node exists to give
-the graph the right shape and vocabulary now (dataset in, dataset out, sitting between
+the graph the right shape and vocabulary now (samples in, samples out, sitting between
 Dataset and Judge) without inventing artifact extraction ahead of that work landing — the
 params are present but inert; real extraction is a separate, larger future feature.
 """
@@ -23,8 +23,8 @@ ARTIFACT_TYPES = [
 class PreprocessingNodeExecutor(NodeExecutor):
     node_type = "preprocessing"
     category = "node_preprocessing"
-    input_sockets = {"dataset": "dataset"}
-    output_sockets = {"dataset": "dataset"}
+    input_sockets = {"samples": "samples"}
+    output_sockets = {"samples": "samples"}
     param_schema = {
         "artifact_types": {"type": "list[enum]", "options": ARTIFACT_TYPES, "default": None},
         "input_strategy": {
@@ -37,15 +37,15 @@ class PreprocessingNodeExecutor(NodeExecutor):
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
-        dataset = ctx.inputs.get("dataset")
+        dataset = ctx.inputs.get("samples")
         if dataset is None:
             return NodeRunResult(
                 status="error",
-                error="Preprocessing Node requires a 'dataset' input (wire a Dataset "
-                "Node's `dataset` output)",
+                error="Preprocessing Node requires a 'samples' input (wire a Dataset "
+                "Node's `samples` output)",
             )
         # Pass-through: no artifact extraction is implemented yet (see module docstring).
         return NodeRunResult(
-            outputs={"dataset": dataset},
+            outputs={"samples": dataset},
             meta={"n_items": len(dataset), "note": "pass-through: no artifacts extracted yet"},
         )

@@ -6,7 +6,8 @@ import { useTabsStore } from '../store/tabsStore'
  * Cmd+S shortcut — all three write the tab's own graph to a named workflow file, then mark
  * that tab clean under that name. */
 export async function saveTabAs(tab: TabRecord, name: string): Promise<void> {
-  await saveWorkflow(name, tab.graphStore.getState().toJSON())
+  const staleNodeIds = tab.runStore.getState().staleNodeIds
+  await saveWorkflow(name, tab.graphStore.getState().toJSON(staleNodeIds))
   tab.graphStore.getState().setCurrentWorkflowName(name)
   useTabsStore.getState().markClean(tab.tabId, name)
 }

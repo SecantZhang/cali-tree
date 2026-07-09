@@ -18,7 +18,7 @@ export function LMEngineNode({ id, data, selected }: NodeProps) {
       data={d}
       selected={selected}
       title="LM Engine"
-      color="var(--node-vejudge)"
+      color="var(--node-lm-engine)"
       schema={NODE_PARAM_SCHEMAS.lm_engine}
       summaryLine={(p) => `engine: ${p.engine_kind ?? 'gpt'} / ${p.model ?? '(default)'}`}
       fieldOverrides={{

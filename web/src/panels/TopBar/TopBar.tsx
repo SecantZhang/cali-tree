@@ -1,10 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { fetchCredentialsStatus } from '../../api/settings'
-import { useTheme } from '../../theme/ThemeProvider'
-import { CredentialsModal } from './CredentialsModal'
 import { RunControls } from './RunControls'
 import { RunProgress } from './RunProgress'
+import { SettingsMenu } from './SettingsMenu'
 
 interface TopBarProps {
   leftPanelCollapsed: boolean
@@ -12,13 +8,6 @@ interface TopBarProps {
 }
 
 export function TopBar({ leftPanelCollapsed, onToggleLeftPanel }: TopBarProps) {
-  const { theme, toggleTheme } = useTheme()
-  const [credentialsOpen, setCredentialsOpen] = useState(false)
-  const { data: credentialsStatus } = useQuery({
-    queryKey: ['credentialsStatus'],
-    queryFn: fetchCredentialsStatus,
-  })
-
   return (
     <header className="top-bar-shell">
       <div className="top-bar">
@@ -28,18 +17,9 @@ export function TopBar({ leftPanelCollapsed, onToggleLeftPanel }: TopBarProps) {
         <strong>VEJudge Interface</strong>
         <RunControls />
         <div className="spacer" />
-        <button onClick={() => setCredentialsOpen(true)} title="API credentials">
-          <span
-            className={`status-dot status-${credentialsStatus?.configured ? 'done' : 'idle'}`}
-          />{' '}
-          API Key
-        </button>
-        <button onClick={toggleTheme} title="Toggle theme">
-          {theme === 'light' ? 'Dark theme' : 'Light theme'}
-        </button>
+        <SettingsMenu />
       </div>
       <RunProgress />
-      <CredentialsModal open={credentialsOpen} onClose={() => setCredentialsOpen(false)} />
     </header>
   )
 }

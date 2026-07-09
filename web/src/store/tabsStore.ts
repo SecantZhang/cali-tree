@@ -61,6 +61,11 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     tab.graphStore.getState().loadGraph(graph)
     tab.graphStore.getState().setCurrentWorkflowName(name)
     tab.workflowName = name
+    // Restores each node's last-known "outdated" flag (purely cosmetic — see
+    // graphStore.ts's GraphNodeSpec doc comment). Lives in runStore, not graphStore, so
+    // it's read straight off the raw saved graph here rather than through loadGraph.
+    const staleIds = graph.nodes.filter((n) => n.stale).map((n) => n.id)
+    if (staleIds.length) tab.runStore.getState().markNodesStale(staleIds)
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.tabId }))
     return tab.tabId
   },

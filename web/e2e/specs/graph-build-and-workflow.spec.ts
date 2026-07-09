@@ -49,16 +49,16 @@ test.describe('graph building and workflow persistence', () => {
     await page.getByRole('button', { name: 'Fit View' }).click()
 
     // Connect peanut_source's "raw_dataset" source socket to dataset's "raw_dataset"
-    // target socket, then dataset's "dataset" to judge_text's "dataset".
+    // target socket, then dataset's "samples" to judge_text's "samples".
     const sourceHandle = page.locator(`[data-nodeid="${PEANUT_SOURCE}"][data-handleid="raw_dataset"].source`)
     const targetHandle = page.locator(`[data-nodeid="${DATASET}"][data-handleid="raw_dataset"].target`)
     await dragConnect(page, sourceHandle, targetHandle)
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
 
-    const dsOutHandle = page.locator(`[data-nodeid="${DATASET}"][data-handleid="dataset"].source`)
-    const judgeInHandle = page.locator(`[data-nodeid="${JUDGE}"][data-handleid="dataset"].target`)
+    const dsOutHandle = page.locator(`[data-nodeid="${DATASET}"][data-handleid="samples"].source`)
+    const judgeInHandle = page.locator(`[data-nodeid="${JUDGE}"][data-handleid="samples"].target`)
     await dragConnect(page, dsOutHandle, judgeInHandle)
-    await expect(page.getByTestId(`rf__edge-${DATASET}:dataset->${JUDGE}:dataset`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
 
     const engineOutHandle = page.locator(`[data-nodeid="${LM_ENGINE}"][data-handleid="engine_config"].source`)
     const judgeEngineInHandle = page.locator(`[data-nodeid="${JUDGE}"][data-handleid="engine_config"].target`)
@@ -77,6 +77,20 @@ test.describe('graph building and workflow persistence', () => {
     const useCaseFilterRow = paramRow(datasetNode, 'use_case_filter')
     await useCaseFilterRow.locator('input[type="text"]').fill('visual montage')
     await expect(useCaseFilterRow.locator('input[type="text"]')).toHaveValue('visual montage')
+
+    // The Dataset node's inputs share one left edge (fixed-width label column), and the
+    // single `require_labels` checkbox is pushed to the right edge instead of stretching.
+    const inputLefts = await datasetNode
+      .locator('.param-row > input:not([type="checkbox"]), .param-row > select')
+      .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
+    expect(inputLefts.length).toBeGreaterThan(1)
+    expect(Math.max(...inputLefts) - Math.min(...inputLefts)).toBeLessThanOrEqual(1)
+    const requireLabelsRow = paramRow(datasetNode, 'require_labels')
+    const rowBox = await requireLabelsRow.boundingBox()
+    const checkboxBox = await requireLabelsRow.locator('input[type="checkbox"]').boundingBox()
+    // Checkbox sits at the row's right edge (its right edge is near the row's right edge,
+    // well past the row's horizontal midpoint) — not floating centered in the row.
+    expect(checkboxBox!.x).toBeGreaterThan(rowBox!.x + rowBox!.width / 2)
 
     // Edit an inline list[enum] param (checkbox list) on the judge node. Both boxes start
     // checked (an unset `metrics` runs every metric of that modality, so the UI shows that
@@ -118,7 +132,7 @@ test.describe('graph building and workflow persistence', () => {
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${DATASET}:dataset->${JUDGE}:dataset`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
     await expect(paramRow(datasetNode, 'sampling_mode').locator('select')).toHaveValue('stratified')
     await expect(paramRow(datasetNode, 'use_case_filter').locator('input[type="text"]')).toHaveValue('visual montage')

@@ -3,9 +3,11 @@ joins matching human-annotation labels for exactly the resulting item set.
 
 Per the Data Source / Dataset split: loading lives one step upstream (Peanut Source Node,
 or a future source node for another model), this node owns sampling/filtering —
-``raw_dataset`` is a distinct socket type from ``dataset`` specifically so a source's raw
-output can never be wired directly into a Judge node, forcing sampling to always be an
-explicit step.
+``raw_dataset`` is a distinct socket type from this node's own ``samples`` output
+specifically so a source's raw output can never be wired directly into a Judge node,
+forcing sampling to always be an explicit step. ``samples`` is deliberately not named
+``dataset`` — that name collided with the node's own name and with the sibling ``labels``
+output, making the two outputs easy to conflate.
 
 Human annotation labels are looked up by item id for this node's own sampled items rather
 than sampled independently by a separate node: human annotation records use the identical
@@ -34,7 +36,7 @@ class DatasetNodeExecutor(NodeExecutor):
     node_type = "dataset"
     category = "node_db"
     input_sockets = {"raw_dataset": "raw_dataset"}
-    output_sockets = {"dataset": "dataset", "labels": "labels"}
+    output_sockets = {"samples": "samples", "labels": "labels"}
     param_schema = {
         "sampling_ratio": {"type": "number", "default": 1.0, "min": 0.0, "max": 1.0},
         "sampling_mode": {
@@ -91,26 +93,26 @@ class DatasetNodeExecutor(NodeExecutor):
             use_case_lookup=item_use_case,
         )
 
-        dataset: dict[str, Any] = {iid: raw_dataset[iid] for iid in items}
+        samples: dict[str, Any] = {iid: raw_dataset[iid] for iid in items}
         labels: dict[str, Any] = {iid: aggregated[iid] for iid in items if iid in aggregated}
 
         ctx.run.logger.info(
             "Dataset[%s]: %d / %d item(s) selected, %d with human labels",
-            ctx.node_id, len(dataset), len(raw_dataset), len(labels),
+            ctx.node_id, len(samples), len(raw_dataset), len(labels),
         )
         meta: dict[str, Any] = {
-            "n_items": len(dataset),
+            "n_items": len(samples),
             "n_raw_items": len(raw_dataset),
             "n_labels": len(labels),
             "n_pool_labeled": n_pool_labeled,
         }
-        if not dataset:
+        if not samples:
             meta["warning"] = zero_items_warning("dataset")
         elif not p.get("require_labels") and not labels and n_pool_labeled > 0:
             meta["warning"] = (
-                f"Sampled {len(dataset)} item(s), none have human labels, though "
+                f"Sampled {len(samples)} item(s), none have human labels, though "
                 f"{n_pool_labeled}/{len(pool)} item(s) in the pre-sampling pool do. Enable "
                 "'require_labels' on this Dataset node (or raise sampling_ratio) to "
                 "guarantee overlap with a downstream Eval node."
             )
-        return NodeRunResult(outputs={"dataset": dataset, "labels": labels}, meta=meta)
+        return NodeRunResult(outputs={"samples": samples, "labels": labels}, meta=meta)

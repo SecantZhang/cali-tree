@@ -44,7 +44,7 @@ export function CredentialsModal({ open, onClose }: { open: boolean; onClose: ()
           <strong>API Credentials</strong>
           <button onClick={onClose}>Close</button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body credentials-body">
           <p className="empty-hint">
             Currently using: {status ? SOURCE_LABEL[status.source] : '…'}
             {status?.base_url ? ` (${status.base_url})` : ''}

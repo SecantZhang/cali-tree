@@ -34,6 +34,17 @@ class NodeIn(BaseModel):
     # module docstring). Optional so older saved workflows (no layout yet) still load.
     position: Optional[PositionIn] = None
     size: Optional[SizeIn] = None
+    # Also wire-layer only, same as position/size above — purely cosmetic "what this node
+    # looked like last time" state (status dot, collapsed, stale-flag, manual resize
+    # memory), restored on load so reopening a saved workflow looks the same as when it was
+    # saved. Never touched by graph.NodeSpec/execution — deliberately not a substitute for
+    # real run state, which already has its own independent mechanism (workflow_name
+    # tagging + GET /api/workflows/{name}/runs).
+    status: Optional[str] = None
+    error: Optional[str] = None
+    collapsed: Optional[bool] = None
+    expanded_size: Optional[SizeIn] = None
+    stale: Optional[bool] = None
 
 
 class EdgeIn(BaseModel):
@@ -154,3 +165,26 @@ class CredentialsStatusOut(BaseModel):
     configured: bool
     source: str  # "manual" | "env" | "file" | "none"
     base_url: Optional[str] = None  # safe to echo — never the token
+
+
+class EngineHealthCheckIn(BaseModel):
+    # Mirrors the LM Engine Node's params. `model` is optional — a null model falls back to
+    # the text default inside `health.check_endpoint`, same as the CLI health check.
+    engine_kind: str = "gpt"
+    model: Optional[str] = None
+    # A real endpoint ping is a billable gateway call, so it's gated exactly like every other
+    # live path in this app — the frontend must pass True (after its own confirm) or the route
+    # refuses with a 400, no call made.
+    allow_live: bool = False
+
+
+class EndpointHealthOut(BaseModel):
+    url: str
+    ok: bool
+    status: Optional[int] = None  # HTTP status, or null when the request never completed
+    latency: float
+    error: Optional[str] = None
+
+
+class EngineHealthCheckOut(BaseModel):
+    endpoints: list[EndpointHealthOut] = Field(default_factory=list)

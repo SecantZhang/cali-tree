@@ -12,6 +12,11 @@ test.describe('manual credentials', () => {
     // mock gateway) for this backend process, so the baseline is "environment variables",
     // not "not configured" — this test proves the manual override takes precedence over
     // that, and that clearing it correctly falls back to those env vars, not to "none".
+    //
+    // API Key lives inside the Settings dropdown (SettingsMenu.tsx) — opened once here and
+    // never explicitly closed; the Credentials modal is nested inside it, so closing that
+    // modal reveals the dropdown still open underneath for the second round below.
+    await page.getByTitle('Settings').click()
     const credentialsButton = page.getByTitle('API credentials')
     await expect(credentialsButton.locator('.status-dot')).toHaveClass(/status-done/)
 

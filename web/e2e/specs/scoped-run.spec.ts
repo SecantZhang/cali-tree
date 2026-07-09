@@ -50,7 +50,7 @@ test.describe('per-node Run / Re-run', () => {
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
     await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'dataset', JUDGE, 'dataset')
+    await connect(page, DATASET, 'samples', JUDGE, 'samples')
     await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
     await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
     await connect(page, DATASET, 'labels', EVAL, 'labels')

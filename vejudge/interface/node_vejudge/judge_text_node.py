@@ -23,7 +23,7 @@ from ._concurrent_judging import run_concurrent_judging
 class TextJudgeNodeExecutor(NodeExecutor):
     node_type = "judge_text"
     category = "node_vejudge"
-    input_sockets = {"dataset": "dataset", "engine_config": "engine_config"}
+    input_sockets = {"samples": "samples", "engine_config": "engine_config"}
     output_sockets = {"judge_result": "judge_result"}
     param_schema = {
         "metrics": {"type": "list[enum]", "options": list(TEXT_JUDGES), "default": None},
@@ -32,12 +32,12 @@ class TextJudgeNodeExecutor(NodeExecutor):
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         p = ctx.params
-        dataset = ctx.inputs.get("dataset")
+        dataset = ctx.inputs.get("samples")
         if dataset is None:
             return NodeRunResult(
                 status="error",
-                error="Text Judge Node requires a 'dataset' input (wire a Dataset Node's "
-                "`dataset` output)",
+                error="Text Judge Node requires a 'samples' input (wire a Dataset Node's "
+                "`samples` output)",
             )
         engine_config = ctx.inputs.get("engine_config")
         if engine_config is None:

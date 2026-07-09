@@ -24,6 +24,35 @@
   flex: 1 1 auto;
 }
 
+.settings-menu {
+  position: relative;
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+  padding: 10px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
 .run-progress {
   display: flex;
   flex-direction: column;
@@ -382,6 +411,9 @@ body.is-resizing .bottom-panel {
 }
 
 .node-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   border: none;
   color: #fff;
@@ -400,6 +432,9 @@ body.is-resizing .bottom-panel {
 
 /* Run (▶) / Re-run (↻) — top-right of the header, next to the status dot. */
 .node-run-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   border: none;
   color: #fff;
@@ -521,6 +556,41 @@ body.is-resizing .bottom-panel {
   animation: progress-indeterminate 1.1s ease-in-out infinite;
 }
 
+/* Idle: an empty, non-animated track — the top-bar bars stay visible between runs without
+   looking like anything is happening. Muted so it reads as "nothing running", not "busy". */
+.progress-bar-idle {
+  width: 0;
+  background: var(--border);
+}
+
+.progress-bar-wrap-idle .progress-bar-label {
+  color: var(--text-muted);
+}
+
+/* Inline variant (top-bar bars): label on the left, track filling the rest on the same row.
+   A fixed-width label column makes both bars' tracks start at the same x, so the two bars
+   align with each other. */
+.progress-bar-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar-inline .progress-bar-label {
+  flex: 0 0 170px;
+  min-width: 0;
+}
+
+.progress-bar-inline .progress-bar-label-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-bar-inline .progress-bar-track {
+  flex: 1 1 auto;
+}
+
 @keyframes progress-indeterminate {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
@@ -566,16 +636,46 @@ body.is-resizing .bottom-panel {
 }
 
 /* --- Inspector param form --- */
+/* Label beside its input, not stacked above it — the single biggest remaining space win
+   for a node's param list. No `margin-bottom` here: `.rf-node-body`'s own `gap` already
+   spaces rows out, so a second margin would just double up the whitespace between rows. */
 .param-row {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
 }
 
+/* A fixed-width column (not sized to its own text), so every row's input starts at the same
+   left edge and they all line up — truncated (not wrapped) so a long param name never pushes
+   the input off narrow nodes; `title` on the label element (ParamField.tsx) surfaces the
+   full name on hover when it's cut off. */
 .param-label {
+  flex: 0 0 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Every param-row's actual control (input/select/checkbox-list) takes the row's
+   remaining width — `min-width: 0` is required for a flex child to actually shrink below
+   its content size instead of overflowing the row. */
+.param-row > input,
+.param-row > select,
+.param-row > .checkbox-list {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* A single bool checkbox (e.g. `require_labels`) shouldn't stretch to fill the row like a
+   text/select input — that leaves the glyph floating in a wide box, reading as "centered".
+   Un-stretch it and push it to the row's right edge instead. Only the direct-child bool
+   checkbox is targeted; `list[enum]` checkboxes live inside `.checkbox-list`, not here. */
+.param-row > input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .checkbox-list {
@@ -588,7 +688,7 @@ body.is-resizing .bottom-panel {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .node-id {
@@ -701,8 +801,12 @@ body.is-resizing .bottom-panel {
 }
 
 .modal-panel {
+  /* Overridden inline by SecondaryTabModal.tsx via usePrefsStore's persisted modalWidth/
+     modalHeight — this is just the pre-JS/fallback size (matches CredentialsModal, which
+     has no inline size and so keeps using this directly). */
   width: min(900px, 90vw);
   height: min(600px, 85vh);
+  position: relative;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -710,6 +814,25 @@ body.is-resizing .bottom-panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* The secondary-tab modal's resize handles (SecondaryTabModal.tsx) — pinned to the panel's
+   own right/bottom edge instead of sitting in the normal flex flow like the left/right/
+   bottom *panels'* handles do, since this is a floating modal, not a docked panel. */
+.modal-panel > .resize-handle-vertical {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
+}
+
+.modal-panel > .resize-handle-horizontal {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
 }
 
 .modal-header {
@@ -732,6 +855,34 @@ body.is-resizing .bottom-panel {
   width: min(420px, 90vw);
   height: auto;
   max-height: 85vh;
+}
+
+/* Opts the Credentials form back out of the node-param row layout (label beside input) —
+   `.param-row`/`.param-label` are shared with ParamField.tsx, but a form field like
+   "Mirror URL (optional)" needs its full label visible, not truncated to fit a node's
+   narrow width convention. */
+.credentials-body .param-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.credentials-body .param-label {
+  /* `flex: none` un-does the node-param `flex: 0 0 42%` basis, which — in this column-axis
+     layout — would otherwise be read as a *vertical* (height) basis and distort the label. */
+  flex: none;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.credentials-body .param-row > input,
+.credentials-body .param-row > select {
+  /* Un-does the node-param-row sizing rule, which assumes a row (not column) flex axis —
+     applying it here would stretch the input to fill the column's height instead of
+     keeping its natural one-line height. */
+  flex: none;
 }
 
 .credentials-token-row {
@@ -869,6 +1020,121 @@ body.is-resizing .bottom-panel {
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
+}
+
+/* --- Dataset secondary tab: schema reference + human-label block --- */
+.schema-details {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.schema-details > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.schema-heading {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.schema-table,
+.label-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.schema-table td {
+  padding: 2px 6px;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+}
+
+.schema-field {
+  font-family: ui-monospace, Consolas, monospace;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.schema-type {
+  font-family: ui-monospace, Consolas, monospace;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.schema-desc {
+  color: var(--text);
+}
+
+.human-label-block {
+  margin: 8px 0;
+  padding: 6px 8px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+
+.label-score-table td {
+  padding: 1px 6px;
+}
+
+.label-dim {
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--text-muted);
+}
+
+.label-score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.label-score-missing {
+  color: var(--text-muted);
+}
+
+.item-has-label {
+  margin-left: 6px;
+  font-size: 9px;
+  color: var(--accent);
+  vertical-align: middle;
+}
+
+/* --- LM Engine secondary tab --- */
+.engine-feeds-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.engine-health {
+  margin-top: 10px;
+}
+
+.engine-health-table {
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.engine-health-table td {
+  padding: 3px 8px 3px 0;
+  vertical-align: middle;
+}
+
+.engine-health-error {
+  color: var(--status-error);
+  font-size: 11px;
+}
+
+.engine-followup {
+  margin-top: 12px;
+  font-style: italic;
 }
 
 .rationale-card {

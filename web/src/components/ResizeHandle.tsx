@@ -34,9 +34,17 @@ export function ResizeHandle({
       }
       const handleMouseUp = () => {
         draggingRef.current = false
-        document.body.classList.remove('is-resizing')
         window.removeEventListener('mousemove', handleMouseMove)
         window.removeEventListener('mouseup', handleMouseUp)
+        // Deferred a tick (not removed synchronously here): the browser dispatches a
+        // `click` event right after this `mouseup`, targeting whatever's under the cursor
+        // at that instant — for a handle that grows *toward* the cursor (e.g. the
+        // secondary-tab modal centers itself, so both edges move as it widens), ending a
+        // drag can easily leave the cursor past the resized edge, over the modal's own
+        // backdrop. That backdrop's own click-to-close handler checks this same class, so
+        // it needs to still see "is-resizing" during that one click, not have it already
+        // cleared — otherwise finishing a resize drag there would immediately close it.
+        setTimeout(() => document.body.classList.remove('is-resizing'), 0)
       }
       window.addEventListener('mousemove', handleMouseMove)
       window.addEventListener('mouseup', handleMouseUp)

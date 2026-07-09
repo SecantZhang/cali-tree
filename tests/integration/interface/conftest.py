@@ -17,7 +17,7 @@ def _graph():
         ],
         edges=[
             EdgeSpec("peanut_src", "raw_dataset", "ds", "raw_dataset"),
-            EdgeSpec("ds", "dataset", "judge_text", "dataset"),
+            EdgeSpec("ds", "samples", "judge_text", "samples"),
             EdgeSpec("engine", "engine_config", "judge_text", "engine_config"),
             EdgeSpec("judge_text", "judge_result", "eval", "judge_result"),
             EdgeSpec("ds", "labels", "eval", "labels"),

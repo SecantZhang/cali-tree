@@ -13,14 +13,27 @@ import { isValidSocketConnection } from '../nodes/socketTypes'
 import type { VeNodeData } from '../nodes/types'
 
 // The wire format shared with the backend (server/schemas.py's GraphIn). position/size
-// are wire-layer-only layout info (never touched by graph execution) — optional so older
-// saved workflows without layout still load fine.
+// (and the cosmetic view-state fields below) are wire-layer-only — never touched by graph
+// execution — optional so older saved workflows without them still load fine.
 export interface GraphNodeSpec {
   id: string
   type: string
   params: Record<string, unknown>
   position?: { x: number; y: number }
   size?: { width: number; height: number }
+  // Purely cosmetic "where you left off" state, restored on load so reopening a workflow
+  // looks the same as when it was saved — deliberately NOT a substitute for real run state
+  // (which already has its own independent, more authoritative mechanism: each run is
+  // tagged with `workflow_name` and discoverable via `GET /api/workflows/{name}/runs`,
+  // which already drives the Resume button). `status` is sanitized on load (see
+  // loadGraph) since "running" can never be genuinely true immediately after a fresh load.
+  status?: VeNodeData['status']
+  error?: string | null
+  collapsed?: boolean
+  expanded_size?: { width: number; height: number }
+  // Mirrors `runStore.staleNodeIds` at save time (a separate store — graphStore has no
+  // access to it directly, so callers of `toJSON` pass it in explicitly; see saveTab.ts).
+  stale?: boolean
 }
 export interface GraphEdgeSpec {
   source: string
@@ -57,7 +70,9 @@ export interface GraphState {
   closeSecondaryTab: () => void
   setNodeStatus: (id: string, status: VeNodeData['status'], error?: string | null) => void
   resetAllStatuses: () => void
-  toJSON: () => GraphSpecJSON
+  // `staleNodeIds` comes from the tab's separate runStore (see saveTab.ts) — graphStore
+  // itself has no access to it.
+  toJSON: (staleNodeIds?: Set<string>) => GraphSpecJSON
   loadGraph: (graph: GraphSpecJSON) => void
 }
 
@@ -213,7 +228,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
       set({ nodes: get().nodes.map((n) => ({ ...n, data: { ...n.data, status: 'idle', error: null } })) })
     },
 
-    toJSON: () => {
+    toJSON: (staleNodeIds) => {
       const { nodes, edges } = get()
       return {
         nodes: nodes.map((n) => {
@@ -225,6 +240,11 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
             params: n.data.params,
             position: n.position,
             ...(width != null && height != null ? { size: { width, height } } : {}),
+            status: n.data.status,
+            ...(n.data.error != null ? { error: n.data.error } : {}),
+            ...(n.data.collapsed ? { collapsed: n.data.collapsed } : {}),
+            ...(n.data.expandedSize ? { expanded_size: n.data.expandedSize } : {}),
+            ...(staleNodeIds?.has(n.id) ? { stale: true } : {}),
           }
         }),
         edges: edges.map((e) => ({
@@ -238,13 +258,25 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
 
     loadGraph: (graph) => {
       set({
-        nodes: graph.nodes.map((n, i) => ({
-          id: n.id,
-          type: n.type,
-          position: n.position ?? { x: 80 + (i % 4) * 240, y: 80 + Math.floor(i / 4) * 180 },
-          ...(n.size ? { width: n.size.width, height: n.size.height } : {}),
-          data: { params: n.params, status: 'idle' },
-        })),
+        nodes: graph.nodes.map((n, i) => {
+          // "running" can never be genuinely true the instant a workflow is (re)loaded —
+          // no run is actually in flight yet — so a stale "running" from whenever this was
+          // last saved is sanitized back to "idle" rather than lying about live activity.
+          const status = n.status && n.status !== 'running' ? n.status : 'idle'
+          return {
+            id: n.id,
+            type: n.type,
+            position: n.position ?? { x: 80 + (i % 4) * 240, y: 80 + Math.floor(i / 4) * 180 },
+            ...(n.size ? { width: n.size.width, height: n.size.height } : {}),
+            data: {
+              params: n.params,
+              status,
+              ...(n.error != null ? { error: n.error } : {}),
+              ...(n.collapsed ? { collapsed: n.collapsed } : {}),
+              ...(n.expanded_size ? { expandedSize: n.expanded_size } : {}),
+            },
+          }
+        }),
         edges: graph.edges.map((e) => ({
           id: edgeId(e),
           source: e.source,

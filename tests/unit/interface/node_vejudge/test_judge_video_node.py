@@ -63,7 +63,7 @@ def test_dry_run_estimates_calls_without_gateway(monkeypatch, make_ctx, tmp_path
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut")}
     ctx = make_ctx(
         params={"metrics": ["M2", "M4"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()}, dry_run=True,
+        inputs={"samples": dataset, "engine_config": _engine_config()}, dry_run=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
 
@@ -77,7 +77,7 @@ def test_live_call_rejected_without_allow_live(make_ctx, tmp_path):
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut")}
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=False,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
@@ -93,7 +93,7 @@ def test_missing_dataset_input_is_a_node_error(make_ctx):
 
 def test_missing_engine_config_input_is_a_node_error(make_ctx, tmp_path):
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut")}
-    ctx = make_ctx(params={"metrics": ["M2"]}, inputs={"dataset": dataset}, dry_run=True)
+    ctx = make_ctx(params={"metrics": ["M2"]}, inputs={"samples": dataset}, dry_run=True)
     result = VideoJudgeNodeExecutor().run(ctx)
     assert result.status == "error"
     assert "engine_config" in result.error
@@ -103,7 +103,7 @@ def test_unknown_metric_is_a_node_error(make_ctx, tmp_path):
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut")}
     ctx = make_ctx(
         params={"metrics": ["M9"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()}, dry_run=True,
+        inputs={"samples": dataset, "engine_config": _engine_config()}, dry_run=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
     assert result.status == "error"
@@ -114,7 +114,7 @@ def test_text_metric_is_rejected_as_non_video(make_ctx, tmp_path):
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut")}
     ctx = make_ctx(
         params={"metrics": ["M1"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()}, dry_run=True,
+        inputs={"samples": dataset, "engine_config": _engine_config()}, dry_run=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
     assert result.status == "error"
@@ -136,7 +136,7 @@ def test_item_with_no_rendered_video_is_auto_skipped(monkeypatch, make_ctx, tmp_
     }
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
@@ -159,7 +159,7 @@ def test_checkpoint_resume_skips_completed_pairs(monkeypatch, make_ctx, tmp_path
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut", with_video=True)}
     ctx = make_ctx(
         params={"metrics": ["M2", "M4"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=True,
     )
 
@@ -183,7 +183,7 @@ def test_progress_init_reports_accurate_total_excluding_skipped_video(monkeypatc
     }
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=True,
     )
     events: list[tuple[str, dict]] = []
@@ -202,7 +202,7 @@ def test_concurrency_produces_the_same_results_as_sequential(monkeypatch, make_c
     dataset = {f"item{i}::peanut": _sample(tmp_path, f"item{i}", with_video=True) for i in range(5)}
     ctx = make_ctx(
         params={"metrics": ["M2", "M4"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config(concurrency=4)},
+        inputs={"samples": dataset, "engine_config": _engine_config(concurrency=4)},
         dry_run=False, allow_live=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)
@@ -230,7 +230,7 @@ def test_should_stop_cancels_not_yet_started_tasks(monkeypatch, make_ctx, tmp_pa
     dataset = {f"item{i}::peanut": _sample(tmp_path, f"item{i}", with_video=True) for i in range(20)}
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config(concurrency=1)},
+        inputs={"samples": dataset, "engine_config": _engine_config(concurrency=1)},
         dry_run=False, allow_live=True,
     )
     ctx.should_stop = lambda: calls["n"] >= 2
@@ -248,7 +248,7 @@ def test_batch_size_default_calls_on_batch_once_per_completed_item(monkeypatch, 
     dataset = {f"item{i}::peanut": _sample(tmp_path, f"item{i}", with_video=True) for i in range(3)}
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=True,
     )
     batches: list[dict] = []
@@ -273,7 +273,7 @@ def test_engine_error_is_not_checkpointed(monkeypatch, make_ctx, tmp_path):
     dataset = {"prj-x::0::peanut": _sample(tmp_path, "prj-x::0::peanut", with_video=True)}
     ctx = make_ctx(
         params={"metrics": ["M2"]},
-        inputs={"dataset": dataset, "engine_config": _engine_config()},
+        inputs={"samples": dataset, "engine_config": _engine_config()},
         dry_run=False, allow_live=True,
     )
     result = VideoJudgeNodeExecutor().run(ctx)

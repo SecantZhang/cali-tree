@@ -42,6 +42,9 @@ test.describe('app shell and theme', () => {
 
     await page.screenshot({ path: 'e2e/screenshots/light-theme.png', fullPage: true })
 
+    // Theme lives inside the Settings dropdown (SettingsMenu.tsx) — opened once here; it
+    // stays open across both toggles below (no auto-close on a plain in-place preference).
+    await page.getByTitle('Settings').click()
     await page.getByTitle('Toggle theme').click()
 
     await expect(html).toHaveAttribute('data-theme', 'dark')

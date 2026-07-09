@@ -15,7 +15,7 @@ test.describe('error path', () => {
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     await expect(judgeNode).toBeVisible()
 
-    // No connections at all — the Judge Node's `dataset` input is left unwired.
+    // No connections at all — the Judge Node's `samples` input is left unwired.
     await expect(page.locator('.react-flow__edge')).toHaveCount(0)
 
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
@@ -27,7 +27,7 @@ test.describe('error path', () => {
     await expect(statusDot).toHaveClass(/status-error/)
     await expect(statusDot).toHaveAttribute(
       'title',
-      "Text Judge Node requires a 'dataset' input (wire a Dataset Node's `dataset` output)",
+      "Text Judge Node requires a 'samples' input (wire a Dataset Node's `samples` output)",
     )
 
     // The top-level run error banner (.console-error) only carries graph-level failures

@@ -19,12 +19,12 @@ export function PreprocessingNode({ id, data, selected }: NodeProps) {
       sockets={
         <>
           <SocketHandle
-            kind="target" id="dataset" label="dataset" top={socketTop(0, 1)}
-            color={SOCKET_COLORS.dataset}
+            kind="target" id="samples" label="samples" top={socketTop(0, 1)}
+            color={SOCKET_COLORS.samples}
           />
           <SocketHandle
-            kind="source" id="dataset" label="dataset" top={socketTop(0, 1)}
-            color={SOCKET_COLORS.dataset}
+            kind="source" id="samples" label="samples" top={socketTop(0, 1)}
+            color={SOCKET_COLORS.samples}
           />
         </>
       }

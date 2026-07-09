@@ -38,8 +38,8 @@ def _graph_body(*, dry_run=True, allow_live=False):
                     "target": "ds", "target_socket": "raw_dataset",
                 },
                 {
-                    "source": "ds", "source_socket": "dataset",
-                    "target": "judge", "target_socket": "dataset",
+                    "source": "ds", "source_socket": "samples",
+                    "target": "judge", "target_socket": "samples",
                 },
                 {
                     "source": "engine", "source_socket": "engine_config",
@@ -95,6 +95,27 @@ def test_workflow_save_load_round_trips_position_and_size(client):
     assert nodes["src"]["size"] == {"width": 220.0, "height": 140.0}
     assert nodes["judge"]["position"] is None
     assert nodes["judge"]["size"] is None
+
+
+def test_workflow_save_load_round_trips_cosmetic_view_state(client):
+    # Purely cosmetic "what this node looked like last time" fields — wire-layer only,
+    # same category as position/size, never touched by graph execution.
+    graph = _graph_body()["graph"]
+    graph["nodes"][0]["status"] = "error"
+    graph["nodes"][0]["error"] = "boom"
+    graph["nodes"][0]["collapsed"] = True
+    graph["nodes"][0]["expanded_size"] = {"width": 300.0, "height": 220.0}
+    graph["nodes"][0]["stale"] = True
+    resp = client.post("/api/workflows", json={"name": "with_view_state", "graph": graph})
+    assert resp.status_code == 200
+
+    resp = client.get("/api/workflows/with_view_state")
+    node = {n["id"]: n for n in resp.json()["graph"]["nodes"]}["src"]
+    assert node["status"] == "error"
+    assert node["error"] == "boom"
+    assert node["collapsed"] is True
+    assert node["expanded_size"] == {"width": 300.0, "height": 220.0}
+    assert node["stale"] is True
 
 
 def test_workflow_rejects_unsafe_name(client):

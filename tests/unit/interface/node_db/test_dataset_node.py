@@ -56,7 +56,7 @@ def test_default_sampling_passes_every_item_through(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()})
     result = DatasetNodeExecutor().run(ctx)
     assert result.status == "done"
-    assert set(result.outputs["dataset"]) == set(_raw_dataset())
+    assert set(result.outputs["samples"]) == set(_raw_dataset())
     assert result.outputs["labels"] == {}
     assert result.meta == {
         "n_items": 4, "n_raw_items": 4, "n_labels": 0, "n_pool_labeled": 0,
@@ -66,13 +66,13 @@ def test_default_sampling_passes_every_item_through(make_ctx):
 def test_use_case_filter(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["speech-driven"]})
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
 
 
 def test_item_id_pattern(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"item_id_pattern": r"^prj-a::"})
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
 
 
 def test_sampling_ratio_unified(make_ctx):
@@ -81,7 +81,7 @@ def test_sampling_ratio_unified(make_ctx):
         params={"sampling_ratio": 0.5, "sampling_mode": "unified"},
     )
     result = DatasetNodeExecutor().run(ctx)
-    assert len(result.outputs["dataset"]) == 2
+    assert len(result.outputs["samples"]) == 2
 
 
 def test_sampling_ratio_alone_takes_effect_without_an_explicit_mode(make_ctx):
@@ -90,7 +90,7 @@ def test_sampling_ratio_alone_takes_effect_without_an_explicit_mode(make_ctx):
     # actually narrow the selection now that "full" no longer exists.
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 0.5})
     result = DatasetNodeExecutor().run(ctx)
-    assert len(result.outputs["dataset"]) == 2
+    assert len(result.outputs["samples"]) == 2
 
 
 def test_sampling_uses_use_case_already_on_each_item_not_a_re_derivation(make_ctx):
@@ -102,7 +102,7 @@ def test_sampling_uses_use_case_already_on_each_item_not_a_re_derivation(make_ct
         params={"sampling_ratio": 0.5, "sampling_mode": "stratified"},
     )
     result = DatasetNodeExecutor().run(ctx)
-    dataset = result.outputs["dataset"]
+    dataset = result.outputs["samples"]
     assert len(dataset) == 2
     use_cases = {item["use_case"] for item in dataset.values()}
     assert use_cases == {"visual montage", "speech-driven"}  # one from each group
@@ -118,7 +118,7 @@ def test_zero_items_after_sampling_gets_a_warning(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["nonexistent"]})
     result = DatasetNodeExecutor().run(ctx)
     assert result.status == "done"
-    assert result.outputs["dataset"] == {}
+    assert result.outputs["samples"] == {}
     assert "Matched 0 items" in result.meta["warning"]
 
 
@@ -136,7 +136,7 @@ def test_labels_are_joined_by_item_id_for_exactly_the_sampled_items(make_ctx, mo
     )
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
     assert set(result.outputs["labels"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
     assert result.outputs["labels"]["prj-a::0::peanut"].scores["video_addresses_prompt"] == 5.0
     assert result.meta["n_labels"] == 2
@@ -168,7 +168,7 @@ def test_items_without_a_matching_human_record_are_simply_absent_from_labels(mak
     )
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
     assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}
 
 
@@ -186,7 +186,7 @@ def test_require_labels_restricts_the_sampling_pool_to_annotated_items(make_ctx,
         params={"require_labels": True, "sampling_ratio": 1.0},
     )
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-a::0::peanut"}
     assert set(result.outputs["labels"]) == {"prj-a::0::peanut"}
     assert result.meta["n_pool_labeled"] == 1
     assert "warning" not in result.meta
@@ -204,7 +204,7 @@ def test_zero_label_overlap_after_filtering_has_no_warning_when_the_pool_has_no_
         inputs={"raw_dataset": _raw_dataset()}, params={"item_id_pattern": r"^prj-b::"},
     )
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-b::0::peanut", "prj-b::1::peanut"}
     assert result.outputs["labels"] == {}
     assert result.meta["n_pool_labeled"] == 0
     assert "warning" not in result.meta
@@ -225,7 +225,7 @@ def test_zero_label_overlap_on_a_sample_warns_when_the_pool_had_labels(make_ctx,
         inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 0.25},
     )
     result = DatasetNodeExecutor().run(ctx)
-    assert set(result.outputs["dataset"]) == {"prj-a::0::peanut"}
+    assert set(result.outputs["samples"]) == {"prj-a::0::peanut"}
     assert result.outputs["labels"] == {}
     assert result.meta["n_pool_labeled"] == 1
     assert "none have human labels" in result.meta["warning"]

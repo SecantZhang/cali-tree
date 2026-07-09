@@ -93,7 +93,9 @@ Each node interface has its own secondary tab by double-clicking on it. The node
 
 Every node shares the same chrome, regardless of category:
 - **Header** — node name + a category color swatch (see below).
-- **Input sockets** (left edge) — typed: `dataset` (stream of `JudgeSample`-shaped items), `engine`
+- **Input sockets** (left edge) — typed: `samples` (stream of `JudgeSample`-shaped items,
+  a Dataset node's sampled-item output — deliberately not named `dataset`, since that name
+  collided with the node's own name and its sibling `labels` output), `engine`
   (an LM engine handle), `judge_result`, `labels` (human annotations), `model_artifact`
   (a calibration/ensemble fit). A socket only accepts its matching type.
   Dataset-shaped types
@@ -134,11 +136,16 @@ Every node shares the same chrome, regardless of category:
   Set immediately when a downstream node's ancestor is (re-)run, not once that run finishes.
 - **Double-click → secondary tab** — see each node's "Secondary tab" entry below.
 
-**Node categories** (matching the `interface/` package layout in `docs/architecture.md`):
+**Node categories** — mostly matching the `interface/` package layout in
+`docs/architecture.md`, with one deliberate exception: the LM Engine Node lives in the
+`node_vejudge/` Python package (alongside the Judge nodes it configures) but is tagged with
+its own `node_lm_engine` category so it gets its own palette grouping/color rather than
+being visually lumped in with Judge nodes:
 
 | Category | Package | Color |
 |---|---|---|
 | Database | `node_db` | blue |
+| LM Engine | `node_lm_engine` (lives in the `node_vejudge/` package) | teal |
 | Preprocessing | `node_preprocessing` | green |
 | Judge / core | `node_vejudge` | purple |
 | Postprocessing | `node_postprocessing` | orange |
@@ -161,8 +168,9 @@ Input: None.
 
 Output: `raw_dataset` — a stream of `JudgeSample`-shaped items:
 `{item_id, project, prompt_idx, model, use_case, input: {user_prompt, a_roll_transcript_text, b_roll_captions_excerpt, initial_timeline_text, notes_path, asset_filepaths, ...}, algorithm, output: {output_video_path, assembly_json}}`.
-`raw_dataset` is a distinct socket type from `dataset` (below) specifically so a source's raw
-output can never be wired directly into a Judge node — sampling is always an explicit step.
+`raw_dataset` is a distinct socket type from `samples` (below, the Dataset node's sampled-item
+output) specifically so a source's raw output can never be wired directly into a Judge node —
+sampling is always an explicit step.
 
 Node parameters:
 * **Model**: which rendered-output model directory to read (default `peanut`).
@@ -197,9 +205,10 @@ node's own sampled set closes that gap.
 
 Input: `raw_dataset` (a Data Source node's output, e.g. Peanut Source Node).
 
-Outputs: `dataset` — the sampled subset of the input, same item shape. `labels` — the
-aggregated human-annotation record for each sampled item that has one (items with no
-annotation yet are simply absent, not an error).
+Outputs: `samples` — the sampled subset of the input, same item shape (named `samples`, not
+`dataset`, so it can't be confused with the node's own name or with the sibling `labels`
+output). `labels` — the aggregated human-annotation record for each sampled item that has one
+(items with no annotation yet are simply absent, not an error).
 
 Node parameters:
 * **Sampling ratio**: percentage, default to 100%.
@@ -217,8 +226,16 @@ Node parameters:
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
-No item browser of its own (it has no loader to browse against); double-click the upstream
-source node for that.
+Below that, a collapsible **Schema** reference (collapsed by default) documenting every field
+of a sampled item (`JudgeSample`) and of its joined human label, and — once this node has
+completed a run — a list+detail **item browser** over this node's *own sampled/filtered
+output* (not the raw loader): the item list flags which items carry a human label, and
+selecting one shows the same structured preview the Peanut Source Node uses (prompt, video
+player, transcript/captions/assembly-JSON sections, raw-JSON fallback) plus that item's
+per-dimension human scores when a label exists. Unlike the raw source browser, this reads the
+node's cached `samples`/`labels` outputs from the last run (via the run-status GET, no extra
+`/api/datasets` call), so it reflects exactly what was sampled — the shared preview component
+lives in `web/src/panels/RightPanel/secondary/JudgeSamplePreview.tsx`.
 
 #### Preprocessing Node
 
@@ -226,9 +243,9 @@ source node for that.
 
 Description: derives cached artifacts from a dataset stream's source/output media — sampled frames, keyframes, short clips, ASR transcript, OCR text, captions, shot boundaries, audio event labels, blur/flicker metrics (`vejudge/preprocessing/pp_template/base.py`). Implements the input-strategy variants from `docs/research.md` § Judge Input Strategies (A–E) as one composable node rather than five separate ones.
 
-Input: `dataset` (Dataset node output).
+Input: `samples` (Dataset node output).
 
-Output: `dataset` — the same items, enriched with artifact references. Artifacts are cached by `(item_id, preprocessing_config_hash)`; a node run never re-extracts frames/transcripts that already exist on disk for the current parameter hash.
+Output: `samples` — the same items, enriched with artifact references. Artifacts are cached by `(item_id, preprocessing_config_hash)`; a node run never re-extracts frames/transcripts that already exist on disk for the current parameter hash.
 
 Node parameters:
 * **Artifact types** (multi-select): sampled frames, keyframes, short clips, ASR transcript, OCR text, captions, shot boundaries, audio event labels, blur/flicker metrics.
@@ -240,7 +257,8 @@ Secondary tab: per-item artifact viewer — a frame filmstrip, the ASR transcrip
 
 #### LM Engine Node
 
-*Category: `node_vejudge`*
+*Category: `node_lm_engine`* (lives in the `node_vejudge/` Python package, but tagged with
+its own category so it doesn't share Judge nodes' color/palette grouping)
 
 Description: a reusable, swappable engine config — a Judge node no longer embeds its own
 model/temperature/concurrency; it takes a required `engine_config` input from an LM Engine
@@ -279,10 +297,18 @@ Node parameters:
   engine layer but isn't wired into the interface's Judge nodes at all yet, matching the
   Preprocessing Node's existing precedent of shipping a param before its behavior lands.
 
-Secondary tab: not implemented yet — a live tail of this engine's slice of
-`llm-histories.log` (prompt hash, token counts, latency, retry/failover timeline) is the
-eventual plan, but no route currently serves that log to the frontend. Today the tab just
-points back at the params panel, which already shows everything this node carries.
+Secondary tab: a light status panel — the effective config (engine kind/model/temperature/
+max tokens/concurrency), a **Feeds** list of which Judge node(s) this engine is wired into
+(traced off the live graph edges, so it updates as you rewire), and a **Test this engine**
+button that probes the gateway endpoints via `POST /api/engines/health-check`
+(`vejudge/interface/server/routes/engines.py`, wrapping `vejudge/lm_engine/health.py`'s
+`healthy_order`). That probe is a real (billable) 1-token ping per endpoint, so it's gated
+by the same `--live` confirm-then-`allow_live` path as any judge call — the button pops the
+same real-call `window.confirm` the global Run button uses, and the backend refuses a
+non-live request. Results show each endpoint's ok/status/latency with a status dot. Still a
+planned future addition (noted inline in the tab): a live tail of this engine's slice of
+`llm-histories.log` (prompt hash, token counts, latency, retry/failover timeline), which
+would need a new log-streaming route that doesn't exist yet.
 
 #### Text Judge Node / Video Judge Node
 
@@ -307,7 +333,7 @@ graph executor runs nodes strictly sequentially, so text and video judging — w
 overlap within one node's two internal thread pools — now run one after the other unless a
 future executor change adds concurrent sibling-node execution.
 
-Input: `dataset` (post-Preprocessing, or directly from a Dataset node) and a required
+Input: `samples` (post-Preprocessing, or directly from a Dataset node) and a required
 `engine_config` (an LM Engine Node's output — see that entry above for why this moved out
 of each Judge node's own params).
 
@@ -446,7 +472,7 @@ per-item picker with a real `<video controls>` player for the selected aligned i
 This node's own inputs (`judge_result`, `labels`) never carry a file path, so the
 video is resolved client-side by tracing the wired graph backward — through the
 Judge node that feeds this Eval node, to the Dataset node upstream of *that* — and reading
-that Dataset node's own cached `dataset` output by item id, rather than adding a `dataset`
+that Dataset node's own cached `samples` output by item id, rather than adding a `samples`
 input socket to Eval purely for this display lookup. If every dimension ends up with zero
 aligned rows despite real item-id overlap (a metric that was never selected, an
 invalid/skipped judge result, a non-numeric score, etc.), `meta.diagnostics` explains

@@ -90,6 +90,58 @@ test.describe('resizable panels and nodes', () => {
     expect(after!.height).toBeGreaterThan(before!.height + 60)
   })
 
+  test('resizing the secondary-tab modal via both edges persists across a reload and never closes it', async ({
+    page,
+  }) => {
+    // The default viewport (~1280px) is close enough to the modal's own default width
+    // (1200px) that a real resize would immediately hit the `maxWidth: 95vw` safety clamp —
+    // a bigger viewport here actually leaves room to grow, same as a real user would have
+    // on a normal-sized monitor.
+    await page.setViewportSize({ width: 1800, height: 1100 })
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+    await addNode(page, 'judge_text')
+
+    const node = page.getByTestId('rf__node-judge_text-1')
+    await node.dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+    const before = await modal.boundingBox()
+
+    // The modal centers itself, so widening/heightening it moves both of its edges toward
+    // whichever corner is being dragged — ending the drag with the cursor past the new edge
+    // (over the darkened backdrop) is the common case here, not an edge case. This is
+    // exactly the scenario that used to trigger the backdrop's click-to-close handler
+    // mid-drag (see ResizeHandle.tsx / SecondaryTabModal.tsx's 'is-resizing' guard).
+    const vHandle = modal.locator('.resize-handle-vertical')
+    const vBox = await vHandle.boundingBox()
+    await dragBy(page, vBox!.x + vBox!.width / 2, vBox!.y + vBox!.height / 2, 120, 0)
+    await expect(modal).toBeVisible()
+
+    const hHandle = modal.locator('.resize-handle-horizontal')
+    const hBox = await hHandle.boundingBox()
+    await dragBy(page, hBox!.x + hBox!.width / 2, hBox!.y + hBox!.height / 2, 0, 80)
+    await expect(modal).toBeVisible()
+
+    const after = await modal.boundingBox()
+    expect(after!.width).toBeGreaterThan(before!.width + 60)
+    expect(after!.height).toBeGreaterThan(before!.height + 40)
+
+    // Persisted via prefsStore, same convention as the left/right/bottom panels above —
+    // survives closing the modal and a full page reload. The canvas itself has no draft
+    // persistence (a reload always starts from a single blank tab), so a fresh node has to
+    // be added again post-reload — only the modal's own remembered *size* is under test.
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modal).toHaveCount(0)
+    await page.reload()
+    await waitForPaletteLoaded(page)
+    await addNode(page, 'judge_text')
+    await page.getByTestId('rf__node-judge_text-1').dblclick()
+    const reopened = await page.locator('.modal-panel').boundingBox()
+    expect(reopened!.width).toBeCloseTo(after!.width, 0)
+    expect(reopened!.height).toBeCloseTo(after!.height, 0)
+  })
+
   test('deselecting a node hides its resize handles', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)

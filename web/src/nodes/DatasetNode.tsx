@@ -23,8 +23,8 @@ export function DatasetNode({ id, data, selected }: NodeProps) {
             color={SOCKET_COLORS.raw_dataset}
           />
           <SocketHandle
-            kind="source" id="dataset" label="dataset" top={socketTop(0, 2)}
-            color={SOCKET_COLORS.dataset}
+            kind="source" id="samples" label="samples" top={socketTop(0, 2)}
+            color={SOCKET_COLORS.samples}
           />
           <SocketHandle
             kind="source" id="labels" label="labels" top={socketTop(1, 2)}

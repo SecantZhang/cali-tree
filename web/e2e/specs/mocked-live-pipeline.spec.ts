@@ -70,12 +70,12 @@ test.describe('mocked live pipeline', () => {
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
     await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'dataset', JUDGE, 'dataset')
+    await connect(page, DATASET, 'samples', JUDGE, 'samples')
     await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
     await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
     await connect(page, DATASET, 'labels', EVAL, 'labels')
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${DATASET}:dataset->${JUDGE}:dataset`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:labels->${EVAL}:labels`)).toHaveCount(1)
@@ -89,7 +89,8 @@ test.describe('mocked live pipeline', () => {
     await runButton.click()
 
     await expect(runButton).toHaveText('Run', { timeout: 20000 })
-    await expect(page.locator('.run-progress')).toHaveCount(0)
+    // Top-bar progress bars stay mounted, returning to their idle state after the run.
+    await expect(page.locator('.run-progress')).toBeVisible()
 
     for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()

@@ -22,8 +22,8 @@ export function TextJudgeNode({ id, data, selected }: NodeProps) {
       sockets={
         <>
           <SocketHandle
-            kind="target" id="dataset" label="dataset" top={socketTop(0, 2)}
-            color={SOCKET_COLORS.dataset}
+            kind="target" id="samples" label="samples" top={socketTop(0, 2)}
+            color={SOCKET_COLORS.samples}
           />
           <SocketHandle
             kind="target" id="engine_config" label="engine_config" top={socketTop(1, 2)}

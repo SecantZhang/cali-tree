@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getItem, listItems } from '../../../api/datasets'
-import { mediaUrl } from '../../../api/media'
 import { ProgressBar } from '../../../components/ProgressBar'
 import { useActiveRunStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
+import { JudgeSamplePreview } from './JudgeSamplePreview'
 
 export function SourceSecondaryTab({ node }: { node: VeNode }) {
   const loader = 'peanut_eval'
@@ -82,58 +82,13 @@ export function SourceSecondaryTab({ node }: { node: VeNode }) {
           </ul>
           <div className="item-preview">
             {itemQuery.data ? (
-              <ItemPreview item={itemQuery.data as Record<string, unknown>} />
+              <JudgeSamplePreview item={itemQuery.data as Record<string, unknown>} />
             ) : (
               <p className="empty-hint">Select an item to preview it.</p>
             )}
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function ItemPreview({ item }: { item: Record<string, unknown> }) {
-  // peanut_eval (JudgeSample) shape.
-  const input = (item.input as Record<string, unknown>) ?? {}
-  const output = (item.output as Record<string, unknown>) ?? {}
-  return (
-    <div>
-      <h4>{String(item.item_id ?? '')}</h4>
-      <div className="item-field"><strong>use_case:</strong> {String(item.use_case ?? '')}</div>
-      <div className="item-field"><strong>prompt:</strong> {String(input.user_prompt ?? '')}</div>
-      {typeof output.output_video_path === 'string' && output.output_video_path && (
-        <div className="item-field">
-          <strong>video:</strong>
-          <video
-            controls preload="metadata" className="item-video"
-            src={mediaUrl(output.output_video_path)}
-          />
-          <div><span className="mono-path">{output.output_video_path}</span></div>
-        </div>
-      )}
-      {typeof input.b_roll_captions_excerpt === 'string' && input.b_roll_captions_excerpt && (
-        <details>
-          <summary>B-roll captions</summary>
-          <pre className="json-preview">{input.b_roll_captions_excerpt}</pre>
-        </details>
-      )}
-      {typeof input.a_roll_transcript_text === 'string' && input.a_roll_transcript_text && (
-        <details>
-          <summary>A-roll transcript</summary>
-          <pre className="json-preview">{input.a_roll_transcript_text}</pre>
-        </details>
-      )}
-      {output.assembly_json != null && (
-        <details>
-          <summary>Assembly JSON</summary>
-          <pre className="json-preview">{JSON.stringify(output.assembly_json, null, 2)}</pre>
-        </details>
-      )}
-      <details>
-        <summary>Raw JSON</summary>
-        <pre className="json-preview">{JSON.stringify(item, null, 2)}</pre>
-      </details>
     </div>
   )
 }

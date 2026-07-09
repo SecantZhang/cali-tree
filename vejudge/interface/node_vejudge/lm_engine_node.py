@@ -25,7 +25,7 @@ ENGINE_KINDS = ["gemini", "gpt", "qwen", "claude", "deepseek", "llama", "kimi"]
 @register
 class LMEngineNodeExecutor(NodeExecutor):
     node_type = "lm_engine"
-    category = "node_vejudge"
+    category = "node_lm_engine"
     input_sockets: dict[str, str] = {}
     output_sockets = {"engine_config": "engine_config"}
     param_schema = {

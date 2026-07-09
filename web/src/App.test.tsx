@@ -14,18 +14,18 @@ const NODE_TYPES = [
   },
   {
     type: 'dataset', category: 'node_db', input_sockets: { raw_dataset: 'raw_dataset' },
-    output_sockets: { dataset: 'dataset', labels: 'labels' }, param_schema: {},
+    output_sockets: { samples: 'samples', labels: 'labels' }, param_schema: {},
   },
   {
-    type: 'preprocessing', category: 'node_preprocessing', input_sockets: { dataset: 'dataset' },
-    output_sockets: { dataset: 'dataset' }, param_schema: {},
+    type: 'preprocessing', category: 'node_preprocessing', input_sockets: { samples: 'samples' },
+    output_sockets: { samples: 'samples' }, param_schema: {},
   },
   {
-    type: 'judge_text', category: 'node_vejudge', input_sockets: { dataset: 'dataset' },
+    type: 'judge_text', category: 'node_vejudge', input_sockets: { samples: 'samples' },
     output_sockets: { judge_result: 'judge_result' }, param_schema: {},
   },
   {
-    type: 'judge_video', category: 'node_vejudge', input_sockets: { dataset: 'dataset' },
+    type: 'judge_video', category: 'node_vejudge', input_sockets: { samples: 'samples' },
     output_sockets: { judge_result: 'judge_result' }, param_schema: {},
   },
   {
@@ -67,7 +67,7 @@ function mockJsonFor(url: string): unknown {
           status: 'done',
           error: null,
           meta: { n_items: 0, warning: "Matched 0 items for loader 'peanut_eval'." },
-          outputs: { dataset: {} },
+          outputs: { samples: {} },
         },
       },
       order: [warnRunNodeId],
@@ -240,12 +240,20 @@ describe('App shell', () => {
     expect(container.querySelector('.rf-node.is-running')).toBeNull()
   })
 
-  it('shows top-bar overall + current-node progress bars only while running', async () => {
+  it('shows top-bar progress bars always, with a live state while running and an idle state otherwise', async () => {
     const { container } = renderApp()
     fireEvent.click(await screen.findByText('judge_text'))
     const nodeId = activeGraphStore().getState().nodes[0].id
 
-    expect(container.querySelector('.run-progress')).toBeNull()
+    // Always rendered — even before any run has started (the area no longer disappears).
+    expect(container.querySelector('.run-progress')).not.toBeNull()
+    expect(screen.getByText('Workflow progress — Idle')).toBeInTheDocument()
+    expect(screen.getByText('Idle — no run in progress')).toBeInTheDocument()
+    // Both bars present, both in the flat idle state (no width fill, no busy animation).
+    let bars = container.querySelectorAll('.run-progress .progress-bar-fill')
+    expect(bars).toHaveLength(2)
+    expect(bars[0]).toHaveClass('progress-bar-idle')
+    expect(bars[1]).toHaveClass('progress-bar-idle')
 
     act(() => {
       activeRunStore().getState().beginRun('run-1', 3)
@@ -257,15 +265,17 @@ describe('App shell', () => {
 
     expect(screen.getByText('Workflow progress')).toBeInTheDocument()
     expect(screen.getByText(`Running: Text Judge (${nodeId})`)).toBeInTheDocument()
-    const bars = container.querySelectorAll('.run-progress .progress-bar-fill')
+    bars = container.querySelectorAll('.run-progress .progress-bar-fill')
     expect(bars).toHaveLength(2)
     expect((bars[0] as HTMLElement).style.width).toBe(`${(1 / 3) * 100}%`) // overall: 1/3 nodes done
     expect((bars[1] as HTMLElement).style.width).toBe('50%') // current node: 1/2
 
+    // Back to idle (not gone) once the run finishes.
     act(() => {
       activeRunStore().getState().setStatus('done')
     })
-    expect(container.querySelector('.run-progress')).toBeNull()
+    expect(container.querySelector('.run-progress')).not.toBeNull()
+    expect(screen.getByText('Idle — no run in progress')).toBeInTheDocument()
   })
 
   it('shows a Resume button only when the current workflow\'s latest run is resumable', async () => {
@@ -355,6 +365,7 @@ describe('App shell', () => {
 
   it('opens the credentials modal from the top bar', async () => {
     renderApp()
+    fireEvent.click(screen.getByTitle('Settings'))
     fireEvent.click(screen.getByTitle('API credentials'))
     expect(await screen.findByText('API Credentials')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -368,6 +379,7 @@ describe('App shell', () => {
     expect(rf().classList.contains('light')).toBe(true)
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
 
+    fireEvent.click(screen.getByTitle('Settings'))
     fireEvent.click(screen.getByTitle('Toggle theme'))
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
