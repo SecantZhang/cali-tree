@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
+from ..core.rubric.definitions import JUDGE_METRICS
+from ..database.dl_human_annotations import HUMAN_DIMENSIONS
+
 # human dimension -> (metric_id, extractor over that metric's parsed dict)
 JudgeExtractor = Callable[[dict[str, Any]], Optional[float]]
 
@@ -38,6 +41,19 @@ ALIGNMENT: dict[str, tuple[str, JudgeExtractor]] = {
     "section_placement_middle": ("M5", _top_score),
     "section_placement_closing": ("M5", _top_score),
 }
+
+# Splits ALIGNMENT's dimensions by modality, derived from each dimension's metric_id's own
+# `JUDGE_METRICS[metric_id].modality` (core/rubric/definitions.py) rather than a second
+# hardcoded copy of the M1/M3 vs M2/M4/M5/M6 split — used by the Eval Text/Eval Video node
+# executors to each compute only their own modality's dimensions.
+TEXT_DIMENSIONS: frozenset[str] = frozenset(
+    dim for dim, (metric_id, _extractor) in ALIGNMENT.items()
+    if JUDGE_METRICS[metric_id].modality == "text"
+)
+VIDEO_DIMENSIONS: frozenset[str] = frozenset(
+    dim for dim, (metric_id, _extractor) in ALIGNMENT.items()
+    if JUDGE_METRICS[metric_id].modality == "video"
+)
 
 JUDGE_SIGNAL_LABEL: dict[str, str] = {
     "video_addresses_prompt": "M3.score_1_to_5",
@@ -84,3 +100,119 @@ def derive_overall(judge_results: dict[str, Any]) -> Optional[float]:
         if isinstance(ov, (int, float)) and not isinstance(ov, bool):
             vals.append(float(ov))
     return sum(vals) / len(vals) if vals else None
+
+
+def diagnose_missing_rows(
+    items: list[str],
+    human: dict[str, Any],
+    per_item_judges: dict[str, dict[str, Any]],
+    *,
+    sample_size: int = 20,
+    dimensions: Optional[frozenset[str]] = None,
+) -> list[dict[str, Any]]:
+    """Explain why (item, dimension) pairs failed to produce an aligned row.
+
+    ``build_aligned_rows`` silently ``continue``s past several distinct causes (missing
+    human score, the judge metric never having run at all, an invalid/skipped judge
+    result, or a parsed result with no numeric score at the expected field) — useful for
+    a human/live run that overlaps by item id but still yields zero (or unexpectedly few)
+    aligned rows, since none of those causes is otherwise visible anywhere. Grouped by
+    (dimension, reason) rather than emitted per item, since the same cause typically
+    applies to every item at once (e.g. a metric simply wasn't selected on the Judge
+    node) — a flat per-item list would just repeat the same line dozens of times.
+
+    ``dimensions`` restricts the diagnosis to a subset of ``HUMAN_DIMENSIONS`` (e.g. the
+    Eval Text/Eval Video node split) — ``None`` (the default) covers all of them, matching
+    the CLI benchmark's unified gap report.
+    """
+    counts: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def _record(dim: str, reason: str, item_id: str) -> None:
+        key = (dim, reason)
+        entry = counts.setdefault(
+            key, {"dimension": dim, "reason": reason, "count": 0, "example_item_ids": []}
+        )
+        entry["count"] += 1
+        if len(entry["example_item_ids"]) < 3:
+            entry["example_item_ids"].append(item_id)
+
+    dims = dimensions if dimensions is not None else HUMAN_DIMENSIONS
+    for item_id in items[:sample_size]:
+        agg = human.get(item_id)
+        if agg is None:
+            continue
+        judge_results = per_item_judges.get(item_id, {})
+        for dim in dims:
+            if dim not in ALIGNMENT:
+                _record(dim, "dimension has no ALIGNMENT crosswalk entry", item_id)
+                continue
+            metric_id, extractor = ALIGNMENT[dim]
+            if agg.scores.get(dim) is None:
+                _record(dim, "no human score for this dimension on this item", item_id)
+                continue
+            res = judge_results.get(metric_id)
+            if res is None:
+                _record(
+                    dim,
+                    f"judge metric {metric_id} was never produced for this item (not "
+                    "selected on the Judge node, or the item was skipped)",
+                    item_id,
+                )
+                continue
+            parsed = res.get("parsed")
+            if not isinstance(parsed, dict):
+                status = "skipped" if res.get("skipped") else (res.get("error") or "invalid/unparsed")
+                _record(
+                    dim, f"judge metric {metric_id} has no valid parsed output ({status})", item_id
+                )
+                continue
+            if extractor(parsed) is None:
+                _record(
+                    dim,
+                    f"judge metric {metric_id}'s parsed output has no numeric score at "
+                    "the expected field for this dimension",
+                    item_id,
+                )
+
+    return sorted(counts.values(), key=lambda e: -e["count"])
+
+
+def build_aligned_rows(
+    items: list[str],
+    human: dict[str, Any],
+    per_item_judges: dict[str, dict[str, Any]],
+    *,
+    dimensions: Optional[frozenset[str]] = None,
+) -> list[dict[str, Any]]:
+    """Pair human scores with aligned judge signals, one row per (item, dimension).
+
+    Shared by the CLI benchmark (``benchmark/human_gap/runner.py``) and the interface's
+    Eval Text/Eval Video node executors, so all compute the human-vs-judge gap the same
+    way. ``dimensions`` restricts the output to a subset of ``HUMAN_DIMENSIONS`` (e.g. one
+    modality's dimensions) — ``None`` (the default) covers all of them, matching the CLI
+    benchmark's unified gap report.
+    """
+    dims = dimensions if dimensions is not None else HUMAN_DIMENSIONS
+    rows: list[dict[str, Any]] = []
+    for item_id in items:
+        agg = human[item_id]
+        judge_results = per_item_judges.get(item_id, {})
+        for dim in dims:
+            if dim not in ALIGNMENT:
+                continue
+            human_score = agg.scores.get(dim)
+            judge_score = judge_signal_for_dimension(judge_results, dim)
+            if human_score is None or judge_score is None:
+                continue
+            rows.append(
+                {
+                    "item_id": item_id,
+                    "project": agg.project,
+                    "model": agg.model,
+                    "use_case": agg.use_case,
+                    "dimension": dim,
+                    "human": human_score,
+                    "judge_raw": judge_score,
+                }
+            )
+    return rows

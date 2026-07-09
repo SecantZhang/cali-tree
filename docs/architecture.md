@@ -22,6 +22,11 @@ root/
 │   ├── unit/                      # Per-module tests; lm_engine calls mocked
 │   ├── integration/              # Small end-to-end pipeline runs on fixtures
 │   └── fixtures/                  # Tiny sample media + golden expected outputs
+├── workflows/                     # Saved node-graph workflows (JSON), config.WORKFLOWS_ROOT
+│   └── examples/quick_eval.json   # Peanut Source->Dataset(dataset+labels)->Judge->Eval
+├── web/                           # React frontend for the node-graph interface (npm-managed;
+│   │                              #   excluded from the Python wheel — see web/README.md)
+│   └── src/
 └── vejudge/                       # Main package
     ├── logging/                   # Structured logging utilities
     ├── database/                  # Data loaders for video datasets
@@ -56,13 +61,25 @@ root/
     ├── postprocessing/            # Score alignment, aggregation, output formatting
     │   └── eval/
     ├── benchmark/                 # Benchmark runners for specific datasets/tasks
-    └── interface/                 # ComfyUI-style node interface
-        ├── node_db/
-        ├── node_preprocessing/
-        ├── node_vejudge/
-        ├── node_postprocessing/
-        └── node_eval/
+    └── interface/                 # ComfyUI-style node interface (see interface.md)
+        ├── server/                # FastAPI backend: graph model, node registry,
+        │                          #   execution engine, run registry, HTTP/WS routes
+        ├── node_db/               # Peanut Source / Dataset executors (Dataset also joins
+        │                          #   matching human-annotation labels by item id)
+        ├── node_preprocessing/    # Preprocessing Node executor (pass-through stub — see below)
+        ├── node_vejudge/          # LM Engine + Text/Video Judge Node executors + shared
+        │                          #   concurrent-judging helper
+        ├── node_eval/             # Eval Text / Eval Video Node executors (human-vs-judge
+        │                          #   agreement, split by modality)
+        └── node_types.py          # import-side-effect module registering the 8 above
 ```
+
+`node_postprocessing/` (and the other 3 node types from `interface.md` — Ensemble,
+Calibration, Aggregation) are **not implemented**. `node_preprocessing/` exists but is a
+pass-through stub (no real artifact extraction) — the `interface` branch deliberately proves
+the architecture with a minimal node set before widening to the rest of the spec. LM Engine
+*is* implemented (`node_vejudge/lm_engine_node.py`) — Judge nodes take its `engine_config`
+output as a required input rather than embedding engine params themselves.
 
 ---
 
@@ -79,6 +96,18 @@ root/
 
 ---
 
+## Interface API
+
+`vejudge/interface/server/` is a local-only FastAPI backend (no auth) fronting the same
+loaders/judges/metrics the CLI uses — every node executor is a thin wrapper, never a parallel
+implementation. `vejudge-interface` (`run/run_interface.sh`) launches it; the `web/` React app
+is its client. A graph run gets the same `logs/exps/<ts>-exps/` directory a CLI benchmark run
+gets (tagged `"benchmark": "interface_graph"`), and the Judge Node enforces the identical
+dry-run/`--live` gating and checkpoint-based resume as `vejudge-bench`. See `interface.md` for
+the node/workflow model and `web/README.md` for frontend dev setup.
+
+---
+
 ## Testing
 
 Tests live in `tests/` and mirror the `vejudge/` package layout so each module's tests sit at the matching path.
@@ -89,6 +118,8 @@ Tests live in `tests/` and mirror the `vejudge/` package layout so each module's
 - **Fixtures** (`tests/fixtures/`) — tiny sample videos/frames plus golden expected outputs. Keep them small enough to commit; never depend on external datasets or network access.
 - **Validation logic** (JSON validity, score ranges, required fields, non-empty rationale) is covered by dedicated tests, since the judge flags rather than silently defaults invalid output.
 - Run with `pytest`. Unit tests must pass with no credentials or GPU; integration tests may be marked and skipped when media tooling is unavailable.
+- `tests/unit/interface/` and `tests/integration/interface/` cover the node-graph backend (`vejudge/interface/server/`, `node_db/`, `node_vejudge/`, `node_eval/`), mirroring `vejudge/interface/`'s layout the same way. `web/` has its own `npm run test` (vitest) suite, not part of the `pytest` run.
+- A real-browser Playwright suite (`web/e2e/specs/`, run via `./run/run_e2e_tests.sh`) covers the interface end-to-end against a real FastAPI backend and a mock LM gateway — see "Testing the Interface (End-to-End)" in `CLAUDE.md` for what it catches that pytest/vitest cannot.
 
 ---
 

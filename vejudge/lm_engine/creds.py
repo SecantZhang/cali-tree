@@ -1,14 +1,20 @@
 """Load Pluto gateway credentials.
 
-Primary source is the ``.env-raw`` blurb shipped in the repo root (a human-readable
-file, NOT key=value), parsed with regexes. Standard environment variables take
-precedence when set, so CI / other machines can inject creds the usual way.
+Resolution order (highest precedence first):
+1. **Manual override** — entered via the interface's Settings modal, persisted to
+   ``config.CREDENTIALS_FILE`` (a local gitignored JSON file) so it survives backend
+   restarts without needing shell/env-var access. Explicit UI input beats ambient config.
+2. Standard environment variables (``CHAT_GPT_API_KEY``/``OPENAI_COMPAT_BASE_URL``, etc.),
+   so CI / other machines can inject creds the usual way.
+3. The ``.env-raw`` blurb shipped in the repo root (a human-readable file, NOT
+   key=value), parsed with regexes.
 
-The token is never logged.
+The token is never logged, and never echoed back by any API response.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -19,6 +25,12 @@ from .. import config
 
 _TOKEN_RE = re.compile(r"\bsk-[A-Za-z0-9_\-]{8,}\b")
 _URL_RE = re.compile(r"https?://[^\s\"']+")
+
+CredsSource = str  # "manual" | "env" | "file"
+
+# Keyed by resolved credentials-file path so tests can pass a distinct tmp_path without
+# colliding with (or being polluted by) whatever's cached for the real default path.
+_manual_cache: dict[str, Optional["PlutoCreds"]] = {}
 
 
 @dataclass
@@ -94,9 +106,77 @@ def _first_url(lines: list[str]) -> Optional[str]:
     return None
 
 
-def load_creds(env_raw_path: Optional[Path] = None) -> PlutoCreds:
-    """Return credentials, preferring real env vars, then the .env-raw file."""
+def _manual_creds_path(credentials_file: Optional[Path] = None) -> Path:
+    return Path(credentials_file) if credentials_file else config.CREDENTIALS_FILE
+
+
+def _load_manual_from_disk(path: Path) -> Optional[PlutoCreds]:
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    token = str(data.get("token") or "").strip()
+    base_url = str(data.get("base_url") or "").strip()
+    mirror_url = str(data.get("mirror_url") or "").strip() or None
+    if not token or not base_url:
+        return None
+    return PlutoCreds(token=token, base_url=base_url, mirror_url=mirror_url)
+
+
+def _get_manual_creds(credentials_file: Optional[Path] = None) -> Optional[PlutoCreds]:
+    path = _manual_creds_path(credentials_file)
+    key = str(path)
+    if key not in _manual_cache:
+        _manual_cache[key] = _load_manual_from_disk(path)
+    return _manual_cache[key]
+
+
+def save_manual_creds(
+    token: str,
+    base_url: str,
+    mirror_url: Optional[str] = None,
+    *,
+    credentials_file: Optional[Path] = None,
+) -> PlutoCreds:
+    """Persist a manual credentials override, effective immediately (no restart needed)."""
+    token = token.strip()
+    base_url = base_url.strip()
+    mirror_url = (mirror_url or "").strip() or None
+    if not token:
+        raise ValueError("token must not be empty")
+    if not base_url:
+        raise ValueError("base_url must not be empty")
+
+    path = _manual_creds_path(credentials_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"token": token, "base_url": base_url, "mirror_url": mirror_url}),
+        encoding="utf-8",
+    )
+    creds = PlutoCreds(token=token, base_url=base_url, mirror_url=mirror_url)
+    _manual_cache[str(path)] = creds
+    return creds
+
+
+def clear_manual_creds(*, credentials_file: Optional[Path] = None) -> None:
+    """Remove the manual override, reverting to env vars / .env-raw."""
+    path = _manual_creds_path(credentials_file)
+    path.unlink(missing_ok=True)
+    _manual_cache[str(path)] = None
+
+
+def load_creds_with_source(
+    env_raw_path: Optional[Path] = None, *, credentials_file: Optional[Path] = None
+) -> tuple[PlutoCreds, CredsSource]:
+    """Return credentials plus which source they came from: manual > env > file."""
+    manual = _get_manual_creds(credentials_file)
+    if manual is not None:
+        return manual, "manual"
+
     token, base, mirror = _from_env()
+    source: Optional[CredsSource] = "env" if (token and base) else None
 
     if not (token and base):
         path = Path(env_raw_path) if env_raw_path else config.ENV_RAW_PATH
@@ -104,22 +184,32 @@ def load_creds(env_raw_path: Optional[Path] = None) -> PlutoCreds:
             raw_token, raw_base, raw_mirror = _parse_env_raw(
                 path.read_text(encoding="utf-8", errors="replace")
             )
-            token = token or (raw_token or "")
-            base = base or (raw_base or "")
+            if not token and raw_token:
+                token = raw_token
+                source = "file"
+            if not base and raw_base:
+                base = raw_base
+                source = source or "file"
             mirror = mirror or raw_mirror
 
     if not token:
         raise RuntimeError(
-            "No API token found. Set CHAT_GPT_API_KEY or provide a .env-raw at "
-            f"{config.ENV_RAW_PATH}."
+            "No API token found. Set CHAT_GPT_API_KEY, provide a .env-raw at "
+            f"{config.ENV_RAW_PATH}, or enter one in the interface's Settings modal."
         )
     if not base:
         raise RuntimeError(
-            "No base URL found. Set OPENAI_COMPAT_BASE_URL or provide a .env-raw with "
-            "a Primary Endpoint URL."
+            "No base URL found. Set OPENAI_COMPAT_BASE_URL, provide a .env-raw with "
+            "a Primary Endpoint URL, or enter one in the interface's Settings modal."
         )
 
     # Tokens sometimes come prefixed with 'Bearer '.
     if token.lower().startswith("bearer "):
         token = token[7:].strip()
-    return PlutoCreds(token=token, base_url=base, mirror_url=mirror)
+    return PlutoCreds(token=token, base_url=base, mirror_url=mirror), (source or "env")
+
+
+def load_creds(env_raw_path: Optional[Path] = None) -> PlutoCreds:
+    """Return credentials, preferring a manual override, then env vars, then .env-raw."""
+    creds, _source = load_creds_with_source(env_raw_path)
+    return creds

@@ -47,6 +47,25 @@ and `vejudge-smoke` refuses outright. Unit tests, dry-runs, and item matching ne
 Outputs land in `logs/exps/<YYMMDD-HH:MM:SS>-exps/`: `run.log`, `llm-histories.log`,
 `run_config.json`, `gap_result.json`, `aligned_pairs.csv`, and a `gap_report.*` table/chart.
 
+## Running the visual interface
+
+A ComfyUI-style node-graph interface (`vejudge/interface/`, spec in `interface.md`) is
+available with 3 of its 8 planned node types wired to real data: **Dataset**, **Judge**,
+**Eval**. It's a visual front-end over the same CLI — dry-run by default, and a real Judge
+Node run still needs `--live` (a confirm dialog in the UI authorizes it).
+
+```bash
+pip install -e ".[interface]"   # fastapi/uvicorn/pydantic/websockets — not a base dependency
+./run/run_interface.sh          # backend: http://127.0.0.1:8000
+
+cd web && npm install && npm run dev   # frontend: http://127.0.0.1:5173 (see web/README.md)
+```
+
+Graph runs land in `logs/exps/<ts>-exps/` exactly like a CLI run (tagged
+`"benchmark": "interface_graph"`), and saved workflows live under `workflows/` — see
+`workflows/examples/quick_eval.json` for the `Dataset(peanut) + Dataset(human_annotations) →
+Judge → Eval` example.
+
 ## What it does
 
 1. **lm_engine** (`vejudge/lm_engine/`) — reusable engines over the Pluto gateway
