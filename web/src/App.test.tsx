@@ -21,20 +21,16 @@ const NODE_TYPES = [
     output_sockets: { samples: 'samples' }, param_schema: {},
   },
   {
-    type: 'judge_text', category: 'node_vejudge', input_sockets: { samples: 'samples' },
+    type: 'judge_prompt', category: 'node_vejudge', input_sockets: {},
+    output_sockets: { judge_spec: 'judge_spec' }, param_schema: {},
+  },
+  {
+    type: 'judge', category: 'node_vejudge',
+    input_sockets: { samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec' },
     output_sockets: { judge_result: 'judge_result' }, param_schema: {},
   },
   {
-    type: 'judge_video', category: 'node_vejudge', input_sockets: { samples: 'samples' },
-    output_sockets: { judge_result: 'judge_result' }, param_schema: {},
-  },
-  {
-    type: 'eval_text', category: 'node_eval',
-    input_sockets: { judge_result: 'judge_result', labels: 'labels' },
-    output_sockets: { metrics_report: 'metrics_report' }, param_schema: {},
-  },
-  {
-    type: 'eval_video', category: 'node_eval',
+    type: 'eval', category: 'node_eval',
     input_sockets: { judge_result: 'judge_result', labels: 'labels' },
     output_sockets: { metrics_report: 'metrics_report' }, param_schema: {},
   },
@@ -146,8 +142,8 @@ describe('App shell', () => {
 
   it('adding a node from the palette shows it in the Inspector', async () => {
     renderApp()
-    fireEvent.click(await screen.findByText('judge_video'))
-    expect(screen.getByRole('heading', { name: 'judge_video' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('judge'))
+    expect(screen.getByRole('heading', { name: 'judge' })).toBeInTheDocument()
     // One copy inline on the node (expanded by default), one in the Inspector.
     expect(screen.getAllByText('batch_size').length).toBe(2)
   })
@@ -168,7 +164,7 @@ describe('App shell', () => {
 
   it('shows a live progress readout in the Judge secondary tab while running', async () => {
     renderApp()
-    fireEvent.click(await screen.findByText('judge_text'))
+    fireEvent.click(await screen.findByText('judge'))
     const nodeId = activeGraphStore().getState().nodes[0].id
 
     act(() => {
@@ -179,7 +175,9 @@ describe('App shell', () => {
       activeRunStore().getState().appendLog({ ts: Date.now(), nodeId, text: `${nodeId} x::0 M3` })
     })
 
-    fireEvent.doubleClick(screen.getByText('Text Judge')) // NodeChrome header
+    // Scope to the canvas node's title span — "Judge" also appears as the palette's
+    // category label, so an unscoped getByText would be ambiguous.
+    fireEvent.doubleClick(screen.getByText('Judge', { selector: '.rf-node-title' }))
     expect(screen.getByText('Judging…')).toBeInTheDocument()
     // The same log line also appears in the bottom Console (filtered to the selected
     // node), so there can be more than one match — just confirm it rendered somewhere.
@@ -215,7 +213,7 @@ describe('App shell', () => {
 
   it('shows a green running border and a live progress bar while a node executes', async () => {
     const { container } = renderApp()
-    fireEvent.click(await screen.findByText('judge_text'))
+    fireEvent.click(await screen.findByText('judge'))
     const nodeId = activeGraphStore().getState().nodes[0].id
 
     // Idle: no running highlight, no progress bar.
@@ -242,7 +240,7 @@ describe('App shell', () => {
 
   it('shows top-bar progress bars always, with a live state while running and an idle state otherwise', async () => {
     const { container } = renderApp()
-    fireEvent.click(await screen.findByText('judge_text'))
+    fireEvent.click(await screen.findByText('judge'))
     const nodeId = activeGraphStore().getState().nodes[0].id
 
     // Always rendered — even before any run has started (the area no longer disappears).
@@ -264,7 +262,7 @@ describe('App shell', () => {
     })
 
     expect(screen.getByText('Workflow progress')).toBeInTheDocument()
-    expect(screen.getByText(`Running: Text Judge (${nodeId})`)).toBeInTheDocument()
+    expect(screen.getByText(`Running: Judge (${nodeId})`)).toBeInTheDocument()
     bars = container.querySelectorAll('.run-progress .progress-bar-fill')
     expect(bars).toHaveLength(2)
     expect((bars[0] as HTMLElement).style.width).toBe(`${(1 / 3) * 100}%`) // overall: 1/3 nodes done

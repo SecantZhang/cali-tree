@@ -2,13 +2,15 @@
 // NODE_EXECUTORS).
 
 export type SocketType =
-  | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_result' | 'metrics_report'
+  | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
+  | 'metrics_report'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
   samples: 'var(--node-db)',
   labels: 'var(--node-db)',
   engine_config: 'var(--node-lm-engine)',
+  judge_spec: 'var(--node-vejudge)',
   judge_result: 'var(--node-vejudge)',
   metrics_report: 'var(--node-eval)',
 }
@@ -33,23 +35,18 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   },
   preprocessing: { input: { samples: 'samples' }, output: { samples: 'samples' } },
   lm_engine: { input: {}, output: { engine_config: 'engine_config' } },
-  judge_text: {
-    input: { samples: 'samples', engine_config: 'engine_config' },
+  // A metric is now a wired artifact, not a dropdown: the Judge Prompt node emits a
+  // `judge_spec` (a builtin M1-M6 preset, or a custom free-text judge) that the generic
+  // Judge node consumes alongside samples + engine.
+  judge_prompt: { input: {}, output: { judge_spec: 'judge_spec' } },
+  judge: {
+    input: { samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec' },
     output: { judge_result: 'judge_result' },
   },
-  judge_video: {
-    input: { samples: 'samples', engine_config: 'engine_config' },
-    output: { judge_result: 'judge_result' },
-  },
-  // Each Eval node type takes a single `judge_result` input scoped to its own modality
-  // (text: M3-derived dimensions; video: M5/M6-derived) — no more merging two
-  // `judge_result_text`/`judge_result_video` inputs into one dict, since a Judge node's
-  // single output now wires straight into the matching-modality Eval node.
-  eval_text: {
-    input: { judge_result: 'judge_result', labels: 'labels' },
-    output: { metrics_report: 'metrics_report' },
-  },
-  eval_video: {
+  // One generic Eval node: it auto-scopes to whatever dimensions the incoming judge_result
+  // covers (builtin metric via ALIGNMENT, or a custom judge's carried target dimension), so
+  // each per-metric Judge path feeds straight into its own Eval node.
+  eval: {
     input: { judge_result: 'judge_result', labels: 'labels' },
     output: { metrics_report: 'metrics_report' },
   },

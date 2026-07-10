@@ -1,31 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { addPipelineNodes, PIPELINE_IDS, waitForPaletteLoaded, wirePipeline } from '../helpers'
 
-// addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
-// deterministically yields these ids.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
+const { PEANUT_SOURCE, DATASET, LM_ENGINE, PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 
 // The mock gateway (tests/e2e/mock_gateway.py) always returns score_1_to_5: 3 with these
 // fixed reasoning lines, regardless of which metric/item was requested — see MOCK_JUDGE_CONTENT.
 const MOCK_REASONING =
   'Mock gateway response for E2E testing. This is not a real judge call. Score is fixed at 3/5 for determinism.'
-
-async function connect(
-  page: import('@playwright/test').Page,
-  sourceNodeId: string,
-  sourceHandleId: string,
-  targetNodeId: string,
-  targetHandleId: string,
-) {
-  const source = page.locator(`[data-nodeid="${sourceNodeId}"][data-handleid="${sourceHandleId}"].source`)
-  const target = page.locator(`[data-nodeid="${targetNodeId}"][data-handleid="${targetHandleId}"].target`)
-  await dragConnect(page, source, target)
-}
 
 test.describe('mocked live pipeline', () => {
   test('runs the real Judge Node HTTP path against a mock gateway and shows real scores + a real MAE', async ({
@@ -34,49 +15,34 @@ test.describe('mocked live pipeline', () => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
     const lmEngineNode = page.getByTestId(`rf__node-${LM_ENGINE}`)
+    const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await expect(peanutSourceNode).toBeVisible()
-    await expect(datasetNode).toBeVisible()
-    await expect(lmEngineNode).toBeVisible()
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
 
     await page.getByRole('button', { name: 'Fit View' }).click()
 
-    // Restrict to M3 (text-modality; the only metric with a human-annotation crosswalk in
-    // ALIGNMENT — see postprocessing/align.py) so this test makes exactly 2 mock HTTP calls
-    // (one per fixture item) and never touches a video engine, which the mock gateway
-    // doesn't emulate. Both boxes start checked (an unset `metrics` runs every metric of
-    // that modality, so the UI shows that honestly) — uncheck M1 to leave just M3.
-    await judgeNode
-      .locator('.param-row', { hasText: 'metrics' })
-      .locator('.checkbox-list-item', { hasText: 'M1' })
-      .locator('input[type="checkbox"]')
-      .uncheck()
+    // Use the M3 preset on the Judge Prompt node — M3 is text-modality and the only metric
+    // with a human-annotation crosswalk in ALIGNMENT (see postprocessing/align.py), so this
+    // makes exactly 2 mock HTTP calls (one per fixture item) and never touches a video
+    // engine, which the mock gateway doesn't emulate.
+    await promptNode.locator('.param-row', { hasText: 'preset' }).locator('select').selectOption('M3')
 
-    // Judge's expanded param list is wide enough to visually overlap the grid slot the
-    // palette placed Eval in (handles keep rendering regardless of collapse state, so
-    // wiring below is unaffected) — collapse it so Eval is actually clickable afterward.
+    // Judge's expanded param list can visually overlap the grid slot the palette placed Eval
+    // in (handles keep rendering regardless of collapse state, so wiring below is
+    // unaffected) — collapse it so Eval is actually clickable afterward.
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
-    await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'samples', JUDGE, 'samples')
-    await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
-    await connect(page, DATASET, 'labels', EVAL, 'labels')
-    await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
+    await wirePipeline(page)
     await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${PROMPT}:judge_spec->${JUDGE}:judge_spec`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:labels->${EVAL}:labels`)).toHaveCount(1)
 
@@ -92,7 +58,7 @@ test.describe('mocked live pipeline', () => {
     // Top-bar progress bars stay mounted, returning to their idle state after the run.
     await expect(page.locator('.run-progress')).toBeVisible()
 
-    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode, evalNode]) {
+    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()
     }
 

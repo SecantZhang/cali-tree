@@ -23,4 +23,4 @@ cd "$PROJECT_DIR"
 [ -f .venv/bin/activate ] && source .venv/bin/activate
 export PYTHONWARNINGS="ignore"
 
-python -m vejudge.interface.server "$@"
+VEJUDGE_REPO_ROOT=/Users/zzhang/Documents/research python -m vejudge.interface.server "$@"

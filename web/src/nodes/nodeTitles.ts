@@ -7,10 +7,9 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
   lm_engine: 'LM Engine',
-  judge_text: 'Text Judge',
-  judge_video: 'Video Judge',
-  eval_text: 'Eval Text',
-  eval_video: 'Eval Video',
+  judge_prompt: 'Judge Prompt',
+  judge: 'Judge',
+  eval: 'Eval',
 }
 
 export function nodeTitle(type: string | undefined): string {

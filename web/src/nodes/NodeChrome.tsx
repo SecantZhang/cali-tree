@@ -7,6 +7,18 @@ import type { NodeStatus } from './types'
 const MIN_NODE_WIDTH = 200
 const MIN_NODE_HEIGHT = 120
 
+// Small inline padlock glyphs (currentColor) — a crisp, theme-aware alternative to an emoji
+// lock, matching the monochrome look of the ▶/↻/▾ header controls.
+function LockGlyph({ open, size = 12 }: { open: boolean; size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor"
+      strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      {open ? <path d="M8 11V7a4 4 0 0 1 7.5-1.9" /> : <path d="M8 11V7a4 4 0 0 1 8 0v4" />}
+    </svg>
+  )
+}
+
 interface NodeChromeProps {
   title: string
   color: string
@@ -29,6 +41,9 @@ interface NodeChromeProps {
   // True when this node's last real result predates a since-changed ancestor (see
   // runStore.staleNodeIds / graphTraversal.ts) — old result still shown, just flagged.
   stale?: boolean
+  // Locked: result frozen and reused on every run (see graphStore.lockNode). Shows a
+  // padlock and a distinct border; params are rendered read-only by the caller.
+  locked?: boolean
   // Run (▶): this node's full ancestor chain + itself, from scratch. Re-run (↻): just this
   // node, reusing the most recent run's outputs for everything upstream — disabled (with a
   // tooltip) when there's no prior run yet to reuse. Both omitted entirely for a node type
@@ -37,17 +52,22 @@ interface NodeChromeProps {
   onRerun?: () => void
   runDisabledReason?: string | null
   rerunDisabledReason?: string | null
+  // Lock/unlock toggle in the node header. Acts on the whole current selection (see
+  // SimpleParamNode) — locking freezes results + predecessors, unlocking cascades forward.
+  onToggleLock?: () => void
+  lockDisabledReason?: string | null
   children?: ReactNode
 }
 
 export function NodeChrome({
   title, color, status, error, collapsed, onToggleCollapse, progress, sockets, selected,
-  orderIndex, stale, onRun, onRerun, runDisabledReason, rerunDisabledReason, children,
+  orderIndex, stale, locked, onRun, onRerun, runDisabledReason, rerunDisabledReason,
+  onToggleLock, lockDisabledReason, children,
 }: NodeChromeProps) {
   const running = status === 'running'
   return (
     <div
-      className={`rf-node${running ? ' is-running' : ''}${stale ? ' is-stale' : ''}`}
+      className={`rf-node${running ? ' is-running' : ''}${stale ? ' is-stale' : ''}${locked ? ' is-locked' : ''}`}
       style={{ borderColor: color }}
     >
       <NodeResizer
@@ -71,6 +91,11 @@ export function NodeChrome({
           </button>
         )}
         <span className="rf-node-title">{title}</span>
+        {locked && (
+          <span className="rf-node-lock-badge" title="Locked — result frozen and reused on every run">
+            <LockGlyph open={false} />
+          </span>
+        )}
         {stale && <span className="rf-node-stale-badge" title="An upstream node was re-run since this last ran">stale</span>}
         <span className={`status-dot status-${status}`} title={error ?? status} />
         {onRun && (
@@ -93,6 +118,23 @@ export function NodeChrome({
             aria-label="Re-run node"
           >
             ↻
+          </button>
+        )}
+        {onToggleLock && (
+          <button
+            className={`node-run-btn node-lock-btn nodrag nopan${locked ? ' is-locked' : ''}`}
+            onClick={onToggleLock}
+            disabled={!locked && !!lockDisabledReason}
+            title={
+              locked
+                ? 'Unlock this node (and everything downstream) — also unlocks the whole selection'
+                : lockDisabledReason ??
+                  'Lock: freeze this node + its predecessors and reuse their results on every run (applies to the whole selection)'
+            }
+            aria-label={locked ? 'Unlock node' : 'Lock node'}
+          >
+            {/* Icon reflects current state: open padlock when unlocked, closed when locked. */}
+            <LockGlyph open={!locked} />
           </button>
         )}
       </div>

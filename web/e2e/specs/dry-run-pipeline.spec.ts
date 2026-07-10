@@ -1,52 +1,29 @@
 import { expect, test } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { addPipelineNodes, PIPELINE_IDS, waitForPaletteLoaded, wirePipeline } from '../helpers'
 
-// addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
-// deterministically yields these ids. Peanut Source's raw_dataset must pass through a
-// Dataset node before it can reach Judge (raw_dataset is a distinct socket type,
-// specifically so sampling is always an explicit step) — Dataset also joins matching
-// human-annotation labels by item id for exactly the items it sampled, and feeds Eval's
-// `labels` directly from that same node. `engine_config` is a required input even in
-// dry-run mode (the check happens before the dry-run branch), so an LM Engine node must
-// be wired regardless of whether this run ever makes a real gateway call.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
-
-async function connect(
-  page: import('@playwright/test').Page,
-  sourceNodeId: string,
-  sourceHandleId: string,
-  targetNodeId: string,
-  targetHandleId: string,
-) {
-  const source = page.locator(`[data-nodeid="${sourceNodeId}"][data-handleid="${sourceHandleId}"].source`)
-  const target = page.locator(`[data-nodeid="${targetNodeId}"][data-handleid="${targetHandleId}"].target`)
-  await dragConnect(page, source, target)
-}
+// The per-metric pipeline: Peanut Source -> Dataset -> Judge (with LM Engine + a Judge
+// Prompt preset) -> Eval, plus Dataset.labels -> Eval. `engine_config` and `judge_spec` are
+// required Judge inputs even in dry-run mode (the check happens before the dry-run branch),
+// so both an LM Engine and a Judge Prompt node must be wired regardless of a gateway call.
+const { PEANUT_SOURCE, DATASET, LM_ENGINE, PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 
 test.describe('dry-run pipeline', () => {
-  test('runs a fully wired 5-node graph in dry-run mode end to end', async ({ page }) => {
+  test('runs a fully wired per-metric graph in dry-run mode end to end', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
     const lmEngineNode = page.getByTestId(`rf__node-${LM_ENGINE}`)
+    const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await expect(peanutSourceNode).toBeVisible()
     await expect(datasetNode).toBeVisible()
     await expect(lmEngineNode).toBeVisible()
+    await expect(promptNode).toBeVisible()
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
 
@@ -66,17 +43,13 @@ test.describe('dry-run pipeline', () => {
     await page.getByRole('button', { name: 'Fit View' }).click()
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
-    // Wire the full pipeline: source -> dataset -> judge -> eval, plus Dataset's own
-    // `labels` output straight to eval (the Eval node needs both a judge_result AND
-    // human labels to align).
-    await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'samples', JUDGE, 'samples')
-    await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
-    await connect(page, DATASET, 'labels', EVAL, 'labels')
+    // Wire the full per-metric pipeline (see wirePipeline): source -> dataset -> judge ->
+    // eval, plus the LM Engine + Judge Prompt inputs to judge and Dataset.labels to eval.
+    await wirePipeline(page)
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${PROMPT}:judge_spec->${JUDGE}:judge_spec`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:labels->${EVAL}:labels`)).toHaveCount(1)
 
@@ -98,7 +71,7 @@ test.describe('dry-run pipeline', () => {
     await expect(runProgress).toBeVisible()
     await expect(runProgress.getByText('Idle — no run in progress')).toBeVisible()
 
-    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode, evalNode]) {
+    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()
     }
 

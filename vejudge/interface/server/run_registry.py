@@ -64,6 +64,7 @@ class RunRegistry:
         workflow_name: Optional[str] = None,
         target_node_id: Optional[str] = None,
         seed_results: Optional[dict[str, NodeRunResult]] = None,
+        seed_node_ids: Optional[set[str]] = None,
     ) -> RunHandle:
         run, checkpoint = start_run(
             graph, dry_run=dry_run, allow_live=allow_live,
@@ -81,6 +82,7 @@ class RunRegistry:
                     allow_live=allow_live, progress_cb=progress_cb,
                     should_stop=handle.stop_event.is_set,
                     target_node_id=target_node_id, seed_results=seed_results,
+                    seed_node_ids=seed_node_ids,
                 )
                 result = engine.execute()
             finally:

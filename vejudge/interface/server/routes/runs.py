@@ -87,6 +87,31 @@ def create_run(req: RunRequest) -> RunStatusOut:
                 f"{missing} — run the full ancestor chain first (e.g. via Run).",
             )
 
+    # Locked nodes are seeded from a prior run and skipped — layered on top of whatever scope
+    # run_mode selected. Only ids that survive into the (possibly reduced) spec matter.
+    spec_ids = {n.id for n in spec.nodes}
+    seed_node_ids = {nid for nid in req.locked_node_ids if nid in spec_ids}
+    if seed_node_ids:
+        if not req.seed_run_id:
+            raise HTTPException(
+                status_code=400, detail="seed_run_id is required when there are locked nodes"
+            )
+        if seed_results is None:
+            seed_handle = REGISTRY.get(req.seed_run_id)
+            if seed_handle is None or seed_handle.result is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No completed prior run '{req.seed_run_id}' to reuse locked results from",
+                )
+            seed_results = seed_handle.result.node_results
+        missing = sorted(seed_node_ids - set(seed_results))
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Prior run '{req.seed_run_id}' has no result for locked node(s) {missing} "
+                "— run them before locking.",
+            )
+
     try:
         validate_edges(spec, node_type_infos())
         topological_sort(spec)
@@ -96,6 +121,7 @@ def create_run(req: RunRequest) -> RunStatusOut:
     handle = REGISTRY.start(
         spec, dry_run=req.dry_run, allow_live=req.allow_live, workflow_name=req.workflow_name,
         target_node_id=target_node_id, seed_results=seed_results,
+        seed_node_ids=seed_node_ids or None,
     )
     return _status_out(handle)
 

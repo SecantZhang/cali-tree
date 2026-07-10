@@ -26,3 +26,27 @@ export function descendantsOf(edges: Edge[], id: string): Set<string> {
   }
   return descendants
 }
+
+// Mirror of `descendantsOf` over *incoming* edges — every transitive predecessor of `id`.
+// Used to lock a node's whole upstream chain (locking a node locks all its predecessors).
+export function ancestorsOf(edges: Edge[], id: string): Set<string> {
+  const incoming = new Map<string, string[]>()
+  for (const e of edges) {
+    const sources = incoming.get(e.target) ?? []
+    sources.push(e.source)
+    incoming.set(e.target, sources)
+  }
+
+  const ancestors = new Set<string>()
+  const frontier = [id]
+  while (frontier.length) {
+    const nid = frontier.pop()!
+    for (const prev of incoming.get(nid) ?? []) {
+      if (!ancestors.has(prev)) {
+        ancestors.add(prev)
+        frontier.push(prev)
+      }
+    }
+  }
+  return ancestors
+}

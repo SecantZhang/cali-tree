@@ -1,22 +1,7 @@
-import { expect, test, type Page } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { expect, test } from '@playwright/test'
+import { addPipelineNodes, PIPELINE_IDS, waitForPaletteLoaded, wirePipeline } from '../helpers'
 
-// addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
-// deterministically yields these ids.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
-
-async function connect(
-  page: Page, sourceNodeId: string, sourceHandleId: string, targetNodeId: string, targetHandleId: string,
-) {
-  const source = page.locator(`[data-nodeid="${sourceNodeId}"][data-handleid="${sourceHandleId}"].source`)
-  const target = page.locator(`[data-nodeid="${targetNodeId}"][data-handleid="${targetHandleId}"].target`)
-  await dragConnect(page, source, target)
-}
+const { PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 
 test.describe('streaming batch-eval', () => {
   test('a batch_size=1 Judge Node streams a live Eval preview over the run websocket before the run finishes', async ({
@@ -41,34 +26,23 @@ test.describe('streaming batch-eval', () => {
       })
     })
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
-    const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
+    const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await page.getByRole('button', { name: 'Fit View' }).click()
 
-    // M1 + M3 (both text-modality) -> 4 sequential mock-gateway calls (text_concurrency
-    // defaults to 1), 2 per fixture item, at the mock gateway's ~200ms per-call delay
-    // (~800ms total — the same shape stop-and-resume.spec.ts already relies on for timing
-    // margin). batch_size defaults to 1, so the first item to get both its metrics
-    // triggers a preview after ~400ms, comfortably before the run as a whole finishes.
-    const metricsRow = judgeNode.locator('.param-row', { hasText: 'metrics' })
-    await metricsRow.locator('.checkbox-list-item', { hasText: 'M1' }).locator('input[type="checkbox"]').check()
-    await metricsRow.locator('.checkbox-list-item', { hasText: 'M3' }).locator('input[type="checkbox"]').check()
+    // M3 preset (text modality, and the one metric with a human-annotation crosswalk so the
+    // Eval preview has aligned rows) -> 2 sequential mock-gateway calls (concurrency defaults
+    // to 1), one per fixture item, at the mock's ~200ms per-call delay. batch_size defaults
+    // to 1, so the first fully-judged item triggers a preview well before the run finishes.
+    await promptNode.locator('.param-row', { hasText: 'preset' }).locator('select').selectOption('M3')
     await expect(judgeNode.locator('.param-row', { hasText: 'batch_size' }).locator('input[type="text"]'))
       .toHaveValue('1')
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
-    await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'samples', JUDGE, 'samples')
-    await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
-    await connect(page, DATASET, 'labels', EVAL, 'labels')
+    await wirePipeline(page)
 
     await page.locator('.dry-run-toggle input[type="checkbox"]').uncheck()
     page.once('dialog', (dialog) => dialog.accept())

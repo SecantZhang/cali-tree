@@ -1,26 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { addNode, addPipelineNodes, PIPELINE_IDS, waitForPaletteLoaded, wirePipeline } from '../helpers'
 
-// addNode's module-level id counter now lives inside each tab's own graphStore closure
-// (Stage B), but still starts at 1 for the first node added in a given tab — a fresh tab
-// (blank, never had a node added in it) always yields these same ids for its first nodes.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
-
-async function connect(
-  page: import('@playwright/test').Page,
-  sourceNodeId: string,
-  sourceHandleId: string,
-  targetNodeId: string,
-  targetHandleId: string,
-) {
-  const source = page.locator(`[data-nodeid="${sourceNodeId}"][data-handleid="${sourceHandleId}"].source`)
-  const target = page.locator(`[data-nodeid="${targetNodeId}"][data-handleid="${targetHandleId}"].target`)
-  await dragConnect(page, source, target)
-}
+// addNode's id counter lives inside each tab's own graphStore closure but still starts at 1
+// per tab, so a fresh tab always yields these ids for its first nodes.
+const { PEANUT_SOURCE, DATASET, JUDGE, EVAL } = PIPELINE_IDS
 
 test.describe('tabbed workflows', () => {
   test('a live run in one tab keeps streaming in the background while a second tab is active', async ({
@@ -32,11 +15,7 @@ test.describe('tabbed workflows', () => {
     // Exactly one tab exists on a fresh load.
     await expect(page.locator('.tab-item')).toHaveCount(1)
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
@@ -44,21 +23,11 @@ test.describe('tabbed workflows', () => {
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await page.getByRole('button', { name: 'Fit View' }).click()
 
-    // Text-only metric, matching the pattern used by mocked-live-pipeline.spec.ts /
-    // stop-and-resume.spec.ts — the mock gateway's ~200ms per-call delay gives enough of a
-    // window to switch tabs mid-run and observe it still in flight.
-    await judgeNode
-      .locator('.param-row', { hasText: 'metrics' })
-      .locator('.checkbox-list-item', { hasText: 'M3' })
-      .locator('input[type="checkbox"]')
-      .check()
+    // Default M1 preset over 2 fixture items — the mock gateway's ~200ms per-call delay
+    // gives enough of a window to switch tabs mid-run and observe it still in flight.
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
-    await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'samples', JUDGE, 'samples')
-    await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
-    await connect(page, DATASET, 'labels', EVAL, 'labels')
+    await wirePipeline(page)
 
     await page.locator('.dry-run-toggle input[type="checkbox"]').uncheck()
     page.once('dialog', (dialog) => dialog.accept())

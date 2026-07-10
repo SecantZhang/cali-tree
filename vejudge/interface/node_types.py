@@ -8,10 +8,10 @@ for the full node/workflow model and why the remaining node types aren't here ye
 
 from .node_db.dataset_node import DatasetNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
-from .node_eval.eval_node import EvalTextNodeExecutor, EvalVideoNodeExecutor
+from .node_eval.eval_node import EvalNodeExecutor
 from .node_preprocessing.preprocessing_node import PreprocessingNodeExecutor
-from .node_vejudge.judge_text_node import TextJudgeNodeExecutor
-from .node_vejudge.judge_video_node import VideoJudgeNodeExecutor
+from .node_vejudge.judge_node import JudgeNodeExecutor
+from .node_vejudge.judge_prompt_node import JudgePromptNodeExecutor
 from .node_vejudge.lm_engine_node import LMEngineNodeExecutor
 
 __all__ = [
@@ -19,8 +19,7 @@ __all__ = [
     "DatasetNodeExecutor",
     "PreprocessingNodeExecutor",
     "LMEngineNodeExecutor",
-    "TextJudgeNodeExecutor",
-    "VideoJudgeNodeExecutor",
-    "EvalTextNodeExecutor",
-    "EvalVideoNodeExecutor",
+    "JudgePromptNodeExecutor",
+    "JudgeNodeExecutor",
+    "EvalNodeExecutor",
 ]

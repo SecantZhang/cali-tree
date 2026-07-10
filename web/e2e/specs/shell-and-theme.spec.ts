@@ -13,10 +13,9 @@ test.describe('app shell and theme', () => {
     await expect(paletteItem(page, 'dataset')).toBeVisible()
     await expect(paletteItem(page, 'preprocessing')).toBeVisible()
     await expect(paletteItem(page, 'lm_engine')).toBeVisible()
-    await expect(paletteItem(page, 'judge_text')).toBeVisible()
-    await expect(paletteItem(page, 'judge_video')).toBeVisible()
-    await expect(paletteItem(page, 'eval_text')).toBeVisible()
-    await expect(paletteItem(page, 'eval_video')).toBeVisible()
+    await expect(paletteItem(page, 'judge_prompt')).toBeVisible()
+    await expect(paletteItem(page, 'judge')).toBeVisible()
+    await expect(paletteItem(page, 'eval')).toBeVisible()
 
     await expect(page.locator('.left-panel')).toBeVisible()
     await expect(page.locator('.canvas-area')).toBeVisible()

@@ -12,14 +12,16 @@ def _graph():
             NodeSpec(id="peanut_src", type="peanut_source", params={}),
             NodeSpec(id="ds", type="dataset", params={}),
             NodeSpec(id="engine", type="lm_engine", params={"engine_kind": "gpt"}),
-            NodeSpec(id="judge_text", type="judge_text", params={"metrics": ["M3"]}),
-            NodeSpec(id="eval", type="eval_text", params={}),
+            NodeSpec(id="prompt", type="judge_prompt", params={"preset": "M3"}),
+            NodeSpec(id="judge", type="judge", params={}),
+            NodeSpec(id="eval", type="eval", params={}),
         ],
         edges=[
             EdgeSpec("peanut_src", "raw_dataset", "ds", "raw_dataset"),
-            EdgeSpec("ds", "samples", "judge_text", "samples"),
-            EdgeSpec("engine", "engine_config", "judge_text", "engine_config"),
-            EdgeSpec("judge_text", "judge_result", "eval", "judge_result"),
+            EdgeSpec("ds", "samples", "judge", "samples"),
+            EdgeSpec("engine", "engine_config", "judge", "engine_config"),
+            EdgeSpec("prompt", "judge_spec", "judge", "judge_spec"),
+            EdgeSpec("judge", "judge_result", "eval", "judge_result"),
             EdgeSpec("ds", "labels", "eval", "labels"),
         ],
     )
@@ -51,11 +53,7 @@ def fake_engine(monkeypatch):
     from vejudge.lm_engine.creds import PlutoCreds
 
     monkeypatch.setattr(
-        "vejudge.interface.node_vejudge.judge_text_node.load_creds",
-        lambda: PlutoCreds(token="sk-test", base_url="https://primary"),
-    )
-    monkeypatch.setattr(
-        "vejudge.interface.node_vejudge.judge_video_node.load_creds",
+        "vejudge.interface.node_vejudge.judge_node.load_creds",
         lambda: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
 

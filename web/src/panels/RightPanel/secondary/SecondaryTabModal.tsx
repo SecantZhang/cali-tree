@@ -8,8 +8,8 @@ import { LMEngineSecondaryTab } from './LMEngineSecondaryTab'
 import { SourceSecondaryTab } from './SourceSecondaryTab'
 
 const SOURCE_TYPES = new Set(['peanut_source'])
-const JUDGE_TYPES = new Set(['judge_text', 'judge_video'])
-const EVAL_TYPES = new Set(['eval_text', 'eval_video'])
+const JUDGE_TYPES = new Set(['judge'])
+const EVAL_TYPES = new Set(['eval'])
 
 export function SecondaryTabModal() {
   const nodeId = useActiveGraphStore((s) => s.secondaryTabNodeId)
@@ -58,6 +58,13 @@ export function SecondaryTabModal() {
             </p>
           )}
           {type === 'lm_engine' && <LMEngineSecondaryTab node={node} />}
+          {type === 'judge_prompt' && (
+            <p className="empty-hint">
+              A metric preset (M1–M6) or a custom free-text judge. Edit its fields in the
+              node/Inspector; a preset's exact prompt is resolved per item and shown in the
+              downstream Judge node's secondary tab (per-item prompt + parsed output).
+            </p>
+          )}
         </div>
         <ResizeHandle
           orientation="vertical"

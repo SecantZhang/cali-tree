@@ -45,6 +45,10 @@ class NodeIn(BaseModel):
     collapsed: Optional[bool] = None
     expanded_size: Optional[SizeIn] = None
     stale: Optional[bool] = None
+    # Locked = its result is frozen and reused (seeded) on every run instead of recomputed.
+    # Wire-layer only for persistence round-trip; execution reads the run request's
+    # `locked_node_ids`, not this (to_graph_spec drops it).
+    locked: Optional[bool] = None
 
 
 class EdgeIn(BaseModel):
@@ -54,9 +58,20 @@ class EdgeIn(BaseModel):
     target_socket: str
 
 
+class GroupIn(BaseModel):
+    # A purely-visual canvas group (ComfyUI-style). Never touched by execution — persisted so
+    # a saved workflow keeps its grouping/layout. Without this field on GraphIn, a `groups`
+    # array in the POST body would be silently dropped (models default to extra="ignore").
+    id: str
+    title: str = ""
+    position: PositionIn
+    size: SizeIn
+
+
 class GraphIn(BaseModel):
     nodes: list[NodeIn] = Field(default_factory=list)
     edges: list[EdgeIn] = Field(default_factory=list)
+    groups: list[GroupIn] = Field(default_factory=list)
 
 
 def to_graph_spec(g: GraphIn) -> graph_mod.GraphSpec:
@@ -111,6 +126,10 @@ class RunRequest(BaseModel):
     target_node_id: Optional[str] = None
     run_mode: Optional[Literal["ancestors", "self_only"]] = None
     seed_run_id: Optional[str] = None
+    # Locked nodes: their results are reused (seeded from `seed_run_id`) and not recomputed,
+    # so every run starts past the lock frontier. Composes with run_mode. Requires
+    # `seed_run_id` (validated in routes/runs.py) to cover every locked id.
+    locked_node_ids: list[str] = Field(default_factory=list)
 
 
 class NodeResultOut(BaseModel):

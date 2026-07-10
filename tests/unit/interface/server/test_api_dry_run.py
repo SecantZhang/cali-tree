@@ -30,7 +30,8 @@ def _graph_body(*, dry_run=True, allow_live=False):
                 {"id": "src", "type": "peanut_source", "params": {}},
                 {"id": "ds", "type": "dataset", "params": {}},
                 {"id": "engine", "type": "lm_engine", "params": {}},
-                {"id": "judge", "type": "judge_text", "params": {"metrics": ["M1"]}},
+                {"id": "prompt", "type": "judge_prompt", "params": {"preset": "M1"}},
+                {"id": "judge", "type": "judge", "params": {}},
             ],
             "edges": [
                 {
@@ -45,6 +46,10 @@ def _graph_body(*, dry_run=True, allow_live=False):
                     "source": "engine", "source_socket": "engine_config",
                     "target": "judge", "target_socket": "engine_config",
                 },
+                {
+                    "source": "prompt", "source_socket": "judge_spec",
+                    "target": "judge", "target_socket": "judge_spec",
+                },
             ],
         },
         "dry_run": dry_run,
@@ -58,7 +63,7 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
     types = {n["type"] for n in resp.json()}
     assert types == {
         "peanut_source", "dataset", "preprocessing", "lm_engine",
-        "judge_text", "judge_video", "eval_text", "eval_video",
+        "judge_prompt", "judge", "eval",
     }
 
 
@@ -118,6 +123,27 @@ def test_workflow_save_load_round_trips_cosmetic_view_state(client):
     assert node["stale"] is True
 
 
+def test_workflow_save_load_round_trips_locked_and_groups(client):
+    # Both are wire-layer only (never touched by execution) but must survive save/load:
+    # `locked` on a node, and a top-level `groups` array (without the GraphIn.groups field
+    # a saved `groups` would be silently dropped, since models default to extra="ignore").
+    graph = _graph_body()["graph"]
+    graph["nodes"][0]["locked"] = True
+    graph["groups"] = [
+        {"id": "group-1", "title": "Data prep", "position": {"x": 10.0, "y": 20.0},
+         "size": {"width": 400.0, "height": 300.0}},
+    ]
+    resp = client.post("/api/workflows", json={"name": "with_groups", "graph": graph})
+    assert resp.status_code == 200
+
+    loaded = client.get("/api/workflows/with_groups").json()["graph"]
+    assert {n["id"]: n for n in loaded["nodes"]}["src"]["locked"] is True
+    assert loaded["groups"] == [
+        {"id": "group-1", "title": "Data prep", "position": {"x": 10.0, "y": 20.0},
+         "size": {"width": 400.0, "height": 300.0}},
+    ]
+
+
 def test_workflow_rejects_unsafe_name(client):
     body = {"name": "../../etc/passwd", "graph": _graph_body()["graph"]}
     resp = client.post("/api/workflows", json=body)
@@ -127,7 +153,9 @@ def test_workflow_rejects_unsafe_name(client):
 def test_graph_validate_endpoint(client):
     resp = client.post("/api/graph/validate", json=_graph_body()["graph"])
     assert resp.status_code == 200
-    assert resp.json()["order"] == ["engine", "src", "ds", "judge"]
+    # Kahn's algorithm with deterministic tie-break by node id: the three indegree-0 nodes
+    # (engine, prompt, src) come first in id order, then ds, then judge.
+    assert resp.json()["order"] == ["engine", "prompt", "src", "ds", "judge"]
 
 
 def test_graph_validate_rejects_bad_edge(client):

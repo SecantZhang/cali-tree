@@ -30,6 +30,26 @@ def _sub_score(key: str) -> JudgeExtractor:
     return extract
 
 
+def _num(v: Any) -> Optional[float]:
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def score_at_path(parsed: dict[str, Any], score_path: str) -> Optional[float]:
+    """Walk a dotted ``score_path`` to a numeric 1-5 score — generalizes ``_top_score``/
+    ``_sub_score`` for **custom** judge specs (which declare their own path). The path may
+    point at the number directly (``"score_1_to_5"``) or at a sub-dict that contains it
+    (``"voiceover_visual_match"`` or ``"voiceover_visual_match.score_1_to_5"``).
+    """
+    cur: Any = parsed
+    for part in score_path.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    if isinstance(cur, dict):
+        cur = cur.get("score_1_to_5")
+    return _num(cur)
+
+
 ALIGNMENT: dict[str, tuple[str, JudgeExtractor]] = {
     "video_addresses_prompt": ("M3", _top_score),
     "voiceover_matches_visuals": ("M6", _sub_score("voiceover_visual_match")),
@@ -74,15 +94,42 @@ def _parsed(judge_results: dict[str, Any], metric_id: str) -> Optional[dict[str,
     return parsed if isinstance(parsed, dict) else None
 
 
+def _custom_entry_for_dimension(
+    judge_results: dict[str, Any], dimension: str
+) -> Optional[dict[str, Any]]:
+    """A custom judge spec's result entry targeting ``dimension`` (carries its own
+    ``align: {dimension, score_path}``), or None. Builtin metrics use ``ALIGNMENT`` instead.
+    """
+    for entry in judge_results.values():
+        if not isinstance(entry, dict):
+            continue
+        align = entry.get("align")
+        if isinstance(align, dict) and align.get("dimension") == dimension:
+            return entry
+    return None
+
+
 def judge_signal_for_dimension(
     judge_results: dict[str, Any], dimension: str
 ) -> Optional[float]:
-    """Return the judge's 1-5 value aligned to ``dimension`` (None if unavailable)."""
-    if dimension not in ALIGNMENT:
-        return None
-    metric_id, extractor = ALIGNMENT[dimension]
-    parsed = _parsed(judge_results, metric_id)
-    return extractor(parsed) if parsed else None
+    """Return the judge's 1-5 value aligned to ``dimension`` (None if unavailable).
+
+    Builtin metrics resolve via the ``ALIGNMENT`` crosswalk; a **custom** judge spec's
+    result entry carries its own ``align: {dimension, score_path}`` and is used when no
+    builtin metric present covers this dimension.
+    """
+    if dimension in ALIGNMENT:
+        metric_id, extractor = ALIGNMENT[dimension]
+        parsed = _parsed(judge_results, metric_id)
+        if parsed is not None:
+            return extractor(parsed)
+    entry = _custom_entry_for_dimension(judge_results, dimension)
+    if entry is not None:
+        parsed = entry.get("parsed")
+        score_path = (entry.get("align") or {}).get("score_path")
+        if isinstance(parsed, dict) and score_path:
+            return score_at_path(parsed, score_path)
+    return None
 
 
 def derive_overall(judge_results: dict[str, Any]) -> Optional[float]:
@@ -198,8 +245,10 @@ def build_aligned_rows(
         agg = human[item_id]
         judge_results = per_item_judges.get(item_id, {})
         for dim in dims:
-            if dim not in ALIGNMENT:
-                continue
+            # No `dim in ALIGNMENT` guard: `judge_signal_for_dimension` returns None for a
+            # dimension with neither a builtin crosswalk entry nor a custom judge targeting
+            # it, which the None check below already skips — so custom target dimensions
+            # (not in ALIGNMENT) still produce rows.
             human_score = agg.scores.get(dim)
             judge_score = judge_signal_for_dimension(judge_results, dim)
             if human_score is None or judge_score is None:

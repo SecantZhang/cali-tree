@@ -30,15 +30,23 @@ export interface ScopedRunOptions {
   seedRunId?: string
 }
 
+// Locked nodes are seeded from a prior run (`seedRunId`) and skipped — layered on top of any
+// scope. Passed on every run (global or scoped) when the graph has locked nodes.
+export interface LockOptions {
+  nodeIds: string[]
+  seedRunId: string | null
+}
+
 export function startRun(
   graph: GraphSpecJSON, dryRun: boolean, allowLive: boolean, workflowName?: string | null,
-  scope?: ScopedRunOptions,
+  scope?: ScopedRunOptions, lock?: LockOptions,
 ): Promise<RunStatusOut> {
   return api.post('/api/runs', {
     graph, dry_run: dryRun, allow_live: allowLive, workflow_name: workflowName || undefined,
     target_node_id: scope?.targetNodeId,
     run_mode: scope?.runMode,
-    seed_run_id: scope?.seedRunId,
+    seed_run_id: scope?.seedRunId ?? lock?.seedRunId ?? undefined,
+    locked_node_ids: lock?.nodeIds?.length ? lock.nodeIds : undefined,
   })
 }
 

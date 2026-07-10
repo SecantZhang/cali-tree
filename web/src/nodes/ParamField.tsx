@@ -78,6 +78,23 @@ export function ParamField({
     )
   }
 
+  if (field.type === 'text') {
+    // Multi-line free text (e.g. a custom judge's prompt template) — a textarea, not the
+    // one-line fallback input below.
+    const textValue = (value as string | null | undefined) ?? (field.default as string | null | undefined) ?? ''
+    return (
+      <div className="param-row param-row-text nodrag nopan">
+        {label}
+        <textarea
+          className="param-textarea"
+          rows={4}
+          value={textValue}
+          onChange={(e) => onChange(e.target.value || null)}
+        />
+      </div>
+    )
+  }
+
   if (field.type === 'list[string]') {
     return (
       <div className="param-row nodrag nopan">

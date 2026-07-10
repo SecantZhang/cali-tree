@@ -345,6 +345,89 @@ body.is-resizing .bottom-panel {
   border: 1px solid var(--bg) !important;
 }
 
+/* --- Canvas groups (ComfyUI-style, purely visual, rendered behind nodes) --- */
+/* React Flow ships a default translucent style + padding for its built-in `group` node
+   type; clear it so our own `.rf-group` chrome is the only thing shown. */
+.react-flow__node-group {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.rf-group {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  /* ~30%-transparent, theme-neutral fill so it tints the board without hiding nodes. */
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 25%, transparent);
+}
+
+.rf-group-title {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+
+.rf-group-title:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border-radius: 4px;
+}
+
+/* Group resize handles are always mounted (groups aren't selectable) but only shown on
+   hover, so idle groups stay clean. */
+.rf-group-resize-line {
+  border-color: var(--accent) !important;
+  opacity: 0;
+}
+
+.rf-group-resize-handle {
+  background: var(--accent) !important;
+  border: 1px solid var(--bg) !important;
+  opacity: 0;
+}
+
+.react-flow__node-group:hover .rf-group-resize-line,
+.react-flow__node-group:hover .rf-group-resize-handle {
+  opacity: 1;
+}
+
+/* --- Canvas right-click context menu --- */
+.canvas-context-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.canvas-context-menu-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.canvas-context-menu-item:hover {
+  background: var(--surface-hover);
+}
+
 .rf-node.is-running {
   border-color: var(--status-running-border);
   border-width: 3px;
@@ -390,6 +473,57 @@ body.is-resizing .bottom-panel {
   border-radius: 4px;
   padding: 1px 5px;
   flex: 0 0 auto;
+}
+
+/* Locked: a solid accent-tinted border + a padlock badge; params rendered read-only. */
+.rf-node.is-locked {
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.rf-node-lock-badge {
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+/* Read-only params on a locked node — visible but non-interactive. */
+.params-locked {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* Lock toggle in the node header (reuses .node-run-btn sizing). The glyph is a thin
+   stroked outline (unlike the solid ▶/↻ text glyphs), so it needs a touch more contrast
+   than the shared translucent button background gives — a hair darker when idle, and a
+   solid accent fill once locked so an active lock reads at a glance. */
+.node-lock-btn {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.node-lock-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.node-lock-btn.is-locked,
+.node-lock-btn.is-locked:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+/* The lock button is a flex container, and an inline SVG's `width` attribute collapses to
+   0 as a flex item (leaving only the viewBox's intrinsic height) — pin the size in CSS and
+   opt it out of flex shrink so the padlock actually paints. */
+.node-lock-btn svg {
+  flex: 0 0 auto;
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+/* Selecting a node highlights the full root→leaf path through it (see GraphCanvas). */
+.react-flow__edge.edge-highlight .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2.5;
 }
 
 .rf-node-header {
@@ -676,6 +810,28 @@ body.is-resizing .bottom-panel {
 .param-row > input[type="checkbox"] {
   flex: 0 0 auto;
   margin-left: auto;
+}
+
+/* A multiline `text` param (e.g. a custom judge's prompt template) stacks label-over-input
+   — the beside-input layout doesn't suit a textarea. `flex: none` on the label undoes the
+   fixed 42% basis, which would otherwise be read as a vertical basis in this column row. */
+.param-row-text {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.param-row-text > .param-label {
+  flex: none;
+  max-width: none;
+}
+
+.param-textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 11px;
 }
 
 .checkbox-list {

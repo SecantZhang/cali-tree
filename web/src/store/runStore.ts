@@ -36,6 +36,11 @@ export interface RunState {
   // source for the Judge/Eval secondary tabs. Only WS status events arrive live; the
   // full outputs are fetched once via GET when the run completes (see useRunSocket).
   lastNodeResults: Record<string, NodeResultOut>
+  // The node ids the *most recent* run actually produced results for — REPLACED each run
+  // (unlike the merged `lastNodeResults`), so it's exactly the coverage of `runId`, the run
+  // a lock would seed from. Lock-eligibility keys off this (not a cosmetic `done` status),
+  // so you can't lock a node that has no real result in the run that would be reused.
+  lastRunNodeIds: Set<string>
   // Live batch-eval previews, keyed by node id — populated from `partial_result` WS
   // events while a run is in flight. Cleared at the start of each run; superseded by
   // `lastNodeResults` once the node's own authoritative run finishes.
@@ -61,6 +66,7 @@ export interface RunState {
   appendLog: (line: LogLine) => void
   setStatus: (status: RunStatus, error?: string | null) => void
   setLastNodeResults: (results: Record<string, NodeResultOut>) => void
+  setLastRunNodeIds: (ids: Iterable<string>) => void
   setPartialResult: (nodeId: string, outputs: Record<string, unknown>, meta: Record<string, unknown>) => void
   setCurrentRunningNode: (nodeId: string | null) => void
   setNodeProgressTotal: (nodeId: string, total: number) => void
@@ -84,6 +90,7 @@ export function createRunStore(): RunStoreApi {
     dryRun: true,
     isLive: false,
     lastNodeResults: {},
+    lastRunNodeIds: new Set(),
     partialResults: {},
     nodeProgress: {},
     currentRunningNodeId: null,
@@ -110,6 +117,8 @@ export function createRunStore(): RunStoreApi {
     // A no-op-equivalent difference for a full graph run, whose results already cover
     // every node anyway.
     setLastNodeResults: (results) => set((s) => ({ lastNodeResults: { ...s.lastNodeResults, ...results } })),
+
+    setLastRunNodeIds: (ids) => set({ lastRunNodeIds: new Set(ids) }),
 
     setPartialResult: (nodeId, outputs, meta) => {
       set((s) => ({ partialResults: { ...s.partialResults, [nodeId]: { outputs, meta } } }))
@@ -177,7 +186,7 @@ export function createRunStore(): RunStoreApi {
     reset: () => set({
       runId: null, status: 'idle', error: null, logs: [], isLive: false, partialResults: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes: 0, completedNodeIds: new Set(),
-      runOrder: [], staleNodeIds: new Set(),
+      runOrder: [], staleNodeIds: new Set(), lastRunNodeIds: new Set(),
     }),
   }))
 }

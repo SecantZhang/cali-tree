@@ -87,6 +87,8 @@ export function useRunSocket(
       if (!cancelled && final) {
         applyFinalNodeStatuses(final.node_results)
         runStore.getState().setLastNodeResults(final.node_results)
+        // Exactly this run's coverage (replaced, not merged) — gates lock-eligibility.
+        runStore.getState().setLastRunNodeIds(Object.keys(final.node_results))
         appendWarningLogs(runStore, final.node_results)
         // Redundant with the `run_order` WS event in the common case (both fire), but this
         // is the only source of truth once the run has already finished — cheap to repeat.
@@ -166,6 +168,7 @@ export function useRunSocket(
         }
         runStore.getState().setStatus(current.status as RunStatus, current.error)
         runStore.getState().setLastNodeResults(current.node_results)
+        runStore.getState().setLastRunNodeIds(Object.keys(current.node_results ?? {}))
         appendWarningLogs(runStore, current.node_results ?? {})
         return
       }

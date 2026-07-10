@@ -1,40 +1,31 @@
 import { expect, test } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { addPipelineNodes, dragConnect, PIPELINE_IDS, waitForPaletteLoaded } from '../helpers'
 
-// addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
-// deterministically yields these ids.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
+const { PEANUT_SOURCE, DATASET, LM_ENGINE, PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 
 function paramRow(node: ReturnType<import('@playwright/test').Page['getByTestId']>, label: string) {
   return node.locator('.param-row', { hasText: label })
 }
 
 test.describe('graph building and workflow persistence', () => {
-  test('builds a 5-node graph, connects sockets, edits inline params, collapses, and round-trips through a saved workflow', async ({
+  test('builds a 6-node graph, connects sockets, edits inline params, collapses, and round-trips through a saved workflow', async ({
     page,
   }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
     const lmEngineNode = page.getByTestId(`rf__node-${LM_ENGINE}`)
+    const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await expect(peanutSourceNode).toBeVisible()
     await expect(datasetNode).toBeVisible()
     await expect(lmEngineNode).toBeVisible()
+    await expect(promptNode).toBeVisible()
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
 
@@ -49,7 +40,7 @@ test.describe('graph building and workflow persistence', () => {
     await page.getByRole('button', { name: 'Fit View' }).click()
 
     // Connect peanut_source's "raw_dataset" source socket to dataset's "raw_dataset"
-    // target socket, then dataset's "samples" to judge_text's "samples".
+    // target socket, then dataset's "samples" to the judge's "samples".
     const sourceHandle = page.locator(`[data-nodeid="${PEANUT_SOURCE}"][data-handleid="raw_dataset"].source`)
     const targetHandle = page.locator(`[data-nodeid="${DATASET}"][data-handleid="raw_dataset"].target`)
     await dragConnect(page, sourceHandle, targetHandle)
@@ -64,6 +55,13 @@ test.describe('graph building and workflow persistence', () => {
     const judgeEngineInHandle = page.locator(`[data-nodeid="${JUDGE}"][data-handleid="engine_config"].target`)
     await dragConnect(page, engineOutHandle, judgeEngineInHandle)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
+
+    // And the Judge Prompt node's `judge_spec` into the Judge — the metric is now a wired
+    // artifact, not a param on the Judge node.
+    const promptOutHandle = page.locator(`[data-nodeid="${PROMPT}"][data-handleid="judge_spec"].source`)
+    const judgeSpecInHandle = page.locator(`[data-nodeid="${JUDGE}"][data-handleid="judge_spec"].target`)
+    await dragConnect(page, promptOutHandle, judgeSpecInHandle)
+    await expect(page.getByTestId(`rf__edge-${PROMPT}:judge_spec->${JUDGE}:judge_spec`)).toHaveCount(1)
 
     // Expand Judge again to edit its inline params below.
     await judgeNode.getByRole('button', { name: 'Expand node' }).click()
@@ -92,17 +90,15 @@ test.describe('graph building and workflow persistence', () => {
     // well past the row's horizontal midpoint) — not floating centered in the row.
     expect(checkboxBox!.x).toBeGreaterThan(rowBox!.x + rowBox!.width / 2)
 
-    // Edit an inline list[enum] param (checkbox list) on the judge node. Both boxes start
-    // checked (an unset `metrics` runs every metric of that modality, so the UI shows that
-    // honestly) — uncheck M3 to leave just M1 selected.
-    const metricsRow = paramRow(judgeNode, 'metrics')
-    await metricsRow.locator('.checkbox-list-item', { hasText: 'M3' }).locator('input[type="checkbox"]').uncheck()
+    // Edit an inline enum param (the metric preset) on the Judge Prompt node — change it
+    // from the M1 default to M3.
+    await paramRow(promptNode, 'preset').locator('select').selectOption('M3')
 
-    // Collapse the judge node and confirm the summary line reflects the selected metric.
-    await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
-    await expect(judgeNode.locator('.rf-node-param')).toHaveText('metrics: M1')
-    await judgeNode.getByRole('button', { name: 'Expand node' }).click()
-    await expect(judgeNode.locator('.rf-node-param')).toHaveCount(0)
+    // Collapse the Judge Prompt node and confirm the summary line reflects the preset.
+    await promptNode.getByRole('button', { name: 'Collapse node' }).click()
+    await expect(promptNode.locator('.rf-node-param')).toHaveText('metric: M3')
+    await promptNode.getByRole('button', { name: 'Expand node' }).click()
+    await expect(promptNode.locator('.rf-node-param')).toHaveCount(0)
 
     // Save the current graph as a named workflow.
     const workflowName = `e2e-test-workflow-${Date.now()}`
@@ -125,24 +121,20 @@ test.describe('graph building and workflow persistence', () => {
       .getByRole('button', { name: 'Load' })
       .click()
 
-    await expect(page.locator('.react-flow__node')).toHaveCount(5)
+    await expect(page.locator('.react-flow__node')).toHaveCount(6)
     await expect(peanutSourceNode).toBeVisible()
     await expect(datasetNode).toBeVisible()
     await expect(lmEngineNode).toBeVisible()
+    await expect(promptNode).toBeVisible()
     await expect(judgeNode).toBeVisible()
     await expect(evalNode).toBeVisible()
     await expect(page.getByTestId(`rf__edge-${PEANUT_SOURCE}:raw_dataset->${DATASET}:raw_dataset`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
+    await expect(page.getByTestId(`rf__edge-${PROMPT}:judge_spec->${JUDGE}:judge_spec`)).toHaveCount(1)
     await expect(paramRow(datasetNode, 'sampling_mode').locator('select')).toHaveValue('stratified')
     await expect(paramRow(datasetNode, 'use_case_filter').locator('input[type="text"]')).toHaveValue('visual montage')
-    await expect(
-      paramRow(judgeNode, 'metrics').locator('.checkbox-list-item', { hasText: 'M1' }).locator('input[type="checkbox"]'),
-    ).toBeChecked()
-    // Confirms the explicit `['M1']` value round-tripped, not just a display fallback
-    // (an unset `metrics` would show M1 checked too, but M3 would also be checked).
-    await expect(
-      paramRow(judgeNode, 'metrics').locator('.checkbox-list-item', { hasText: 'M3' }).locator('input[type="checkbox"]'),
-    ).not.toBeChecked()
+    // The edited metric preset round-tripped through save -> POST -> GET -> loadGraph.
+    await expect(paramRow(promptNode, 'preset').locator('select')).toHaveValue('M3')
   })
 })

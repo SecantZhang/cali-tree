@@ -1,26 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { addNode, dragConnect, waitForPaletteLoaded } from '../helpers'
+import { addPipelineNodes, PIPELINE_IDS, waitForPaletteLoaded, wirePipeline } from '../helpers'
 
-// addNode's module-level id counter (graphStore.ts) resets on every fresh page load, so
-// clicking peanut_source, dataset, lm_engine, judge_text, eval_text in that order
-// deterministically yields these ids.
-const PEANUT_SOURCE = 'peanut_source-1'
-const DATASET = 'dataset-2'
-const LM_ENGINE = 'lm_engine-3'
-const JUDGE = 'judge_text-4'
-const EVAL = 'eval_text-5'
-
-async function connect(
-  page: import('@playwright/test').Page,
-  sourceNodeId: string,
-  sourceHandleId: string,
-  targetNodeId: string,
-  targetHandleId: string,
-) {
-  const source = page.locator(`[data-nodeid="${sourceNodeId}"][data-handleid="${sourceHandleId}"].source`)
-  const target = page.locator(`[data-nodeid="${targetNodeId}"][data-handleid="${targetHandleId}"].target`)
-  await dragConnect(page, source, target)
-}
+const { PEANUT_SOURCE, DATASET, LM_ENGINE, PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 
 test.describe('per-node Run / Re-run', () => {
   test('Run executes just the target node\'s ancestors, Re-run reuses them, and downstream nodes go stale', async ({
@@ -29,31 +10,19 @@ test.describe('per-node Run / Re-run', () => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    await addNode(page, 'peanut_source')
-    await addNode(page, 'dataset')
-    await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
-    await addNode(page, 'eval_text')
+    await addPipelineNodes(page)
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
     const lmEngineNode = page.getByTestId(`rf__node-${LM_ENGINE}`)
+    const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
     const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await page.getByRole('button', { name: 'Fit View' }).click()
 
-    await judgeNode
-      .locator('.param-row', { hasText: 'metrics' })
-      .locator('.checkbox-list-item', { hasText: 'M1' })
-      .locator('input[type="checkbox"]')
-      .uncheck()
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
-    await connect(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connect(page, DATASET, 'samples', JUDGE, 'samples')
-    await connect(page, LM_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connect(page, JUDGE, 'judge_result', EVAL, 'judge_result')
-    await connect(page, DATASET, 'labels', EVAL, 'labels')
+    await wirePipeline(page)
 
     // Re-run is disabled until a first run of some kind exists — nothing to reuse yet.
     await expect(judgeNode.getByRole('button', { name: 'Re-run node' })).toBeDisabled()
@@ -67,7 +36,7 @@ test.describe('per-node Run / Re-run', () => {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /^Run(ning…)?$/ }).click()
     await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 20000 })
-    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode, evalNode]) {
+    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible({ timeout: 10000 })
       await expect(node.locator('.rf-node-order-badge')).toBeVisible({ timeout: 10000 })
     }
@@ -78,18 +47,18 @@ test.describe('per-node Run / Re-run', () => {
     // the baseline run above, same as a real user would by the time they click a button.
     await page.waitForTimeout(1100)
 
-    // Click Judge's own Run (▶): executes Judge's ancestor closure (source/dataset/engine)
-    // + Judge itself, fresh — Eval is downstream, not an ancestor, so it must NOT run, and
-    // its now-outdated result is flagged stale immediately (before the run even finishes).
+    // Click Judge's own Run (▶): executes Judge's ancestor closure (source/dataset/engine/
+    // prompt) + Judge itself, fresh — Eval is downstream, not an ancestor, so it must NOT
+    // run, and its now-outdated result is flagged stale immediately (before the run finishes).
     await judgeNode.getByRole('button', { name: 'Run node', exact: true }).click()
     await expect(evalNode.locator('.rf-node')).toHaveClass(/is-stale/)
     await expect(evalNode.locator('.rf-node-stale-badge')).toBeVisible()
 
     await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 20000 })
-    // This run's real scope was the 4-node ancestor closure, not the full 5-node graph —
-    // every ancestor (+ Judge itself) gets a fresh order badge, but Eval's disappears
-    // entirely (it wasn't part of this run at all) while it stays visibly stale.
-    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, judgeNode]) {
+    // This run's real scope was Judge's ancestor closure, not the full graph — every
+    // ancestor (+ Judge itself) gets a fresh order badge, but Eval's disappears entirely
+    // (it wasn't part of this run at all) while it stays visibly stale.
+    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode, judgeNode]) {
       await expect(node.locator('.rf-node-order-badge')).toBeVisible({ timeout: 10000 })
     }
     await expect(evalNode.locator('.rf-node-order-badge')).toHaveCount(0)
@@ -108,7 +77,7 @@ test.describe('per-node Run / Re-run', () => {
 
     await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 20000 })
     await expect(judgeNode.locator('.rf-node-order-badge')).toHaveText('[1]', { timeout: 10000 })
-    for (const node of [peanutSourceNode, datasetNode, lmEngineNode]) {
+    for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode]) {
       await expect(node.locator('.rf-node-order-badge')).toHaveCount(0)
     }
   })

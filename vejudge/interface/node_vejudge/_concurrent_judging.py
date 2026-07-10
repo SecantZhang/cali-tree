@@ -1,12 +1,14 @@
-"""Shared concurrent-judging engine for the Text/Video Judge node executors.
+"""Shared concurrent-judging engine for the generic Judge node.
 
-Both nodes run (item, metric) calls through one `ThreadPoolExecutor` against their own
-single engine, with identical checkpointing, per-item progress events, and streaming
-batch-eval (`ctx.on_batch`) semantics — only the metric list, engine, concurrency knob,
-and (optionally) a per-(metric, sample) skip gate differ per caller. Ported from the old
-single Judge Node's dual-pool implementation (`benchmark/human_gap/runner.py`'s
-`_run_judges_concurrent` has the same shape); with the text/video split, each caller only
-ever needs one pool, not two run side by side.
+Runs one ``judge_spec`` (a single metric/prompt) across every item through a
+``ThreadPoolExecutor``, with checkpointing, per-item progress events, and streaming
+batch-eval (`ctx.on_batch`) semantics. Cross-metric parallelism now lives *across* sibling
+Judge nodes (one spec each) rather than inside a single node's item×metric loop — each node
+still parallelizes across items here.
+
+Builtin specs delegate to the existing ``core.judge.Judge`` (via ``make_judge``); custom
+specs run through ``judge_spec.run_custom_judge``. Either way one judge result dict per item
+is filed under ``spec_key(spec)``.
 """
 
 from __future__ import annotations
@@ -18,95 +20,78 @@ from typing import Any, Callable, Optional
 from ...core.judge.registry import make_judge
 from ...lm_engine.lm_template import LMEngine
 from ..server.registry import NodeRunContext
+from .judge_spec import run_custom_judge, spec_key, spec_modality
+
+
+def _judge_one(spec: dict[str, Any], engine: LMEngine, sample: dict[str, Any]) -> dict[str, Any]:
+    if spec.get("kind") == "builtin":
+        return make_judge(spec["metric_id"], engine).run(sample)
+    return run_custom_judge(spec, engine, sample)
 
 
 def run_concurrent_judging(
     *,
     dataset: dict[str, Any],
-    metrics: list[str],
+    spec: dict[str, Any],
     engine: LMEngine,
     concurrency: int,
     batch_size: int,
     ctx: NodeRunContext,
-    should_skip: Optional[Callable[[str, dict[str, Any]], bool]] = None,
+    should_skip: Optional[Callable[[dict[str, Any]], bool]] = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    """Runs every (item, metric) pair, checkpointing + streaming as it goes.
+    """Run ``spec`` over every item, checkpointing + streaming as it goes.
 
-    ``should_skip(metric_id, sample)`` (optional) marks a pair as skipped-without-calling
-    (e.g. the Video Judge Node's "no rendered video for this item" gate) rather than
-    submitting it as a task. Returns ``(per_item, meta)`` — the same shape the caller
-    builds its `NodeRunResult` from directly.
+    ``should_skip(sample)`` (optional) marks an item as skipped-without-calling (e.g. the
+    "no rendered video for this item" gate for a video-modality spec) rather than submitting
+    it. Returns ``(per_item, meta)``; ``per_item`` is ``{item_id: {metric_key: judge_dict}}``
+    so it stays shape-compatible with the multi-metric result Eval already consumes.
     """
+    key = spec_key(spec)
     per_item: dict[str, dict[str, Any]] = {iid: {} for iid in dataset}
-    tasks: list[tuple[str, str]] = []
+    tasks: list[str] = []
     for item_id, sample in dataset.items():
-        for mid in metrics:
-            key = f"{item_id}::{mid}"
-            if ctx.checkpoint.has(key):
-                per_item[item_id][mid] = ctx.checkpoint.get(key)
-                continue
-            if should_skip and should_skip(mid, sample):
-                per_item[item_id][mid] = {
-                    "judge": mid, "metric_id": mid, "parsed": None, "skipped": True,
-                }
-                continue
-            tasks.append((item_id, mid))
+        ckpt_key = f"{item_id}::{key}"
+        if ctx.checkpoint.has(ckpt_key):
+            per_item[item_id][key] = ctx.checkpoint.get(ckpt_key)
+            continue
+        if should_skip and should_skip(sample):
+            per_item[item_id][key] = {
+                "judge": key, "metric_id": key, "parsed": None, "skipped": True,
+            }
+            continue
+        tasks.append(item_id)
 
     if ctx.progress_cb:
         ctx.progress_cb("judge_progress_init", {"total": len(tasks)})
 
-    started_items: set[str] = set()
-    started_lock = threading.Lock()
-
-    def _emit_item_start(item_id: str) -> None:
-        # Under concurrency, several items can have tasks in flight at once — this fires
-        # once per item, the moment a worker actually picks up its first task (not at
-        # submission time, when every item's tasks get queued up front).
-        with started_lock:
-            if item_id in started_items:
-                return
-            started_items.add(item_id)
+    def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
         if ctx.progress_cb:
             ctx.progress_cb("judge_item_start", {"item_id": item_id})
-
-    def _run_task(item_id: str, metric_id: str) -> tuple[str, str, dict[str, Any]]:
-        _emit_item_start(item_id)
-        judge = make_judge(metric_id, engine)
-        return item_id, metric_id, judge.run(dataset[item_id])
+        return item_id, _judge_one(spec, engine, dataset[item_id])
 
     stopped = False
     newly_complete_count = 0
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
-        futs = [ex.submit(_run_task, i, m) for i, m in tasks]
+        futs = [ex.submit(_run_task, i) for i in tasks]
         for fut in as_completed(futs):
             if fut.cancelled():
                 continue
-            item_id, metric_id, result = fut.result()
-            per_item[item_id][metric_id] = result
+            item_id, result = fut.result()
+            per_item[item_id][key] = result
             if not result.get("error") and not result.get("skipped"):
-                ctx.checkpoint.put(f"{item_id}::{metric_id}", result)
+                ctx.checkpoint.put(f"{item_id}::{key}", result)
             if ctx.progress_cb:
-                ctx.progress_cb(
-                    "judge_metric", {"item_id": item_id, "metric_id": metric_id}
-                )
+                ctx.progress_cb("judge_metric", {"item_id": item_id, "metric_id": key})
 
-            # Batch membership is a function of *completion* order, not submission order
-            # — under concurrency, items can finish their last pending metric in any
-            # order, so the Nth item to reach `len(metrics)` here is the Nth item counted.
-            # The snapshot only contains items that are actually fully judged so far — Eval
-            # Node aligns purely on key presence, so including a not-yet-judged placeholder
-            # would make every preview claim more items are aligned than really are.
-            if len(per_item[item_id]) == len(metrics):
-                newly_complete_count += 1
-                if ctx.on_batch and newly_complete_count % batch_size == 0:
-                    snapshot = {
-                        iid: dict(m) for iid, m in per_item.items() if len(m) == len(metrics)
-                    }
-                    ctx.on_batch("judge_result", snapshot)
+            # One spec per node → an item is "complete" as soon as its single result lands.
+            # The snapshot only contains items actually judged so far — Eval aligns on key
+            # presence, so a not-yet-judged placeholder would overstate the aligned count.
+            newly_complete_count += 1
+            if ctx.on_batch and newly_complete_count % batch_size == 0:
+                snapshot = {iid: dict(m) for iid, m in per_item.items() if m}
+                ctx.on_batch("judge_result", snapshot)
 
-            # Graceful stop: let anything already picked up by a worker finish and get
-            # checkpointed; anything still queued is cancelled outright. Missing (item,
-            # metric) pairs simply show up as "pending" again on Resume.
+            # Graceful stop: let in-flight tasks finish + checkpoint; cancel anything queued.
             if ctx.should_stop and ctx.should_stop() and not stopped:
                 stopped = True
                 for f in futs:
@@ -115,7 +100,7 @@ def run_concurrent_judging(
 
     meta: dict[str, Any] = {"n_items": len(dataset)}
     if stopped:
-        n_done = sum(1 for item in per_item.values() if len(item) == len(metrics))
+        n_done = sum(1 for item in per_item.values() if item)
         meta["stopped"] = True
         meta["n_items_done"] = n_done
         meta["n_items_total"] = len(dataset)

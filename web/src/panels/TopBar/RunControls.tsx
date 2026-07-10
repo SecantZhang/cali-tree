@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { resumeRun, startRun, stopRun } from '../../api/runs'
 import { listWorkflowRuns } from '../../api/workflows'
-import { activeGraphStore, useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
+import { activeGraphStore, activeRunStore, useActiveGraphStore, useActiveRunStore } from '../../store/activeTab'
 import { liveRunInAnotherTab } from '../../store/liveRunGuard'
 
 // A workflow's latest run is worth offering to resume only if it left work unfinished —
@@ -54,9 +54,16 @@ export function RunControls() {
 
     setBusy(true)
     try {
+      // Locked nodes are seeded from the prior run (runId, captured before beginRun) and
+      // skipped — so a global Run starts past the lock frontier.
+      const lockedNodeIds = activeGraphStore().getState().nodes.filter((n) => n.data.locked).map((n) => n.id)
+      const seedRunId = activeRunStore().getState().runId
       activeGraphStore().getState().resetAllStatuses()
       const graph = activeGraphStore().getState().toJSON()
-      const result = await startRun(graph, dryRun, !dryRun, currentWorkflowName)
+      const result = await startRun(
+        graph, dryRun, !dryRun, currentWorkflowName, undefined,
+        lockedNodeIds.length ? { nodeIds: lockedNodeIds, seedRunId } : undefined,
+      )
       beginRun(result.run_id, graph.nodes.length, !dryRun)
     } catch (e) {
       window.alert(e instanceof Error ? e.message : String(e))

@@ -59,9 +59,9 @@ test.describe('resizable panels and nodes', () => {
   }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
-    await addNode(page, 'judge_text')
+    await addNode(page, 'judge')
 
-    const node = page.getByTestId('rf__node-judge_text-1')
+    const node = page.getByTestId('rf__node-judge-1')
     await expect(node).toBeVisible()
     // addNode leaves the new node selected already, but click it explicitly so this test
     // doesn't depend on that incidental behavior.
@@ -100,9 +100,9 @@ test.describe('resizable panels and nodes', () => {
     await page.setViewportSize({ width: 1800, height: 1100 })
     await page.goto('/')
     await waitForPaletteLoaded(page)
-    await addNode(page, 'judge_text')
+    await addNode(page, 'judge')
 
-    const node = page.getByTestId('rf__node-judge_text-1')
+    const node = page.getByTestId('rf__node-judge-1')
     await node.dblclick()
     const modal = page.locator('.modal-panel')
     await expect(modal).toBeVisible()
@@ -135,8 +135,8 @@ test.describe('resizable panels and nodes', () => {
     await expect(modal).toHaveCount(0)
     await page.reload()
     await waitForPaletteLoaded(page)
-    await addNode(page, 'judge_text')
-    await page.getByTestId('rf__node-judge_text-1').dblclick()
+    await addNode(page, 'judge')
+    await page.getByTestId('rf__node-judge-1').dblclick()
     const reopened = await page.locator('.modal-panel').boundingBox()
     expect(reopened!.width).toBeCloseTo(after!.width, 0)
     expect(reopened!.height).toBeCloseTo(after!.height, 0)
@@ -145,9 +145,9 @@ test.describe('resizable panels and nodes', () => {
   test('deselecting a node hides its resize handles', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
-    await addNode(page, 'judge_text')
+    await addNode(page, 'judge')
 
-    const node = page.getByTestId('rf__node-judge_text-1')
+    const node = page.getByTestId('rf__node-judge-1')
     await node.click()
     await expect(node.locator('.rf-node-resize-handle.bottom.right')).toBeVisible()
 

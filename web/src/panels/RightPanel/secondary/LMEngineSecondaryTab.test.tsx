@@ -14,7 +14,7 @@ function seed() {
   useTabsStore.getState().openBlankTab()
   const g = activeGraphStore().getState()
   g.addNode('lm_engine', { x: 0, y: 0 })
-  g.addNode('judge_text', { x: 200, y: 0 })
+  g.addNode('judge', { x: 200, y: 0 })
   const [engine, judge] = activeGraphStore().getState().nodes
   return { engine, judge }
 }
@@ -38,7 +38,7 @@ describe('LMEngineSecondaryTab', () => {
       target: judge.id, targetHandle: 'engine_config',
     })
     render(<LMEngineSecondaryTab node={engine} />)
-    expect(screen.getByText('Text Judge')).toBeInTheDocument()
+    expect(screen.getByText('Judge')).toBeInTheDocument()
   })
 
   it('confirms before the billable health check, then renders endpoint results', async () => {

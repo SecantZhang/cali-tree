@@ -3,7 +3,8 @@
 // sync with the backend; task-11-era work may switch this to be fetched live from
 // GET /api/nodes.
 
-export type ParamFieldType = 'string' | 'number' | 'bool' | 'enum' | 'list[string]' | 'list[enum]'
+export type ParamFieldType =
+  | 'string' | 'text' | 'number' | 'bool' | 'enum' | 'list[string]' | 'list[enum]'
 
 export interface ParamField {
   type: ParamFieldType
@@ -14,9 +15,15 @@ export interface ParamField {
   step?: number
 }
 
-// M1/M3 = text modality, M2/M4/M5/M6 = video modality (vejudge/core/rubric/definitions.py).
-const TEXT_JUDGES = ['M1', 'M3']
-const VIDEO_JUDGES = ['M2', 'M4', 'M5', 'M6']
+// M1-M6 built-in metric presets on the Judge Prompt node (vejudge/core/rubric/
+// definitions.py), plus a "custom" free-text mode.
+const METRIC_PRESETS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'custom']
+// The human dimensions a custom judge may target (dl_human_annotations HUMAN_DIMENSIONS).
+const HUMAN_DIMENSIONS = [
+  'voiceover_matches_visuals', 'abrupt_cutoffs_voiceover', 'abrupt_cutoffs_video',
+  'story_flow_voiceover', 'story_flow_visuals', 'section_placement_opening',
+  'section_placement_middle', 'section_placement_closing', 'video_addresses_prompt',
+]
 
 const PREPROCESSING_ARTIFACT_TYPES = [
   'sampled_frames', 'keyframes', 'short_clips', 'asr_transcript', 'ocr_text',
@@ -70,18 +77,26 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     concurrency: { type: 'number', default: 1, min: 1 },
     health_check: { type: 'bool', default: false },
   },
-  // engine_kind/model/temperature/concurrency come from a required upstream LM Engine
-  // Node's `engine_config` input, not this node's own params (see lm_engine_node.py).
-  judge_text: {
-    metrics: { type: 'list[enum]', options: TEXT_JUDGES, default: null },
+  // A metric's identity (prompt/schema/alignment) is now a wired `judge_spec` from a Judge
+  // Prompt node, not params here. Presets M1-M6 reuse the built-in code; "custom" enables a
+  // free-text judge (the custom-only fields are ignored unless preset === 'custom').
+  judge_prompt: {
+    preset: { type: 'enum', options: METRIC_PRESETS, default: 'M1' },
+    spec_id: { type: 'string', default: 'custom' },
+    label: { type: 'string', default: null },
+    modality: { type: 'enum', options: ['text', 'video'], default: 'text' },
+    system: { type: 'text', default: null },
+    user_template: { type: 'text', default: null },
+    expected_fields: { type: 'list[string]', default: null },
+    score_path: { type: 'string', default: 'score_1_to_5' },
+    target_dimension: { type: 'enum', options: HUMAN_DIMENSIONS, default: HUMAN_DIMENSIONS[0] },
+  },
+  // engine_kind/model/temperature/concurrency come from a required upstream LM Engine Node's
+  // `engine_config` input; the metric comes from a required `judge_spec` input.
+  judge: {
     batch_size: { type: 'number', default: 1, min: 1 },
   },
-  judge_video: {
-    metrics: { type: 'list[enum]', options: VIDEO_JUDGES, default: null },
-    batch_size: { type: 'number', default: 1, min: 1 },
-  },
-  eval_text: {},
-  eval_video: {},
+  eval: {},
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

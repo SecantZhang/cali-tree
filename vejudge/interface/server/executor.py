@@ -53,6 +53,13 @@ class GraphExecutionEngine:
         # these two None, so it runs like any other whole-graph execution.
         target_node_id: Optional[str] = None,
         seed_results: Optional[dict[str, NodeRunResult]] = None,
+        # Locked nodes: any node id in this set is *seeded* from `seed_results` (its prior
+        # result reused) and NOT executed — every run starts past the lock frontier. A
+        # generalization of the self_only single-target skip to an arbitrary set; the two
+        # compose (self_only reduces `order` to the target, then locked ids are filtered out
+        # of whatever remains). Requires `seed_results` to cover every id here (the route
+        # validates that up front).
+        seed_node_ids: Optional[set[str]] = None,
     ) -> None:
         self.graph = graph
         self.run = run
@@ -63,6 +70,7 @@ class GraphExecutionEngine:
         self.should_stop = should_stop
         self.target_node_id = target_node_id
         self.seed_results = seed_results
+        self.seed_node_ids = seed_node_ids or set()
 
     def _emit(self, event: str, payload: dict[str, Any]) -> None:
         if self.progress_cb:
@@ -84,6 +92,11 @@ class GraphExecutionEngine:
         # already-reduced-by-the-caller) topological order.
         if self.seed_results is not None and self.target_node_id is not None:
             order = [self.target_node_id]
+        # Locked nodes are seeded (their prior output is already in `node_results` below) and
+        # never executed — so a global run, or a per-node Run whose ancestor closure includes
+        # locked nodes, starts at the first unlocked node past the lock frontier.
+        if self.seed_node_ids:
+            order = [n for n in order if n not in self.seed_node_ids]
         self._emit("run_order", {"order": order})
 
         nodes_by_id = {n.id: n for n in self.graph.nodes}

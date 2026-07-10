@@ -8,6 +8,7 @@ import {
   type NodeChange,
 } from '@xyflow/react'
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
+import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { defaultParamsFor } from '../nodes/paramSchemas'
 import { isValidSocketConnection } from '../nodes/socketTypes'
 import type { VeNodeData } from '../nodes/types'
@@ -34,6 +35,9 @@ export interface GraphNodeSpec {
   // Mirrors `runStore.staleNodeIds` at save time (a separate store — graphStore has no
   // access to it directly, so callers of `toJSON` pass it in explicitly; see saveTab.ts).
   stale?: boolean
+  // Frozen result reused on every run (see runStore/RunControls run wiring + backend
+  // locked_node_ids). Locking a node also locks all its predecessors (see lockNode).
+  locked?: boolean
 }
 export interface GraphEdgeSpec {
   source: string
@@ -41,9 +45,19 @@ export interface GraphEdgeSpec {
   target: string
   target_socket: string
 }
+// A purely-visual, ComfyUI-style canvas group: a translucent resizable rectangle behind the
+// nodes, with an editable title. Not a node/executor — kept out of the executor node list;
+// persisted alongside nodes/edges. Nodes touching it move with it (see GraphCanvas drag).
+export interface GroupSpec {
+  id: string
+  title: string
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+}
 export interface GraphSpecJSON {
   nodes: GraphNodeSpec[]
   edges: GraphEdgeSpec[]
+  groups?: GroupSpec[]
 }
 
 export type VeNode = Node<VeNodeData>
@@ -70,6 +84,18 @@ export interface GraphState {
   closeSecondaryTab: () => void
   setNodeStatus: (id: string, status: VeNodeData['status'], error?: string | null) => void
   resetAllStatuses: () => void
+  // Locking a node locks all its predecessors; unlocking cascades forward to descendants
+  // (a downstream lock is only valid while its ancestors stay locked). The `*Nodes` variants
+  // apply to a whole selection at once (multi-select lock/unlock from a node's header).
+  lockNodes: (ids: string[]) => void
+  unlockNodes: (ids: string[]) => void
+  lockNode: (id: string) => void
+  unlockNode: (id: string) => void
+  // Purely-visual groups (see GroupSpec). Kept separate from `nodes` (not executor nodes).
+  groups: GroupSpec[]
+  addGroup: (position: { x: number; y: number }) => void
+  updateGroup: (id: string, patch: Partial<Omit<GroupSpec, 'id'>>) => void
+  removeGroup: (id: string) => void
   // `staleNodeIds` comes from the tab's separate runStore (see saveTab.ts) — graphStore
   // itself has no access to it.
   toJSON: (staleNodeIds?: Set<string>) => GraphSpecJSON
@@ -105,6 +131,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
   return create<GraphState>((set, get) => ({
     nodes: [],
     edges: [],
+    groups: [],
     selectedNodeId: null,
     secondaryTabNodeId: null,
     currentWorkflowName: null,
@@ -225,11 +252,71 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
     },
 
     resetAllStatuses: () => {
-      set({ nodes: get().nodes.map((n) => ({ ...n, data: { ...n.data, status: 'idle', error: null } })) })
+      // Locked nodes keep their frozen (done) status — they're reused, not re-run.
+      set({
+        nodes: get().nodes.map((n) =>
+          n.data.locked
+            ? n
+            : { ...n, data: { ...n.data, status: 'idle', error: null } },
+        ),
+      })
+    },
+
+    // Locking node(s) locks each one's whole upstream chain (its result depends on theirs).
+    lockNodes: (ids) => {
+      const edges = get().edges
+      const toLock = new Set<string>()
+      for (const id of ids) {
+        toLock.add(id)
+        for (const a of ancestorsOf(edges, id)) toLock.add(a)
+      }
+      set({
+        nodes: get().nodes.map((n) =>
+          toLock.has(n.id) ? { ...n, data: { ...n.data, locked: true } } : n,
+        ),
+      })
+      onDirty()
+    },
+    // Unlocking cascades forward: a downstream locked node is only valid while its ancestors
+    // stay locked, so unlocking a node unlocks everything that depended on it.
+    unlockNodes: (ids) => {
+      const edges = get().edges
+      const toUnlock = new Set<string>()
+      for (const id of ids) {
+        toUnlock.add(id)
+        for (const d of descendantsOf(edges, id)) toUnlock.add(d)
+      }
+      set({
+        nodes: get().nodes.map((n) =>
+          toUnlock.has(n.id) ? { ...n, data: { ...n.data, locked: false } } : n,
+        ),
+      })
+      onDirty()
+    },
+    lockNode: (id) => get().lockNodes([id]),
+    unlockNode: (id) => get().unlockNodes([id]),
+
+    addGroup: (position) => {
+      const group: GroupSpec = {
+        id: nextId('group'),
+        title: 'Group',
+        position,
+        size: { width: 360, height: 260 },
+      }
+      set({ groups: [...get().groups, group] })
+      onDirty()
+    },
+    updateGroup: (id, patch) => {
+      set({ groups: get().groups.map((g) => (g.id === id ? { ...g, ...patch } : g)) })
+      onDirty()
+    },
+    removeGroup: (id) => {
+      set({ groups: get().groups.filter((g) => g.id !== id) })
+      onDirty()
     },
 
     toJSON: (staleNodeIds) => {
-      const { nodes, edges } = get()
+      const { nodes, edges, groups } = get()
       return {
         nodes: nodes.map((n) => {
           const width = n.width ?? n.measured?.width
@@ -245,6 +332,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
             ...(n.data.collapsed ? { collapsed: n.data.collapsed } : {}),
             ...(n.data.expandedSize ? { expanded_size: n.data.expandedSize } : {}),
             ...(staleNodeIds?.has(n.id) ? { stale: true } : {}),
+            ...(n.data.locked ? { locked: true } : {}),
           }
         }),
         edges: edges.map((e) => ({
@@ -253,6 +341,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
           target: e.target,
           target_socket: e.targetHandle ?? '',
         })),
+        groups: groups.map((g) => ({ ...g })),
       }
     },
 
@@ -274,6 +363,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
               ...(n.error != null ? { error: n.error } : {}),
               ...(n.collapsed ? { collapsed: n.collapsed } : {}),
               ...(n.expanded_size ? { expandedSize: n.expanded_size } : {}),
+              ...(n.locked ? { locked: true } : {}),
             },
           }
         }),
@@ -284,6 +374,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
           target: e.target,
           targetHandle: e.target_socket,
         })),
+        groups: (graph.groups ?? []).map((g) => ({ ...g })),
         selectedNodeId: null,
       })
     },

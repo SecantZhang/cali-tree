@@ -84,9 +84,9 @@ test.describe('secondary tabs', () => {
     await waitForPaletteLoaded(page)
 
     await addNode(page, 'lm_engine')
-    await addNode(page, 'judge_text')
+    await addNode(page, 'judge')
     await page.getByRole('button', { name: 'Fit View' }).click()
-    await connect(page, 'lm_engine-1', 'engine_config', 'judge_text-2', 'engine_config')
+    await connect(page, 'lm_engine-1', 'engine_config', 'judge-2', 'engine_config')
 
     await page.getByTestId('rf__node-lm_engine-1').dblclick()
     const modal = page.locator('.modal-panel')
@@ -94,7 +94,7 @@ test.describe('secondary tabs', () => {
 
     // Config summary + the "feeds" list traced off the live graph edge.
     await expect(modal.getByText('Engine kind:')).toBeVisible()
-    await expect(modal.getByText('Text Judge')).toBeVisible()
+    await expect(modal.locator('.engine-feeds-list').getByText('Judge')).toBeVisible()
 
     // "Test this engine" makes a real gateway call (to the local mock gateway, per
     // global-setup) after a confirm — auto-accept the dialog, then assert the endpoint
