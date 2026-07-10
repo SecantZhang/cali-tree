@@ -38,8 +38,8 @@ def test_full_two_round_debate_converges_and_produces_verdict():
         _out({"score_1_to_5": 3.7, "revised": True, "reasoning_lines": ["minor further tweak"], "evidence": ["timing ok"]}),
     ])
     proxy_engine = _ScriptedEngine([
-        _out({"score_1_to_5": 2, "agrees_with_judge": False, "critique_lines": ["title card missing on B-roll"], "cited_failure_modes": ["surface_realism_bias"]}),
-        _out({"score_1_to_5": 2, "agrees_with_judge": False, "critique_lines": ["still a bit early"], "cited_failure_modes": []}),
+        _out({"score_1_to_5": 2, "agrees_with_judge": False, "reasoning_lines": ["title card missing on B-roll"], "cited_failure_modes": ["surface_realism_bias"]}),
+        _out({"score_1_to_5": 2, "agrees_with_judge": False, "reasoning_lines": ["still a bit early"], "cited_failure_modes": []}),
     ])
 
     debater = make_debate(
@@ -80,7 +80,7 @@ def test_retrieval_note_reaches_the_human_proxy_prompt(monkeypatch):
         _out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": []}),
     ])
     proxy_engine = _ScriptedEngine([
-        _out({"score_1_to_5": 2, "agrees_with_judge": False, "critique_lines": ["gap"], "cited_failure_modes": []}),
+        _out({"score_1_to_5": 2, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []}),
     ])
 
     debater = make_debate(

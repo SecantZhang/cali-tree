@@ -32,7 +32,11 @@ _TAXONOMY_LINES = "\n".join(f"- {k}: {v}" for k, v in FAILURE_MODE_TAXONOMY.item
 SCHEMA = {
     "score_1_to_5": "integer",
     "agrees_with_judge": "boolean",
-    "critique_lines": ["string", "string", "string"],
+    # Named "reasoning_lines" (not "critique_lines") to match the field
+    # vejudge.core.judge.validate.validate_judge_output's rationale check looks for --
+    # every M1-M6 judge uses this same key, so reusing it keeps the shared validator
+    # (which is not modified for this feature) working unchanged for this role too.
+    "reasoning_lines": ["string", "string", "string"],
     "cited_failure_modes": ["string"],
 }
 
@@ -90,11 +94,11 @@ This is round {round_no}. Respond with JSON only (no markdown fences):
 {{
   "score_1_to_5": integer,
   "agrees_with_judge": boolean,
-  "critique_lines": [string, string, string],
+  "reasoning_lines": [string, string, string],
   "cited_failure_modes": [string]
 }}
 - "cited_failure_modes": zero or more keys from the failure-mode list above (use the
   exact keys, e.g. "surface_realism_bias"), only when genuinely applicable.
-- "critique_lines": exactly 2-3 sentences, concrete and evidence-based."""
+- "reasoning_lines": exactly 2-3 sentences of your critique, concrete and evidence-based."""
 
     return PromptSpec(system=system, user=user, schema=SCHEMA, version=VERSION)

@@ -33,7 +33,7 @@ def test_as_text_empty_transcript_is_empty_string():
 def test_as_text_includes_role_round_score_and_lines_in_order():
     t = DebateTranscript(item_id="prj::0::peanut", metric_id="M4")
     t.turns.append(
-        _turn(1, "human_proxy", {"score_1_to_5": 2, "critique_lines": ["misses the ask"]})
+        _turn(1, "human_proxy", {"score_1_to_5": 2, "reasoning_lines": ["misses the ask"]})
     )
     t.turns.append(
         _turn(1, "judge", {"score_1_to_5": 4, "reasoning_lines": ["still aligned"]})
@@ -75,7 +75,7 @@ def test_normalize_failure_modes_handles_none():
 def test_render_reasoning_trace_converged():
     t = DebateTranscript(item_id="x", metric_id="M4", converged=True, rounds_run=2)
     t.turns.append(
-        _turn(1, "human_proxy", {"score_1_to_5": 2, "critique_lines": ["gap here"]})
+        _turn(1, "human_proxy", {"score_1_to_5": 2, "reasoning_lines": ["gap here"]})
     )
     t.turns.append(_turn(1, "judge", {"score_1_to_5": 4, "reasoning_lines": ["holds up"]}))
     trace = render_reasoning_trace(t, {"parsed": {"reasoning_lines": ["orig rationale"]}})

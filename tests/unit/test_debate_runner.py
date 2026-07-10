@@ -55,7 +55,7 @@ def _runner(judge_responses, proxy_responses, **config_kwargs):
 def test_converges_within_epsilon_on_round_one():
     runner = _runner(
         judge_responses=[_out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": ["e"]})],
-        proxy_responses=[_out({"score_1_to_5": 2, "agrees_with_judge": False, "critique_lines": ["gap"], "cited_failure_modes": []})],
+        proxy_responses=[_out({"score_1_to_5": 2, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})],
         epsilon=0.25, max_rounds=4,
     )
     verdict = runner.run(_sample(), _original_output(score=3.0))
@@ -68,6 +68,12 @@ def test_converges_within_epsilon_on_round_one():
     assert len(verdict.transcript.turns) == 2
     assert verdict.transcript.turns[0].role == "human_proxy"
     assert verdict.transcript.turns[1].role == "judge"
+    # A well-formed human-proxy turn must validate successfully against the shared
+    # validate_judge_output rationale check -- regression test for a bug caught by
+    # manual testing where "critique_lines" (not "reasoning_lines") silently failed
+    # the shared validator's rationale check on every single human-proxy turn.
+    assert verdict.transcript.turns[0].valid is True
+    assert verdict.transcript.turns[0].validation_flags == []
 
 
 def test_hits_max_rounds_without_converging():
@@ -78,7 +84,7 @@ def test_hits_max_rounds_without_converging():
         for s in judge_scores
     ]
     proxy_responses = [
-        _out({"score_1_to_5": 1, "agrees_with_judge": False, "critique_lines": ["gap"], "cited_failure_modes": []})
+        _out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})
         for _ in judge_scores
     ]
     runner = _runner(judge_responses, proxy_responses, epsilon=0.25, max_rounds=4)
@@ -100,8 +106,8 @@ def test_invalid_judge_turn_stops_without_faking_convergence():
              "completionTokens": 1, "totalTokens": 2},  # round 2: genuinely unparseable
         ],
         proxy_responses=[
-            _out({"score_1_to_5": 1, "agrees_with_judge": False, "critique_lines": ["gap"], "cited_failure_modes": []}),
-            _out({"score_1_to_5": 1, "agrees_with_judge": False, "critique_lines": ["gap again"], "cited_failure_modes": []}),
+            _out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []}),
+            _out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap again"], "cited_failure_modes": []}),
         ],
         epsilon=0.05, max_rounds=4,  # tiny epsilon so round 1 does NOT converge
     )
@@ -135,7 +141,7 @@ def test_failure_mode_tags_are_normalized_and_counted():
         judge_responses=[_out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": []})],
         proxy_responses=[_out({
             "score_1_to_5": 2, "agrees_with_judge": False,
-            "critique_lines": ["ignores the audio"],
+            "reasoning_lines": ["ignores the audio"],
             "cited_failure_modes": ["Audio-Neglect", "made_up_mode"],
         })],
         epsilon=0.25, max_rounds=4,

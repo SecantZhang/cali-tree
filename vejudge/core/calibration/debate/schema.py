@@ -126,11 +126,10 @@ class DebateTranscript:
             label = "Human-proxy critique" if t.role == "human_proxy" else "Judge response"
             lines.append(f"Round {t.round} -- {label} (score={score}):")
             if t.parsed:
-                for key in ("critique_lines", "reasoning_lines"):
-                    val = t.parsed.get(key)
-                    if isinstance(val, list):
-                        for line in val:
-                            lines.append(f"  - {line}")
+                val = t.parsed.get("reasoning_lines")
+                if isinstance(val, list):
+                    for line in val:
+                        lines.append(f"  - {line}")
             elif t.error:
                 lines.append(f"  [turn failed: {t.error}]")
         return "\n".join(lines)
@@ -175,14 +174,11 @@ def render_reasoning_trace(
     for t in transcript.turns:
         if not t.parsed:
             continue
-        if t.role == "human_proxy":
-            lines = t.parsed.get("critique_lines") or []
-            if lines:
-                parts.append(f"Round {t.round} human-proxy critique: " + " ".join(str(x) for x in lines))
-        else:
-            lines = t.parsed.get("reasoning_lines") or []
-            if lines:
-                parts.append(f"Round {t.round} judge response: " + " ".join(str(x) for x in lines))
+        lines = t.parsed.get("reasoning_lines") or []
+        if not lines:
+            continue
+        label = "human-proxy critique" if t.role == "human_proxy" else "judge response"
+        parts.append(f"Round {t.round} {label}: " + " ".join(str(x) for x in lines))
 
     if transcript.converged:
         parts.append(f"Converged after {transcript.rounds_run} round(s).")
