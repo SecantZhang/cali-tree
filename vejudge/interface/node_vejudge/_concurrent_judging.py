@@ -23,9 +23,15 @@ from ..server.registry import NodeRunContext
 from .judge_spec import run_custom_judge, spec_key, spec_modality
 
 
-def _judge_one(spec: dict[str, Any], engine: LMEngine, sample: dict[str, Any]) -> dict[str, Any]:
+def _judge_one(
+    spec: dict[str, Any],
+    engine: LMEngine,
+    sample: dict[str, Any],
+    *,
+    extra_context: Optional[str] = None,
+) -> dict[str, Any]:
     if spec.get("kind") == "builtin":
-        return make_judge(spec["metric_id"], engine).run(sample)
+        return make_judge(spec["metric_id"], engine).run(sample, extra_context=extra_context)
     return run_custom_judge(spec, engine, sample)
 
 
@@ -38,6 +44,7 @@ def run_concurrent_judging(
     batch_size: int,
     ctx: NodeRunContext,
     should_skip: Optional[Callable[[dict[str, Any]], bool]] = None,
+    calibration: Optional[dict[str, dict[str, Any]]] = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     """Run ``spec`` over every item, checkpointing + streaming as it goes.
 
@@ -45,6 +52,11 @@ def run_concurrent_judging(
     "no rendered video for this item" gate for a video-modality spec) rather than submitting
     it. Returns ``(per_item, meta)``; ``per_item`` is ``{item_id: {metric_key: judge_dict}}``
     so it stays shape-compatible with the multi-metric result Eval already consumes.
+
+    ``calibration`` (optional), if given, is a ``cl_adversarial`` node's
+    ``calibration_results`` output (``{item_id: CalibratedResult_dict}``) — each item's own
+    ``optimized_prompt`` is looked up and passed through as ``extra_context`` for *that
+    item's* builtin judge call, never applied dataset-wide.
     """
     key = spec_key(spec)
     per_item: dict[str, dict[str, Any]] = {iid: {} for iid in dataset}
@@ -67,7 +79,8 @@ def run_concurrent_judging(
     def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
         if ctx.progress_cb:
             ctx.progress_cb("judge_item_start", {"item_id": item_id})
-        return item_id, _judge_one(spec, engine, dataset[item_id])
+        extra_context = (calibration or {}).get(item_id, {}).get("optimized_prompt")
+        return item_id, _judge_one(spec, engine, dataset[item_id], extra_context=extra_context)
 
     stopped = False
     newly_complete_count = 0

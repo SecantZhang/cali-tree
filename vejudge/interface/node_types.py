@@ -6,6 +6,7 @@ app, the graph executor, or a test asserting on ``NODE_EXECUTORS``. See ``interf
 for the full node/workflow model and why the remaining node types aren't here yet.
 """
 
+from .node_calibration.cl_adversarial_node import ClAdversarialNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
 from .node_eval.eval_node import EvalNodeExecutor
@@ -22,4 +23,5 @@ __all__ = [
     "JudgePromptNodeExecutor",
     "JudgeNodeExecutor",
     "EvalNodeExecutor",
+    "ClAdversarialNodeExecutor",
 ]

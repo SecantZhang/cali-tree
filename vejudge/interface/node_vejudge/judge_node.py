@@ -30,6 +30,10 @@ class JudgeNodeExecutor(NodeExecutor):
         "samples": "samples",
         "engine_config": "engine_config",
         "judge_spec": "judge_spec",
+        # Optional: a cl_adversarial node's per-item calibrated results. When wired,
+        # each item's own `optimized_prompt` is injected as that item's extra_context
+        # (builtin specs only — see _concurrent_judging.py).
+        "calibration": "calibration_results",
     }
     output_sockets = {"judge_result": "judge_result"}
     param_schema = {
@@ -59,6 +63,7 @@ class JudgeNodeExecutor(NodeExecutor):
                 error="Judge Node requires a 'judge_spec' input (wire a Judge Prompt Node's "
                 "`judge_spec` output)",
             )
+        calibration = ctx.inputs.get("calibration")  # optional
 
         modality = spec_modality(spec)
         label = spec.get("label") or spec_key(spec)
@@ -103,6 +108,7 @@ class JudgeNodeExecutor(NodeExecutor):
             batch_size=max(1, int(p.get("batch_size") or 1)),
             ctx=ctx,
             should_skip=_should_skip if modality == "video" else None,
+            calibration=calibration,
         )
         meta["spec"] = label
         return NodeRunResult(outputs={"judge_result": per_item}, meta=meta)

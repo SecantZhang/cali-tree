@@ -97,6 +97,19 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     batch_size: { type: 'number', default: 1, min: 1 },
   },
   eval: {},
+  // judge_engine/human_engine come from two required upstream LM Engine Node
+  // `engine_config` inputs; `labels` is optional (used only for the secondary tab's
+  // judge-vs-human score comparison, not for the debate itself).
+  cl_adversarial: {
+    metric_id: { type: 'enum', options: METRIC_PRESETS.slice(0, -1), default: 'M4' },
+    epsilon: { type: 'number', default: 0.25, min: 0, step: 0.05 },
+    max_rounds: { type: 'number', default: 4, min: 1 },
+    retrieval_enabled: { type: 'bool', default: true },
+    batch_size: { type: 'number', default: 1, min: 1 },
+    // "" (default) = auto-detect via the ALIGNMENT crosswalk; set only for metrics
+    // (M1/M2/M4) with no direct human-dimension mapping.
+    human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+  },
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

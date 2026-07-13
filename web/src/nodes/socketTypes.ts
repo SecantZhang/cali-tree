@@ -3,7 +3,7 @@
 
 export type SocketType =
   | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
-  | 'metrics_report'
+  | 'metrics_report' | 'calibration_results'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
@@ -13,6 +13,7 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   judge_spec: 'var(--node-vejudge)',
   judge_result: 'var(--node-vejudge)',
   metrics_report: 'var(--node-eval)',
+  calibration_results: 'var(--node-calibration)',
 }
 
 export interface NodeTypeSockets {
@@ -40,7 +41,12 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   // Judge node consumes alongside samples + engine.
   judge_prompt: { input: {}, output: { judge_spec: 'judge_spec' } },
   judge: {
-    input: { samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec' },
+    input: {
+      samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec',
+      // Optional: a cl_adversarial node's per-item calibrated results. When wired, each
+      // item's own optimized_prompt is injected for that item's judge call only.
+      calibration: 'calibration_results',
+    },
     output: { judge_result: 'judge_result' },
   },
   // One generic Eval node: it auto-scopes to whatever dimensions the incoming judge_result
@@ -49,6 +55,17 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   eval: {
     input: { judge_result: 'judge_result', labels: 'labels' },
     output: { metrics_report: 'metrics_report' },
+  },
+  // A bounded judge-vs-human-proxy debate over a dataset — produces a per-item
+  // calibrated result (its own transcript, distilled reasoning, and an `optimized_prompt`
+  // addendum), not one aggregate prompt for the whole dataset. `labels` is optional (used
+  // only for the secondary tab's judge-vs-human score comparison).
+  cl_adversarial: {
+    input: {
+      samples: 'samples', labels: 'labels',
+      judge_engine: 'engine_config', human_engine: 'engine_config',
+    },
+    output: { calibration_results: 'calibration_results' },
   },
 }
 

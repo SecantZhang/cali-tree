@@ -46,9 +46,25 @@ class Judge:
             return None
         return [{"type": "video", "path": path}]
 
-    def run(self, sample: dict[str, Any], *, model: Optional[str] = None) -> dict[str, Any]:
+    def run(
+        self,
+        sample: dict[str, Any],
+        *,
+        model: Optional[str] = None,
+        extra_context: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Run this judge over ``sample``.
+
+        ``extra_context`` (e.g. a calibrated-prompt addendum from
+        ``vejudge.core.calibration.debate``) is appended to the rubric's system prompt
+        before the call, never silently dropped or merged in a way that hides it —
+        ``prompt_system`` below always reflects the *effective* text actually sent.
+        """
         spec = build_prompt(self.metric_id, sample)
         media = self._media_inputs(sample)
+        effective_system = (
+            f"{spec.system}\n\n{extra_context}" if spec.system else extra_context
+        ) if extra_context else spec.system
 
         result: dict[str, Any] = {
             "judge": self.full_id,
@@ -57,7 +73,7 @@ class Judge:
             # The exact text sent to the LM for this item — surfaced (not just logged to
             # llm-histories.log) so the interface's Judge Node secondary tab can show it
             # per item/metric, not just the parsed output.
-            "prompt_system": spec.system,
+            "prompt_system": effective_system,
             "prompt_user": spec.user,
             "parsed": None,
             "raw_content": "",
@@ -65,7 +81,7 @@ class Judge:
 
         try:
             out = self.engine.generate(
-                spec.user, media_inputs=media, system=spec.system, model=model
+                spec.user, media_inputs=media, system=effective_system, model=model
             )
         except Exception as e:  # noqa: BLE001 - recorded so the run continues
             result["error"] = str(e)
