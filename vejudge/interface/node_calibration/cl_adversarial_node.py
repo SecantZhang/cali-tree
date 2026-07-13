@@ -35,7 +35,18 @@ for _dim, (_mid, _extractor) in ALIGNMENT.items():
 
 
 def _usable_anchor(entry: dict[str, Any]) -> bool:
-    return bool(entry) and not entry.get("skipped") and not entry.get("error") and bool(entry.get("parsed"))
+    if not entry or entry.get("skipped") or entry.get("error") or not entry.get("parsed"):
+        return False
+    # `parsed` can be a non-empty dict that's still missing the actual score key (e.g. a
+    # judge response that validated but didn't carry a numeric score) — extract_original_
+    # score() already tolerates that by returning None, but a None anchor score later
+    # crashes calibrated_result.py's formatting. Exclude it here instead, same as any
+    # other unusable anchor, rather than let a doomed debate spend real LM calls on it.
+    parsed = entry["parsed"]
+    metric_id = entry.get("metric_id")
+    score_key = "overall_av_sync_score" if metric_id == "M6" else "score_1_to_5"
+    score = parsed.get(score_key)
+    return isinstance(score, (int, float)) and not isinstance(score, bool)
 
 
 @register
@@ -61,7 +72,17 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             "type": "enum", "options": ["", *HUMAN_DIMENSIONS], "default": "",
         },
     }
-    supports_partial_input = True
+    # Deliberately NOT opted into streaming batch-eval previews (see
+    # NodeExecutor.supports_partial_input's docstring: "only a node whose run() is cheap
+    # and safe to call repeatedly" — only EvalNodeExecutor should set this True). This
+    # node's run() drives a real, live, multi-round judge-vs-human-proxy debate, the
+    # opposite of cheap. Previously this was left True (inherited unmodified from before
+    # this node consumed an upstream judge_result), so every time the upstream Judge node
+    # finished one more item and called ctx.on_batch, the executor synchronously re-ran a
+    # full, real debate over the in-flight partial judge_result as a "preview" — real,
+    # billable LM calls, blocking the Judge node's own run() from returning for the
+    # entire span it showed as "running" in the UI, long after its own real work (one
+    # anchor call per item) was actually done.
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         p = ctx.params
