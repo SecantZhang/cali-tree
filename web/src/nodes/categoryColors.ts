@@ -4,6 +4,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   node_preprocessing: 'var(--node-preprocessing)',
   node_vejudge: 'var(--node-vejudge)',
   node_eval: 'var(--node-eval)',
+  node_calibration: 'var(--node-calibration)',
 }
 
 // Display order + label for the Nodes-tab palette's category grouping (interface.md's
@@ -14,8 +15,10 @@ export const CATEGORY_LABELS: Record<string, string> = {
   node_preprocessing: 'Preprocessing',
   node_vejudge: 'Judge',
   node_eval: 'Eval',
+  node_calibration: 'Calibration',
 }
 
 export const CATEGORY_ORDER: string[] = [
   'node_db', 'node_lm_engine', 'node_preprocessing', 'node_vejudge', 'node_eval',
+  'node_calibration',
 ]

@@ -266,6 +266,47 @@ def test_custom_spec_fills_template_and_carries_alignment(monkeypatch, make_ctx)
     assert ctx.checkpoint.has("prj-x::0::peanut::cust")
 
 
+def test_calibration_input_injects_per_item_optimized_prompt(monkeypatch, make_ctx):
+    captured = {}
+
+    def fake_chat(**kwargs):
+        captured.setdefault("system_by_call", []).append(
+            next((m["content"] for m in kwargs["messages"] if m["role"] == "system"), None)
+        )
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+
+    dataset = {
+        "with::calib": _sample("with::calib"),
+        "no::calib": _sample("no::calib"),
+    }
+    calibration = {
+        "with::calib": {"optimized_prompt": "Calibration note: watch for X."},
+        # "no::calib" intentionally absent — must fall back to the uncalibrated prompt.
+    }
+    inputs = _inputs(dataset)
+    inputs["calibration"] = calibration
+    ctx = make_ctx(inputs=inputs, dry_run=False, allow_live=True)
+
+    result = JudgeNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    calibrated_entry = result.outputs["judge_result"]["with::calib"]["M1"]
+    uncalibrated_entry = result.outputs["judge_result"]["no::calib"]["M1"]
+    assert "Calibration note: watch for X." in (calibrated_entry["prompt_system"] or "")
+    assert "Calibration note: watch for X." not in (uncalibrated_entry["prompt_system"] or "")
+
+
+def test_missing_calibration_input_is_a_silent_noop(monkeypatch, make_ctx):
+    # "calibration" is optional — omitting it entirely must behave exactly like before.
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    ctx = make_ctx(inputs=_inputs(dataset), dry_run=False, allow_live=True)
+    result = JudgeNodeExecutor().run(ctx)
+    assert result.status == "done"
+
+
 def test_video_spec_skips_items_with_no_video(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
     dataset = {

@@ -19,16 +19,20 @@ export function JudgeNode({ id, data, selected }: NodeProps) {
       sockets={
         <>
           <SocketHandle
-            kind="target" id="samples" label="samples" top={socketTop(0, 3)}
+            kind="target" id="samples" label="samples" top={socketTop(0, 4)}
             color={SOCKET_COLORS.samples}
           />
           <SocketHandle
-            kind="target" id="engine_config" label="engine_config" top={socketTop(1, 3)}
+            kind="target" id="engine_config" label="engine_config" top={socketTop(1, 4)}
             color={SOCKET_COLORS.engine_config}
           />
           <SocketHandle
-            kind="target" id="judge_spec" label="judge_spec" top={socketTop(2, 3)}
+            kind="target" id="judge_spec" label="judge_spec" top={socketTop(2, 4)}
             color={SOCKET_COLORS.judge_spec}
+          />
+          <SocketHandle
+            kind="target" id="calibration" label="calibration" top={socketTop(3, 4)}
+            color={SOCKET_COLORS.calibration_results}
           />
           <SocketHandle
             kind="source" id="judge_result" label="judge_result" top={socketTop(0, 1)}
