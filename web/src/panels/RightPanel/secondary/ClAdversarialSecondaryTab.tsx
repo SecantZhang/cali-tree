@@ -13,10 +13,29 @@ interface DebateTurn {
   retrieval_used?: boolean
 }
 
+// The upstream Judge Node's own result for this item, carried through unmodified as
+// `DebateTranscript.initial_judge_result` (core.calibration.debate.schema) — this is
+// the pre-debate baseline the whole debate starts from, never re-derived.
+interface InitialJudgeResult {
+  judge?: string
+  metric_id?: string
+  prompt_version?: string
+  prompt_system?: string | null
+  prompt_user?: string
+  parsed?: Record<string, unknown> | null
+  valid?: boolean
+  validation_flags?: string[]
+  model?: string | null
+  promptTokens?: number | null
+  completionTokens?: number | null
+  totalTokens?: number | null
+}
+
 interface DebateTranscript {
   turns: DebateTurn[]
   converged: boolean
   convergence_reason?: string
+  initial_judge_result?: InitialJudgeResult
 }
 
 interface CalibrationItem {
@@ -61,6 +80,58 @@ function TurnBubble({ turn }: { turn: DebateTurn }) {
       </div>
       {lines.length > 0 && <p className="debate-turn-body">{lines.join(' ')}</p>}
       {turn.error && <p className="rationale-error">{turn.error}</p>}
+    </div>
+  )
+}
+
+// The debate's actual first message: the anchor Judge run it's reacting to. Rendered
+// inside the same scrollable .debate-chat as the judge/human-proxy turns (not a
+// separate block) so it reads as the true start of the conversation, not a footnote.
+function AnchorBubble({ result }: { result: InitialJudgeResult | undefined }) {
+  if (!result) return null
+  const parsed = result.parsed
+  const score = typeof parsed?.score_1_to_5 === 'number'
+    ? parsed.score_1_to_5
+    : typeof parsed?.overall_av_sync_score === 'number'
+      ? parsed.overall_av_sync_score
+      : undefined
+  const lines = Array.isArray(parsed?.reasoning_lines) ? (parsed?.reasoning_lines as string[]) : []
+  const flags = result.validation_flags ?? []
+  const tokens = [
+    result.promptTokens != null && `${result.promptTokens} prompt`,
+    result.completionTokens != null && `${result.completionTokens} completion`,
+    result.totalTokens != null && `${result.totalTokens} total`,
+  ].filter(Boolean)
+
+  return (
+    <div className="debate-turn debate-turn-anchor">
+      <div className="debate-turn-header">
+        <span>Original judge run</span>
+        {result.metric_id && <span className="tag">{result.metric_id}</span>}
+        {typeof score === 'number' && <span className="tag">score {score}</span>}
+        {result.model && <span className="tag">{result.model}</span>}
+        {result.valid === false && <span className="tag tag-error">invalid</span>}
+        {flags.map((f) => <span key={f} className="tag tag-error">{f}</span>)}
+      </div>
+      {lines.length > 0 && <p className="debate-turn-body">{lines.join(' ')}</p>}
+      {tokens.length > 0 && <p className="debate-turn-tokens">tokens: {tokens.join(' / ')}</p>}
+      {(result.prompt_system || result.prompt_user) && (
+        <details>
+          <summary>Prompt</summary>
+          {result.prompt_system && (
+            <>
+              <p className="prompt-label">System</p>
+              <pre className="json-preview">{result.prompt_system}</pre>
+            </>
+          )}
+          {result.prompt_user && (
+            <>
+              <p className="prompt-label">User</p>
+              <pre className="json-preview">{result.prompt_user}</pre>
+            </>
+          )}
+        </details>
+      )}
     </div>
   )
 }
@@ -162,6 +233,7 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
           </div>
 
           <div className="debate-chat">
+            <AnchorBubble result={item.transcript.initial_judge_result} />
             {item.transcript.turns.map((turn, i) => (
               <TurnBubble key={i} turn={turn} />
             ))}
