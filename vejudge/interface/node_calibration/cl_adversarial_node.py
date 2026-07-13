@@ -26,6 +26,15 @@ from ._concurrent_debate import run_concurrent_debates
 # never attach video media (see core.calibration.debate.runner.DebateTurnRunner).
 _DEFAULT_ENGINE_KIND = {"text": "gpt", "video": "gemini"}
 
+# M1 (Assembly Failure) and M2 (Render Failure) are binary pass/fail gates — their judge
+# prompts (core.prompts.m1_assembly_failure / m2_render_failure) return a `failure`/
+# `severity` verdict, never a `score_1_to_5`. The debate mechanism (core.prompts.
+# d1_judge_debate / d2_human_proxy_debate) is built entirely around revising a numeric
+# score, so these two metrics can never produce a usable anchor — checked explicitly so
+# that shows up as a clear error, not "no usable anchor" once every item's entry is
+# filtered out downstream for the same underlying reason.
+_SCORE_BASED_METRICS = {"M3", "M4", "M5", "M6"}
+
 # Reverse of postprocessing.align.ALIGNMENT: metric_id -> human dimensions it maps to.
 # M1/M2/M4 have no entry (no human dimension directly measures them) — the node surfaces
 # that explicitly rather than guessing, unless human_dimension_override is set.
@@ -146,9 +155,41 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             return NodeRunResult(status="error", error=str(e))
 
         # Reconcile samples against the upstream judge_result (mirrors eval_node.py's
-        # `set(judge_result) & set(labels)` pattern), then drop any item whose single
-        # metric-key entry has no usable score (skipped/errored/unparsed).
+        # `set(judge_result) & set(labels)` pattern).
         overlap = sorted(set(dataset) & set(judge_result))
+
+        # The metric being calibrated is a property of the *wired judge_spec*, not of any
+        # one item — checked against the first entry we can find regardless of that
+        # item's own skip/error status, so a structural incompatibility (wrong node type
+        # wired, or a metric with no numeric score) gets its own clear error instead of
+        # being swallowed into "no usable anchor" once every item's entry is filtered out
+        # below for the same underlying reason.
+        metric_id = None
+        for item_id in overlap:
+            entry_dict = judge_result[item_id]
+            if entry_dict:
+                metric_id = next(iter(entry_dict.values())).get("metric_id")
+                break
+        if metric_id is not None and metric_id not in JUDGE_METRICS:
+            return NodeRunResult(
+                status="error",
+                error="Calibration Node only supports builtin M1-M6 judge results today; "
+                f"got metric_id '{metric_id}' from the wired judge_result (likely a "
+                "custom Judge Prompt spec).",
+            )
+        if metric_id is not None and metric_id not in _SCORE_BASED_METRICS:
+            return NodeRunResult(
+                status="error",
+                error=f"Calibration Node only supports score-based judge metrics "
+                f"({', '.join(sorted(_SCORE_BASED_METRICS))}); '{metric_id}' "
+                f"({JUDGE_METRICS[metric_id].metric}) is a binary pass/fail gate with no "
+                "numeric score to calibrate — wire a Judge Node using a score-based "
+                "metric instead.",
+            )
+
+        # Now drop any item whose single metric-key entry has no usable score
+        # (skipped/errored/unparsed) — the metric itself is already confirmed compatible
+        # above, so anything excluded here is a genuine per-item anomaly.
         anchors: dict[str, dict[str, Any]] = {}
         for item_id in overlap:
             entry_dict = judge_result[item_id]
@@ -169,18 +210,6 @@ class ClAdversarialNodeExecutor(NodeExecutor):
                 f"{n_no_judge_result} item(s) have no judge_result entry at all, "
                 f"{n_unusable_anchor} have one but it's skipped/errored/unparsed. Check "
                 "the upstream Judge Node actually ran successfully for these items.",
-            )
-
-        unsupported = {
-            entry["metric_id"] for entry in anchors.values()
-            if entry.get("metric_id") not in JUDGE_METRICS
-        }
-        if unsupported:
-            return NodeRunResult(
-                status="error",
-                error="Calibration Node only supports builtin M1-M6 judge results today; "
-                f"got metric_id(s) {sorted(unsupported)} from the wired judge_result "
-                "(likely a custom Judge Prompt spec).",
             )
 
         modality = JUDGE_METRICS[next(iter(anchors.values()))["metric_id"]].modality

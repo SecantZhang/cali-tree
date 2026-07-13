@@ -215,6 +215,38 @@ def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
     assert "builtin" in result.error.lower()
 
 
+def test_binary_gate_metric_rejected_with_a_clear_error(monkeypatch, make_ctx):
+    # M1 (Assembly Failure) is a real, live-observed case: a binary pass/fail gate whose
+    # judge output has no score_1_to_5 at all (see m1_assembly_failure.py — its schema is
+    # `failure`/`severity`, not a score). Every item's anchor would be excluded by
+    # _usable_anchor for the same underlying reason, which used to surface as a generic
+    # "no usable anchor" error blaming the (perfectly healthy) upstream Judge node. This
+    # must instead name the real cause up front.
+    def boom(**kwargs):
+        raise AssertionError("must fail before any gateway call")
+
+    monkeypatch.setattr(openai_compat, "chat_completion", boom)
+
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = {
+        "prj-x::0::peanut": {
+            "M1": {
+                "judge": "M1_assembly_failure", "metric_id": "M1",
+                "parsed": {"failure": True, "severity": "major", "reasoning_lines": ["x"]},
+                "valid": True,
+            }
+        }
+    }
+    ctx = make_ctx(
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "M1" in result.error
+    assert "score-based" in result.error.lower()
+    assert "binary pass/fail gate" in result.error
+
+
 def test_items_with_skipped_or_errored_anchor_are_excluded(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
