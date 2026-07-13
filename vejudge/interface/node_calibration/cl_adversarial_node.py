@@ -4,8 +4,9 @@ Produces a per-item ``CalibratedResult`` (see
 ``core.calibration.debate.calibrated_result``): each item's own debate transcript,
 distilled reasoning, and an ``optimized_prompt`` addendum a downstream Judge Node can
 inject (via its optional ``calibration`` input) to re-score *that same item* with the
-debate's own feedback in view. This node computes its own anchor judge score per item —
-there is no upstream Judge node in this wiring.
+debate's own feedback in view. The anchor score comes from an upstream Judge Node's
+``judge_result`` — this node never computes its own; wiring is
+`Judge (baseline) -> Adversarial Calibration -> Judge (calibrated)`.
 """
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ from __future__ import annotations
 from typing import Any
 
 from ...core.calibration.debate import DebateConfig
-from ...core.judge.registry import ALL_JUDGES
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
@@ -34,19 +34,23 @@ for _dim, (_mid, _extractor) in ALIGNMENT.items():
     _DIMENSIONS_FOR_METRIC.setdefault(_mid, []).append(_dim)
 
 
+def _usable_anchor(entry: dict[str, Any]) -> bool:
+    return bool(entry) and not entry.get("skipped") and not entry.get("error") and bool(entry.get("parsed"))
+
+
 @register
 class ClAdversarialNodeExecutor(NodeExecutor):
     node_type = "cl_adversarial"
     category = "node_calibration"
     input_sockets = {
         "samples": "samples",
+        "judge_result": "judge_result",
         "labels": "labels",
         "judge_engine": "engine_config",
         "human_engine": "engine_config",
     }
     output_sockets = {"calibration_results": "calibration_results"}
     param_schema = {
-        "metric_id": {"type": "enum", "options": ALL_JUDGES, "default": "M4"},
         "epsilon": {"type": "number", "default": 0.25},
         "max_rounds": {"type": "number", "default": 4, "min": 1},
         "retrieval_enabled": {"type": "boolean", "default": True},
@@ -68,6 +72,14 @@ class ClAdversarialNodeExecutor(NodeExecutor):
                 error="Calibration Node requires a 'samples' input (wire a Dataset Node's "
                 "`samples` output)",
             )
+        judge_result = ctx.inputs.get("judge_result")
+        if judge_result is None:
+            return NodeRunResult(
+                status="error",
+                error="Calibration Node requires a 'judge_result' input (wire a Judge "
+                "Node's `judge_result` output — this node calibrates an existing judge "
+                "score, it doesn't compute its own)",
+            )
         judge_engine_config = ctx.inputs.get("judge_engine")
         if judge_engine_config is None:
             return NodeRunResult(
@@ -84,11 +96,6 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             )
         labels = ctx.inputs.get("labels")  # optional — only used for display/comparison
 
-        metric_id = p.get("metric_id") or "M4"
-        if metric_id not in JUDGE_METRICS:
-            return NodeRunResult(status="error", error=f"Unknown metric '{metric_id}'")
-        modality = JUDGE_METRICS[metric_id].modality
-
         max_rounds = max(1, int(p.get("max_rounds") or 4))
         config = DebateConfig(
             epsilon=float(p.get("epsilon")) if p.get("epsilon") is not None else 0.25,
@@ -97,14 +104,14 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         )
 
         if ctx.dry_run:
-            # 1 anchor judge call + up to max_rounds*2 debate turns, per item.
-            calls_per_item = 1 + max_rounds * 2
+            # Up to max_rounds*2 debate turns per item — no anchor call, that's the
+            # upstream Judge node's cost, already paid (or estimated) there.
+            calls_per_item = max_rounds * 2
             return NodeRunResult(
                 outputs={"calibration_results": {}},
                 meta={
                     "dry_run": True,
                     "n_items": len(dataset),
-                    "metric_id": metric_id,
                     "estimated_calls": {"max_calls": len(dataset) * calls_per_item},
                 },
             )
@@ -112,10 +119,50 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         try:
             require_live(
                 ctx.allow_live,
-                context=f"Calibration Node '{metric_id}' over {len(dataset)} item(s)",
+                context=f"Calibration Node over {len(dataset)} item(s)",
             )
         except LiveCallNotAllowed as e:
             return NodeRunResult(status="error", error=str(e))
+
+        # Reconcile samples against the upstream judge_result (mirrors eval_node.py's
+        # `set(judge_result) & set(labels)` pattern), then drop any item whose single
+        # metric-key entry has no usable score (skipped/errored/unparsed).
+        overlap = sorted(set(dataset) & set(judge_result))
+        anchors: dict[str, dict[str, Any]] = {}
+        for item_id in overlap:
+            entry_dict = judge_result[item_id]
+            if not entry_dict:
+                continue
+            # Fan-in is disallowed on this socket, so exactly one metric-key per item.
+            entry = next(iter(entry_dict.values()))
+            if _usable_anchor(entry):
+                anchors[item_id] = entry
+
+        n_no_judge_result = len(dataset) - len(overlap)
+        n_unusable_anchor = len(overlap) - len(anchors)
+
+        if not anchors:
+            return NodeRunResult(
+                status="error",
+                error="No usable 'judge_result' entries overlap with 'samples' — "
+                f"{n_no_judge_result} item(s) have no judge_result entry at all, "
+                f"{n_unusable_anchor} have one but it's skipped/errored/unparsed. Check "
+                "the upstream Judge Node actually ran successfully for these items.",
+            )
+
+        unsupported = {
+            entry["metric_id"] for entry in anchors.values()
+            if entry.get("metric_id") not in JUDGE_METRICS
+        }
+        if unsupported:
+            return NodeRunResult(
+                status="error",
+                error="Calibration Node only supports builtin M1-M6 judge results today; "
+                f"got metric_id(s) {sorted(unsupported)} from the wired judge_result "
+                "(likely a custom Judge Prompt spec).",
+            )
+
+        modality = JUDGE_METRICS[next(iter(anchors.values()))["metric_id"]].modality
 
         def _build_engine(engine_config: dict[str, Any], default_kind: str):
             temp_kw: dict[str, Any] = {} if engine_config.get("temperature") is None else {
@@ -134,7 +181,7 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         concurrency = max(1, int(judge_engine_config.get("concurrency") or 1))
         per_item, meta = run_concurrent_debates(
             dataset=dataset,
-            metric_id=metric_id,
+            anchors=anchors,
             judge_engine=judge_engine,
             human_engine=human_engine,
             config=config,
@@ -144,12 +191,14 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         )
 
         override = p.get("human_dimension_override") or None
-        dims = [override] if override else _DIMENSIONS_FOR_METRIC.get(metric_id, [])
         for item_id, result in per_item.items():
+            item_metric_id = anchors.get(item_id, {}).get("metric_id") or result.get("metric_id")
+            dims = [override] if override else _DIMENSIONS_FOR_METRIC.get(item_metric_id, [])
             agg = labels.get(item_id) if labels else None
             result["human_scores"] = (
                 {d: agg.scores.get(d) for d in dims} if agg and dims else {}
             )
 
-        meta["metric_id"] = metric_id
+        meta["n_items_no_judge_result"] = n_no_judge_result
+        meta["n_items_unusable_anchor"] = n_unusable_anchor
         return NodeRunResult(outputs={"calibration_results": per_item}, meta=meta)

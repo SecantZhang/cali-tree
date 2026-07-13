@@ -364,22 +364,33 @@ Node parameters: **preset** (M1–M6 or `custom`); the custom-only fields (**mod
 Description: runs a bounded judge-vs-human-proxy debate over a dataset
 (`vejudge/core/calibration/debate/`, wired via `vejudge/interface/node_calibration/`) to
 produce a **per-item** calibrated result — deliberately not one aggregate prompt for the
-whole dataset. For each item, the node computes its own anchor judge score (there is no
-upstream Judge node in this wiring), then runs a bounded debate: a human-proxy agent (a
-skeptical-annotator persona, optionally grounded in a retrieved real human-annotation
-note from a *different* item — never this item's own label, to avoid leaking the very
-ground truth a later evaluation would compare against) critiques the judge's score, and
-the judge agent defends or revises it, converging once the score stabilizes (a
-score-delta epsilon) or a round cap is hit. A separate "aggregation node" that would
-combine many items' calibrated results into one general-purpose prompt is a distinct,
-not-yet-designed follow-up.
+whole dataset. The anchor score comes from an upstream Judge Node's `judge_result`
+(never computed by this node itself), so the natural graph shape is a visible sandwich:
+`Judge (baseline)` → `Adversarial Calibration` → `Judge (calibrated)`, wiring the
+calibration output's `calibration_results` into the second Judge Node's `calibration`
+input to compare the two directly. Per item, the node then runs a bounded debate: a
+human-proxy agent (a skeptical-annotator persona, optionally grounded in a retrieved
+real human-annotation note from a *different* item — never this item's own label, to
+avoid leaking the very ground truth a later evaluation would compare against) critiques
+the judge's score, and the judge agent defends or revises it, converging once the score
+stabilizes (a score-delta epsilon) or a round cap is hit. Only builtin M1–M6 judge
+results are supported today — a `judge_result` produced by a *custom* Judge Prompt spec
+is rejected with a clear error, since the debate prompts embed the builtin rubric text
+(`core/rubric/definitions.py`'s `metric_definition`), which has no custom-spec
+equivalent. A separate "aggregation node" that would combine many items' calibrated
+results into one general-purpose prompt is a distinct, not-yet-designed follow-up.
 
-Input: `samples` (a Dataset node's output); `labels` (optional — a Dataset node's
-`labels` output, used only for the secondary tab's judge-vs-human score comparison,
-never for the debate itself); `judge_engine` and `human_engine` (two separate
-`engine_config` inputs from two LM Engine nodes — deliberately two distinct sockets of
-the same type, so the two roles can run on different model families to mitigate
-self-bias).
+Input: `samples` (a Dataset node's output); `judge_result` (a Judge Node's output —
+supplies both the anchor score *and* the metric identity per item, the same "wired
+artifact, not a dropdown" convention as everywhere else in this node system; an item
+present in `samples` but missing, skipped, or errored in `judge_result` is excluded
+from the debate rather than crashing); `labels` (optional — a Dataset node's `labels`
+output, used only for the secondary tab's judge-vs-human score comparison, never for
+the debate itself); `judge_engine` and `human_engine` (two separate `engine_config`
+inputs from two LM Engine nodes — deliberately two distinct sockets of the same type,
+so the two roles can run on different model families to mitigate self-bias; in
+practice `judge_engine` is usually the same LM Engine Node feeding the upstream
+baseline Judge Node, since the judge agent is defending its own prior answer).
 
 Output: `calibration_results` — `{item_id: {item_id, metric_id, original_score,
 final_score, score_delta, converged, rounds_run, flags, optimized_prompt, reasoning,
@@ -393,7 +404,6 @@ dimension override** param below) when `labels` is wired and the metric has a ma
 human dimension.
 
 Node parameters:
-* **Metric**: which M1–M6 judge metric to calibrate.
 * **Epsilon**: score-delta convergence threshold (default 0.25).
 * **Max rounds**: hard cap on debate rounds (default 4).
 * **Retrieval enabled**: bool, default on — grounds the human-proxy's critique in a

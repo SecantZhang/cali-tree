@@ -2,8 +2,9 @@
 
 Mirrors ``node_vejudge._concurrent_judging``'s shape (checkpointing, per-item progress
 events, streaming batch-eval semantics) but drives a bounded judge-vs-human-proxy
-debate per item instead of a single judge call. There is no upstream Judge node in this
-wiring, so each item's anchor score is computed here first.
+debate per item instead of a single judge call. The anchor score for each item comes
+from an upstream Judge node's already-computed result (``anchors``), never recomputed
+here.
 """
 
 from __future__ import annotations
@@ -12,19 +13,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from ...core.calibration.debate import DebateConfig, DebateRunner, to_calibrated_result
-from ...core.judge.registry import make_judge
 from ...lm_engine.lm_template import LMEngine
 from ..server.registry import NodeRunContext
 
 
 def _calibrate_one(
-    metric_id: str,
+    original_output: dict[str, Any],
     judge_engine: LMEngine,
     human_engine: LMEngine,
     config: DebateConfig,
     sample: dict[str, Any],
 ) -> dict[str, Any]:
-    original_output = make_judge(metric_id, judge_engine).run(sample)
+    metric_id = original_output["metric_id"]
     debater = DebateRunner(
         metric_id=metric_id, judge_engine=judge_engine, proxy_engine=human_engine, config=config,
     )
@@ -35,7 +35,7 @@ def _calibrate_one(
 def run_concurrent_debates(
     *,
     dataset: dict[str, Any],
-    metric_id: str,
+    anchors: dict[str, dict[str, Any]],
     judge_engine: LMEngine,
     human_engine: LMEngine,
     config: DebateConfig,
@@ -43,15 +43,18 @@ def run_concurrent_debates(
     batch_size: int,
     ctx: NodeRunContext,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    """Run a bounded debate over every item, checkpointing + streaming as it goes.
+    """Run a bounded debate over every item that has a usable anchor, checkpointing +
+    streaming as it goes.
 
-    Returns ``(per_item, meta)``; ``per_item`` is ``{item_id: CalibratedResult_dict}``.
+    ``anchors`` is ``{item_id: judge_dict}`` — the caller's already-filtered map of
+    items with a usable (non-skipped, non-errored, parsed) upstream judge result; only
+    these items are candidates. Returns ``(per_item, meta)``; ``per_item`` is
+    ``{item_id: CalibratedResult_dict}``.
     """
-    key = f"calibration::{metric_id}"
     per_item: dict[str, dict[str, Any]] = {}
     tasks: list[str] = []
-    for item_id in dataset:
-        ckpt_key = f"{item_id}::{key}"
+    for item_id in anchors:
+        ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
         if ctx.checkpoint.has(ckpt_key):
             per_item[item_id] = ctx.checkpoint.get(ckpt_key)
             continue
@@ -63,7 +66,7 @@ def run_concurrent_debates(
     def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
         if ctx.progress_cb:
             ctx.progress_cb("calibration_item_start", {"item_id": item_id})
-        result = _calibrate_one(metric_id, judge_engine, human_engine, config, dataset[item_id])
+        result = _calibrate_one(anchors[item_id], judge_engine, human_engine, config, dataset[item_id])
         return item_id, result
 
     stopped = False
@@ -78,7 +81,8 @@ def run_concurrent_debates(
             # Only persist a clean end-state so a total-failure item retries on --continue
             # (matches _concurrent_judging.py's "only persist success" convention).
             if "all_turns_failed" not in (result.get("flags") or []):
-                ctx.checkpoint.put(f"{item_id}::{key}", result)
+                ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
+                ctx.checkpoint.put(ckpt_key, result)
             if ctx.progress_cb:
                 ctx.progress_cb("calibration_item_done", {"item_id": item_id})
 
@@ -92,9 +96,9 @@ def run_concurrent_debates(
                     if not f.done():
                         f.cancel()
 
-    meta: dict[str, Any] = {"n_items": len(dataset)}
+    meta: dict[str, Any] = {"n_items": len(anchors)}
     if stopped:
         meta["stopped"] = True
         meta["n_items_done"] = len(per_item)
-        meta["n_items_total"] = len(dataset)
+        meta["n_items_total"] = len(anchors)
     return per_item, meta

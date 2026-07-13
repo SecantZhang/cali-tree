@@ -62,7 +62,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   // only for the secondary tab's judge-vs-human score comparison).
   cl_adversarial: {
     input: {
-      samples: 'samples', labels: 'labels',
+      samples: 'samples', judge_result: 'judge_result', labels: 'labels',
       judge_engine: 'engine_config', human_engine: 'engine_config',
     },
     output: { calibration_results: 'calibration_results' },

@@ -16,6 +16,8 @@ interface SimpleParamNodeProps {
   color: string
   schema: Record<string, ParamFieldSchema>
   sockets: ReactNode
+  // See NodeChrome's socketZoneHeight — only needed by a node with many sockets on one side.
+  socketZoneHeight?: number
   // One-line text shown instead of the full param list once collapsed (only relevant
   // when `schema` is non-empty — a schema-less node like Eval never offers collapse).
   summaryLine?: (params: Record<string, unknown>) => string
@@ -38,7 +40,8 @@ interface SimpleParamNodeProps {
  * progress wiring live here once instead of being copied per node type.
  */
 export function SimpleParamNode({
-  id, data, selected, title, color, schema, sockets, summaryLine, staticBody, fieldOverrides,
+  id, data, selected, title, color, schema, sockets, socketZoneHeight, summaryLine, staticBody,
+  fieldOverrides,
 }: SimpleParamNodeProps) {
   const updateNodeParams = useActiveGraphStore((s) => s.updateNodeParams)
   const toggleNodeCollapsed = useActiveGraphStore((s) => s.toggleNodeCollapsed)
@@ -135,6 +138,7 @@ export function SimpleParamNode({
       collapsed={data.collapsed}
       onToggleCollapse={hasParams ? () => toggleNodeCollapsed(id) : undefined}
       progress={progress} selected={selected} sockets={sockets}
+      socketZoneHeight={socketZoneHeight}
       orderIndex={orderIndex}
       stale={stale}
       locked={data.locked}

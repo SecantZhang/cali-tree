@@ -126,7 +126,7 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
     assert result1.status == "done"
     assert calls["n"] == 1  # one call per item for the single spec
     assert set(result1.outputs["judge_result"]["prj-x::0::peanut"]) == {"M1"}
-    assert ctx.checkpoint.has("prj-x::0::peanut::M1")
+    assert ctx.checkpoint.has("n1::prj-x::0::peanut::M1")
 
     result2 = JudgeNodeExecutor().run(ctx)
     assert result2.status == "done"
@@ -162,7 +162,7 @@ def test_concurrency_produces_the_same_results_as_sequential(monkeypatch, make_c
     for item_id in dataset:
         assert set(per_item[item_id]) == {"M1"}
         assert per_item[item_id]["M1"]["parsed"]["score_1_to_5"] == 4
-        assert ctx.checkpoint.has(f"{item_id}::M1")
+        assert ctx.checkpoint.has(f"n1::{item_id}::M1")
 
 
 def test_judge_item_start_fires_once_per_item(monkeypatch, make_ctx):
@@ -240,7 +240,7 @@ def test_engine_error_is_not_checkpointed(monkeypatch, make_ctx):
     assert result.status == "done"  # per-judge errors don't abort the node
     jr = result.outputs["judge_result"]["prj-x::0::peanut"]["M1"]
     assert jr.get("error")
-    assert not ctx.checkpoint.has("prj-x::0::peanut::M1")
+    assert not ctx.checkpoint.has("n1::prj-x::0::peanut::M1")
 
 
 def test_custom_spec_fills_template_and_carries_alignment(monkeypatch, make_ctx):
@@ -263,7 +263,7 @@ def test_custom_spec_fills_template_and_carries_alignment(monkeypatch, make_ctx)
     # The result carries its alignment binding for the Eval node.
     assert entry["align"] == {"dimension": "story_flow_visuals", "score_path": "score_1_to_5"}
     assert entry["score"] == 4.0
-    assert ctx.checkpoint.has("prj-x::0::peanut::cust")
+    assert ctx.checkpoint.has("n1::prj-x::0::peanut::cust")
 
 
 def test_calibration_input_injects_per_item_optimized_prompt(monkeypatch, make_ctx):
