@@ -193,17 +193,31 @@ test.describe('adversarial calibration node', () => {
     await expect(scoreStrip).toContainText('Human (video_addresses_prompt): 4')
     await expect(scoreStrip).toContainText('converged')
 
-    // The chat view rendered real alternating judge/human-proxy turns.
+    // The chat view opens with the upstream Judge node's own (baseline) run, followed
+    // by real alternating judge/human-proxy debate turns. Left collapsed (not clicked
+    // open) — the "Optimized prompt" assertion below relies on `.json-preview` being
+    // unambiguous on the page, which opening this details block would break.
+    const anchorBubble = calibModal.locator('.debate-turn-anchor')
+    await expect(anchorBubble).toBeVisible()
+    await expect(anchorBubble).toContainText('Original judge run')
+    await expect(anchorBubble).toContainText('M3')
+    await expect(anchorBubble.locator('summary', { hasText: 'Prompt' })).toBeVisible()
+
     const turns = calibModal.locator('.debate-turn')
     await expect(turns.first()).toBeVisible()
     await expect(calibModal.locator('.debate-turn-human-proxy').first()).toBeVisible()
     await expect(calibModal.locator('.debate-turn-judge').first()).toBeVisible()
 
-    // Bottom-of-column reasoning + optimized prompt, for this selected item.
+    // Bottom-of-column reasoning + optimized prompt, for this selected item. Scoped to
+    // the specific <details> block by summary text — the anchor bubble above also
+    // renders `.json-preview` elements (its own system/user prompt, always in the DOM
+    // regardless of <details> open state), so an unscoped `.json-preview` locator is
+    // ambiguous now.
     await calibModal.locator('summary', { hasText: 'Calibrated reasoning' }).click()
     await expect(calibModal.locator('.reasoning')).toContainText('Original judge rationale')
-    await calibModal.locator('summary', { hasText: 'Optimized prompt' }).click()
-    await expect(calibModal.locator('.json-preview')).toContainText(OPTIMIZED_PROMPT_MARKER)
+    const optimizedPromptDetails = calibModal.locator('details').filter({ hasText: 'Optimized prompt' })
+    await optimizedPromptDetails.locator('summary').click()
+    await expect(optimizedPromptDetails.locator('.json-preview')).toContainText(OPTIMIZED_PROMPT_MARKER)
 
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(calibModal).toHaveCount(0)
