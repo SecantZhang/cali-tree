@@ -74,6 +74,16 @@ def fake_creds(monkeypatch):
     )
 
 
+def test_does_not_opt_into_streaming_batch_previews():
+    # This node's run() drives a real, live, multi-round debate — the opposite of the
+    # "cheap and safe to call repeatedly" contract supports_partial_input requires (see
+    # NodeExecutor's docstring). Opting in here previously meant the graph executor
+    # re-ran a full, real debate as a "preview" every time the upstream Judge node
+    # finished one more item, burning real gateway calls and blocking the Judge node's
+    # own run() from returning for the entire span it showed as "running" in the UI.
+    assert ClAdversarialNodeExecutor.supports_partial_input is False
+
+
 def test_dry_run_estimates_calls_without_gateway(monkeypatch, make_ctx):
     def boom(**kwargs):
         raise AssertionError("dry-run must not call the gateway")
@@ -228,6 +238,41 @@ def test_items_with_skipped_or_errored_anchor_are_excluded(monkeypatch, make_ctx
     assert set(result.outputs["calibration_results"]) == {"prj-x::0::peanut"}
     assert result.meta["n_items_no_judge_result"] == 0
     assert result.meta["n_items_unusable_anchor"] == 2
+
+
+def test_anchor_with_parsed_dict_but_no_score_key_is_excluded(monkeypatch, make_ctx):
+    # A `parsed` dict can be non-empty (schema-valid) yet still miss the actual score
+    # field — previously `_usable_anchor` only checked `parsed` was truthy, letting this
+    # through as "usable"; the debate would then crash formatting a None initial_score
+    # (calibrated_result.render_optimized_prompt_addendum). It must be excluded here,
+    # same as a skipped/errored anchor, not silently reach the debate.
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {
+        "prj-x::0::peanut": _sample("prj-x::0::peanut"),
+        "prj-x::1::peanut": _sample("prj-x::1::peanut"),
+    }
+    judge_result = _merge_judge_results(
+        _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0),
+        {
+            "prj-x::1::peanut": {
+                "M3": {
+                    "judge": "M3", "metric_id": "M3",
+                    "parsed": {"reasoning_lines": ["no score in here"]},
+                    "valid": True,
+                }
+            }
+        },
+    )
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    assert set(result.outputs["calibration_results"]) == {"prj-x::0::peanut"}
+    assert result.meta["n_items_unusable_anchor"] == 1
 
 
 def test_items_missing_from_judge_result_entirely_are_excluded(monkeypatch, make_ctx):

@@ -55,7 +55,11 @@ def render_optimized_prompt_addendum(verdict: DebateVerdict) -> str:
     """Frame the debate outcome as instructive feedback for a re-judge of this same
     item. Deterministic (no extra LM call) — a direct restatement of the verdict, not a
     rewrite of it."""
-    if verdict.final_score is None:
+    # Both are guarded together: the "revised the score from X to Y" branch below needs
+    # both, and initial_score is None only for a malformed anchor that shouldn't reach
+    # here at all (see cl_adversarial_node._usable_anchor) — but guarding it directly
+    # here too means this function is safe regardless of what the caller validated.
+    if verdict.final_score is None or verdict.initial_score is None:
         return (
             "A prior adversarial review of this item could not reach a valid revised "
             "score (see flags: " + ", ".join(verdict.flags) + "). Treat this item's "
