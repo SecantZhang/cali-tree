@@ -1,14 +1,78 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 import { addNode, connectSockets, waitForPaletteLoaded } from '../helpers'
 
+// The palette's auto-placement grid (NodesTab.tsx) wraps at 5 columns/280px, 220px row
+// height. This graph has 8 nodes (more than any existing pipeline spec), spanning two
+// grid rows whose combined height exceeds what fits in the canvas pane at React Flow's
+// default minZoom (0.5) — Fit View can't zoom out past that floor, so the row-0 node in
+// the last column ends up clipped by the pane's overflow. Playwright's `.toBeVisible()`
+// doesn't account for clipping by an ancestor's `overflow: hidden`, so that clipped node
+// still passes visibility checks while being un-draggable by a real mouse. Dragging it
+// into the unused space just below an already-reachable node (rather than fighting
+// zoom/fit) keeps the whole graph within the reachable area.
+async function dragNodeIntoEmptySpace(page: Page, node: Locator) {
+  const nodeBox = await node.boundingBox()
+  const paneBox = await page.locator('.react-flow__pane').boundingBox()
+  if (!nodeBox || !paneBox) throw new Error('dragNodeIntoEmptySpace: missing bounding box')
+  // x+40/y+12: near the header's title text, left of the right-aligned Run/Collapse/Lock
+  // buttons — dragging from those would trigger the button instead of a node move.
+  const from = { x: nodeBox.x + 40, y: nodeBox.y + 12 }
+  // A point near the pane's bottom-left: below every grid row this graph's 8 nodes can
+  // occupy, and far from any other node's handles — genuinely empty space, rather than a
+  // position computed relative to another node (which risks landing close enough to that
+  // node's own handles to confuse the very next connect drag).
+  const to = { x: paneBox.x + 60, y: paneBox.y + paneBox.height - 40 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 10 })
+  await page.mouse.move(to.x, to.y, { steps: 10 })
+  await page.waitForTimeout(50)
+  await page.mouse.up()
+}
+
+// This graph fans two source handles out to multiple targets (lm_engine-3 -> 3 different
+// nodes, judge_prompt-5 -> 2) — every existing pipeline spec only ever connects a source
+// once. Reusing the same output handle for a second/third drag in quick succession
+// occasionally misses (React Flow resolves the drop handle from the DOM on the next
+// frame — see dragConnect's own comment — and back-to-back drags from the same handle
+// seem to be more prone to that race than a fresh handle each time). Verifying the edge
+// actually landed and retrying once is more robust than guessing the exact internal
+// timing cause.
+async function connectSocketsVerified(
+  page: Page,
+  sourceNodeId: string, sourceHandleId: string,
+  targetNodeId: string, targetHandleId: string,
+): Promise<void> {
+  const edge = page.getByTestId(
+    `rf__edge-${sourceNodeId}:${sourceHandleId}->${targetNodeId}:${targetHandleId}`,
+  )
+  await connectSockets(page, sourceNodeId, sourceHandleId, targetNodeId, targetHandleId)
+  try {
+    // toHaveCount already polls — give the first attempt real time to land before
+    // concluding it missed, rather than racing a retry drag against React's own render.
+    await expect(edge).toHaveCount(1, { timeout: 3000 })
+    return
+  } catch {
+    // Exactly one retry: if the first attempt truly never registered (not just slow to
+    // render), a fresh drag is safe — the target socket has no existing edge to conflict
+    // with (fan-in would otherwise reject a second one).
+    await connectSockets(page, sourceNodeId, sourceHandleId, targetNodeId, targetHandleId)
+    await expect(edge).toHaveCount(1)
+  }
+}
+
 // addNode's id counter resets each fresh page load, so this click order fixes these ids.
+// The graph is a real "sandwich": Judge (baseline) -judge_result-> Adversarial Calibration
+// -calibration_results-> Judge (calibrated) — both Judge nodes share the same judge_spec +
+// engine, so the only difference between them is the wired `calibration` input.
 const PEANUT_SOURCE = 'peanut_source-1'
 const DATASET = 'dataset-2'
 const JUDGE_ENGINE = 'lm_engine-3'
 const HUMAN_ENGINE = 'lm_engine-4'
-const CALIBRATION = 'cl_adversarial-5'
-const PROMPT = 'judge_prompt-6'
-const JUDGE = 'judge-7'
+const PROMPT = 'judge_prompt-5'
+const JUDGE_BASELINE = 'judge-6'
+const CALIBRATION = 'cl_adversarial-7'
+const JUDGE_CALIBRATED = 'judge-8'
 
 // The mock gateway always returns the same fixed score (3) for every call — the debate's
 // judge-agent turn therefore always confirms it holds up (delta 0 < epsilon), so every
@@ -17,7 +81,7 @@ const OPTIMIZED_PROMPT_MARKER =
   'A prior adversarial review of this item confirmed the original score of 3 held up under scrutiny.'
 
 test.describe('adversarial calibration node', () => {
-  test('runs a debate over the dataset and the calibrated prompt reaches the downstream Judge node', async ({
+  test('calibrates an upstream Judge node\'s result and the optimized prompt reaches a second Judge node', async ({
     page,
   }) => {
     await page.goto('/')
@@ -28,55 +92,86 @@ test.describe('adversarial calibration node', () => {
     await addNode(page, 'dataset')
     await addNode(page, 'lm_engine')
     await addNode(page, 'lm_engine')
-    await addNode(page, 'cl_adversarial')
     await addNode(page, 'judge_prompt')
+    await addNode(page, 'judge')
+    await addNode(page, 'cl_adversarial')
     await addNode(page, 'judge')
 
     const peanutSourceNode = page.getByTestId(`rf__node-${PEANUT_SOURCE}`)
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
-    const calibrationNode = page.getByTestId(`rf__node-${CALIBRATION}`)
+    const humanEngineNode = page.getByTestId(`rf__node-${HUMAN_ENGINE}`)
     const promptNode = page.getByTestId(`rf__node-${PROMPT}`)
-    const judgeNode = page.getByTestId(`rf__node-${JUDGE}`)
+    const judgeBaselineNode = page.getByTestId(`rf__node-${JUDGE_BASELINE}`)
+    const calibrationNode = page.getByTestId(`rf__node-${CALIBRATION}`)
+    const judgeCalibratedNode = page.getByTestId(`rf__node-${JUDGE_CALIBRATED}`)
+    await expect(peanutSourceNode).toBeVisible()
+    await expect(datasetNode).toBeVisible()
+    await expect(humanEngineNode).toBeVisible()
+    await expect(promptNode).toBeVisible()
+    await expect(judgeBaselineNode).toBeVisible()
     await expect(calibrationNode).toBeVisible()
-    await expect(judgeNode).toBeVisible()
+    await expect(judgeCalibratedNode).toBeVisible()
 
+    // Fit View BEFORE anything else touches the canvas — the app persists zoom/pan
+    // across loads, so the initial transform can be arbitrary (e.g. zoomed in) relative
+    // to these freshly-added nodes' real positions.
     await page.getByRole('button', { name: 'Fit View' }).click()
+
+    // Judge Prompt lands in row 0's last column (see the module-level comment on
+    // dragNodeIntoEmptySpace) — move it into genuinely empty canvas space so the final
+    // layout's bounding box stays reachable.
+    await dragNodeIntoEmptySpace(page, promptNode)
 
     // M3 is text-modality and the only metric with a human-annotation crosswalk in
     // ALIGNMENT (postprocessing/align.py) — matches mocked-live-pipeline.spec.ts's choice,
     // and lets this spec also assert a real human-score comparison in the secondary tab.
     await promptNode.locator('.param-row', { hasText: 'preset' }).locator('select').selectOption('M3')
-    await calibrationNode.locator('.param-row', { hasText: 'metric_id' }).locator('select').selectOption('M3')
     // Disable retrieval so the debate never touches the real filesystem's human-annotation
     // corpus (this spec doesn't need retrieval grounding to prove the wiring works).
     await calibrationNode.locator('.param-row', { hasText: 'retrieval_enabled' })
       .locator('input[type="checkbox"]').uncheck()
 
-    // Collapse the calibration node (six params) so its inline body doesn't visually
-    // overlap the grid slot the palette placed later nodes in — same precaution
-    // mocked-live-pipeline.spec.ts takes for the Judge node.
+    await connectSocketsVerified(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
+
+    await connectSocketsVerified(page, DATASET, 'samples', JUDGE_BASELINE, 'samples')
+    await connectSocketsVerified(page, JUDGE_ENGINE, 'engine_config', JUDGE_BASELINE, 'engine_config')
+    await connectSocketsVerified(page, PROMPT, 'judge_spec', JUDGE_BASELINE, 'judge_spec')
+
+    await connectSocketsVerified(page, DATASET, 'samples', CALIBRATION, 'samples')
+    await connectSocketsVerified(page, JUDGE_BASELINE, 'judge_result', CALIBRATION, 'judge_result')
+    await connectSocketsVerified(page, DATASET, 'labels', CALIBRATION, 'labels')
+    await connectSocketsVerified(page, JUDGE_ENGINE, 'engine_config', CALIBRATION, 'judge_engine')
+    await connectSocketsVerified(page, HUMAN_ENGINE, 'engine_config', CALIBRATION, 'human_engine')
+
+    await connectSocketsVerified(page, DATASET, 'samples', JUDGE_CALIBRATED, 'samples')
+    await connectSocketsVerified(page, JUDGE_ENGINE, 'engine_config', JUDGE_CALIBRATED, 'engine_config')
+    await connectSocketsVerified(page, PROMPT, 'judge_spec', JUDGE_CALIBRATED, 'judge_spec')
+    await connectSocketsVerified(page, CALIBRATION, 'calibration_results', JUDGE_CALIBRATED, 'calibration')
+
+    await expect(
+      page.getByTestId(`rf__edge-${JUDGE_BASELINE}:judge_result->${CALIBRATION}:judge_result`),
+    ).toHaveCount(1)
+    await expect(
+      page.getByTestId(`rf__edge-${CALIBRATION}:calibration_results->${JUDGE_CALIBRATED}:calibration`),
+    ).toHaveCount(1)
+
+    // Collapse nodes with many params for visual tidiness, now that every socket handle
+    // has already been used — collapsing shrinks a node's rendered height while its
+    // socket handles are positioned assuming the full uncollapsed height (SocketHandle's
+    // `top` prop), so a later-indexed handle (e.g. cl_adversarial's judge_engine/
+    // human_engine, positions 3-4 of 5) ends up outside the collapsed node's actual
+    // interactable area — collapsing before wiring made exactly those handles
+    // undraggable, which is what broke this spec originally.
+    await judgeBaselineNode.getByRole('button', { name: 'Collapse node' }).click()
     await calibrationNode.getByRole('button', { name: 'Collapse node' }).click()
-
-    await connectSockets(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
-    await connectSockets(page, DATASET, 'samples', CALIBRATION, 'samples')
-    await connectSockets(page, DATASET, 'labels', CALIBRATION, 'labels')
-    await connectSockets(page, JUDGE_ENGINE, 'engine_config', CALIBRATION, 'judge_engine')
-    await connectSockets(page, HUMAN_ENGINE, 'engine_config', CALIBRATION, 'human_engine')
-    await connectSockets(page, DATASET, 'samples', JUDGE, 'samples')
-    await connectSockets(page, JUDGE_ENGINE, 'engine_config', JUDGE, 'engine_config')
-    await connectSockets(page, PROMPT, 'judge_spec', JUDGE, 'judge_spec')
-    await connectSockets(page, CALIBRATION, 'calibration_results', JUDGE, 'calibration')
-
-    await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${CALIBRATION}:samples`)).toHaveCount(1)
-    await expect(page.getByTestId(`rf__edge-${CALIBRATION}:calibration_results->${JUDGE}:calibration`)).toHaveCount(1)
 
     await page.locator('.dry-run-toggle input[type="checkbox"]').uncheck()
     page.once('dialog', (dialog) => dialog.accept())
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
-    await runButton.click()
 
+    await runButton.click()
     await expect(runButton).toHaveText('Run', { timeout: 30000 })
-    for (const node of [peanutSourceNode, datasetNode, calibrationNode, judgeNode]) {
+    for (const node of [peanutSourceNode, datasetNode, judgeBaselineNode, calibrationNode, judgeCalibratedNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()
     }
 
@@ -113,16 +208,27 @@ test.describe('adversarial calibration node', () => {
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(calibModal).toHaveCount(0)
 
-    // --- The concrete proof: the downstream Judge node's OWN secondary tab shows the
+    // --- The baseline Judge node never saw any calibration input — its prompt must NOT
+    // carry the optimized-prompt addendum. ---
+    await judgeBaselineNode.dblclick()
+    const baselineModal = page.locator('.modal-panel')
+    await expect(baselineModal).toBeVisible()
+    const baselineCard = baselineModal.locator('.rationale-card', { hasText: 'M3' }).first()
+    await baselineCard.locator('summary', { hasText: 'Prompt' }).click()
+    await expect(baselineCard.getByText(OPTIMIZED_PROMPT_MARKER, { exact: false })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(baselineModal).toHaveCount(0)
+
+    // --- The concrete proof: the second Judge node's OWN secondary tab shows the
     // calibrated prompt actually reached its real LM call. ---
-    await judgeNode.dblclick()
-    const judgeModal = page.locator('.modal-panel')
-    await expect(judgeModal).toBeVisible()
-    const m3Card = judgeModal.locator('.rationale-card', { hasText: 'M3' }).first()
-    await m3Card.locator('summary', { hasText: 'Prompt' }).click()
-    await expect(m3Card.getByText(OPTIMIZED_PROMPT_MARKER, { exact: false })).toBeVisible()
+    await judgeCalibratedNode.dblclick()
+    const calibratedJudgeModal = page.locator('.modal-panel')
+    await expect(calibratedJudgeModal).toBeVisible()
+    const calibratedCard = calibratedJudgeModal.locator('.rationale-card', { hasText: 'M3' }).first()
+    await calibratedCard.locator('summary', { hasText: 'Prompt' }).click()
+    await expect(calibratedCard.getByText(OPTIMIZED_PROMPT_MARKER, { exact: false })).toBeVisible()
 
     await page.getByRole('button', { name: 'Close' }).click()
-    await expect(judgeModal).toHaveCount(0)
+    await expect(calibratedJudgeModal).toHaveCount(0)
   })
 })

@@ -125,10 +125,19 @@ export function useRunSocket(
         })
       } else if (event.type === 'run_order') {
         runStore.getState().setRunOrder(event.order ?? [])
-      } else if (event.type === 'judge_progress_init' && event.node_id && event.total != null) {
+      } else if (
+        (event.type === 'judge_progress_init' || event.type === 'calibration_progress_init') &&
+        event.node_id && event.total != null
+      ) {
         setNodeProgressTotal(event.node_id, event.total)
-      } else if (event.type === 'judge_item_start' || event.type === 'judge_metric') {
-        if (event.type === 'judge_metric' && event.node_id) {
+      } else if (
+        event.type === 'judge_item_start' || event.type === 'judge_metric' ||
+        event.type === 'calibration_item_start' || event.type === 'calibration_item_done'
+      ) {
+        if (
+          (event.type === 'judge_metric' || event.type === 'calibration_item_done') &&
+          event.node_id
+        ) {
           incrementNodeProgress(event.node_id)
         }
         appendLog({

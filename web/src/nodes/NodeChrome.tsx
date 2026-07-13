@@ -30,6 +30,13 @@ interface NodeChromeProps {
   // Every input/output Handle + its label (see SocketHandle.tsx) — rendered in a fixed-
   // height zone dedicated purely to connections, distinct from the params body below.
   sockets?: ReactNode
+  // Overrides the zone's default 44px height (see .rf-node-sockets in App.css) — needed
+  // by any node with more than ~3 sockets on one side: socketTop() spaces handles evenly
+  // within this height, so packing e.g. 5 targets into 44px puts adjacent handles only a
+  // few px apart, well within each other's hit-radius (confirmed via
+  // document.elementFromPoint — a drag aimed at one handle's own computed center
+  // resolved to its neighbor instead). Most node types don't need this.
+  socketZoneHeight?: number
   // Drives NodeResizer's visibility — only show resize handles on the selected node, the
   // same convention React Flow examples use, so idle nodes don't clutter the canvas.
   selected?: boolean
@@ -61,8 +68,8 @@ interface NodeChromeProps {
 
 export function NodeChrome({
   title, color, status, error, collapsed, onToggleCollapse, progress, sockets, selected,
-  orderIndex, stale, locked, onRun, onRerun, runDisabledReason, rerunDisabledReason,
-  onToggleLock, lockDisabledReason, children,
+  socketZoneHeight, orderIndex, stale, locked, onRun, onRerun, runDisabledReason,
+  rerunDisabledReason, onToggleLock, lockDisabledReason, children,
 }: NodeChromeProps) {
   const running = status === 'running'
   return (
@@ -138,7 +145,9 @@ export function NodeChrome({
           </button>
         )}
       </div>
-      <div className="rf-node-sockets">{sockets}</div>
+      <div className="rf-node-sockets" style={socketZoneHeight ? { height: socketZoneHeight } : undefined}>
+        {sockets}
+      </div>
       {running && <ProgressBar progress={progress ?? { completed: 0, total: null }} className="node-progress-bar" />}
       <div className="rf-node-body">{children}</div>
     </div>

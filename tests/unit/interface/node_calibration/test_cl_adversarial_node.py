@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
@@ -6,12 +8,10 @@ from vejudge.interface.node_calibration.cl_adversarial_node import ClAdversarial
 from vejudge.lm_engine import openai_compat
 from vejudge.lm_engine.creds import PlutoCreds
 
-# A superset response satisfying M3's schema, D1's schema, and D2's schema at once —
-# validate_judge_output only checks for the presence of each schema's required keys, so
-# one canned dict can drive the anchor judge call and every debate turn identically.
+# A superset response satisfying D1's and D2's debate-turn schemas at once —
+# validate_judge_output only checks for the presence of each schema's required keys.
 _CANNED = {
-    "score_1_to_5": 3, "fully_complete": True, "missing_aspects": [],
-    "revised": False, "evidence": [],
+    "score_1_to_5": 3, "revised": False, "evidence": [],
     "agrees_with_judge": True, "cited_failure_modes": [],
     "reasoning_lines": ["looks fine"],
 }
@@ -25,8 +25,24 @@ def _sample(item_id):
     }
 
 
+def _judge_result(item_id, metric_id="M3", score=3.0, **overrides):
+    entry = {
+        "judge": metric_id, "metric_id": metric_id,
+        "parsed": {"score_1_to_5": score, "reasoning_lines": ["baseline reasoning"]},
+        "valid": True,
+    }
+    entry.update(overrides)
+    return {item_id: {metric_id: entry}}
+
+
+def _merge_judge_results(*results):
+    merged: dict = {}
+    for r in results:
+        merged.update(r)
+    return merged
+
+
 def _fake_chat_result(payload=None):
-    import json
     return openai_compat.ChatResult(
         content=json.dumps(payload or _CANNED),
         prompt_tokens=1, completion_tokens=1, total_tokens=2,
@@ -38,9 +54,10 @@ def _engine_config(**overrides):
     return {"engine_kind": "gpt", **overrides}
 
 
-def _inputs(dataset, *, labels=None, **eng):
+def _inputs(dataset, judge_result, *, labels=None, **eng):
     inputs = {
         "samples": dataset,
+        "judge_result": judge_result,
         "judge_engine": _engine_config(**eng),
         "human_engine": _engine_config(),
     }
@@ -64,24 +81,26 @@ def test_dry_run_estimates_calls_without_gateway(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", boom)
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    # Simulates the upstream Judge node's own dry-run output (always {}) — the
+    # calibration node's dry-run estimate must not depend on real judge_result content.
     ctx = make_ctx(
-        params={"metric_id": "M3", "max_rounds": 4},
-        inputs=_inputs(dataset), dry_run=True,
+        params={"max_rounds": 4},
+        inputs=_inputs(dataset, judge_result={}), dry_run=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 
     assert result.status == "done"
     assert result.meta["dry_run"] is True
     assert result.meta["n_items"] == 1
-    # 1 anchor call + up to 4 rounds * 2 debate turns = 9
-    assert result.meta["estimated_calls"] == {"max_calls": 9}
+    # up to 4 rounds * 2 debate turns = 8 — no anchor call anymore (that's upstream's cost).
+    assert result.meta["estimated_calls"] == {"max_calls": 8}
     assert result.outputs["calibration_results"] == {}
 
 
 def test_live_call_rejected_without_allow_live(make_ctx):
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
     ctx = make_ctx(
-        params={"metric_id": "M3"}, inputs=_inputs(dataset), dry_run=False, allow_live=False,
+        inputs=_inputs(dataset, judge_result={}), dry_run=False, allow_live=False,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
     assert result.status == "error"
@@ -90,8 +109,9 @@ def test_live_call_rejected_without_allow_live(make_ctx):
 
 def test_missing_samples_input_is_a_node_error(make_ctx):
     ctx = make_ctx(
-        params={"metric_id": "M3"},
-        inputs={"judge_engine": _engine_config(), "human_engine": _engine_config()},
+        inputs={
+            "judge_result": {}, "judge_engine": _engine_config(), "human_engine": _engine_config(),
+        },
         dry_run=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
@@ -99,11 +119,24 @@ def test_missing_samples_input_is_a_node_error(make_ctx):
     assert "samples" in result.error
 
 
+def test_missing_judge_result_input_is_a_node_error(make_ctx):
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    ctx = make_ctx(
+        inputs={
+            "samples": dataset, "judge_engine": _engine_config(), "human_engine": _engine_config(),
+        },
+        dry_run=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "judge_result" in result.error
+
+
 def test_missing_judge_engine_input_is_a_node_error(make_ctx):
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
     ctx = make_ctx(
-        params={"metric_id": "M3"},
-        inputs={"samples": dataset, "human_engine": _engine_config()}, dry_run=True,
+        inputs={"samples": dataset, "judge_result": {}, "human_engine": _engine_config()},
+        dry_run=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
     assert result.status == "error"
@@ -113,8 +146,8 @@ def test_missing_judge_engine_input_is_a_node_error(make_ctx):
 def test_missing_human_engine_input_is_a_node_error(make_ctx):
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
     ctx = make_ctx(
-        params={"metric_id": "M3"},
-        inputs={"samples": dataset, "judge_engine": _engine_config()}, dry_run=True,
+        inputs={"samples": dataset, "judge_result": {}, "judge_engine": _engine_config()},
+        dry_run=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
     assert result.status == "error"
@@ -125,9 +158,10 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
     ctx = make_ctx(
-        params={"metric_id": "M3", "max_rounds": 2, "retrieval_enabled": False},
-        inputs=_inputs(dataset), dry_run=False, allow_live=True,
+        params={"max_rounds": 2, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 
@@ -142,6 +176,91 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     assert "reasoning" in r and r["reasoning"]
     assert "transcript" in r and r["transcript"]["turns"]
     assert r["human_scores"] == {}  # no labels wired
+    assert result.meta["n_items_no_judge_result"] == 0
+    assert result.meta["n_items_unusable_anchor"] == 0
+
+
+def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
+    def boom(**kwargs):
+        raise AssertionError("must fail before any gateway call")
+
+    monkeypatch.setattr(openai_compat, "chat_completion", boom)
+
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = {
+        "prj-x::0::peanut": {
+            "cust": {
+                "judge": "cust", "metric_id": "cust", "spec_kind": "custom",
+                "parsed": {"score_1_to_5": 3}, "valid": True,
+                "align": {"dimension": "story_flow_visuals", "score_path": "score_1_to_5"},
+            }
+        }
+    }
+    ctx = make_ctx(
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "cust" in result.error
+    assert "builtin" in result.error.lower()
+
+
+def test_items_with_skipped_or_errored_anchor_are_excluded(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {
+        "prj-x::0::peanut": _sample("prj-x::0::peanut"),  # usable anchor
+        "prj-x::1::peanut": _sample("prj-x::1::peanut"),  # skipped upstream (no video)
+        "prj-x::2::peanut": _sample("prj-x::2::peanut"),  # errored upstream
+    }
+    judge_result = _merge_judge_results(
+        _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0),
+        {"prj-x::1::peanut": {"M3": {"judge": "M3", "metric_id": "M3", "parsed": None, "skipped": True}}},
+        {"prj-x::2::peanut": {"M3": {"judge": "M3", "metric_id": "M3", "parsed": None, "error": "boom"}}},
+    )
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    assert set(result.outputs["calibration_results"]) == {"prj-x::0::peanut"}
+    assert result.meta["n_items_no_judge_result"] == 0
+    assert result.meta["n_items_unusable_anchor"] == 2
+
+
+def test_items_missing_from_judge_result_entirely_are_excluded(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {
+        "prj-x::0::peanut": _sample("prj-x::0::peanut"),
+        "prj-x::1::peanut": _sample("prj-x::1::peanut"),  # never judged upstream
+    }
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    assert set(result.outputs["calibration_results"]) == {"prj-x::0::peanut"}
+    assert result.meta["n_items_no_judge_result"] == 1
+    assert result.meta["n_items_unusable_anchor"] == 0
+
+
+def test_no_usable_anchor_at_all_is_a_node_error(make_ctx):
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = {
+        "prj-x::0::peanut": {"M3": {"judge": "M3", "metric_id": "M3", "parsed": None, "skipped": True}}
+    }
+    ctx = make_ctx(
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "No usable" in result.error
 
 
 def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
@@ -154,9 +273,10 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
     ctx = make_ctx(
-        params={"metric_id": "M3", "max_rounds": 1, "retrieval_enabled": False},
-        inputs=_inputs(dataset), dry_run=False, allow_live=True,
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
     )
 
     result1 = ClAdversarialNodeExecutor().run(ctx)
@@ -175,6 +295,7 @@ def test_labels_produce_human_scores_for_aligned_metric(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M5", score=3.0)
     labels = {
         "prj-x::0::peanut": AggregatedHumanRecord(
             item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
@@ -182,8 +303,8 @@ def test_labels_produce_human_scores_for_aligned_metric(monkeypatch, make_ctx):
         )
     }
     ctx = make_ctx(
-        params={"metric_id": "M5", "max_rounds": 1, "retrieval_enabled": False},
-        inputs=_inputs(dataset, labels=labels), dry_run=False, allow_live=True,
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 
@@ -198,6 +319,7 @@ def test_metric_without_alignment_entry_yields_empty_human_scores(monkeypatch, m
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M4", score=4.0)
     labels = {
         "prj-x::0::peanut": AggregatedHumanRecord(
             item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
@@ -205,8 +327,8 @@ def test_metric_without_alignment_entry_yields_empty_human_scores(monkeypatch, m
         )
     }
     ctx = make_ctx(
-        params={"metric_id": "M4", "max_rounds": 1, "retrieval_enabled": False},
-        inputs=_inputs(dataset, labels=labels), dry_run=False, allow_live=True,
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 
@@ -219,6 +341,7 @@ def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ct
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M4", score=4.0)
     labels = {
         "prj-x::0::peanut": AggregatedHumanRecord(
             item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
@@ -227,10 +350,10 @@ def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ct
     }
     ctx = make_ctx(
         params={
-            "metric_id": "M4", "max_rounds": 1, "retrieval_enabled": False,
+            "max_rounds": 1, "retrieval_enabled": False,
             "human_dimension_override": "video_addresses_prompt",
         },
-        inputs=_inputs(dataset, labels=labels), dry_run=False, allow_live=True,
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 
@@ -242,9 +365,10 @@ def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ct
 def test_progress_events_are_calibration_specific(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
     ctx = make_ctx(
-        params={"metric_id": "M3", "max_rounds": 1, "retrieval_enabled": False},
-        inputs=_inputs(dataset), dry_run=False, allow_live=True,
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
     )
     events: list[tuple[str, dict]] = []
     ctx.progress_cb = lambda event, payload: events.append((event, payload))
@@ -264,9 +388,10 @@ def test_all_turns_failed_item_is_not_checkpointed(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", boom)
 
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
     ctx = make_ctx(
-        params={"metric_id": "M3", "max_rounds": 2, "retrieval_enabled": False},
-        inputs=_inputs(dataset), dry_run=False, allow_live=True,
+        params={"max_rounds": 2, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
     )
     result = ClAdversarialNodeExecutor().run(ctx)
 

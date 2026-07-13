@@ -59,10 +59,17 @@ def run_concurrent_judging(
     item's* builtin judge call, never applied dataset-wide.
     """
     key = spec_key(spec)
+    # Prefixed with the node id, not just item_id+metric: two Judge nodes can legitimately
+    # run the identical judge_spec over the identical items in one graph (e.g. a baseline
+    # Judge feeding an Adversarial Calibration node, and a second Judge with `calibration`
+    # wired to compare against) — a shared run-wide CheckpointStore keyed only by
+    # item_id+metric would let the second node silently reuse the first's cached
+    # (uncalibrated) result and never actually apply its own extra_context.
+    ckpt_prefix = f"{ctx.node_id}::"
     per_item: dict[str, dict[str, Any]] = {iid: {} for iid in dataset}
     tasks: list[str] = []
     for item_id, sample in dataset.items():
-        ckpt_key = f"{item_id}::{key}"
+        ckpt_key = f"{ckpt_prefix}{item_id}::{key}"
         if ctx.checkpoint.has(ckpt_key):
             per_item[item_id][key] = ctx.checkpoint.get(ckpt_key)
             continue
@@ -92,7 +99,7 @@ def run_concurrent_judging(
             item_id, result = fut.result()
             per_item[item_id][key] = result
             if not result.get("error") and not result.get("skipped"):
-                ctx.checkpoint.put(f"{item_id}::{key}", result)
+                ctx.checkpoint.put(f"{ckpt_prefix}{item_id}::{key}", result)
             if ctx.progress_cb:
                 ctx.progress_cb("judge_metric", {"item_id": item_id, "metric_id": key})
 

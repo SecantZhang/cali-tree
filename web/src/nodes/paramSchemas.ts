@@ -98,10 +98,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   },
   eval: {},
   // judge_engine/human_engine come from two required upstream LM Engine Node
-  // `engine_config` inputs; `labels` is optional (used only for the secondary tab's
-  // judge-vs-human score comparison, not for the debate itself).
+  // `engine_config` inputs; `judge_result` (a Judge Node's output) supplies the anchor
+  // score and metric identity — there's no metric_id param, the metric is a wired
+  // artifact same as everywhere else in this node system. `labels` is optional (used
+  // only for the secondary tab's judge-vs-human score comparison, not the debate itself).
   cl_adversarial: {
-    metric_id: { type: 'enum', options: METRIC_PRESETS.slice(0, -1), default: 'M4' },
     epsilon: { type: 'number', default: 0.25, min: 0, step: 0.05 },
     max_rounds: { type: 'number', default: 4, min: 1 },
     retrieval_enabled: { type: 'bool', default: true },
