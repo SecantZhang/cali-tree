@@ -53,3 +53,38 @@ def test_prompt_text_is_present_even_when_the_engine_call_fails(monkeypatch):
 
     assert "error" in result
     assert isinstance(result["prompt_user"], str) and result["prompt_user"]
+
+
+def _fake_result():
+    return openai_compat.ChatResult(
+        content='{"score_1_to_5": 4, "fully_complete": true, "missing_aspects": [], '
+        '"reasoning_lines": ["a"]}',
+        prompt_tokens=1, completion_tokens=1, total_tokens=2,
+        endpoint_host="primary", latency_s=0.01, model="m",
+    )
+
+
+def test_extra_context_defaults_to_none_and_leaves_the_prompt_unchanged(monkeypatch):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **kwargs: _fake_result())
+    judge = Judge("M3", _engine())
+    result = judge.run(_sample())
+    assert "\n\ncalibration" not in result["prompt_system"].lower()
+
+
+def test_extra_context_is_appended_to_the_system_prompt_and_actually_sent(monkeypatch):
+    captured = {}
+
+    def fake_chat(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _fake_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+    judge = Judge("M3", _engine())
+    result = judge.run(_sample(), extra_context="Calibration note: watch for X.")
+
+    assert result["prompt_system"].endswith("Calibration note: watch for X.")
+    # The effective (calibrated) system text is what's actually sent to the engine, not
+    # just recorded after the fact.
+    system_message = next(m for m in captured["messages"] if m["role"] == "system")
+    assert "Calibration note: watch for X." in system_message["content"]
+    assert "do a thing" in result["prompt_user"]  # user text untouched by extra_context

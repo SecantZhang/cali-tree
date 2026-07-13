@@ -20,9 +20,10 @@ from typing import Optional
 # rest of the suite.
 RESPONSE_DELAY_S = 0.2
 
-# A single combined response body whose keys are the union of every M1-M6 schema, so it
-# validates cleanly (per vejudge/core/judge/validate.py's required-field/score-range/
-# non-empty-rationale checks) no matter which metric a test graph selects.
+# A single combined response body whose keys are the union of every M1-M6 schema PLUS the
+# D1 (judge-agent debate turn)/D2 (human-proxy debate turn) schemas, so it validates cleanly
+# (per vejudge/core/judge/validate.py's required-field/score-range/non-empty-rationale
+# checks) no matter which metric or debate role a test graph exercises.
 MOCK_JUDGE_CONTENT = {
     "score_1_to_5": 3,
     "fully_complete": True,
@@ -42,6 +43,10 @@ MOCK_JUDGE_CONTENT = {
     "voiceover_continuity": {"score_1_to_5": 3, "issues": [], "reasoning": "mock"},
     "visual_continuity": {"score_1_to_5": 3, "issues": [], "reasoning": "mock"},
     "overall_av_sync_score": 3,
+    # D1 (judge-agent debate turn) / D2 (human-proxy debate turn) fields.
+    "revised": False,
+    "agrees_with_judge": True,
+    "cited_failure_modes": [],
 }
 
 
