@@ -357,6 +357,59 @@ Node parameters: **preset** (M1–M6 or `custom`); the custom-only fields (**mod
 **system**/**user_template**, **expected_fields**, **score_path**, **target_dimension**,
 **spec_id**/**label**) are shown only when preset is `custom`.
 
+#### Adversarial Calibration Node
+
+*Category: `node_calibration`*
+
+Description: runs a bounded judge-vs-human-proxy debate over a dataset
+(`vejudge/core/calibration/debate/`, wired via `vejudge/interface/node_calibration/`) to
+produce a **per-item** calibrated result — deliberately not one aggregate prompt for the
+whole dataset. For each item, the node computes its own anchor judge score (there is no
+upstream Judge node in this wiring), then runs a bounded debate: a human-proxy agent (a
+skeptical-annotator persona, optionally grounded in a retrieved real human-annotation
+note from a *different* item — never this item's own label, to avoid leaking the very
+ground truth a later evaluation would compare against) critiques the judge's score, and
+the judge agent defends or revises it, converging once the score stabilizes (a
+score-delta epsilon) or a round cap is hit. A separate "aggregation node" that would
+combine many items' calibrated results into one general-purpose prompt is a distinct,
+not-yet-designed follow-up.
+
+Input: `samples` (a Dataset node's output); `labels` (optional — a Dataset node's
+`labels` output, used only for the secondary tab's judge-vs-human score comparison,
+never for the debate itself); `judge_engine` and `human_engine` (two separate
+`engine_config` inputs from two LM Engine nodes — deliberately two distinct sockets of
+the same type, so the two roles can run on different model families to mitigate
+self-bias).
+
+Output: `calibration_results` — `{item_id: {item_id, metric_id, original_score,
+final_score, score_delta, converged, rounds_run, flags, optimized_prompt, reasoning,
+transcript, human_scores}}`. `optimized_prompt` is per-item extra guidance text (derived
+from that item's own debate, not a corpus-wide synthesis) meant to be wired into a
+downstream Judge Node's `calibration` input (see below), which injects it as that item's
+`extra_context` for a re-score. `reasoning` is the debate's deterministic reasoning-trace
+text; `transcript` is the full per-round turn-by-turn record (chat history). `human_scores`
+is populated via `postprocessing.align.ALIGNMENT`'s reverse lookup (or the **Human
+dimension override** param below) when `labels` is wired and the metric has a mapped
+human dimension.
+
+Node parameters:
+* **Metric**: which M1–M6 judge metric to calibrate.
+* **Epsilon**: score-delta convergence threshold (default 0.25).
+* **Max rounds**: hard cap on debate rounds (default 4).
+* **Retrieval enabled**: bool, default on — grounds the human-proxy's critique in a
+  similar real human-annotation note when one exists; falls back to persona-only
+  otherwise.
+* **Batch size**: streaming batch-eval, same convention as the Judge Node.
+* **Human dimension override**: optional — overrides the automatic `ALIGNMENT` lookup
+  for metrics (M1/M2/M4) with no direct human-dimension mapping.
+
+Secondary tab: a summary strip (item count, converged count, average `|score_delta|`)
+above a left item list (score-delta indicator + converged check) and a right detail
+panel for the selected item — a judge-vs-human-proxy chat view (alternating turn
+bubbles, each showing round/score/reasoning/whether it was grounded in a retrieved
+note), a score-comparison strip (original/calibrated/human scores + delta + flags), and
+per-item **Calibrated reasoning**/**Optimized prompt** collapsible sections.
+
 #### Judge Node
 
 *Category: `node_vejudge`*
@@ -373,8 +426,11 @@ sequentially today, so per-metric paths run one after another until a future con
 executor lands).
 
 Input: `samples` (post-Preprocessing, or directly from a Dataset node), a required
-`engine_config` (an LM Engine Node's output), and a required `judge_spec` (a Judge Prompt
-Node's output).
+`engine_config` (an LM Engine Node's output), a required `judge_spec` (a Judge Prompt
+Node's output), and an optional `calibration` (an Adversarial Calibration Node's
+`calibration_results` output — when wired, each item's own `optimized_prompt` is looked
+up by item id and injected as that item's extra guidance before the call; builtin specs
+only, for now).
 
 Output: `judge_result` — `{item_id: {metric_key: {judge, metric_id, prompt_version,
 prompt_system, prompt_user, parsed, raw_content, validation_flags, valid, promptTokens,
