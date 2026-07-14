@@ -153,6 +153,17 @@ def test_corpus_prompt_reports_over_scoring_direction():
     assert "over-score" in render_corpus_calibration_prompt(results)
 
 
+def test_corpus_prompt_states_correction_magnitude_not_just_direction():
+    # Directional-only correction overshot in leave-one-out CV; the prompt now states
+    # the average correction size so the re-judge has a target, not just a sign.
+    results = [
+        {"failure_mode_summary": {"scale_drift": 1}, "score_delta": 2.0},
+        {"failure_mode_summary": {"scale_drift": 1}, "score_delta": 2.0},
+    ]
+    text = render_corpus_calibration_prompt(results)
+    assert "roughly 2.0 point" in text
+
+
 def test_corpus_prompt_empty_when_nothing_to_generalize():
     assert render_corpus_calibration_prompt([]) == ""
     # No flagged modes and no directional bias => nothing generalizable.
