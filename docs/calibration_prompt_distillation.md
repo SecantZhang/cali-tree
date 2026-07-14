@@ -164,3 +164,74 @@ Judge node, distinct from the per-item `calibration` one).
   `web/e2e/specs/cl-adversarial.spec.ts` was updated to the new confirmed-case wording;
   the marker + corpus-display assertions should be validated by the E2E suite if/when
   this graduates to a merge branch.
+
+---
+
+# Individual calibration + semantic decision tree (live experiment)
+
+Second experiment (same branch): does *individual A/B calibration → post-aggregation into
+a fitted semantic decision tree* beat a plain bias correction on the M5 batch? Pipeline
+(`core/calibration/debate/eval/run_prompt_calibration.py`): per item, a fresh **mechanism
+A/B debate** (proxy sees the human *direction + notes* but **never the number**; goal =
+name the *general reusable rule* the judge misapplied) → extract candidate boolean rules →
+canonicalize a shared **question bank** → the judge answers the bank **cold** (base score +
+booleans, no debate/label) → fit `[base_score + booleans] → human` and report in-sample +
+leave-one-out MAE. Live, 6 M5 items, ~40 text calls + 6 video, run against real Gemini.
+
+## What worked: the mining + aggregation
+
+The individual debates + canonicalization produced a genuinely good, general, reusable
+decision-node bank (verbatim):
+
+- **q1** — Does the judge penalize the output for failing to meet requirements **not stated
+  or implied in the prompt**?
+- **q2** — Does the judge **mistake a valid stylistic choice or genre convention for a
+  flaw**, rather than evaluating the quality of its execution?
+- **q3** — Does the judge **overstate the scope of a flaw**, applying criticism of isolated
+  issues to the entire output?
+
+These are exactly the transferable rubric principles the earlier per-item transcripts hinted
+at, now phrased as item-agnostic yes/no checks. The mining half of the idea is validated.
+
+## What broke: the judge won't self-flag cold
+
+When the same judge answers those questions **cold about its own output**, it answers **"no"
+to all three, on every item** — including `prj-aberdeen::2`, the textbook case where the
+debate *proved* it mistook user-script-mandated repetition (q2) for a flaw. Verified on the
+raw response: `{q1:False, q2:False, q3:False}`. So every semantic feature is 0 →
+non-discriminative by construction.
+
+## Result (MAE vs human; baseline = uncalibrated judge)
+
+| comparator | in-sample | LOO |
+|---|---|---|
+| (a) base only | 2.06 | 2.06 |
+| (b) base + global bias | 0.49 | 0.59 |
+| (c) linear[base+booleans] | 0.35 | 0.52 |
+| (d) tree[base+booleans] | 0.35 | 0.52 |
+
+The big drop (2.06 → ~0.5) is **entirely the global bias term** — the judge systematically
+under-scores by ~2 points, and correcting that is most of the available signal at n=6. The
+(c)/(d) edge over (b) comes only from fitting a 2-parameter `base→human` map instead of a
+1-parameter shift; the **semantic booleans add nothing here because they're all zero**. On
+this batch the semantic decision tree did **not** beat a plain bias correction — not because
+the rules are bad, but because the judge won't answer the questions truthfully about itself.
+
+Fitted rule (auditable) collapsed to a base-score split: `base≤1.5 → 3.53`, `base>1.5 →
+3.59` — i.e. "predict ~the human mean regardless," the degenerate outcome when features
+carry no signal at n=6.
+
+## Takeaway + next step
+
+- **Mining/aggregation (individual A/B → shared rule bank): works.** The rules are the
+  reusable, generalizable artifact the whole effort was after.
+- **Hybrid self-answer execution: does not.** A judge asked "are you being unfair?" in the
+  same breath as scoring says no. The boolean answerer must be **independent of the judge** —
+  a separate critic/verifier pass that answers the bank about the output (or derives the
+  feature from a debate/critic), so the features become discriminative. That is the clear
+  next experiment; the mining pipeline built here feeds directly into it.
+- **n=6 caveat stands**: even with good features, a fitted tree at this size is directional
+  only; a larger labeled set (≤13 M5 peanut items available) is needed for a real read.
+
+Reproduce: `python -m vejudge.core.calibration.debate.eval.run_prompt_calibration
+logs/exps/260714-09:57:04-exps --metric M5 --env-raw <path> --live`.
