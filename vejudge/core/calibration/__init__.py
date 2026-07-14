@@ -6,5 +6,6 @@ first raw-gap run is reviewed (only ~tens of matched items). See docs/research.m
 
 from .base import Calibrator
 from .linear import LinearCalibrator
+from .tree import DecisionTreeCalibrator
 
-__all__ = ["Calibrator", "LinearCalibrator"]
+__all__ = ["Calibrator", "LinearCalibrator", "DecisionTreeCalibrator"]
