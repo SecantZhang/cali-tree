@@ -424,8 +424,10 @@ Node parameters:
 * **Human dimension override**: optional — overrides the automatic `ALIGNMENT` lookup
   for metrics (M1/M2/M4) with no direct human-dimension mapping.
 * **Ground in human labels**: bool, default off — opts into letting the debate's own
-  convergence require closing the gap to this item's real human aggregate score
-  (`core.calibration.debate.runner.DebateRunner.run`), instead of merely stabilizing
+  convergence require closing the gap to this item's real human aggregate score (a
+  **rater-count-weighted mean** across the metric's mapped human dimensions, so a
+  well-supported dimension counts more than an n=1 one; `core.calibration.debate.runner.DebateRunner.run`),
+  instead of merely stabilizing
   against itself round-to-round (which is what let a self-consistent-but-wrong debate
   report as a clean, validated result with nothing flagging the miss). When on, the
   human-proxy's own prompt also cites the real score explicitly as ground truth (the

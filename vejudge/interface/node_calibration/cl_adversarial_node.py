@@ -64,8 +64,17 @@ def _resolve_human_context(
 ) -> dict[str, Any]:
     """Per-item human comparison data: the raw per-dimension scores (with rater count,
     for reliability — n=1 is weaker evidence than n=3-4) plus a single collapsed
-    ``anchor_score`` (mean of whichever mapped dimensions actually have data) used both
-    for the always-on ``human_gap`` and as the optional grounded-debate target.
+    ``anchor_score`` used both for the always-on ``human_gap`` and as the optional
+    grounded-debate target.
+
+    The anchor is a **rater-count-weighted** mean over whichever mapped dimensions have
+    data: a dimension rated by more annotators contributes proportionally more, so a
+    flimsy n=1 dimension doesn't sway the target as much as a solid n=6 one. Weighting
+    by the ``n`` already carried in ``score_counts`` needs no invented per-dimension
+    weights, and it's the natural estimate of "the humans' overall score" for a holistic
+    metric like M5 whose single judge score maps to several human facets at once. The
+    per-dimension breakdown is preserved separately in ``human_scores``/``human_gap`` so
+    the collapse never hides a per-aspect miss.
 
     Gating on ``score is not None`` (not ``n > 0``) matches ``AggregatedHumanRecord``'s
     own invariant that a dimension's score is None iff its rater count is 0 — no
@@ -74,8 +83,19 @@ def _resolve_human_context(
     if not agg or not dims:
         return {"human_scores": {}, "anchor_score": None}
     human_scores = {d: {"score": agg.scores.get(d), "n": agg.score_counts.get(d, 0)} for d in dims}
-    contributing = [v["score"] for v in human_scores.values() if v["score"] is not None]
-    anchor_score = mean(contributing) if contributing else None
+    contributing = [
+        (v["score"], v["n"]) for v in human_scores.values() if v["score"] is not None
+    ]
+    total_weight = sum(n for _score, n in contributing)
+    if total_weight > 0:
+        anchor_score = sum(score * n for score, n in contributing) / total_weight
+    elif contributing:
+        # Defensive: scores present but every n == 0 (shouldn't happen given the
+        # aggregate invariant above) — fall back to an unweighted mean rather than
+        # divide by zero.
+        anchor_score = mean(score for score, _n in contributing)
+    else:
+        anchor_score = None
     return {"human_scores": human_scores, "anchor_score": anchor_score}
 
 
