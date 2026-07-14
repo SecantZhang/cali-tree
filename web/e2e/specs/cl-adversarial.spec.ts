@@ -77,8 +77,7 @@ const JUDGE_CALIBRATED = 'judge-8'
 // The mock gateway always returns the same fixed score (3) for every call — the debate's
 // judge-agent turn therefore always confirms it holds up (delta 0 < epsilon), so every
 // item converges in round 1 with this exact addendum (see calibrated_result.py).
-const OPTIMIZED_PROMPT_MARKER =
-  'A prior adversarial review of this item confirmed the original score of 3 held up under scrutiny.'
+const OPTIMIZED_PROMPT_MARKER = 'A prior adversarial review confirmed the score of 3.'
 
 test.describe('adversarial calibration node', () => {
   test('calibrates an upstream Judge node\'s result and the optimized prompt reaches a second Judge node', async ({

@@ -193,6 +193,12 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
   const activeItem = selectedItem ?? itemIds[0]
   const item = calibrationResults[activeItem]
   const humanDims = Object.entries(item.human_scores ?? {})
+  // One item-independent calibration note distilled across all items (node meta) — the
+  // generalizing artifact, meant to be applied to unseen items.
+  const generalPrompt =
+    typeof active?.meta?.general_optimized_prompt === 'string'
+      ? (active.meta.general_optimized_prompt as string)
+      : ''
 
   return (
     <div>
@@ -204,6 +210,12 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
         <div><strong>Converged:</strong> {convergedCount} / {itemIds.length}</div>
         {avgAbsDelta !== null && <div><strong>Avg |Δscore|:</strong> {avgAbsDelta.toFixed(2)}</div>}
       </div>
+      {generalPrompt && (
+        <details className="schema-details" open>
+          <summary>General calibration prompt (applies across items)</summary>
+          <pre className="json-preview">{generalPrompt}</pre>
+        </details>
+      )}
       <div className="secondary-split">
         <ul className="dataset-item-list secondary-item-list">
           {itemIds.map((iid) => {
