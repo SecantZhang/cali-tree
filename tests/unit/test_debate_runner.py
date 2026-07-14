@@ -136,6 +136,87 @@ def test_all_turns_failing_never_raises_and_flags_total_failure():
     assert all(t.error for t in verdict.transcript.turns)
 
 
+def test_grounded_mode_requires_closing_the_human_gap_not_just_self_stability():
+    # The judge is self-consistent from round 1 (always 3.5) -- in blind mode this
+    # would converge immediately via "epsilon". But it's 1.5 points off the real human
+    # anchor (5.0), well above epsilon (0.25) -- grounded mode must NOT treat
+    # self-stability as convergence; it should keep running (and hit max_rounds without
+    # ever converging), exactly the reported failure mode this feature targets.
+    judge_responses = [
+        _out({"score_1_to_5": 3.5, "revised": True, "reasoning_lines": ["ok"], "evidence": []})
+        for _ in range(4)
+    ]
+    proxy_responses = [
+        _out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})
+        for _ in range(4)
+    ]
+    runner = _runner(
+        judge_responses, proxy_responses,
+        epsilon=0.25, max_rounds=4, ground_in_human_labels=True, human_anchor_score=5.0,
+    )
+
+    verdict = runner.run(_sample(), _original_output(score=3.0))
+
+    assert verdict.grounded is True
+    assert verdict.converged is False
+    assert verdict.rounds_run == 4
+    assert "max_rounds" in verdict.flags
+    assert "epsilon" not in verdict.flags
+
+
+def test_grounded_mode_converges_when_judge_closes_on_the_human_anchor():
+    runner = _runner(
+        judge_responses=[_out({"score_1_to_5": 3.05, "revised": True, "reasoning_lines": ["ok"], "evidence": []})],
+        proxy_responses=[_out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})],
+        epsilon=0.25, max_rounds=4, ground_in_human_labels=True, human_anchor_score=3.1,
+    )
+
+    verdict = runner.run(_sample(), _original_output(score=3.0))
+
+    assert verdict.grounded is True
+    assert verdict.converged is True
+    assert verdict.rounds_run == 1
+    assert "epsilon_human" in verdict.flags
+
+
+def test_grounded_mode_falls_back_to_blind_when_no_human_anchor():
+    # ground_in_human_labels=True but no anchor score for this item (human_anchor_score
+    # left at its default None) -- automatic per-item fallback, no special-cased branch:
+    # behaves exactly like today's blind debate.
+    runner = _runner(
+        judge_responses=[_out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": ["e"]})],
+        proxy_responses=[_out({"score_1_to_5": 2, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})],
+        epsilon=0.25, max_rounds=4, ground_in_human_labels=True,
+    )
+
+    verdict = runner.run(_sample(), _original_output(score=3.0))
+
+    assert verdict.grounded is False
+    assert verdict.converged is True
+    assert "epsilon" in verdict.flags
+    assert "epsilon_human" not in verdict.flags
+
+
+def test_grounded_mode_real_score_reaches_only_the_human_proxy_prompt():
+    # The human-proxy's own prompt cites the real score explicitly when grounded; the
+    # judge's turn never receives it directly (structural -- d1_judge_debate.build has
+    # no such parameter at all) and must keep reacting only to the proxy's argued text.
+    runner = _runner(
+        judge_responses=[_out({"score_1_to_5": 3.05, "revised": True, "reasoning_lines": ["ok"], "evidence": []})],
+        proxy_responses=[_out({"score_1_to_5": 1, "agrees_with_judge": False, "reasoning_lines": ["gap"], "cited_failure_modes": []})],
+        epsilon=0.25, max_rounds=4, ground_in_human_labels=True, human_anchor_score=3.1,
+    )
+
+    verdict = runner.run(_sample(), _original_output(score=3.0))
+
+    proxy_turn, judge_turn = verdict.transcript.turns
+    assert proxy_turn.role == "human_proxy"
+    assert "3.1" in proxy_turn.prompt_user
+    assert "ground truth" in proxy_turn.prompt_user
+    assert judge_turn.role == "judge"
+    assert "3.1" not in judge_turn.prompt_user
+
+
 def test_failure_mode_tags_are_normalized_and_counted():
     runner = _runner(
         judge_responses=[_out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": []})],

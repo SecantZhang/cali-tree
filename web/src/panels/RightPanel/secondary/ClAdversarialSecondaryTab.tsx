@@ -50,7 +50,15 @@ interface CalibrationItem {
   optimized_prompt: string
   reasoning: string
   transcript: DebateTranscript
-  human_scores: Record<string, number | null>
+  // n = rater count for that dimension — the reliability signal (n=1 is weaker
+  // evidence than n=3-4) alongside the mean score itself.
+  human_scores: Record<string, { score: number | null; n: number }>
+  // Always computed (independent of `grounded`/ground_in_human_labels) — raw
+  // |final_score - human_score| per dimension, no invented pass/fail threshold.
+  human_gap: Record<string, number | null>
+  // True only when a real human anchor was actually available AND
+  // ground_in_human_labels was set — see core.calibration.debate.schema.DebateVerdict.
+  grounded: boolean
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
@@ -217,15 +225,22 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
             <div><strong>Calibrated:</strong> {item.final_score ?? '—'}</div>
             <div><strong>Δ:</strong> <DeltaBadge delta={item.score_delta} /></div>
             {humanDims.length > 0 ? (
-              humanDims.map(([dim, val]) => (
-                <div key={dim}><strong>Human ({dim}):</strong> {val ?? '—'}</div>
+              humanDims.map(([dim, info]) => (
+                <div key={dim}>
+                  <strong>Human ({dim}):</strong> {info.score ?? '—'}{' '}
+                  {info.n > 0 && <span className="tag">n={info.n}</span>}{' '}
+                  {item.human_gap?.[dim] != null && (
+                    <span className="tag">gap {item.human_gap[dim]!.toFixed(2)}</span>
+                  )}
+                </div>
               ))
             ) : (
               <div className="empty-hint">no human dimension for this metric</div>
             )}
             <div>
               <span className="tag">{item.converged ? 'converged' : 'not converged'}</span>{' '}
-              <span className="tag">{item.rounds_run} round(s)</span>
+              <span className="tag">{item.rounds_run} round(s)</span>{' '}
+              {item.grounded && <span className="tag">grounded</span>}
               {item.flags.map((f) => (
                 <span key={f} className="tag">{f}</span>
               ))}

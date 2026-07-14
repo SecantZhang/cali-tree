@@ -373,7 +373,9 @@ human-proxy agent (a skeptical-annotator persona, optionally grounded in a retri
 real human-annotation note from a *different* item — never this item's own label, to
 avoid leaking the very ground truth a later evaluation would compare against) critiques
 the judge's score, and the judge agent defends or revises it, converging once the score
-stabilizes (a score-delta epsilon) or a round cap is hit. Only builtin M1–M6 judge
+stabilizes (a score-delta epsilon) or a round cap is hit — or, in the opt-in **Ground in
+human labels** mode (see params below), once the score closes on this item's own real
+human aggregate instead of merely stabilizing against itself. Only builtin M1–M6 judge
 results are supported today — a `judge_result` produced by a *custom* Judge Prompt spec
 is rejected with a clear error, since the debate prompts embed the builtin rubric text
 (`core/rubric/definitions.py`'s `metric_definition`), which has no custom-spec
@@ -394,14 +396,23 @@ baseline Judge Node, since the judge agent is defending its own prior answer).
 
 Output: `calibration_results` — `{item_id: {item_id, metric_id, original_score,
 final_score, score_delta, converged, rounds_run, flags, optimized_prompt, reasoning,
-transcript, human_scores}}`. `optimized_prompt` is per-item extra guidance text (derived
-from that item's own debate, not a corpus-wide synthesis) meant to be wired into a
-downstream Judge Node's `calibration` input (see below), which injects it as that item's
-`extra_context` for a re-score. `reasoning` is the debate's deterministic reasoning-trace
-text; `transcript` is the full per-round turn-by-turn record (chat history). `human_scores`
-is populated via `postprocessing.align.ALIGNMENT`'s reverse lookup (or the **Human
-dimension override** param below) when `labels` is wired and the metric has a mapped
-human dimension.
+transcript, human_scores, human_gap, grounded}}`. `optimized_prompt` is per-item extra
+guidance text (derived from that item's own debate, not a corpus-wide synthesis) meant
+to be wired into a downstream Judge Node's `calibration` input (see below), which
+injects it as that item's `extra_context` for a re-score. `reasoning` is the debate's
+deterministic reasoning-trace text; `transcript` is the full per-round turn-by-turn
+record (chat history), plus the upstream Judge run itself (`initial_judge_result`) as
+the transcript's actual first message. `human_scores` — `{dim: {score, n}}`, `n` being
+the rater count for that dimension — is populated via
+`postprocessing.align.ALIGNMENT`'s reverse lookup (or the **Human dimension override**
+param below) when `labels` is wired and the metric has a mapped human dimension.
+`human_gap` — `{dim: |final_score - human_score| or null}` — is always computed
+alongside `human_scores` (independent of **Ground in human labels** below), a raw
+passive signal with no invented pass/fail threshold; a human reviewer judges severity
+themselves, weighing it against `n`. `grounded` is `true` only when this item's debate
+actually used a real human anchor score as its convergence target (opted in *and* a
+usable anchor existed for this specific item — otherwise it silently falls back to
+blind debate, same as if the option were off).
 
 Node parameters:
 * **Epsilon**: score-delta convergence threshold (default 0.25).
@@ -412,13 +423,26 @@ Node parameters:
 * **Batch size**: streaming batch-eval, same convention as the Judge Node.
 * **Human dimension override**: optional — overrides the automatic `ALIGNMENT` lookup
   for metrics (M1/M2/M4) with no direct human-dimension mapping.
+* **Ground in human labels**: bool, default off — opts into letting the debate's own
+  convergence require closing the gap to this item's real human aggregate score
+  (`core.calibration.debate.runner.DebateRunner.run`), instead of merely stabilizing
+  against itself round-to-round (which is what let a self-consistent-but-wrong debate
+  report as a clean, validated result with nothing flagging the miss). When on, the
+  human-proxy's own prompt also cites the real score explicitly as ground truth (the
+  judge agent never sees it directly — it only ever reacts to the proxy's argued
+  critique, preserving the adversarial debate structure). Off by default since this
+  changes what the debate optimizes for; an item with no usable human anchor for this
+  run falls back to blind debate automatically regardless of this setting.
 
 Secondary tab: a summary strip (item count, converged count, average `|score_delta|`)
 above a left item list (score-delta indicator + converged check) and a right detail
-panel for the selected item — a judge-vs-human-proxy chat view (alternating turn
-bubbles, each showing round/score/reasoning/whether it was grounded in a retrieved
-note), a score-comparison strip (original/calibrated/human scores + delta + flags), and
-per-item **Calibrated reasoning**/**Optimized prompt** collapsible sections.
+panel for the selected item — a chat view opening with the upstream Judge run itself
+(metric/score/model/reasoning/tokens + a collapsible full prompt), followed by the
+judge-vs-human-proxy debate turns (alternating bubbles, each showing round/score/
+reasoning/whether it was grounded in a retrieved note), a score-comparison strip
+(original/calibrated/human scores + rater count + gap + delta + flags, plus a
+**grounded** tag when this item's debate used a real human anchor), and per-item
+**Calibrated reasoning**/**Optimized prompt** collapsible sections.
 
 #### Judge Node
 

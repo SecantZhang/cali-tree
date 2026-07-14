@@ -186,6 +186,8 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     assert "reasoning" in r and r["reasoning"]
     assert "transcript" in r and r["transcript"]["turns"]
     assert r["human_scores"] == {}  # no labels wired
+    assert r["human_gap"] == {}
+    assert r["grounded"] is False
     assert result.meta["n_items_no_judge_result"] == 0
     assert result.meta["n_items_unusable_anchor"] == 0
 
@@ -367,6 +369,105 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
     assert calls["n"] == n_first  # unchanged — served from checkpoint
 
 
+def test_human_scores_and_gap_survive_a_disk_reload(monkeypatch, make_ctx):
+    # Regression test for the checkpoint-ordering bug: human_scores/human_gap used to
+    # be attached to each item's result dict in a post-loop AFTER _concurrent_debate.py
+    # had already checkpointed that same dict to disk. In-memory it looked fine (same
+    # dict object, mutated in place) — the bug only showed up once the checkpoint file
+    # was reloaded fresh (a --continue resume, or a server restart). Using a BRAND-NEW
+    # CheckpointStore pointed at the same file (not ctx.checkpoint, which shares the
+    # live in-memory dict reference and would false-positive-pass even with the bug
+    # present) is what actually proves the merge happens before the write.
+    from vejudge.checkpoint import CheckpointStore
+
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
+    labels = {
+        "prj-x::0::peanut": AggregatedHumanRecord(
+            item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
+            scores={"video_addresses_prompt": 4.0},
+            score_counts={"video_addresses_prompt": 2},
+        )
+    }
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "done"
+
+    reloaded = CheckpointStore(ctx.checkpoint.path)
+    entry = reloaded.get("prj-x::0::peanut::calibration::M3")
+    assert entry is not None
+    assert entry["human_scores"] == {"video_addresses_prompt": {"score": 4.0, "n": 2}}
+    assert entry["human_gap"]["video_addresses_prompt"] is not None
+    assert entry["grounded"] is False
+
+
+def test_grounded_mode_end_to_end_with_a_real_usable_anchor(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
+    labels = {
+        "prj-x::0::peanut": AggregatedHumanRecord(
+            item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
+            scores={"video_addresses_prompt": 3.0},
+            score_counts={"video_addresses_prompt": 4},
+        )
+    }
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False, "ground_in_human_labels": True},
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    r = result.outputs["calibration_results"]["prj-x::0::peanut"]
+    # Anchor score (3.0) matches the human score (3.0) exactly, and the canned response
+    # (_CANNED) also scores 3 -- closes the gap on round 1 via "epsilon_human".
+    assert r["grounded"] is True
+    assert r["converged"] is True
+    assert "epsilon_human" in r["flags"]
+
+
+def test_grounded_mode_per_item_fallback_when_one_item_has_no_human_anchor(monkeypatch, make_ctx):
+    # Two items under ground_in_human_labels=True: one has a usable human anchor, the
+    # other has none (0 raters for its mapped dimension) -- each item's fallback must
+    # be independent, no all-or-nothing behavior for the whole run.
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+
+    dataset = {
+        "prj-x::0::peanut": _sample("prj-x::0::peanut"),
+        "prj-x::1::peanut": _sample("prj-x::1::peanut"),
+    }
+    judge_result = _merge_judge_results(
+        _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0),
+        _judge_result("prj-x::1::peanut", metric_id="M3", score=3.0),
+    )
+    labels = {
+        "prj-x::0::peanut": AggregatedHumanRecord(
+            item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
+            scores={"video_addresses_prompt": 3.0},
+            score_counts={"video_addresses_prompt": 2},
+        ),
+        # No AggregatedHumanRecord at all for prj-x::1::peanut -- 0 raters, per the
+        # reported prj-dog-owner-interview::0::peanut case.
+    }
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False, "ground_in_human_labels": True},
+        inputs=_inputs(dataset, judge_result, labels=labels), dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    by_id = result.outputs["calibration_results"]
+    assert by_id["prj-x::0::peanut"]["grounded"] is True
+    assert by_id["prj-x::1::peanut"]["grounded"] is False
+
+
 def test_labels_produce_human_scores_for_aligned_metric(monkeypatch, make_ctx):
     # M5 has several ALIGNMENT entries (story_flow_voiceover, story_flow_visuals, ...).
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
@@ -377,6 +478,7 @@ def test_labels_produce_human_scores_for_aligned_metric(monkeypatch, make_ctx):
         "prj-x::0::peanut": AggregatedHumanRecord(
             item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
             scores={"story_flow_visuals": 4.0, "story_flow_voiceover": 3.5},
+            score_counts={"story_flow_visuals": 3, "story_flow_voiceover": 2},
         )
     }
     ctx = make_ctx(
@@ -387,8 +489,13 @@ def test_labels_produce_human_scores_for_aligned_metric(monkeypatch, make_ctx):
 
     assert result.status == "done"
     r = result.outputs["calibration_results"]["prj-x::0::peanut"]
-    assert r["human_scores"]["story_flow_visuals"] == 4.0
-    assert r["human_scores"]["story_flow_voiceover"] == 3.5
+    assert r["human_scores"]["story_flow_visuals"] == {"score": 4.0, "n": 3}
+    assert r["human_scores"]["story_flow_voiceover"] == {"score": 3.5, "n": 2}
+    # final_score is 3.0 (canned response) — human_gap is the always-on passive signal,
+    # computed regardless of ground_in_human_labels (unset here, defaults False).
+    assert r["human_gap"]["story_flow_visuals"] == pytest.approx(1.0)
+    assert r["human_gap"]["story_flow_voiceover"] == pytest.approx(0.5)
+    assert r["grounded"] is False
 
 
 def test_metric_without_alignment_entry_yields_empty_human_scores(monkeypatch, make_ctx):
@@ -412,6 +519,8 @@ def test_metric_without_alignment_entry_yields_empty_human_scores(monkeypatch, m
     assert result.status == "done"
     r = result.outputs["calibration_results"]["prj-x::0::peanut"]
     assert r["human_scores"] == {}
+    assert r["human_gap"] == {}
+    assert r["grounded"] is False
 
 
 def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ctx):
@@ -423,6 +532,7 @@ def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ct
         "prj-x::0::peanut": AggregatedHumanRecord(
             item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
             scores={"video_addresses_prompt": 5.0},
+            score_counts={"video_addresses_prompt": 1},
         )
     }
     ctx = make_ctx(
@@ -436,7 +546,7 @@ def test_human_dimension_override_used_for_unaligned_metric(monkeypatch, make_ct
 
     assert result.status == "done"
     r = result.outputs["calibration_results"]["prj-x::0::peanut"]
-    assert r["human_scores"] == {"video_addresses_prompt": 5.0}
+    assert r["human_scores"] == {"video_addresses_prompt": {"score": 5.0, "n": 1}}
 
 
 def test_progress_events_are_calibration_specific(monkeypatch, make_ctx):

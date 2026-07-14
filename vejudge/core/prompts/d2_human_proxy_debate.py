@@ -49,6 +49,12 @@ def build(
     transcript_text: str,
     round_no: int,
     retrieved_note: Optional[str],
+    # Real human aggregate score for THIS EXACT item (never a different one, unlike
+    # `retrieved_note`) — only passed when the caller (DebateRunner) is running in
+    # opt-in grounded mode AND a usable anchor exists for this item. None (every
+    # existing caller, and any ungrounded/fallback item) omits this block entirely,
+    # producing byte-identical output to before this parameter existed.
+    real_human_score: Optional[float] = None,
 ) -> PromptSpec:
     inp = sample.get("input") or {}
     original_parsed = original_output.get("parsed") or {}
@@ -74,22 +80,18 @@ score genuinely holds up, say so."""
             "rely on the persona and failure-mode taxonomy above only."
         )
 
+    real_score_block = (
+        f"A real human annotator's aggregate score for THIS EXACT item is "
+        f"{real_human_score:g}/5 -- this is ground truth, not a hint. If the judge's "
+        "score diverges from it, that gap is itself your strongest lead: point to the "
+        "concrete aspects of the sample that would explain it, don't just assert the "
+        "number."
+        if real_human_score is not None else ""
+    )
+
     transcript_block = transcript_text or "(no prior debate turns yet)"
 
-    user = f"""\
-Metric under debate: {metric_id}
-
-User prompt:
-"{inp.get('user_prompt', '')}"
-
-The judge's current scored output:
-{original_parsed}
-
-{grounding_block}
-
-Debate so far:
-{transcript_block}
-
+    response_format_block = f"""\
 This is round {round_no}. Respond with JSON only (no markdown fences):
 {{
   "score_1_to_5": integer,
@@ -100,5 +102,20 @@ This is round {round_no}. Respond with JSON only (no markdown fences):
 - "cited_failure_modes": zero or more keys from the failure-mode list above (use the
   exact keys, e.g. "surface_realism_bias"), only when genuinely applicable.
 - "reasoning_lines": exactly 2-3 sentences of your critique, concrete and evidence-based."""
+
+    # Joined as a list (not one big f-string) so the optional real_score_block adds no
+    # stray blank section when it's "" (the default/every-existing-caller case).
+    user = "\n\n".join(
+        block for block in [
+            f'Metric under debate: {metric_id}',
+            f'User prompt:\n"{inp.get("user_prompt", "")}"',
+            f"The judge's current scored output:\n{original_parsed}",
+            grounding_block,
+            real_score_block,
+            f"Debate so far:\n{transcript_block}",
+            response_format_block,
+        ]
+        if block
+    )
 
     return PromptSpec(system=system, user=user, schema=SCHEMA, version=VERSION)

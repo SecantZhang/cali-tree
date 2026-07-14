@@ -124,3 +124,29 @@ def test_debate_verdict_to_dict_from_dict_round_trip():
     assert restored.transcript.turns[0].retrieved_note == note
     assert restored.transcript.turns[0].retrieval_used is True
     assert len(restored.transcript.turns) == 2
+    # Not passed above -> defaults False on both the fresh object and the round-trip.
+    assert verdict.grounded is False
+    assert restored.grounded is False
+
+
+def test_grounded_field_round_trips_and_defaults_false_on_old_data():
+    transcript = DebateTranscript(
+        item_id="x", metric_id="M6", converged=True, rounds_run=1, grounded=True,
+    )
+    verdict = DebateVerdict(
+        item_id="x", metric_id="M6", initial_score=3.0, final_score=3.05,
+        score_delta=0.05, converged=True, rounds_run=1, flags=["epsilon_human"],
+        reasoning_trace="t", failure_mode_summary={}, transcript=transcript, grounded=True,
+    )
+
+    restored = DebateVerdict.from_dict(verdict.to_dict())
+    assert restored.grounded is True
+    assert restored.transcript.grounded is True
+
+    # Old checkpoint data predating this field entirely (no "grounded" key at all).
+    legacy_data = verdict.to_dict()
+    del legacy_data["grounded"]
+    del legacy_data["transcript"]["grounded"]
+    legacy_restored = DebateVerdict.from_dict(legacy_data)
+    assert legacy_restored.grounded is False
+    assert legacy_restored.transcript.grounded is False

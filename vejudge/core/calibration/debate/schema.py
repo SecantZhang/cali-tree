@@ -104,7 +104,7 @@ class DebateTranscript:
     turns: list[DebateTurn] = field(default_factory=list)
     rounds_run: int = 0
     converged: bool = False
-    # "epsilon" | "max_rounds" | "invalid_turn" | "all_turns_failed"
+    # "epsilon" | "epsilon_human" | "max_rounds" | "invalid_turn" | "all_turns_failed"
     convergence_reason: str = ""
     epsilon: float = 0.25
     max_rounds: int = 4
@@ -116,6 +116,12 @@ class DebateTranscript:
     # re-derives round-0 from scratch.
     initial_judge_result: dict[str, Any] = field(default_factory=dict)
     created_at: str = ""
+    # True only when a real human anchor score was actually available for this item AND
+    # DebateConfig.ground_in_human_labels was set — convergence then required closing
+    # the gap to that score ("epsilon_human"), not just self-stability ("epsilon").
+    # False (the default, safe for old checkpoints via from_dict) means blind debate,
+    # whether by choice or because no usable human anchor existed for this item.
+    grounded: bool = False
 
     def as_text(self) -> str:
         """Render prior turns as a compact numbered log for injection into the next
@@ -158,6 +164,7 @@ class DebateTranscript:
             human_proxy_prompt_version=data.get("human_proxy_prompt_version", ""),
             initial_judge_result=data.get("initial_judge_result") or {},
             created_at=data.get("created_at", ""),
+            grounded=bool(data.get("grounded", False)),
         )
 
 
@@ -205,6 +212,9 @@ class DebateVerdict:
     # corpus-distillation pass would group by.
     failure_mode_summary: dict[str, int]
     transcript: DebateTranscript
+    # See DebateTranscript.grounded — mirrored here since CalibratedResult is built
+    # straight from a DebateVerdict, not from its nested transcript.
+    grounded: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -224,4 +234,5 @@ class DebateVerdict:
             reasoning_trace=data.get("reasoning_trace", ""),
             failure_mode_summary=dict(data.get("failure_mode_summary") or {}),
             transcript=DebateTranscript.from_dict(data["transcript"]),
+            grounded=bool(data.get("grounded", False)),
         )

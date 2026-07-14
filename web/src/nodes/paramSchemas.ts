@@ -110,6 +110,10 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // "" (default) = auto-detect via the ALIGNMENT crosswalk; set only for metrics
     // (M1/M2/M4) with no direct human-dimension mapping.
     human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+    // Opt-in: when a real human label exists for an item, convergence requires
+    // closing the gap to it, not just round-to-round self-stability. Off by default —
+    // changes what the debate optimizes for, so it's a deliberate choice.
+    ground_in_human_labels: { type: 'bool', default: false },
   },
 }
 

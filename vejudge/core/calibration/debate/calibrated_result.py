@@ -29,6 +29,10 @@ class CalibratedResult:
     optimized_prompt: str
     reasoning: str
     transcript: DebateTranscript
+    # See DebateTranscript.grounded — whether this item's debate actually used a real
+    # human anchor score (opt-in + a usable anchor existed) or fell back to blind
+    # simulation. Interface-node code (human_scores/human_gap) attaches separately.
+    grounded: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -48,6 +52,7 @@ class CalibratedResult:
             optimized_prompt=data.get("optimized_prompt", ""),
             reasoning=data.get("reasoning", ""),
             transcript=DebateTranscript.from_dict(data["transcript"]),
+            grounded=bool(data.get("grounded", False)),
         )
 
 
@@ -96,4 +101,5 @@ def to_calibrated_result(verdict: DebateVerdict) -> CalibratedResult:
         optimized_prompt=render_optimized_prompt_addendum(verdict),
         reasoning=verdict.reasoning_trace,
         transcript=verdict.transcript,
+        grounded=verdict.grounded,
     )
