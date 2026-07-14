@@ -188,10 +188,16 @@ def render_corpus_calibration_prompt(results: Iterable[dict[str, Any]]) -> str:
 
     tendencies = _top_tendencies(totals, k=3)
     mean_delta = mean(deltas) if deltas else 0.0
+    # Magnitude, not just direction: a bare "you under-score" makes the judge correct
+    # upward with no sense of how far, which overshot in leave-one-out CV (a 2/5 item the
+    # judge should have scored ~3 jumped to 5). The mean signed delta *is* the average
+    # correction the review applied, so stating it (~N points) gives the re-judge a
+    # target size, not just a sign.
+    mag = abs(mean_delta)
     if mean_delta > 0.05:
-        direction = "tended to under-score (review raised its scores)"
+        direction = f"tended to under-score by roughly {mag:.1f} point(s) (review raised its scores)"
     elif mean_delta < -0.05:
-        direction = "tended to over-score (review lowered its scores)"
+        direction = f"tended to over-score by roughly {mag:.1f} point(s) (review lowered its scores)"
     else:
         direction = ""
 

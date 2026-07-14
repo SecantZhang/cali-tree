@@ -107,28 +107,39 @@ tests. Cheap trick that makes this ~N calls instead of hundreds: training debate
 every fold are already cached, so a fold's corpus prompt costs nothing — only the N
 held-out re-judges are new (baseline held-out scores are already in `judge-3`).
 
-Zero-cost portion, run now on 260714-09:57:04 (6 labeled items, leave-one-out):
+Run on 260714-09:57:04 (6 labeled items, leave-one-out; 6 live held-out re-judges):
 
-- **held-out baseline MAE = 2.06** — the uncalibrated judge is systematically ~2 points
-  below humans on every held-out item.
-- **corpus-prompt stability across folds:** dropping any single item leaves the *same*
-  three recurring tendencies (assert-without-evidence, category-imbalance, scale-drift)
-  and the same under-scoring direction. The generalization signal isn't carried by any
-  one item — a necessary condition for it to transfer.
-- **held-out calibrated MAE:** needs the 6 live re-judge calls (`--live`) — the one piece
-  that can't be recovered from cache.
+| held-out | human | baseline | calibrated (corpus) | \|base−h\| | \|cal−h\| |
+|---|---|---|---|---|---|
+| prj-aberdeen::0 | 3.08 | 2.0 | 5.0 | 1.08 | 1.92 |
+| prj-aberdeen::2 | 3.84 | 2.0 | 5.0 | 1.84 | 1.16 |
+| prj-paris-2025::0 | 3.84 | 2.0 | 2.0 | 1.84 | 1.84 |
+| prj-qc-testing-lunch::1 | 3.00 | 1.0 | 3.0 | 2.00 | 0.00 |
+| prj-qc-testing-lunch::4 | 4.00 | 1.0 | 2.0 | 3.00 | 2.00 |
+| prj-qc-testing-lunch::6 | 3.60 | 1.0 | 3.0 | 2.60 | 0.60 |
 
-The `--live` path is wired (`PeanutEvalLoader.load_sample` + `make_judge(...).run(sample,
-extra_context=<fold corpus prompt>)`); it just needs `--live` + credentials. Success
-criterion: held-out calibrated MAE materially below the 2.06 baseline (and, ideally, the
-lean corpus prompt matching the old verbose per-item prompts at a fraction of the
-tokens). Caveat: n=6 makes this directional, not statistically strong — worth repeating
-on a larger labeled set.
+**Held-out baseline MAE 2.06 → calibrated 1.25** — a ~39% *out-of-sample* reduction from
+a prompt that never saw the held-out item's label. That's real generalization (contrast
+the tautological in-sample 0.25). 4/6 improved, 1 unchanged, **1 overshot**
+(prj-aberdeen::0: 2→5 when the human was 3.08).
 
-Also worth running the full three-way A/B (uncalibrated / old verbose per-item / new lean
-corpus) on a held-out split, comparing MAE + correlation via `core/eval/metrics.py` and
-`postprocessing/align.py::build_aligned_rows`, before adopting the corpus prompt as the
-default path.
+Two things this surfaced:
+
+- **Corpus-prompt stability:** across all 6 folds the prompt names the same three
+  recurring tendencies and the same under-scoring direction — the signal isn't carried
+  by any one item, which is why it transfers at all.
+- **Direction without magnitude overshoots.** The prompt said "you under-score" but not
+  by how much, so the judge corrected upward and overshot. Fixed by stating the mean
+  signed correction ("tended to under-score **by roughly 1.7 points**") — the mean delta
+  *is* the average correction the review applied, so it gives the re-judge a target size,
+  not just a sign. Implemented + unit-tested; a re-run of the LOO CV (~6 more live calls)
+  is the next validation of whether the magnitude hint removes the overshoot.
+
+Caveats: n=6 is directional, not statistically strong — repeat on a larger labeled set.
+And the corpus prompt only encodes *direction+magnitude+bias-modes*, so it's a global
+recalibration, not a per-item fix; a full three-way A/B (uncalibrated / old verbose
+per-item / new lean corpus) via `core/eval/metrics.py` + `postprocessing/align.py::
+build_aligned_rows` is the recommended larger experiment before adopting it as default.
 
 ## Recommendation
 
