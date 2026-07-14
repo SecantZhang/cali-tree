@@ -82,7 +82,8 @@ def _weighted_human(human_scores: Optional[dict[str, Any]]) -> Optional[float]:
 
 
 def cross_validate(
-    run_dir: str, *, metric: str, base_node: str, live: bool, model: str = "peanut"
+    run_dir: str, *, metric: str, base_node: str, live: bool, model: str = "peanut",
+    env_raw: Optional[str] = None,
 ) -> dict[str, Any]:
     ckpt = _load_checkpoint(run_dir)
     calib = {
@@ -97,7 +98,7 @@ def cross_validate(
     folds: list[dict[str, Any]] = []
     engine = loader = None
     if live:
-        engine, loader = _build_live(metric, model)
+        engine, loader = _build_live(metric, model, env_raw)
 
     for held_out in items:
         train_results = [calib[it] for it in items if it != held_out]
@@ -130,14 +131,17 @@ def cross_validate(
     }
 
 
-def _build_live(metric: str, model: str):
+def _build_live(metric: str, model: str, env_raw: Optional[str] = None):
     # Imported lazily so the zero-cost path needs no engine/creds/loader machinery.
+    from pathlib import Path
+
     from ....rubric.definitions import JUDGE_METRICS
     from .....database.dl_peanut_eval.loader import PeanutEvalLoader
     from .....lm_engine import get_engine, load_creds
 
     kind = "gemini" if JUDGE_METRICS[metric].modality == "video" else "gpt"
-    engine = get_engine(kind, creds=load_creds())
+    creds = load_creds(env_raw_path=Path(env_raw)) if env_raw else load_creds()
+    engine = get_engine(kind, creds=creds)
     return engine, PeanutEvalLoader(model=model)
 
 
@@ -155,12 +159,13 @@ def main() -> None:
     ap.add_argument("--metric", default="M5")
     ap.add_argument("--base-node", default="judge-3")
     ap.add_argument("--model", default="peanut")
+    ap.add_argument("--env-raw", default=None, help="path to a .env-raw for --live creds")
     ap.add_argument("--live", action="store_true")
     args = ap.parse_args()
 
     report = cross_validate(
         args.run_dir, metric=args.metric, base_node=args.base_node,
-        live=args.live, model=args.model,
+        live=args.live, model=args.model, env_raw=args.env_raw,
     )
     print(f"Leave-one-out CV over {report['n_items']} labeled items (metric {report['metric']})\n")
     print(f"{'held-out':34s} {'human':>6s} {'base':>5s} {'cal':>5s} {'|b-h|':>6s} {'|c-h|':>6s}")
