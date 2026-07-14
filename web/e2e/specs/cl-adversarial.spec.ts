@@ -191,6 +191,10 @@ test.describe('adversarial calibration node', () => {
     // The fixture gives every sampled item a real human label for video_addresses_prompt
     // (the same dimension mocked-live-pipeline.spec.ts's Eval node computes MAE=1.000 with).
     await expect(scoreStrip).toContainText('Human (video_addresses_prompt): 4')
+    // Rater count (n=) and the always-on raw gap (final_score=3 vs human=4) — both new,
+    // computed regardless of Ground in human labels (left at its off default here).
+    await expect(scoreStrip).toContainText(/n=\d+/)
+    await expect(scoreStrip).toContainText('gap 1.00')
     await expect(scoreStrip).toContainText('converged')
 
     // The chat view opens with the upstream Judge node's own (baseline) run, followed

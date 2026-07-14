@@ -62,6 +62,25 @@ def test_d2_build_includes_retrieved_note_text_when_present():
     assert "supporting evidence, not a hard override" in spec.user
 
 
+def test_d2_build_omits_real_score_block_by_default():
+    spec = d2_human_proxy_debate.build(
+        sample=_sample(), metric_id="M4", original_output=_original_output(),
+        transcript_text="", round_no=1, retrieved_note=None,
+    )
+    assert "ground truth" not in spec.user
+
+
+def test_d2_build_includes_real_score_block_when_grounded():
+    spec = d2_human_proxy_debate.build(
+        sample=_sample(), metric_id="M4", original_output=_original_output(),
+        transcript_text="", round_no=1, retrieved_note=None, real_human_score=4.5,
+    )
+    assert "4.5" in spec.user
+    assert "ground truth" in spec.user
+    # Distinct from and never conflated with the different-item retrieved_note block.
+    assert "supporting evidence, not a hard override" not in spec.user
+
+
 def test_d2_schema_is_compatible_with_the_shared_judge_output_validator():
     # Regression test: an earlier draft named this field "critique_lines", which the
     # shared vejudge.core.judge.validate.validate_judge_output rationale check doesn't

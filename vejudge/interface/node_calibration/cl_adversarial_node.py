@@ -11,11 +11,12 @@ debate's own feedback in view. The anchor score comes from an upstream Judge Nod
 
 from __future__ import annotations
 
-from typing import Any
+from statistics import mean
+from typing import Any, Optional
 
 from ...core.calibration.debate import DebateConfig
 from ...core.rubric.definitions import JUDGE_METRICS
-from ...database.dl_human_annotations import HUMAN_DIMENSIONS
+from ...database.dl_human_annotations import HUMAN_DIMENSIONS, AggregatedHumanRecord
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ...postprocessing.align import ALIGNMENT
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
@@ -58,6 +59,26 @@ def _usable_anchor(entry: dict[str, Any]) -> bool:
     return isinstance(score, (int, float)) and not isinstance(score, bool)
 
 
+def _resolve_human_context(
+    agg: Optional[AggregatedHumanRecord], dims: list[str],
+) -> dict[str, Any]:
+    """Per-item human comparison data: the raw per-dimension scores (with rater count,
+    for reliability — n=1 is weaker evidence than n=3-4) plus a single collapsed
+    ``anchor_score`` (mean of whichever mapped dimensions actually have data) used both
+    for the always-on ``human_gap`` and as the optional grounded-debate target.
+
+    Gating on ``score is not None`` (not ``n > 0``) matches ``AggregatedHumanRecord``'s
+    own invariant that a dimension's score is None iff its rater count is 0 — no
+    dependency on every caller populating score_counts correctly.
+    """
+    if not agg or not dims:
+        return {"human_scores": {}, "anchor_score": None}
+    human_scores = {d: {"score": agg.scores.get(d), "n": agg.score_counts.get(d, 0)} for d in dims}
+    contributing = [v["score"] for v in human_scores.values() if v["score"] is not None]
+    anchor_score = mean(contributing) if contributing else None
+    return {"human_scores": human_scores, "anchor_score": anchor_score}
+
+
 @register
 class ClAdversarialNodeExecutor(NodeExecutor):
     node_type = "cl_adversarial"
@@ -80,6 +101,13 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         "human_dimension_override": {
             "type": "enum", "options": ["", *HUMAN_DIMENSIONS], "default": "",
         },
+        # Opt-in: when a real human aggregate score exists for an item, the debate's
+        # own convergence requires closing the gap to it, not just self-stability —
+        # see core.calibration.debate.runner.DebateRunner.run. Off by default: this
+        # changes what the debate optimizes for, so it must be a deliberate choice,
+        # not a silent default. An item with no usable human anchor falls back to
+        # today's blind behavior automatically, regardless of this setting.
+        "ground_in_human_labels": {"type": "boolean", "default": False},
     }
     # Deliberately NOT opted into streaming batch-eval previews (see
     # NodeExecutor.supports_partial_input's docstring: "only a node whose run() is cheap
@@ -131,6 +159,7 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             epsilon=float(p.get("epsilon")) if p.get("epsilon") is not None else 0.25,
             max_rounds=max_rounds,
             retrieval_enabled=bool(p.get("retrieval_enabled", True)),
+            ground_in_human_labels=bool(p.get("ground_in_human_labels", False)),
         )
 
         if ctx.dry_run:
@@ -228,6 +257,20 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         judge_engine = _build_engine(judge_engine_config, _DEFAULT_ENGINE_KIND.get(modality, "gpt"))
         human_engine = _build_engine(human_engine_config, "gpt")
 
+        # Precomputed BEFORE run_concurrent_debates — not in a post-loop after it
+        # returns, which is what caused the checkpoint-ordering bug (the post-loop's
+        # result was mutated in place after _concurrent_debate.py had already
+        # checkpointed the same dict to disk). Dimension resolution
+        # (_DIMENSIONS_FOR_METRIC/human_dimension_override) stays this node's own
+        # concern — _concurrent_debate.py/runner.py remain dimension-agnostic, dealing
+        # only in one opaque score_1_to_5 (or its collapsed anchor_score here).
+        override = p.get("human_dimension_override") or None
+        human_context: dict[str, dict[str, Any]] = {}
+        for item_id, entry in anchors.items():
+            dims = [override] if override else _DIMENSIONS_FOR_METRIC.get(entry["metric_id"], [])
+            agg = labels.get(item_id) if labels else None
+            human_context[item_id] = _resolve_human_context(agg, dims)
+
         concurrency = max(1, int(judge_engine_config.get("concurrency") or 1))
         per_item, meta = run_concurrent_debates(
             dataset=dataset,
@@ -238,16 +281,8 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             concurrency=concurrency,
             batch_size=max(1, int(p.get("batch_size") or 1)),
             ctx=ctx,
+            human_context=human_context,
         )
-
-        override = p.get("human_dimension_override") or None
-        for item_id, result in per_item.items():
-            item_metric_id = anchors.get(item_id, {}).get("metric_id") or result.get("metric_id")
-            dims = [override] if override else _DIMENSIONS_FOR_METRIC.get(item_metric_id, [])
-            agg = labels.get(item_id) if labels else None
-            result["human_scores"] = (
-                {d: agg.scores.get(d) for d in dims} if agg and dims else {}
-            )
 
         meta["n_items_no_judge_result"] = n_no_judge_result
         meta["n_items_unusable_anchor"] = n_unusable_anchor

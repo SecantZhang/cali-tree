@@ -33,6 +33,15 @@ class DebateConfig:
     epsilon: float = 0.25
     max_rounds: int = 4
     retrieval_enabled: bool = True
+    # Opt-in: when True AND a real human anchor score is available for this item
+    # (human_anchor_score is not None), convergence requires closing the gap to that
+    # real score instead of just round-to-round self-stability — see DebateRunner.run.
+    ground_in_human_labels: bool = False
+    # Per-item real human aggregate score (set via dataclasses.replace() per call, the
+    # same way metric_id is already resolved per item by the caller) — None means "no
+    # usable human anchor for this item," which silently falls back to blind debate
+    # behavior even if ground_in_human_labels is True.
+    human_anchor_score: Optional[float] = None
 
 
 class DebateTurnRunner:
@@ -128,6 +137,12 @@ class DebateRunner:
             f"{sample.get('project', '')}::{sample.get('prompt_idx', '')}::{sample.get('model', '')}"
         )
         initial_score = extract_original_score(original_output, self.metric_id)
+        # Grounded only when both opted in AND a real anchor actually exists for this
+        # item -- the second half is what makes per-item fallback automatic (an item
+        # with no human data behaves exactly like today, no special-cased branch).
+        grounded = bool(
+            self.config.ground_in_human_labels and self.config.human_anchor_score is not None
+        )
 
         note = None
         if self.config.retrieval_enabled:
@@ -163,6 +178,7 @@ class DebateRunner:
                     transcript_text=transcript.as_text(),
                     round_no=round_no,
                     retrieved_note=retrieved_note_text,
+                    real_human_score=(self.config.human_anchor_score if grounded else None),
                 ),
                 round_no=round_no,
             )
@@ -195,7 +211,18 @@ class DebateRunner:
                 break
             new_score = float(new_score)
 
-            if prev_score is not None and abs(new_score - prev_score) < self.config.epsilon:
+            # Grounded: self-stability alone is NOT enough to declare convergence --
+            # that's exactly the reported failure mode (a stubborn, self-consistent,
+            # but factually wrong judge). Only closing the gap to the real human
+            # anchor counts; hitting max_rounds without doing so still ends up
+            # converged=False, convergence_reason="max_rounds", same shape as today.
+            if grounded:
+                if abs(new_score - self.config.human_anchor_score) < self.config.epsilon:
+                    prev_score = new_score
+                    converged = True
+                    convergence_reason = "epsilon_human"
+                    break
+            elif prev_score is not None and abs(new_score - prev_score) < self.config.epsilon:
                 prev_score = new_score
                 converged = True
                 convergence_reason = "epsilon"
@@ -208,6 +235,7 @@ class DebateRunner:
         transcript.rounds_run = rounds_run
         transcript.converged = converged
         transcript.convergence_reason = convergence_reason
+        transcript.grounded = grounded
         transcript.judge_agent_prompt_version = d1_judge_debate.VERSION
         transcript.human_proxy_prompt_version = d2_human_proxy_debate.VERSION
 
@@ -256,4 +284,5 @@ class DebateRunner:
             reasoning_trace=reasoning_trace,
             failure_mode_summary=failure_mode_summary,
             transcript=transcript,
+            grounded=grounded,
         )
