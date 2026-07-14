@@ -14,7 +14,7 @@ from __future__ import annotations
 from statistics import mean
 from typing import Any, Optional
 
-from ...core.calibration.debate import DebateConfig
+from ...core.calibration.debate import DebateConfig, render_corpus_calibration_prompt
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS, AggregatedHumanRecord
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
@@ -306,4 +306,10 @@ class ClAdversarialNodeExecutor(NodeExecutor):
 
         meta["n_items_no_judge_result"] = n_no_judge_result
         meta["n_items_unusable_anchor"] = n_unusable_anchor
+        # One item-independent calibration note distilling the failure modes that recur
+        # across this run's items — the generalizing artifact, meant to be applied to
+        # *unseen* items (unlike each per-item optimized_prompt, which re-judges its own
+        # item). Surfaced in meta rather than as a socket for now; a downstream Judge
+        # could inject it dataset-wide instead of per-item.
+        meta["general_optimized_prompt"] = render_corpus_calibration_prompt(per_item.values())
         return NodeRunResult(outputs={"calibration_results": per_item}, meta=meta)

@@ -4,7 +4,12 @@ distilled reasoning trace. See docs/research.md for the failure-mode taxonomy an
 CLAUDE.md's Calibration conventions for how this relates to ``Calibrator``.
 """
 
-from .calibrated_result import CalibratedResult, render_optimized_prompt_addendum, to_calibrated_result
+from .calibrated_result import (
+    CalibratedResult,
+    render_corpus_calibration_prompt,
+    render_optimized_prompt_addendum,
+    to_calibrated_result,
+)
 from .registry import DEBATE_METRICS, debate_prompt_versions, make_debate
 from .retrieval import RetrievedNote, find_similar_human_note
 from .runner import DebateConfig, DebateRunner, DebateTurnRunner
@@ -34,6 +39,7 @@ __all__ = [
     "find_similar_human_note",
     "make_debate",
     "normalize_failure_modes",
+    "render_corpus_calibration_prompt",
     "render_optimized_prompt_addendum",
     "render_reasoning_trace",
     "to_calibrated_result",
