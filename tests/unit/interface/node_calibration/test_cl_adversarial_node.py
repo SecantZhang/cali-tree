@@ -4,7 +4,10 @@ import pytest
 
 from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
 from vejudge.interface.node_calibration import cl_adversarial_node
-from vejudge.interface.node_calibration.cl_adversarial_node import ClAdversarialNodeExecutor
+from vejudge.interface.node_calibration.cl_adversarial_node import (
+    ClAdversarialNodeExecutor,
+    _resolve_human_context,
+)
 from vejudge.lm_engine import openai_compat
 from vejudge.lm_engine.creds import PlutoCreds
 
@@ -404,6 +407,42 @@ def test_human_scores_and_gap_survive_a_disk_reload(monkeypatch, make_ctx):
     assert entry["human_scores"] == {"video_addresses_prompt": {"score": 4.0, "n": 2}}
     assert entry["human_gap"]["video_addresses_prompt"] is not None
     assert entry["grounded"] is False
+
+
+def test_resolve_human_context_anchor_is_rater_count_weighted():
+    # 3.0 rated by 1 annotator, 4.5 rated by 3 — the well-supported dimension should
+    # dominate: weighted (3.0*1 + 4.5*3)/(1+3) = 4.125, NOT the unweighted 3.75.
+    agg = AggregatedHumanRecord(
+        item_id="x", project="p", prompt_idx=0, model="peanut",
+        scores={"story_flow_voiceover": 3.0, "story_flow_visuals": 4.5},
+        score_counts={"story_flow_voiceover": 1, "story_flow_visuals": 3},
+    )
+    ctx = _resolve_human_context(agg, ["story_flow_voiceover", "story_flow_visuals"])
+    assert ctx["anchor_score"] == pytest.approx(4.125)
+    assert ctx["anchor_score"] != pytest.approx(3.75)  # not the unweighted mean
+    # Per-dimension scores + rater counts are preserved separately, not collapsed.
+    assert ctx["human_scores"]["story_flow_voiceover"] == {"score": 3.0, "n": 1}
+    assert ctx["human_scores"]["story_flow_visuals"] == {"score": 4.5, "n": 3}
+
+
+def test_resolve_human_context_skips_dimensions_without_data():
+    # A dimension with no human score (n=0) contributes neither a weight nor a value.
+    agg = AggregatedHumanRecord(
+        item_id="x", project="p", prompt_idx=0, model="peanut",
+        scores={"story_flow_voiceover": 4.0, "story_flow_visuals": None},
+        score_counts={"story_flow_voiceover": 2, "story_flow_visuals": 0},
+    )
+    ctx = _resolve_human_context(agg, ["story_flow_voiceover", "story_flow_visuals"])
+    assert ctx["anchor_score"] == pytest.approx(4.0)  # only the one with data
+
+
+def test_resolve_human_context_none_when_no_usable_data():
+    assert _resolve_human_context(None, ["story_flow_voiceover"])["anchor_score"] is None
+    agg = AggregatedHumanRecord(
+        item_id="x", project="p", prompt_idx=0, model="peanut",
+        scores={"story_flow_voiceover": None}, score_counts={"story_flow_voiceover": 0},
+    )
+    assert _resolve_human_context(agg, ["story_flow_voiceover"])["anchor_score"] is None
 
 
 def test_grounded_mode_end_to_end_with_a_real_usable_anchor(monkeypatch, make_ctx):
