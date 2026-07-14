@@ -80,23 +80,55 @@ tendency), in a form you could prepend to the base judge prompt for any future i
   leaks in), so it transfers by construction.
 - Per-item prompts are now bounded, so injecting them can't swamp the base prompt.
 
-## How to validate generalization empirically (next step, needs `--live`)
+## Does the sandwich even work? (real, in-sample — `measure_sandwich_effect.py`)
 
-Structural + verbosity gains are proven offline. The causal claim — "the lean corpus
-prompt improves judge↔human agreement on unseen items" — needs live judge calls:
+Two completed `judge → calibration → judge` runs were on disk, so the effect is
+measurable with **zero new calls** (baseline = `judge-3`, calibrated = `judge-7`, both
+real Gemini):
 
-1. Split the labeled items into train/test.
-2. Run adversarial calibration on *train* only; take its `general_optimized_prompt`.
-3. Re-run the Judge on *test* items three ways: (a) uncalibrated, (b) with the old
-   verbose per-item prompts, (c) with the single corpus prompt as dataset-wide
-   `extra_context`.
-4. Compare MAE / correlation vs. human aggregates (`vejudge/core/eval/metrics.py`,
-   `postprocessing/align.py::build_aligned_rows`). Success = (c) matches or beats (b) at
-   a fraction of the tokens, and both beat (a).
+| run | mode | scores changed | baseline MAE | calibrated MAE |
+|---|---|---|---|---|
+| 260713-17:42:43 | blind | 0/6 | 1.89 | 1.89 |
+| 260714-09:57:04 | grounded | **6/6** | 2.06 | **0.25** |
 
-This harness is not run here (billable Gemini calls, and it belongs in a dedicated
-experiment). It's the recommended follow-up before adopting the corpus prompt as the
-default calibration path.
+The blind sandwich does nothing (the simulated critic rubber-stamps the judge). The
+grounded sandwich moves every item toward the human score, MAE 2.06 → 0.25.
+
+**But this is in-sample and near-tautological.** The grounded debate targets each item's
+*own* human anchor, so `judge-7` landing next to the human value largely means "the
+debate hit the number it was told to hit." It is *not* evidence of generalization — it's
+the strongest possible reason to demand a held-out test.
+
+## Generalization: leave-one-out CV (`cross_validate_calibration.py`)
+
+Per-item grounding can't apply to an unseen item (there's no debate for it). The
+**item-independent corpus prompt** is the only thing that *can* transfer, so it's what CV
+tests. Cheap trick that makes this ~N calls instead of hundreds: training debates for
+every fold are already cached, so a fold's corpus prompt costs nothing — only the N
+held-out re-judges are new (baseline held-out scores are already in `judge-3`).
+
+Zero-cost portion, run now on 260714-09:57:04 (6 labeled items, leave-one-out):
+
+- **held-out baseline MAE = 2.06** — the uncalibrated judge is systematically ~2 points
+  below humans on every held-out item.
+- **corpus-prompt stability across folds:** dropping any single item leaves the *same*
+  three recurring tendencies (assert-without-evidence, category-imbalance, scale-drift)
+  and the same under-scoring direction. The generalization signal isn't carried by any
+  one item — a necessary condition for it to transfer.
+- **held-out calibrated MAE:** needs the 6 live re-judge calls (`--live`) — the one piece
+  that can't be recovered from cache.
+
+The `--live` path is wired (`PeanutEvalLoader.load_sample` + `make_judge(...).run(sample,
+extra_context=<fold corpus prompt>)`); it just needs `--live` + credentials. Success
+criterion: held-out calibrated MAE materially below the 2.06 baseline (and, ideally, the
+lean corpus prompt matching the old verbose per-item prompts at a fraction of the
+tokens). Caveat: n=6 makes this directional, not statistically strong — worth repeating
+on a larger labeled set.
+
+Also worth running the full three-way A/B (uncalibrated / old verbose per-item / new lean
+corpus) on a held-out split, comparing MAE + correlation via `core/eval/metrics.py` and
+`postprocessing/align.py::build_aligned_rows`, before adopting the corpus prompt as the
+default path.
 
 ## Recommendation
 
