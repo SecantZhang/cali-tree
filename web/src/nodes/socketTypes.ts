@@ -85,6 +85,14 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     },
     output: { judge_rule: 'judge_rule' },
   },
+  // A standalone eval node that re-surfaces a Rule/Tree Calibration node's `judge_rule`
+  // report — the four-way MAE table (in-sample + held-out LOO), the mined rule bank, the
+  // fitted tree, and a verdict on whether the rules beat a plain bias correction held-out.
+  // Pure display (makes no calls); mirrors the Eval node's read-a-report role.
+  cl_rule_eval: {
+    input: { judge_rule: 'judge_rule' },
+    output: { comparison: 'metrics_report' },
+  },
 }
 
 export function isValidSocketConnection(

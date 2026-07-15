@@ -10,6 +10,7 @@ from .node_calibration.cl_adversarial_node import ClAdversarialNodeExecutor
 from .node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
+from .node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
 from .node_eval.eval_node import EvalNodeExecutor
 from .node_preprocessing.preprocessing_node import PreprocessingNodeExecutor
 from .node_vejudge.judge_node import JudgeNodeExecutor
@@ -24,6 +25,7 @@ __all__ = [
     "JudgePromptNodeExecutor",
     "JudgeNodeExecutor",
     "EvalNodeExecutor",
+    "ClRuleEvalNodeExecutor",
     "ClAdversarialNodeExecutor",
     "ClRuleTreeNodeExecutor",
 ]

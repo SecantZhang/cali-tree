@@ -10,6 +10,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   judge_prompt: 'Judge Prompt',
   judge: 'Judge',
   eval: 'Eval',
+  cl_rule_eval: 'Rule Comparison',
   cl_adversarial: 'Adversarial Calibration',
   cl_rule_tree: 'Rule/Tree Calibration',
 }

@@ -121,6 +121,8 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
     human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
   },
+  // No params — it just renders the upstream judge_rule report.
+  cl_rule_eval: {},
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

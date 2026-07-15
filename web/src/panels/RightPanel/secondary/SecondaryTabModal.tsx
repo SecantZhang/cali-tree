@@ -2,6 +2,7 @@ import { ResizeHandle } from '../../../components/ResizeHandle'
 import { useActiveGraphStore } from '../../../store/activeTab'
 import { usePrefsStore } from '../../../store/prefsStore'
 import { ClAdversarialSecondaryTab } from './ClAdversarialSecondaryTab'
+import { ClRuleEvalSecondaryTab } from './ClRuleEvalSecondaryTab'
 import { ClRuleTreeSecondaryTab } from './ClRuleTreeSecondaryTab'
 import { DatasetSecondaryTab } from './DatasetSecondaryTab'
 import { EvalSecondaryTab } from './EvalSecondaryTab'
@@ -53,6 +54,7 @@ export function SecondaryTabModal() {
           {type === 'dataset' && <DatasetSecondaryTab node={node} />}
           {JUDGE_TYPES.has(type) && <JudgeSecondaryTab node={node} />}
           {EVAL_TYPES.has(type) && <EvalSecondaryTab node={node} />}
+          {type === 'cl_rule_eval' && <ClRuleEvalSecondaryTab node={node} />}
           {type === 'preprocessing' && (
             <p className="empty-hint">
               Pass-through stub — no artifacts are extracted yet, so there's nothing to
