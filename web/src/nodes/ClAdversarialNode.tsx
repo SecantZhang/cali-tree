@@ -42,8 +42,12 @@ export function ClAdversarialNode({ id, data, selected }: NodeProps) {
             color={SOCKET_COLORS.engine_config}
           />
           <SocketHandle
-            kind="source" id="calibration_results" label="calibration_results" top={socketTop(0, 1)}
+            kind="source" id="calibration_results" label="calibration_results" top={socketTop(0, 2)}
             color={SOCKET_COLORS.calibration_results}
+          />
+          <SocketHandle
+            kind="source" id="general_calibration" label="general_calibration" top={socketTop(1, 2)}
+            color={SOCKET_COLORS.general_calibration}
           />
         </>
       }

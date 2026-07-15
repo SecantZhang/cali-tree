@@ -2,6 +2,7 @@ import { ResizeHandle } from '../../../components/ResizeHandle'
 import { useActiveGraphStore } from '../../../store/activeTab'
 import { usePrefsStore } from '../../../store/prefsStore'
 import { ClAdversarialSecondaryTab } from './ClAdversarialSecondaryTab'
+import { ClRuleTreeSecondaryTab } from './ClRuleTreeSecondaryTab'
 import { DatasetSecondaryTab } from './DatasetSecondaryTab'
 import { EvalSecondaryTab } from './EvalSecondaryTab'
 import { JudgeSecondaryTab } from './JudgeSecondaryTab'
@@ -67,6 +68,7 @@ export function SecondaryTabModal() {
             </p>
           )}
           {type === 'cl_adversarial' && <ClAdversarialSecondaryTab node={node} />}
+          {type === 'cl_rule_tree' && <ClRuleTreeSecondaryTab node={node} />}
         </div>
         <ResizeHandle
           orientation="vertical"

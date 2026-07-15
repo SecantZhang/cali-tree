@@ -3,7 +3,7 @@
 
 export type SocketType =
   | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
-  | 'metrics_report' | 'calibration_results'
+  | 'metrics_report' | 'calibration_results' | 'general_calibration' | 'judge_rule'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
@@ -14,6 +14,8 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   judge_result: 'var(--node-vejudge)',
   metrics_report: 'var(--node-eval)',
   calibration_results: 'var(--node-calibration)',
+  general_calibration: 'var(--node-calibration)',
+  judge_rule: 'var(--node-calibration)',
 }
 
 export interface NodeTypeSockets {
@@ -46,6 +48,9 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       // Optional: a cl_adversarial node's per-item calibrated results. When wired, each
       // item's own optimized_prompt is injected for that item's judge call only.
       calibration: 'calibration_results',
+      // Optional: a cl_adversarial node's item-independent corpus note, applied to every
+      // item's judge call (dataset-wide).
+      general_calibration: 'general_calibration',
     },
     output: { judge_result: 'judge_result' },
   },
@@ -65,7 +70,20 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       samples: 'samples', judge_result: 'judge_result', labels: 'labels',
       judge_engine: 'engine_config', human_engine: 'engine_config',
     },
-    output: { calibration_results: 'calibration_results' },
+    output: {
+      calibration_results: 'calibration_results',
+      general_calibration: 'general_calibration',
+    },
+  },
+  // Mines reusable decision rules from an upstream cl_adversarial node's debates, has an
+  // independent critic answer them per item, and fits a decision tree [base + booleans]
+  // -> human score. Fit+report (in-sample + LOO MAE); terminal `judge_rule` output.
+  cl_rule_tree: {
+    input: {
+      samples: 'samples', calibration_results: 'calibration_results', labels: 'labels',
+      critic_engine: 'engine_config',
+    },
+    output: { judge_rule: 'judge_rule' },
   },
 }
 

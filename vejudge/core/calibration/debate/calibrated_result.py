@@ -21,7 +21,6 @@ Two levels of calibration text, both deterministic (no extra LM call):
 
 from __future__ import annotations
 
-import re
 from dataclasses import asdict, dataclass, field
 from statistics import mean
 from typing import Any, Iterable, Optional
@@ -46,11 +45,6 @@ _TENDENCY: dict[str, str] = {
     "self_bias": "favor outputs from a related model family",
     "category_imbalance": "over- or under-score based on edit category rather than quality",
 }
-
-# Guidance clauses longer than this (in words) are truncated — the one item-specific,
-# free-text part of the per-item lesson, capped so it can't reintroduce the wordiness
-# the distillation exists to remove.
-_GUIDANCE_MAX_WORDS = 26
 
 
 @dataclass
@@ -99,17 +93,6 @@ class CalibratedResult:
         )
 
 
-def _first_sentence(text: str, max_words: int = _GUIDANCE_MAX_WORDS) -> str:
-    """First sentence of ``text``, truncated to ``max_words`` (with an ellipsis)."""
-    if not text:
-        return ""
-    sentence = re.split(r"(?<=[.!?])\s+", text.strip())[0]
-    words = sentence.split()
-    if len(words) <= max_words:
-        return sentence
-    return " ".join(words[:max_words]) + "…"
-
-
 def _top_tendencies(failure_mode_summary: dict[str, int], k: int) -> list[str]:
     """The ``k`` most-cited failure modes as tendency phrases, most frequent first
     (ties broken by key for determinism). Unknown keys are skipped."""
@@ -123,42 +106,26 @@ def _top_tendencies(failure_mode_summary: dict[str, int], k: int) -> list[str]:
 def render_optimized_prompt_addendum(verdict: DebateVerdict) -> str:
     """A concise, injectable calibration lesson for re-judging *this same item*.
 
-    Deterministic (no extra LM call). Bounded in length regardless of round count: a
-    score-correction header, the debate's flagged judge tendencies (fixed taxonomy
-    vocabulary), and at most one capped guidance clause — not the full transcript, which
-    stays in ``reasoning`` for display only.
+    Deterministic (no extra LM call). Deliberately carries ONLY the general, fixed-
+    taxonomy failure-mode tendencies the debate flagged — **not** the debate's revised
+    score, nor any item-specific narrative. Earlier versions embedded the score
+    correction ("adjusted the score 1→3") and the last critique verbatim; in grounded
+    mode that handed the re-judging judge the human-anchored target, so it parroted the
+    number instead of re-deriving it (the near-tautological result). Stripping the score
+    and the narrative leaves a transferable principle the judge must actually apply. The
+    full round-by-round trace still lives in ``reasoning`` for display only.
+
+    Returns ``""`` when no tendencies were flagged — nothing generalizable to inject, so
+    the downstream judge re-scores uncalibrated rather than being told an answer.
     """
-    if verdict.final_score is None or verdict.initial_score is None:
-        header = (
-            "A prior adversarial review could not settle on a revised score; weigh this "
-            "item's score with extra scrutiny."
-        )
-    elif verdict.score_delta is not None and abs(verdict.score_delta) < 1e-9:
-        header = f"A prior adversarial review confirmed the score of {verdict.final_score:g}."
-    else:
-        header = (
-            f"A prior adversarial review adjusted the score "
-            f"{verdict.initial_score:g}→{verdict.final_score:g}."
-        )
-
-    parts = [header]
-
     tendencies = _top_tendencies(verdict.failure_mode_summary, k=2)
-    if tendencies:
-        parts.append("It flagged this judge's tendency to " + "; to ".join(tendencies) + ".")
-
-    # One decisive, capped guidance clause: the last human-proxy critique's lead line
-    # (the correction signal the fresh judge should weigh). The only free-text, item-
-    # specific part — capped by _first_sentence so it can't reintroduce the wordiness.
-    proxy = verdict.transcript.last("human_proxy")
-    if proxy is not None and proxy.parsed:
-        lines = proxy.parsed.get("reasoning_lines") or []
-        if lines:
-            clause = _first_sentence(str(lines[0]))
-            if clause:
-                parts.append(f"Key point: {clause}")
-
-    return " ".join(parts)
+    if not tendencies:
+        return ""
+    return (
+        "A prior adversarial review flagged this judge's tendency to "
+        + "; to ".join(tendencies)
+        + ". Weigh these when scoring."
+    )
 
 
 def render_corpus_calibration_prompt(results: Iterable[dict[str, Any]]) -> str:

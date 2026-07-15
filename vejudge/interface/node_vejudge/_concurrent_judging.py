@@ -45,6 +45,7 @@ def run_concurrent_judging(
     ctx: NodeRunContext,
     should_skip: Optional[Callable[[dict[str, Any]], bool]] = None,
     calibration: Optional[dict[str, dict[str, Any]]] = None,
+    general_calibration: Optional[str] = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     """Run ``spec`` over every item, checkpointing + streaming as it goes.
 
@@ -56,7 +57,12 @@ def run_concurrent_judging(
     ``calibration`` (optional), if given, is a ``cl_adversarial`` node's
     ``calibration_results`` output (``{item_id: CalibratedResult_dict}``) — each item's own
     ``optimized_prompt`` is looked up and passed through as ``extra_context`` for *that
-    item's* builtin judge call, never applied dataset-wide.
+    item's* builtin judge call.
+
+    ``general_calibration`` (optional) is a single item-independent calibration note (a
+    ``cl_adversarial`` node's ``general_calibration`` output — the corpus prompt) applied
+    to *every* item's ``extra_context``. When both are given they're concatenated (the
+    general note first, then the item's own).
     """
     key = spec_key(spec)
     # Prefixed with the node id, not just item_id+metric: two Judge nodes can legitimately
@@ -86,7 +92,10 @@ def run_concurrent_judging(
     def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
         if ctx.progress_cb:
             ctx.progress_cb("judge_item_start", {"item_id": item_id})
-        extra_context = (calibration or {}).get(item_id, {}).get("optimized_prompt")
+        per_item_ctx = (calibration or {}).get(item_id, {}).get("optimized_prompt")
+        # General (dataset-wide) note first, then this item's own — either may be absent.
+        parts = [p for p in (general_calibration, per_item_ctx) if p]
+        extra_context = "\n\n".join(parts) if parts else None
         return item_id, _judge_one(spec, engine, dataset[item_id], extra_context=extra_context)
 
     stopped = False

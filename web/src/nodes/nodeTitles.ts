@@ -11,6 +11,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   judge: 'Judge',
   eval: 'Eval',
   cl_adversarial: 'Adversarial Calibration',
+  cl_rule_tree: 'Rule/Tree Calibration',
 }
 
 export function nodeTitle(type: string | undefined): string {

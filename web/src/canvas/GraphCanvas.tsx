@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useMemo, useRef, useState } from 'react'
 import { ClAdversarialNode } from '../nodes/ClAdversarialNode'
+import { ClRuleTreeNode } from '../nodes/ClRuleTreeNode'
 import { DatasetNode } from '../nodes/DatasetNode'
 import { EvalNode } from '../nodes/EvalNode'
 import { GroupNode } from '../nodes/GroupNode'
@@ -38,6 +39,7 @@ const NODE_TYPES = {
   judge: JudgeNode,
   eval: EvalNode,
   cl_adversarial: ClAdversarialNode,
+  cl_rule_tree: ClRuleTreeNode,
   group: GroupNode,
 }
 

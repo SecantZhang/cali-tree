@@ -110,7 +110,13 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         "judge_engine": "engine_config",
         "human_engine": "engine_config",
     }
-    output_sockets = {"calibration_results": "calibration_results"}
+    output_sockets = {
+        "calibration_results": "calibration_results",
+        # The item-independent corpus calibration note (aggregated failure-mode
+        # tendencies + directional bias across this run's items) — wire into a Judge
+        # Node's `general_calibration` input to apply it dataset-wide to unseen items.
+        "general_calibration": "general_calibration",
+    }
     param_schema = {
         "epsilon": {"type": "number", "default": 0.25},
         "max_rounds": {"type": "number", "default": 4, "min": 1},
@@ -187,7 +193,7 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             # upstream Judge node's cost, already paid (or estimated) there.
             calls_per_item = max_rounds * 2
             return NodeRunResult(
-                outputs={"calibration_results": {}},
+                outputs={"calibration_results": {}, "general_calibration": ""},
                 meta={
                     "dry_run": True,
                     "n_items": len(dataset),
@@ -311,5 +317,9 @@ class ClAdversarialNodeExecutor(NodeExecutor):
         # *unseen* items (unlike each per-item optimized_prompt, which re-judges its own
         # item). Surfaced in meta rather than as a socket for now; a downstream Judge
         # could inject it dataset-wide instead of per-item.
-        meta["general_optimized_prompt"] = render_corpus_calibration_prompt(per_item.values())
-        return NodeRunResult(outputs={"calibration_results": per_item}, meta=meta)
+        general = render_corpus_calibration_prompt(per_item.values())
+        meta["general_optimized_prompt"] = general  # kept in meta for the secondary tab
+        return NodeRunResult(
+            outputs={"calibration_results": per_item, "general_calibration": general},
+            meta=meta,
+        )
