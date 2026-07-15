@@ -63,7 +63,7 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
     types = {n["type"] for n in resp.json()}
     assert types == {
         "peanut_source", "dataset", "preprocessing", "lm_engine",
-        "judge_prompt", "judge", "eval", "cl_adversarial", "cl_rule_tree",
+        "judge_prompt", "judge", "eval", "cl_rule_eval", "cl_adversarial", "cl_rule_tree",
     }
 
 
