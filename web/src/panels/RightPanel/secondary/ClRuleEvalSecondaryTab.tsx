@@ -1,5 +1,7 @@
+import { DecisionTreeView, type DecisionTreeNode } from '../../../components/DecisionTreeView'
 import { useActiveRunStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
+import { treeFeatureTooltip } from './treeFeatureTooltip'
 
 interface BankEntry {
   question: string
@@ -18,6 +20,7 @@ interface Comparison {
   metric?: string
   rows?: ComparisonRow[]
   tree_rule?: string
+  tree?: DecisionTreeNode | null
   bank?: BankEntry[]
   verdict?: string
   beats_bias?: boolean
@@ -103,11 +106,28 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
         </>
       )}
 
-      {comp.tree_rule && (
-        <details open>
-          <summary>Fitted decision tree</summary>
-          <pre className="json-preview">{comp.tree_rule}</pre>
-        </details>
+      {comp.tree ? (
+        <>
+          <p className="schema-heading">Fitted decision tree</p>
+          <DecisionTreeView tree={comp.tree} featureTooltip={treeFeatureTooltip(bank)} />
+          <p className="empty-hint">
+            Splits read top-down; each leaf is the calibrated score (colored low→high) for
+            items reaching it. Hover a split to see the mined rule behind it.
+          </p>
+          {comp.tree_rule && (
+            <details>
+              <summary>Raw rule (sklearn export)</summary>
+              <pre className="json-preview">{comp.tree_rule}</pre>
+            </details>
+          )}
+        </>
+      ) : (
+        comp.tree_rule && (
+          <details open>
+            <summary>Fitted decision tree</summary>
+            <pre className="json-preview">{comp.tree_rule}</pre>
+          </details>
+        )
       )}
     </div>
   )

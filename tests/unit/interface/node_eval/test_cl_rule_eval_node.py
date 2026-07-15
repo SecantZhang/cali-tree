@@ -17,6 +17,9 @@ def _judge_rule(*, insample=_UNSET, loo=_UNSET, **extra):
         "loo_mae": {"base": 1.83, "bias": 0.50, "linear": 0.47, "tree": 0.41}
         if loo is _UNSET else loo,
         "tree_rule": "|--- q2 <= 0.5\n|   |--- value: [2.0]",
+        "tree": {"leaf": False, "feature": "q2", "threshold": 0.5, "samples": 13, "value": 3.0,
+                 "left": {"leaf": True, "samples": 8, "value": 2.0},
+                 "right": {"leaf": True, "samples": 5, "value": 4.0}},
         "bank": [{"question": "Does the judge over-penalize a flaw?", "raises_score_when": "no"}],
     }
     jr.update(extra)
@@ -38,6 +41,10 @@ def test_comparison_rows_mirror_the_four_comparators(make_ctx):
     tree_row = next(r for r in rows if r["key"] == "tree")
     assert tree_row["insample"] == 0.27
     assert tree_row["loo"] == 0.41  # held-out column carried through verbatim
+    # The structured tree (for the UI diagram) passes through untouched.
+    comp = result.outputs["comparison"]
+    assert comp["tree"]["feature"] == "q2"
+    assert comp["tree"]["right"]["value"] == 4.0
 
 
 def test_verdict_says_rules_help_when_a_rule_model_beats_bias_held_out(make_ctx):

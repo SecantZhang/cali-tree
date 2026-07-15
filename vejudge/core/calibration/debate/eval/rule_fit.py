@@ -77,5 +77,6 @@ def fit_and_evaluate(
         "insample_mae": insample_mae,
         "loo_mae": loo_mae,
         "tree_rule": meta.get("rule_text", ""),
+        "tree": meta.get("tree"),
         "feature_importances": meta.get("feature_importances", []),
     }
