@@ -115,6 +115,12 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // changes what the debate optimizes for, so it's a deliberate choice.
     ground_in_human_labels: { type: 'bool', default: false },
   },
+  cl_rule_tree: {
+    max_questions: { type: 'number', default: 5, min: 1 },
+    batch_size: { type: 'number', default: 1, min: 1 },
+    // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
+    human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+  },
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

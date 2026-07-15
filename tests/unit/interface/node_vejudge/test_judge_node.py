@@ -298,6 +298,36 @@ def test_calibration_input_injects_per_item_optimized_prompt(monkeypatch, make_c
     assert "Calibration note: watch for X." not in (uncalibrated_entry["prompt_system"] or "")
 
 
+def test_general_calibration_is_applied_to_every_item(monkeypatch, make_ctx):
+    captured = {}
+
+    def fake_chat(**kwargs):
+        captured.setdefault("systems", []).append(
+            next((m["content"] for m in kwargs["messages"] if m["role"] == "system"), None)
+        )
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+
+    dataset = {"a::x": _sample("a::x"), "b::x": _sample("b::x")}
+    inputs = _inputs(dataset)
+    inputs["general_calibration"] = "GENERAL NOTE: this judge under-scores."
+    # A per-item note on just one item — to check the two get concatenated, not clobbered.
+    inputs["calibration"] = {"a::x": {"optimized_prompt": "PER-ITEM NOTE for a."}}
+    ctx = make_ctx(inputs=inputs, dry_run=False, allow_live=True)
+
+    result = JudgeNodeExecutor().run(ctx)
+    assert result.status == "done"
+    ea = result.outputs["judge_result"]["a::x"]["M1"]
+    eb = result.outputs["judge_result"]["b::x"]["M1"]
+    # The general note reaches BOTH items...
+    assert "GENERAL NOTE: this judge under-scores." in (ea["prompt_system"] or "")
+    assert "GENERAL NOTE: this judge under-scores." in (eb["prompt_system"] or "")
+    # ...and the item with a per-item note gets both (general first, then its own).
+    assert "PER-ITEM NOTE for a." in (ea["prompt_system"] or "")
+    assert "PER-ITEM NOTE for a." not in (eb["prompt_system"] or "")
+
+
 def test_missing_calibration_input_is_a_silent_noop(monkeypatch, make_ctx):
     # "calibration" is optional — omitting it entirely must behave exactly like before.
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())

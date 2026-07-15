@@ -46,7 +46,11 @@ MOCK_JUDGE_CONTENT = {
     # D1 (judge-agent debate turn) / D2 (human-proxy debate turn) fields.
     "revised": False,
     "agrees_with_judge": True,
-    "cited_failure_modes": [],
+    # A real taxonomy key (see d2_human_proxy_debate.FAILURE_MODE_TAXONOMY) so the debate
+    # yields a non-empty failure_mode_summary — the de-leaked optimized_prompt is built
+    # purely from flagged tendencies, so without this it would be "" and the calibrated
+    # judge would get no addendum for the sandwich E2E to assert on.
+    "cited_failure_modes": ["audio_neglect"],
 }
 
 
