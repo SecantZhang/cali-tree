@@ -88,6 +88,7 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             "insample_mae": insample,
             "loo_mae": loo,
             "tree_rule": judge_rule.get("tree_rule"),
+            "tree": judge_rule.get("tree"),
             "bank": judge_rule.get("bank"),
             "verdict": verdict,
             "beats_bias": beats_bias,

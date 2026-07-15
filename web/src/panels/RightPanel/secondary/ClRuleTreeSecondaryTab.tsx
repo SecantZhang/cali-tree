@@ -1,6 +1,8 @@
+import { DecisionTreeView, type DecisionTreeNode } from '../../../components/DecisionTreeView'
 import { ProgressBar } from '../../../components/ProgressBar'
 import { useActiveRunStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
+import { treeFeatureTooltip } from './treeFeatureTooltip'
 
 interface BankEntry {
   question: string
@@ -14,6 +16,7 @@ interface JudgeRule {
   insample_mae?: Record<string, number | null>
   loo_mae?: Record<string, number | null>
   tree_rule?: string
+  tree?: DecisionTreeNode | null
   per_item?: Record<string, { base: number; human: number; booleans: number[]; missing: string[] }>
 }
 
@@ -90,11 +93,28 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
         overfits — trust the LOO column.
       </p>
 
-      {jr.tree_rule && (
-        <details open>
-          <summary>Fitted decision tree</summary>
-          <pre className="json-preview">{jr.tree_rule}</pre>
-        </details>
+      {jr.tree ? (
+        <>
+          <p className="schema-heading">Fitted decision tree</p>
+          <DecisionTreeView tree={jr.tree} featureTooltip={treeFeatureTooltip(bank)} />
+          <p className="empty-hint">
+            Splits read top-down; each leaf is the calibrated score (colored low→high) for
+            items reaching it. Hover a split to see the mined rule behind it.
+          </p>
+          {jr.tree_rule && (
+            <details>
+              <summary>Raw rule (sklearn export)</summary>
+              <pre className="json-preview">{jr.tree_rule}</pre>
+            </details>
+          )}
+        </>
+      ) : (
+        jr.tree_rule && (
+          <details open>
+            <summary>Fitted decision tree</summary>
+            <pre className="json-preview">{jr.tree_rule}</pre>
+          </details>
+        )
       )}
 
       <details>
