@@ -235,3 +235,50 @@ carry no signal at n=6.
 
 Reproduce: `python -m vejudge.core.calibration.debate.eval.run_prompt_calibration
 logs/exps/260714-09:57:04-exps --metric M5 --env-raw <path> --live`.
+
+---
+
+# De-leak + corpus socket + `cl_rule_tree` node with an independent critic (live)
+
+Third pass (same branch): (1) **de-leaked** the per-item `optimized_prompt` (general
+failure-mode tendencies only — no target score, no item narrative), (2) exposed the
+item-independent corpus prompt as a `general_calibration` socket wired into the Judge
+node dataset-wide, and (3) built the **`cl_rule_tree` interface node** that mines rules
+from an upstream `cl_adversarial` node's debates, has an **independent critic** (a
+separate LM, not the judge) answer them, and fits `[base_score + rule booleans] -> human`,
+reporting in-sample + LOO MAE.
+
+## Live smoke (direct node run on the cached 17-item M5 run; 13 have an M5 anchor)
+
+Text-only critic (gemini), ~35 text calls, reusing the cached debates (no re-debate):
+
+**The critic fix works.** 7/13 items got ≥1 non-zero rule boolean — vs the earlier
+cold-self-answer version where the *judge* denied all its own errors (0/N, all-zero
+features). A separate auditor flags what the judge won't.
+
+Mined rule bank (all general, item-agnostic):
+- q1 — penalizing the model for correctly following instructions / source-inherited flaws
+- q2 — disproportionately penalizing flaws while undervaluing success on the core objective
+- q3 — applying standards inappropriate for the task/genre/constraints
+
+MAE vs human (lower better):
+
+| comparator | in-sample | LOO |
+|---|---|---|
+| (a) base only | 1.83 | 1.83 |
+| (b) base + global bias | 0.46 | 0.50 |
+| (c) linear[base+rules] | 0.27 | 0.47 |
+| (d) tree[base+rules] | 0.27 | **0.41** |
+
+**The tree beats a plain bias correction held-out** (LOO 0.41 vs 0.50) — the semantic
+rules add real, if modest, out-of-sample signal, unlike the null result before the critic
+fix. The fitted tree splits on q2 (over-penalization) + base_score. Honest caveats: most
+of the 1.83→0.50 gain is still the global bias term (the judge systematically
+under-scores); the rules add ~0.09 LOO on top. n=13 is directional, not conclusive, and
+the critic is conservative — several high-gap items (aberdeen::2, paris-2025, qc::4) still
+got all-zero booleans, so it misses errors too. A larger labeled set (and possibly a
+video critic) is the next step before trusting the margin.
+
+Repro: build a graph `Dataset → Judge → cl_adversarial → cl_rule_tree` (critic engine
+distinct from the judge engine) and open the Rule/Tree Calibration node's secondary tab,
+or run the node directly on a cached run's `calibration_results`.
