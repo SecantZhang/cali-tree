@@ -282,3 +282,38 @@ video critic) is the next step before trusting the margin.
 Repro: build a graph `Dataset → Judge → cl_adversarial → cl_rule_tree` (critic engine
 distinct from the judge engine) and open the Rule/Tree Calibration node's secondary tab,
 or run the node directly on a cached run's `calibration_results`.
+
+# Ontology-weighted Semantic Tree vs CART (live)
+
+Assembled `semantic_tree_calibration_peanut_M5` (Dataset → Judge → cl_adversarial →
+cl_semantic_tree → cl_rule_eval) and ran the new `cl_semantic_tree` node **live** (gemini
+text critic, ~28 calls: mine + canonicalize + concept-tag + critic) on the cached 17-item
+M5 `cl_adversarial` run (260715-10:22:11), 13 with an M5 anchor. Upstream debates reused
+from cache (not re-run) — the live calls exercise the new node's full path only.
+
+Concept-labeled features assembled from the ontology:
+- `fm:<concept>` counts (from the debate's cited failure modes): source_drift_blindness,
+  overconfident_rationale, scale_drift, category_imbalance.
+- `rule:<concept>` critic booleans (mined rules tagged to concepts): overconfident_rationale,
+  surface_realism_bias. (One mined question tagged to no concept and was dropped.)
+
+MAE vs human (lower = better), same features for tree/semantic:
+
+| comparator | in-sample | LOO |
+|---|---|---|
+| base | 1.825 | 1.825 |
+| base + bias | 0.459 | 0.497 |
+| linear | 0.135 | 0.424 |
+| tree (CART) | 0.135 | 0.336 |
+| **semantic (ontology-weighted)** | 0.171 | **0.315** |
+
+**The semantic tree beats CART held-out (LOO 0.315 vs 0.336), and both beat bias (0.497).**
+Semantic is *worse* in-sample (0.171 vs 0.135) but *better* held-out — the ontology prior
+regularizes rather than overfits, which is the intended effect. The fitted tree is
+structurally semantic: it splits on `rule:overconfident_rationale` then
+`fm:category_imbalance` (named concepts, not positional qN).
+
+Honest caveats: n=13, so the 0.315-vs-0.336 margin is directional, not conclusive; the bias
+term still closes most of the 1.825→~0.5 gap, with the trees adding ~0.16-0.18 LOO on top.
+The full workflow's `cl_adversarial` stage was reused from cache (a from-scratch live run
+would re-debate all items). Next: larger labeled set / other metrics for a less-noisy margin.
