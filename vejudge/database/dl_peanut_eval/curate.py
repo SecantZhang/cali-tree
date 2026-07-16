@@ -54,14 +54,19 @@ def curate_sample(
     use_case: str,
     notes_path: str,
     output_video_path: str,
+    otio_path: str = "",
+    plan_path: str = "",
     captions_max_chars: int = 16000,
     transcript_max_chars: int = 200000,
 ) -> dict[str, Any]:
     from .extract_notes import extract_peanut_assembly_from_notes
+    from .extract_otio import extract_assembly_from_otio
 
     project_dir = _abspath(project_dir)
     notes_path = _abspath(notes_path) if notes_path else ""
     output_video_path = _abspath(output_video_path) if output_video_path else ""
+    otio_path = _abspath(otio_path) if otio_path else ""
+    plan_path = _abspath(plan_path) if plan_path else ""
 
     user_prompt, target_duration = load_user_prompt(project_dir, prompt_index)
 
@@ -82,14 +87,17 @@ def curate_sample(
         p = os.path.join(project_dir, rel)
         if os.path.isfile(p):
             asset_paths.append(_abspath(p))
-    if notes_path:
-        asset_paths.append(notes_path)
-    if output_video_path:
-        asset_paths.append(output_video_path)
+    for extra in (notes_path, otio_path, plan_path, output_video_path):
+        if extra:
+            asset_paths.append(extra)
 
+    # Assembly source precedence: peanut's notes.json, else an OTIO timeline
+    # (coconut/grapenut), else empty (video-only — the judge still has the render).
     assembly_json: dict[str, Any] = {}
     if notes_path and os.path.isfile(notes_path):
         assembly_json = extract_peanut_assembly_from_notes(notes_path)
+    elif otio_path and os.path.isfile(otio_path):
+        assembly_json = extract_assembly_from_otio(otio_path)
 
     return {
         "item_id": f"{project}::{prompt_index}::{model}",

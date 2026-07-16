@@ -48,6 +48,9 @@ const SAMPLING_FIELDS: Record<string, ParamField> = {
 export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   peanut_source: {
     model: { type: 'string', default: 'peanut' },
+    // Load several models at once (overrides `model` when set), e.g. peanut, coconut,
+    // grapenut. Item ids are model-namespaced so the merged set never collides.
+    models: { type: 'list[string]', default: null },
     projects: { type: 'list[string]', default: null },
   },
   dataset: { ...SAMPLING_FIELDS },

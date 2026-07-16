@@ -26,30 +26,35 @@ class PeanutSourceNodeExecutor(NodeExecutor):
     output_sockets = {"raw_dataset": "raw_dataset"}
     param_schema = {
         "model": {"type": "string", "default": "peanut"},
+        # Load several models at once (e.g. ["peanut","coconut","grapenut"]). When set it
+        # overrides `model`; item ids are `project::idx::model`, so the merged set has no
+        # collisions. Empty/unset → the single `model`.
+        "models": {"type": "list[string]", "default": None},
         "projects": {"type": "list[string]", "default": None},
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         p = ctx.params
-        model = p.get("model", "peanut")
-        loader = PeanutEvalLoader(model=model, projects=p.get("projects") or None)
-        all_items = loader.list_items()
+        models = [m for m in (p.get("models") or []) if m] or [p.get("model", "peanut")]
+        projects = p.get("projects") or None
 
         samples: dict[str, Any] = {}
         skipped: list[str] = []
-        for iid in all_items:
-            try:
-                samples[iid] = loader.load_sample(iid)
-            except Exception as e:  # noqa: BLE001 - one bad item must not drop the rest
-                skipped.append(iid)
-                ctx.run.logger.warning(
-                    "PeanutSource[%s]: skipping '%s' (%s: %s)",
-                    ctx.node_id, iid, type(e).__name__, e,
-                )
+        for model in models:
+            loader = PeanutEvalLoader(model=model, projects=projects)
+            for iid in loader.list_items():
+                try:
+                    samples[iid] = loader.load_sample(iid)
+                except Exception as e:  # noqa: BLE001 - one bad item must not drop the rest
+                    skipped.append(iid)
+                    ctx.run.logger.warning(
+                        "PeanutSource[%s]: skipping '%s' (%s: %s)",
+                        ctx.node_id, iid, type(e).__name__, e,
+                    )
 
         ctx.run.logger.info(
-            "PeanutSource[%s]: %d items (model=%s)%s",
-            ctx.node_id, len(samples), model,
+            "PeanutSource[%s]: %d items (models=%s)%s",
+            ctx.node_id, len(samples), ",".join(models),
             f", skipped {len(skipped)}" if skipped else "",
         )
         meta: dict[str, Any] = {

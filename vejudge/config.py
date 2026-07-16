@@ -61,5 +61,18 @@ MODEL_DIR_ALIASES: dict[str, str] = {
     "loopedit": "loopedit",
 }
 
+# On-disk rendered-output layout family per model (drives video_resolver dispatch; see
+# docs/data.md). Models share the human-annotation format but render to different trees:
+#   peanut   — videos/*prompt_{idx}_final.mp4 + notes/ + otio/  (discover via notes)
+#   coconut  — {project}/{NNN}/render.mp4 + timeline.otio + plan.md  (prompt_idx = NNN-1)
+#   grapenut — {project}/videos/{idx}_video.mp4 + otio/{idx}_timeline.otio
+# Unknown models fall back to the peanut layout.
+MODEL_LAYOUT: dict[str, str] = {
+    "peanut": "peanut",
+    "coconut": "coconut",
+    "grapenut": "grapenut",
+    "loopedit": "peanut",
+}
+
 # Soft warning threshold for base64 video uploads.
 VIDEO_SIZE_WARN_MB: int = 50
