@@ -93,6 +93,15 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     input: { judge_rule: 'judge_rule' },
     output: { comparison: 'metrics_report' },
   },
+  // Ontology-weighted semantic decision tree — same Model Calibration fitter contract as
+  // cl_rule_tree (splits are concept-labeled and importance-weighted; see ontology.py).
+  cl_semantic_tree: {
+    input: {
+      samples: 'samples', calibration_results: 'calibration_results', labels: 'labels',
+      critic_engine: 'engine_config',
+    },
+    output: { judge_rule: 'judge_rule' },
+  },
 }
 
 export function isValidSocketConnection(

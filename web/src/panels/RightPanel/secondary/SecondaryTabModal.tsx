@@ -70,7 +70,9 @@ export function SecondaryTabModal() {
             </p>
           )}
           {type === 'cl_adversarial' && <ClAdversarialSecondaryTab node={node} />}
-          {type === 'cl_rule_tree' && <ClRuleTreeSecondaryTab node={node} />}
+          {(type === 'cl_rule_tree' || type === 'cl_semantic_tree') && (
+            <ClRuleTreeSecondaryTab node={node} />
+          )}
         </div>
         <ResizeHandle
           orientation="vertical"

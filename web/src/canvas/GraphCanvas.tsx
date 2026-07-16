@@ -15,6 +15,7 @@ import { useMemo, useRef, useState } from 'react'
 import { ClAdversarialNode } from '../nodes/ClAdversarialNode'
 import { ClRuleEvalNode } from '../nodes/ClRuleEvalNode'
 import { ClRuleTreeNode } from '../nodes/ClRuleTreeNode'
+import { ClSemanticTreeNode } from '../nodes/ClSemanticTreeNode'
 import { DatasetNode } from '../nodes/DatasetNode'
 import { EvalNode } from '../nodes/EvalNode'
 import { GroupNode } from '../nodes/GroupNode'
@@ -42,6 +43,7 @@ const NODE_TYPES = {
   cl_rule_eval: ClRuleEvalNode,
   cl_adversarial: ClAdversarialNode,
   cl_rule_tree: ClRuleTreeNode,
+  cl_semantic_tree: ClSemanticTreeNode,
   group: GroupNode,
 }
 

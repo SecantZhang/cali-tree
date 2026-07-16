@@ -17,15 +17,28 @@ interface JudgeRule {
   loo_mae?: Record<string, number | null>
   tree_rule?: string
   tree?: DecisionTreeNode | null
+  feature_labels?: Record<string, string>
   per_item?: Record<string, { base: number; human: number; booleans: number[]; missing: string[] }>
 }
 
-const COMPARATORS: [string, string][] = [
-  ['base', '(a) base only'],
-  ['bias', '(b) base + global bias'],
-  ['linear', '(c) linear[base+rules]'],
-  ['tree', '(d) tree[base+rules]'],
-]
+// Label + order for known comparators. The table renders whichever keys are actually
+// present in the report (so the semantic-tree node's extra `semantic` row appears
+// automatically, and the CART node stays four rows).
+const COMPARATOR_LABELS: Record<string, string> = {
+  base: '(a) base only',
+  bias: '(b) base + global bias',
+  linear: '(c) linear[base+rules]',
+  tree: '(d) tree[base+rules]',
+  semantic: '(e) semantic tree[ontology]',
+}
+const COMPARATOR_ORDER = ['base', 'bias', 'linear', 'tree', 'semantic']
+
+function comparatorKeys(jr: JudgeRule): string[] {
+  const present = new Set([...Object.keys(jr.insample_mae ?? {}), ...Object.keys(jr.loo_mae ?? {})])
+  const known = COMPARATOR_ORDER.filter((k) => present.has(k))
+  const extra = [...present].filter((k) => !COMPARATOR_ORDER.includes(k)).sort()
+  return [...known, ...extra]
+}
 
 function fmt(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : v.toFixed(2)
@@ -79,9 +92,9 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
       <table className="schema-table">
         <tbody>
           <tr><td className="schema-field">comparator</td><td className="schema-type">in-sample</td><td className="schema-type">held-out (LOO)</td></tr>
-          {COMPARATORS.map(([key, label]) => (
+          {comparatorKeys(jr).map((key) => (
             <tr key={key}>
-              <td className="schema-desc">{label}</td>
+              <td className="schema-desc">{COMPARATOR_LABELS[key] ?? key}</td>
               <td className="label-score">{fmt(jr.insample_mae?.[key])}</td>
               <td className="label-score">{fmt(jr.loo_mae?.[key])}</td>
             </tr>
@@ -96,7 +109,7 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
       {jr.tree ? (
         <>
           <p className="schema-heading">Fitted decision tree</p>
-          <DecisionTreeView tree={jr.tree} featureTooltip={treeFeatureTooltip(bank)} />
+          <DecisionTreeView tree={jr.tree} featureTooltip={treeFeatureTooltip(bank, jr.feature_labels)} />
           <p className="empty-hint">
             Splits read top-down; each leaf is the calibrated score (colored low→high) for
             items reaching it. Hover a split to see the mined rule behind it.

@@ -10,8 +10,9 @@ booleans add nothing, (c)/(d) collapse toward (b).
 from __future__ import annotations
 
 from statistics import mean
-from typing import Optional
+from typing import Callable, Optional
 
+from ...base import Calibrator
 from ...linear import LinearCalibrator
 from ...tree import DecisionTreeCalibrator
 
@@ -34,30 +35,46 @@ def fit_and_evaluate(
     humans: dict[str, float],
     feats_full: dict[str, list[float]],
     feature_names: list[str],
+    extra_calibrators: Optional[dict[str, Callable[[], Calibrator]]] = None,
 ) -> dict:
     """Return the report dict: in-sample + LOO MAE per comparator, the fitted tree rule
-    text, and feature importances. ``feats_full[i] == [base_i, b1_i..bK_i]``."""
+    text, and feature importances. ``feats_full[i] == [base_i, b1_i..bK_i]``.
+
+    ``extra_calibrators`` maps a comparator name to a zero-arg factory building a fresh
+    ``Calibrator`` (fit signature ``fit(X, y, *, feature_names)``). Each is fit on the same
+    features and reported alongside base/bias/linear/tree — e.g. the semantic tree node
+    passes ``{"semantic": lambda: SemanticDecisionTreeCalibrator(...)}``. Default None keeps
+    the four-comparator report unchanged.
+    """
+    extra = extra_calibrators or {}
+    comparators = ["base", "bias", "linear", "tree", *extra.keys()]
 
     def eval_split(fit_ids: list[str], query_ids: list[str]) -> dict[str, list[float]]:
         yb = [humans[i] for i in fit_ids]
-        lin = LinearCalibrator().fit([feats_full[i] for i in fit_ids], yb) if len(fit_ids) >= 2 else None
-        tree = (
-            DecisionTreeCalibrator().fit([feats_full[i] for i in fit_ids], yb, feature_names=feature_names)
-            if len(fit_ids) >= 2 else None
-        )
-        preds: dict[str, list[float]] = {"base": [], "bias": [], "linear": [], "tree": []}
+        can_fit = len(fit_ids) >= 2
+        X_fit = [feats_full[i] for i in fit_ids]
+        lin = LinearCalibrator().fit(X_fit, yb) if can_fit else None
+        tree = DecisionTreeCalibrator().fit(X_fit, yb, feature_names=feature_names) if can_fit else None
+        extra_fit = {
+            name: factory().fit(X_fit, yb, feature_names=feature_names)
+            for name, factory in extra.items()
+        } if can_fit else {}
+        preds: dict[str, list[float]] = {k: [] for k in comparators}
         for q in query_ids:
             preds["base"].append(bases[q])
             preds["bias"].append(_predict_bias([bases[i] for i in fit_ids], yb, bases[q]))
             preds["linear"].append(lin.predict([feats_full[q]])[0] if lin else bases[q])
             preds["tree"].append(tree.predict([feats_full[q]])[0] if tree else bases[q])
+            for name in extra:
+                m = extra_fit.get(name)
+                preds[name].append(m.predict([feats_full[q]])[0] if m else bases[q])
         return preds
 
     truth = [humans[i] for i in item_ids]
     insample = eval_split(item_ids, item_ids)
     insample_mae = {k: mae(v, truth) for k, v in insample.items()}
 
-    loo = {k: [] for k in ("base", "bias", "linear", "tree")}
+    loo = {k: [] for k in comparators}
     for held in item_ids:
         rest = [i for i in item_ids if i != held]
         one = eval_split(rest, [held])

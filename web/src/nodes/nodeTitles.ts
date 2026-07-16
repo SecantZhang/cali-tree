@@ -13,6 +13,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   cl_rule_eval: 'Rule Comparison',
   cl_adversarial: 'Adversarial Calibration',
   cl_rule_tree: 'Rule/Tree Calibration',
+  cl_semantic_tree: 'Semantic Tree Calibration',
 }
 
 export function nodeTitle(type: string | undefined): string {
