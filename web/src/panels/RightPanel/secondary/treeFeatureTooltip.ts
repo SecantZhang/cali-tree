@@ -1,6 +1,8 @@
 // Shared by the Rule/Tree and Rule Comparison secondary tabs: turns a decision-tree split
-// feature name (`base_score`, `q1`, `q2`, …) into a hover tooltip that spells out the mined
-// rule behind a `qN` feature, so the tree diagram is self-explanatory without the raw text.
+// feature name into a hover tooltip so the tree diagram is self-explanatory without the raw
+// text. Two feature-naming schemes are supported: the CART tree's positional `qN` (looked up
+// in the mined bank) and the semantic tree's concept-labeled features (looked up in the
+// payload's `feature_labels` map, which wins when present).
 interface BankEntry {
   question: string
   raises_score_when: string
@@ -8,8 +10,10 @@ interface BankEntry {
 
 export function treeFeatureTooltip(
   bank: BankEntry[],
+  featureLabels?: Record<string, string>,
 ): (feature: string) => string | undefined {
   return (feature) => {
+    if (featureLabels && featureLabels[feature]) return featureLabels[feature]
     const m = /^q(\d+)$/.exec(feature)
     if (m) {
       const q = bank[Number(m[1]) - 1]

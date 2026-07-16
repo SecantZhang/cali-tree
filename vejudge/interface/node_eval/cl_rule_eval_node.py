@@ -16,15 +16,21 @@ from typing import Any
 
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
 
-# The comparators the upstream Rule/Tree node reports, in presentation order. Mirrors
-# ClRuleTreeSecondaryTab's COMPARATORS so the standalone node and the source node's own tab
-# read identically.
-_COMPARATORS: list[tuple[str, str]] = [
-    ("base", "(a) base only"),
-    ("bias", "(b) base + global bias"),
-    ("linear", "(c) linear[base+rules]"),
-    ("tree", "(d) tree[base+rules]"),
-]
+# Label + presentation order for known comparators. The report renders whichever keys are
+# actually present in the upstream judge_rule (so a Semantic Tree node's extra `semantic`
+# row appears automatically, while a Rule/Tree node stays four rows). Mirrors
+# ClRuleTreeSecondaryTab's COMPARATOR_LABELS.
+_COMPARATOR_LABELS: dict[str, str] = {
+    "base": "(a) base only",
+    "bias": "(b) base + global bias",
+    "linear": "(c) linear[base+rules]",
+    "tree": "(d) tree[base+rules]",
+    "semantic": "(e) semantic tree[ontology]",
+}
+_COMPARATOR_ORDER = ["base", "bias", "linear", "tree", "semantic"]
+# The rule-based models (vs. the plain base / bias-shift baselines) — a report "helps" only
+# if one of these beats the bias correction held-out.
+_RULE_MODELS = ("semantic", "tree", "linear")
 
 
 @register
@@ -47,18 +53,22 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
 
         insample = judge_rule.get("insample_mae") or {}
         loo = judge_rule.get("loo_mae") or {}
+        present = set(insample) | set(loo)
+        keys = [k for k in _COMPARATOR_ORDER if k in present]
+        keys += sorted(k for k in present if k not in _COMPARATOR_ORDER)
         rows = [
-            {"key": k, "label": lbl, "insample": insample.get(k), "loo": loo.get(k)}
-            for k, lbl in _COMPARATORS
+            {"key": k, "label": _COMPARATOR_LABELS.get(k, k),
+             "insample": insample.get(k), "loo": loo.get(k)}
+            for k in keys
         ]
 
-        # The mined rules earn their keep only if a rule model (linear or tree) beats a
-        # plain bias shift HELD-OUT (LOO). In-sample MAE always improves with more features,
-        # so it is never the test — the verdict reads the LOO column only.
+        # The mined rules earn their keep only if a rule model (semantic / tree / linear)
+        # beats a plain bias shift HELD-OUT (LOO). In-sample MAE always improves with more
+        # features, so it is never the test — the verdict reads the LOO column only.
         bias_loo = loo.get("bias")
         best_rule_key: str | None = None
         best_rule_loo: float | None = None
-        for k in ("tree", "linear"):
+        for k in _RULE_MODELS:
             v = loo.get(k)
             if isinstance(v, (int, float)) and (best_rule_loo is None or v < best_rule_loo):
                 best_rule_key, best_rule_loo = k, float(v)

@@ -382,6 +382,21 @@ A downstream evaluator (Rule Comparison, `node_eval`) reads a fitter's `judge_ru
 new calibration node genuinely needs a different I/O shape, that is the signal it is a new
 *role* (a new template), not a member of an existing one.
 
+**Model Calibration members (fitters):**
+- **Rule/Tree Calibration** (`cl_rule_tree`) — mines free-text `qN` rules, an independent
+  critic answers them, fits a plain CART over `[base_score, q1..qK]`.
+- **Semantic Tree Calibration** (`cl_semantic_tree`) — an ontology-grounded variant. Its
+  features are concept-labeled — `fm:<concept>` counts (from each item's
+  `failure_mode_summary` over the fixed failure-mode taxonomy) plus `rule:<concept>` critic
+  booleans (each mined rule tagged to its taxonomy concept) — and it fits an
+  **ontology-weighted** decision tree (`SemanticDecisionTreeCalibrator`): split gain is
+  `variance_reduction × concept_importance`, where importance comes from the calibration
+  **knowledge base** (`vejudge/core/calibration/ontology.py`, built from
+  `FAILURE_MODE_TAXONOMY` + `_TENDENCY` + the `ALIGNMENT` dimension crosswalk). Its
+  `judge_rule` report adds a `semantic` comparator so the Rule Comparison node shows it
+  head-to-head with the CART baseline on the same features. Same fitter I/O contract as
+  `cl_rule_tree`; shares its secondary tab.
+
 #### Adversarial Calibration Node
 
 *Category: `node_calibration` · Sub-category: Agent Calibration (producer)*
