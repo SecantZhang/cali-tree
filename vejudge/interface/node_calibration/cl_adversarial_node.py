@@ -19,8 +19,9 @@ from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS, AggregatedHumanRecord
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ...postprocessing.align import ALIGNMENT
-from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
+from ..server.registry import NodeRunContext, NodeRunResult, register
 from ._concurrent_debate import run_concurrent_debates
+from ._templates import CalibrationProducerNode
 
 # Modality-appropriate engine default for the judge role (mirrors judge_node.py). The
 # human-proxy role is always plain text regardless of metric modality — debate turns
@@ -100,23 +101,11 @@ def _resolve_human_context(
 
 
 @register
-class ClAdversarialNodeExecutor(NodeExecutor):
+class ClAdversarialNodeExecutor(CalibrationProducerNode):
+    # Agent Calibration role — inherits the producer I/O contract (samples + judge_result +
+    # labels + judge/human engines -> calibration_results + general_calibration) from
+    # CalibrationProducerNode; see node_calibration._templates.
     node_type = "cl_adversarial"
-    category = "node_calibration"
-    input_sockets = {
-        "samples": "samples",
-        "judge_result": "judge_result",
-        "labels": "labels",
-        "judge_engine": "engine_config",
-        "human_engine": "engine_config",
-    }
-    output_sockets = {
-        "calibration_results": "calibration_results",
-        # The item-independent corpus calibration note (aggregated failure-mode
-        # tendencies + directional bias across this run's items) — wire into a Judge
-        # Node's `general_calibration` input to apply it dataset-wide to unseen items.
-        "general_calibration": "general_calibration",
-    }
     param_schema = {
         "epsilon": {"type": "number", "default": 0.25},
         "max_rounds": {"type": "number", "default": 4, "min": 1},

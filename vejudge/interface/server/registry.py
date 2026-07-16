@@ -58,7 +58,11 @@ class NodeExecutor(ABC):
     """Base class every in-scope node executor subclasses."""
 
     node_type: ClassVar[str]
-    category: ClassVar[str]  # "node_db" | "node_vejudge" | "node_eval"
+    category: ClassVar[str]  # "node_db" | "node_vejudge" | "node_eval" | "node_calibration"
+    # Optional finer grouping *within* a category (palette sub-folder). None = the node sits
+    # flat under its category. Nodes sharing a subcategory play the same role and, by
+    # convention, share one I/O contract via a role template (see node_calibration._templates).
+    subcategory: ClassVar[Optional[str]] = None
     input_sockets: ClassVar[dict[str, str]] = {}
     output_sockets: ClassVar[dict[str, str]] = {}
     param_schema: ClassVar[dict[str, Any]] = {}

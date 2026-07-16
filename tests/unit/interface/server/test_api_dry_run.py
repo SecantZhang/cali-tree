@@ -67,6 +67,14 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
     }
 
 
+def test_node_types_expose_calibration_subcategories(client):
+    by_type = {n["type"]: n for n in client.get("/api/nodes").json()}
+    assert by_type["cl_adversarial"]["subcategory"] == "agent"
+    assert by_type["cl_rule_tree"]["subcategory"] == "model"
+    # Nodes outside a sub-folder report null, so the palette renders them flat.
+    assert by_type["judge"]["subcategory"] is None
+
+
 def test_workflow_save_load_round_trip(client):
     body = {"name": "quick_eval", "graph": _graph_body()["graph"]}
     resp = client.post("/api/workflows", json=body)

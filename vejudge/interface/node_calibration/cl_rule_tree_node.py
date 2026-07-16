@@ -24,7 +24,8 @@ from ...core.calibration.debate.schema import DebateTranscript
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
-from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
+from ..server.registry import NodeRunContext, NodeRunResult, register
+from ._templates import CalibrationFitterNode
 from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _resolve_human_context
 
 _DEFAULT_ENGINE_KIND = {"text": "gpt", "video": "gemini"}
@@ -41,16 +42,11 @@ def _judge_rationale(cr: dict[str, Any]) -> str:
 
 
 @register
-class ClRuleTreeNodeExecutor(NodeExecutor):
+class ClRuleTreeNodeExecutor(CalibrationFitterNode):
+    # Model Calibration role — inherits the fitter I/O contract (samples +
+    # calibration_results + labels + critic_engine -> judge_rule) from CalibrationFitterNode;
+    # see node_calibration._templates.
     node_type = "cl_rule_tree"
-    category = "node_calibration"
-    input_sockets = {
-        "samples": "samples",
-        "calibration_results": "calibration_results",
-        "labels": "labels",
-        "critic_engine": "engine_config",
-    }
-    output_sockets = {"judge_rule": "judge_rule"}
     param_schema = {
         "max_questions": {"type": "number", "default": 5, "min": 1},
         "batch_size": {"type": "number", "default": 1, "min": 1},

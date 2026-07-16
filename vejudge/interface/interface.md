@@ -357,9 +357,34 @@ Node parameters: **preset** (M1–M6 or `custom`); the custom-only fields (**mod
 **system**/**user_template**, **expected_fields**, **score_path**, **target_dimension**,
 **spec_id**/**label**) are shown only when preset is `custom`.
 
+### Calibration sub-categories (roles)
+
+The `node_calibration` category splits into two **role sub-categories** (a node declares
+one via `NodeExecutor.subcategory`; the palette renders them as sub-folders). Each role has
+**one unified I/O contract**, defined once as an abstract template in
+`node_calibration/_templates.py` — concrete nodes subclass a template and inherit its
+sockets rather than declaring their own, so every node in a sub-category shares the same
+input/output shape and new implementations conform by construction. (Nodes elsewhere leave
+`subcategory = None` and render flat under their category.)
+
+- **Agent Calibration** (`subcategory="agent"`, `CalibrationProducerNode`) — *producers*.
+  Run LLM agents (a judge-vs-human-proxy debate) over a judged dataset to generate a
+  calibration signal. Contract: `samples + judge_result + labels + judge_engine +
+  human_engine` → `calibration_results + general_calibration`. Member: Adversarial
+  Calibration.
+- **Model Calibration** (`subcategory="model"`, `CalibrationFitterNode`) — *fitters*.
+  Consume a producer's `calibration_results` and fit an interpretable calibration model (a
+  rule/decision tree today; other `Calibrator` variants next). Contract: `samples +
+  calibration_results + labels + critic_engine` → `judge_rule` (the fitted model/rule).
+  Member: Rule/Tree Calibration.
+
+A downstream evaluator (Rule Comparison, `node_eval`) reads a fitter's `judge_rule`. If a
+new calibration node genuinely needs a different I/O shape, that is the signal it is a new
+*role* (a new template), not a member of an existing one.
+
 #### Adversarial Calibration Node
 
-*Category: `node_calibration`*
+*Category: `node_calibration` · Sub-category: Agent Calibration (producer)*
 
 Description: runs a bounded judge-vs-human-proxy debate over a dataset
 (`vejudge/core/calibration/debate/`, wired via `vejudge/interface/node_calibration/`) to
