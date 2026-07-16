@@ -102,3 +102,23 @@ def test_zero_items_gets_a_warning(peanut_fixture, make_ctx):
     assert result.status == "done"
     assert result.outputs["raw_dataset"] == {}
     assert "Matched 0 items" in result.meta["warning"]
+
+
+def test_models_list_merges_across_models(peanut_fixture, make_ctx):
+    # Add a coconut render tree (ordinal 001/002 -> prompt 0/1) for prj-a, reusing the same
+    # source project. `models` should load BOTH models and merge, keyed by model-namespaced
+    # item ids (no collision with the peanut items).
+    rendered_root = config.RENDERED_ROOT
+    for run, _idx in (("001", 0), ("002", 1)):
+        d = rendered_root / "coconut" / "prj-a" / run
+        d.mkdir(parents=True)
+        (d / "render.mp4").write_text("v")
+        (d / "timeline.otio").write_text('{"tracks": {"children": []}}')
+
+    ctx = make_ctx(params={"models": ["peanut", "coconut"]})
+    raw = PeanutSourceNodeExecutor().run(ctx).outputs["raw_dataset"]
+    # Peanut items still present…
+    assert {"prj-a::0::peanut", "prj-b::0::peanut"} <= set(raw)
+    # …plus the coconut renders of prj-a (ordinal mapped).
+    assert {"prj-a::0::coconut", "prj-a::1::coconut"} <= set(raw)
+    assert raw["prj-a::0::coconut"]["output"]["output_video_path"].endswith("001/render.mp4")

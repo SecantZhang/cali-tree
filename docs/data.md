@@ -442,6 +442,26 @@ The benchmark joins the two: it judges a **rendered output video** (from `evalua
 against the **edit instruction + source material** (from `data/`), then compares the judge
 scores to the **human annotations** of the same video.
 
+### Rendered-output layouts (per model)
+
+Three models are human-annotated — **peanut, coconut, grapenut** (34 labeled items total:
+13 / 12 / 9). They share the annotation format but render to **different on-disk trees**
+under `RENDERED_ROOT/<alias>/<project>/`, so `video_resolver` dispatches on
+`config.MODEL_LAYOUT`:
+
+| model | layout | `prompt_idx N →` | assembly source |
+|---|---|---|---|
+| peanut | `videos/*prompt_{N}_final.mp4` + `notes/` + `otio/` | glob `prompt_{N}` | `notes.json` |
+| coconut | `{NNN}/render.mp4` + `timeline.otio` + `plan.md` | `{N+1:03d}/` (ordinal run subdir) | OTIO |
+| grapenut | `videos/{N}_video.mp4` + `otio/{N}_timeline.otio` | `{N}_video.mp4` | OTIO |
+
+Notes: coconut/grapenut have no `notes.json`, so the assembly comes from the OTIO timeline
+(`extract_assembly_from_otio`, best-effort; the video judge scores from the render
+regardless). The coconut ordinal mapping (`NNN → prompt NNN-1`) is inferred — the resolver
+warns if a project's run subdirs aren't contiguous `001..00N`. 33 of the 34 labeled items
+resolve with video (grapenut `prj-paris-2025` has no render). Source assets in `data/` are
+model-agnostic, so the edit instruction/transcript resolve for every model.
+
 ---
 
 ## 1. Source data — `data/<project>/`
