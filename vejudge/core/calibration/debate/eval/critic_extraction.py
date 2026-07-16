@@ -67,14 +67,14 @@ def extract_critic_features(
     if not questions:
         return {"booleans": [], "raw_answers": {}, "missing": []}
     prompt = build_critic_prompt(sample, judge_rationale, questions)
+    answers: dict[str, Any] = {}
     try:
         out = critic_engine.generate(prompt, system=_SYSTEM)
-    except Exception:  # noqa: BLE001 - a failed critic call yields all-missing (zeros)
-        answers: dict[str, Any] = {}
-    else:
         parsed = parse_json_object(out.get("content") or "")
-        answers = (parsed or {}).get("decision_answers") if isinstance(parsed, dict) else {}
-        answers = answers if isinstance(answers, dict) else {}
+        if isinstance(parsed, dict) and isinstance(parsed.get("decision_answers"), dict):
+            answers = parsed["decision_answers"]
+    except Exception:  # noqa: BLE001 - a failed/unparseable critic call yields all-missing (zeros)
+        answers = {}
 
     booleans: list[int] = []
     raw_answers: dict[str, Any] = {}

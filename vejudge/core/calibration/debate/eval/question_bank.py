@@ -61,10 +61,10 @@ def build_question_bank(
         return []
     try:
         out = engine.generate(_user(candidates, max_questions), system=_SYSTEM)
-    except Exception:  # noqa: BLE001
+        parsed = parse_json_object(out.get("content") or "")
+    except Exception:  # noqa: BLE001 - failed call OR unparseable JSON
         # Fall back to a deterministic dedup on exact question text rather than lose all.
         return _dedup_fallback(candidates, max_questions)
-    parsed = parse_json_object(out.get("content") or "")
     if not isinstance(parsed, dict) or not parsed.get("questions"):
         return _dedup_fallback(candidates, max_questions)
     bank: list[dict[str, Any]] = []
