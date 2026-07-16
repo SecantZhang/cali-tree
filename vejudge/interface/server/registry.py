@@ -65,6 +65,9 @@ class NodeExecutor(ABC):
     subcategory: ClassVar[Optional[str]] = None
     input_sockets: ClassVar[dict[str, str]] = {}
     output_sockets: ClassVar[dict[str, str]] = {}
+    # Input sockets that accept fan-in — multiple incoming edges merged into a list of
+    # values (see GraphExecutionEngine._run_node). All other sockets stay one-edge-only.
+    multi_input_sockets: ClassVar[frozenset[str]] = frozenset()
     param_schema: ClassVar[dict[str, Any]] = {}
     # Opt-in for streaming batch-eval: only a node whose `run()` is cheap and safe to call
     # repeatedly against a growing, still-incomplete upstream input should set this True
@@ -78,7 +81,9 @@ class NodeExecutor(ABC):
     @classmethod
     def type_info(cls) -> NodeTypeInfo:
         return NodeTypeInfo(
-            input_sockets=dict(cls.input_sockets), output_sockets=dict(cls.output_sockets)
+            input_sockets=dict(cls.input_sockets),
+            output_sockets=dict(cls.output_sockets),
+            multi_input_sockets=frozenset(cls.multi_input_sockets),
         )
 
 

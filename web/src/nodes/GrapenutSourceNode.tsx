@@ -5,17 +5,17 @@ import { SocketHandle, socketTop } from './SocketHandle'
 import { SOCKET_COLORS } from './socketTypes'
 import type { VeNodeData } from './types'
 
-export function PeanutSourceNode({ id, data, selected }: NodeProps) {
+export function GrapenutSourceNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
   return (
     <SimpleParamNode
       id={id}
       data={d}
       selected={selected}
-      title="Peanut Source"
+      title="Grapenut Source"
       color="var(--node-db)"
-      schema={NODE_PARAM_SCHEMAS.peanut_source}
-      summaryLine={() => 'model: peanut'}
+      schema={NODE_PARAM_SCHEMAS.grapenut_source}
+      summaryLine={() => 'model: grapenut'}
       sockets={
         <SocketHandle
           kind="source" id="raw_dataset" label="raw_dataset" top={socketTop(0, 1)}

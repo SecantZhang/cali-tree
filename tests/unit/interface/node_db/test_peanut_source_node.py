@@ -104,21 +104,19 @@ def test_zero_items_gets_a_warning(peanut_fixture, make_ctx):
     assert "Matched 0 items" in result.meta["warning"]
 
 
-def test_models_list_merges_across_models(peanut_fixture, make_ctx):
-    # Add a coconut render tree (ordinal 001/002 -> prompt 0/1) for prj-a, reusing the same
-    # source project. `models` should load BOTH models and merge, keyed by model-namespaced
-    # item ids (no collision with the peanut items).
+def test_coconut_source_loads_its_own_model(peanut_fixture, make_ctx):
+    # A coconut render tree (ordinal 001/002 -> prompt 0/1) for prj-a, reusing the same
+    # source project. The distinct Coconut Source node loads only coconut, keyed by
+    # model-namespaced item ids (no collision with the peanut items).
+    from vejudge.interface.node_db.coconut_source_node import CoconutSourceNodeExecutor
+
     rendered_root = config.RENDERED_ROOT
-    for run, _idx in (("001", 0), ("002", 1)):
+    for run in ("001", "002"):
         d = rendered_root / "coconut" / "prj-a" / run
         d.mkdir(parents=True)
         (d / "render.mp4").write_text("v")
         (d / "timeline.otio").write_text('{"tracks": {"children": []}}')
 
-    ctx = make_ctx(params={"models": ["peanut", "coconut"]})
-    raw = PeanutSourceNodeExecutor().run(ctx).outputs["raw_dataset"]
-    # Peanut items still present…
-    assert {"prj-a::0::peanut", "prj-b::0::peanut"} <= set(raw)
-    # …plus the coconut renders of prj-a (ordinal mapped).
-    assert {"prj-a::0::coconut", "prj-a::1::coconut"} <= set(raw)
+    raw = CoconutSourceNodeExecutor().run(make_ctx(params={})).outputs["raw_dataset"]
+    assert set(raw) == {"prj-a::0::coconut", "prj-a::1::coconut"}  # ordinal 001->0, 002->1
     assert raw["prj-a::0::coconut"]["output"]["output_video_path"].endswith("001/render.mp4")

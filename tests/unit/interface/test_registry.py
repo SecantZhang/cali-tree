@@ -93,7 +93,8 @@ def test_only_the_in_scope_node_types_are_registered():
 
     real_types = {t for t in NODE_EXECUTORS if not t.startswith("__fake")}
     assert real_types == {
-        "peanut_source", "dataset", "preprocessing", "lm_engine",
+        "peanut_source", "coconut_source", "grapenut_source",
+        "dataset", "preprocessing", "lm_engine",
         "judge_prompt", "judge", "eval", "cl_rule_eval", "cl_adversarial", "cl_rule_tree",
         "cl_semantic_tree",
     }

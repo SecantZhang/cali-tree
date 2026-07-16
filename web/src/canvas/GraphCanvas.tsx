@@ -22,6 +22,8 @@ import { GroupNode } from '../nodes/GroupNode'
 import { JudgeNode } from '../nodes/JudgeNode'
 import { JudgePromptNode } from '../nodes/JudgePromptNode'
 import { LMEngineNode } from '../nodes/LMEngineNode'
+import { CoconutSourceNode } from '../nodes/CoconutSourceNode'
+import { GrapenutSourceNode } from '../nodes/GrapenutSourceNode'
 import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
 import { PreprocessingNode } from '../nodes/PreprocessingNode'
 import { nodesInGroup } from '../nodes/geometry'
@@ -34,6 +36,8 @@ import { CanvasContextMenu, type ContextMenuItem } from './CanvasContextMenu'
 
 const NODE_TYPES = {
   peanut_source: PeanutSourceNode,
+  coconut_source: CoconutSourceNode,
+  grapenut_source: GrapenutSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
   lm_engine: LMEngineNode,

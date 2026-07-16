@@ -46,13 +46,12 @@ const SAMPLING_FIELDS: Record<string, ParamField> = {
 }
 
 export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
-  peanut_source: {
-    model: { type: 'string', default: 'peanut' },
-    // Load several models at once (overrides `model` when set), e.g. peanut, coconut,
-    // grapenut. Item ids are model-namespaced so the merged set never collides.
-    models: { type: 'list[string]', default: null },
-    projects: { type: 'list[string]', default: null },
-  },
+  // One source node per model (Peanut/Coconut/Grapenut); wire several into one Dataset
+  // node (its raw_dataset is a fan-in socket) to calibrate across models. Each loads its
+  // own model; `projects` optionally restricts to a subset.
+  peanut_source: { projects: { type: 'list[string]', default: null } },
+  coconut_source: { projects: { type: 'list[string]', default: null } },
+  grapenut_source: { projects: { type: 'list[string]', default: null } },
   dataset: { ...SAMPLING_FIELDS },
   preprocessing: {
     artifact_types: { type: 'list[enum]', options: PREPROCESSING_ARTIFACT_TYPES, default: null },
