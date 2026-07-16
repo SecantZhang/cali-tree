@@ -61,6 +61,33 @@ def test_node_type_infos_reflects_registered_sockets():
         NODE_EXECUTORS.pop("__fake_b__", None)
 
 
+def test_calibration_nodes_carry_their_role_subcategory_and_share_its_socket_contract():
+    import vejudge.interface.node_types  # noqa: F401 - import side effect
+    from vejudge.interface.node_calibration._templates import (
+        CalibrationFitterNode,
+        CalibrationProducerNode,
+    )
+
+    producer = NODE_EXECUTORS["cl_adversarial"]
+    fitter = NODE_EXECUTORS["cl_rule_tree"]
+    assert producer.subcategory == "agent"
+    assert fitter.subcategory == "model"
+    # "Unified I/O within a sub-category" is enforced by inheritance: a node reuses its
+    # role template's socket dicts rather than declaring its own, so any new member of the
+    # sub-category conforms by construction.
+    assert producer.input_sockets is CalibrationProducerNode.input_sockets
+    assert producer.output_sockets is CalibrationProducerNode.output_sockets
+    assert fitter.input_sockets is CalibrationFitterNode.input_sockets
+    assert fitter.output_sockets is CalibrationFitterNode.output_sockets
+
+
+def test_non_subcategorized_nodes_default_to_none():
+    import vejudge.interface.node_types  # noqa: F401 - import side effect
+
+    assert NODE_EXECUTORS["judge"].subcategory is None
+    assert NODE_EXECUTORS["eval"].subcategory is None
+
+
 def test_only_the_in_scope_node_types_are_registered():
     import vejudge.interface.node_types  # noqa: F401 - import side effect
 

@@ -17,6 +17,7 @@ def list_node_types() -> list[NodeTypeOut]:
         NodeTypeOut(
             type=cls.node_type,
             category=cls.category,
+            subcategory=cls.subcategory,
             input_sockets=dict(cls.input_sockets),
             output_sockets=dict(cls.output_sockets),
             param_schema=dict(cls.param_schema),
