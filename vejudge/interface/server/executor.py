@@ -156,6 +156,8 @@ class GraphExecutionEngine:
         nodes_by_id: dict[str, NodeSpec],
     ) -> NodeRunResult:
         incoming = incoming_map[node_id]
+        executor_cls = NODE_EXECUTORS[node.type]
+        multi = executor_cls.multi_input_sockets
         inputs: dict[str, Any] = {}
         for target_socket, src_id, src_socket in incoming:
             src_result = node_results.get(src_id)
@@ -168,9 +170,14 @@ class GraphExecutionEngine:
                     status="error",
                     error=f"Upstream node '{src_id}' did not produce output '{src_socket}'",
                 )
-            inputs[target_socket] = src_result.outputs[src_socket]
-
-        executor_cls = NODE_EXECUTORS[node.type]
+            value = src_result.outputs[src_socket]
+            # A fan-in socket collects every incoming edge's value into a list (order =
+            # edge order); a normal socket takes the single value (last edge wins, but
+            # validate_edges already forbids >1 edge on a non-multi socket).
+            if target_socket in multi:
+                inputs.setdefault(target_socket, []).append(value)
+            else:
+                inputs[target_socket] = value
 
         def on_batch(source_socket: str, value: Any, _nid: str = node_id) -> None:
             # The calling node's own in-flight snapshot, not just downstream previews

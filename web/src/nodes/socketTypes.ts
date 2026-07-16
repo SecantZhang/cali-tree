@@ -25,6 +25,8 @@ export interface NodeTypeSockets {
 
 export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   peanut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  coconut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  grapenut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
@@ -102,6 +104,21 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     },
     output: { judge_rule: 'judge_rule' },
   },
+}
+
+// Static mirror of the backend's NodeExecutor.multi_input_sockets: input sockets that
+// accept fan-in (multiple incoming edges), keyed by node type. The Dataset node merges
+// several source nodes this way. Everything else stays one-edge-only.
+export const MULTI_INPUT_SOCKETS: Record<string, string[]> = {
+  dataset: ['raw_dataset'],
+}
+
+export function isMultiInputSocket(
+  nodeType: string | undefined,
+  socket: string | null | undefined,
+): boolean {
+  if (!nodeType || !socket) return false
+  return (MULTI_INPUT_SOCKETS[nodeType] ?? []).includes(socket)
 }
 
 export function isValidSocketConnection(

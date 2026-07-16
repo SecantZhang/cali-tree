@@ -4,6 +4,8 @@
 // type isn't listed (e.g. a future node type not yet added here).
 export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   peanut_source: 'Peanut Source',
+  coconut_source: 'Coconut Source',
+  grapenut_source: 'Grapenut Source',
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
   lm_engine: 'LM Engine',

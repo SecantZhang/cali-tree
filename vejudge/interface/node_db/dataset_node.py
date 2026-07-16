@@ -36,6 +36,10 @@ class DatasetNodeExecutor(NodeExecutor):
     node_type = "dataset"
     category = "node_db"
     input_sockets = {"raw_dataset": "raw_dataset"}
+    # Fan-in: multiple source nodes (e.g. Peanut/Coconut/Grapenut) can wire into
+    # `raw_dataset`; their item pools are merged (item ids are model-namespaced, so no
+    # collision). The executor delivers the inputs as a list of raw_dataset dicts.
+    multi_input_sockets = frozenset({"raw_dataset"})
     output_sockets = {"samples": "samples", "labels": "labels"}
     param_schema = {
         "sampling_ratio": {"type": "number", "default": 1.0, "min": 0.0, "max": 1.0},
@@ -55,13 +59,23 @@ class DatasetNodeExecutor(NodeExecutor):
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         p = ctx.params
-        raw_dataset = ctx.inputs.get("raw_dataset")
-        if raw_dataset is None:
+        raw = ctx.inputs.get("raw_dataset")
+        if raw is None:
             return NodeRunResult(
                 status="error",
                 error="Dataset Node requires a 'raw_dataset' input (wire a source node's "
                 "`raw_dataset` output, e.g. a Peanut Source Node)",
             )
+        # Fan-in delivers a list of raw_dataset dicts (one per wired source); merge them
+        # into one pool. Item ids are model-namespaced so sources never collide. A plain
+        # dict (a single non-fan-in caller, e.g. a direct unit test) is accepted as-is.
+        if isinstance(raw, list):
+            raw_dataset: dict = {}
+            for part in raw:
+                if isinstance(part, dict):
+                    raw_dataset.update(part)
+        else:
+            raw_dataset = raw
 
         # Every JudgeSample already carries its own `use_case` (set by the source loader
         # via the same `use_case_for` lookup) — no need to re-derive it from the item id.

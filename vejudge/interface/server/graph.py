@@ -37,6 +37,9 @@ class NodeTypeInfo:
 
     input_sockets: dict[str, str]
     output_sockets: dict[str, str]
+    # Input sockets that accept fan-in (multiple incoming edges), merged into a list of
+    # values for the executor. Every other socket keeps the strict one-edge rule.
+    multi_input_sockets: frozenset[str] = frozenset()
 
 
 class GraphError(ValueError):
@@ -87,10 +90,10 @@ def validate_edges(graph: GraphSpec, node_types: dict[str, NodeTypeInfo]) -> Non
             )
 
         key = (e.target, e.target_socket)
-        if key in seen_targets:
+        if key in seen_targets and e.target_socket not in tgt_type.multi_input_sockets:
             raise GraphError(
                 f"Input socket '{e.target_socket}' on node '{e.target}' already has an "
-                "incoming edge (fan-in is not supported)"
+                "incoming edge (this socket does not accept fan-in)"
             )
         seen_targets.add(key)
 
