@@ -60,9 +60,9 @@ def extract_candidate_questions(
     """
     try:
         out = engine.generate(_user(transcript_text, metric_id), system=_SYSTEM)
-    except Exception:  # noqa: BLE001 - a failed extraction just yields no candidates
+        parsed = parse_json_object(out.get("content") or "")
+    except Exception:  # noqa: BLE001 - a failed/unparseable extraction just yields no candidates
         return []
-    parsed = parse_json_object(out.get("content") or "")
     if not isinstance(parsed, dict):
         return []
     questions: list[dict[str, Any]] = []
