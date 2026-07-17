@@ -112,14 +112,6 @@ export function NodeChrome({
           </span>
         )}
         {stale && <span className="rf-node-stale-badge" title="An upstream node was re-run since this last ran">stale</span>}
-        {typeof elapsedMs === 'number' && (
-          <span
-            className={`rf-node-time-badge${running ? ' is-running' : ''}`}
-            title={running ? 'Elapsed (running)' : 'Last run time'}
-          >
-            {fmtElapsed(elapsedMs)}
-          </span>
-        )}
         <span className={`status-dot status-${status}`} title={error ?? status} />
         {onRun && (
           <button
@@ -166,6 +158,14 @@ export function NodeChrome({
       </div>
       {running && <ProgressBar progress={progress ?? { completed: 0, total: null }} className="node-progress-bar" />}
       <div className="rf-node-body">{children}</div>
+      {typeof elapsedMs === 'number' && (
+        <div
+          className={`rf-node-time-footer${running ? ' is-running' : ''}`}
+          title={running ? 'Elapsed (running)' : 'Last run time'}
+        >
+          {fmtElapsed(elapsedMs)}
+        </div>
+      )}
     </div>
   )
 }
