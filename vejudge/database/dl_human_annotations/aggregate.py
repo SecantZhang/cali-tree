@@ -23,6 +23,9 @@ HUMAN_DIMENSIONS: list[str] = [
     "section_placement_middle",
     "section_placement_closing",
     "video_addresses_prompt",
+    # Public text-driven video-editing quality (VE-Bench MOS; its own scale, not 1-5) — a
+    # separate calibration track from the peanut assembly dimensions above.
+    "edit_quality",
 ]
 
 

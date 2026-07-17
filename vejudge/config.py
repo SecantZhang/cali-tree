@@ -32,6 +32,11 @@ RENDERED_ROOT: Path = _env_path(
 HUMAN_ANNOTATIONS_ROOT: Path = _env_path(
     "VEJUDGE_HUMAN_ANNOTATIONS_ROOT", EVALUATION_ROOT / "human_annotations"
 )
+# VE-Bench DB (public text-driven video-editing quality set): label.txt +
+# train_samples/{edited,src}/*.mp4. Used by dl_vebench as a separate calibration track.
+VEBENCH_ROOT: Path = _env_path(
+    "VEJUDGE_VEBENCH_ROOT", DATA_ROOT / "ve-bench" / "VE-Bench-DB"
+)
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
 # Credentials entered manually via the interface's Settings modal — takes top precedence
 # over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient

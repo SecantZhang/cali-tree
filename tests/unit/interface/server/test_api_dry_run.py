@@ -62,7 +62,7 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
     assert resp.status_code == 200
     types = {n["type"] for n in resp.json()}
     assert types == {
-        "peanut_source", "coconut_source", "grapenut_source",
+        "peanut_source", "coconut_source", "grapenut_source", "vebench_source",
         "dataset", "preprocessing", "lm_engine",
         "judge_prompt", "judge", "eval", "cl_rule_eval", "cl_adversarial", "cl_rule_tree",
         "cl_semantic_tree",

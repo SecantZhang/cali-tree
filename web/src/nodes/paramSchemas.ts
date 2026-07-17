@@ -52,6 +52,8 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   peanut_source: { projects: { type: 'list[string]', default: null } },
   coconut_source: { projects: { type: 'list[string]', default: null } },
   grapenut_source: { projects: { type: 'list[string]', default: null } },
+  // No params — loads the whole VE-Bench DB; sample/subset downstream in the Dataset node.
+  vebench_source: {},
   dataset: { ...SAMPLING_FIELDS },
   preprocessing: {
     artifact_types: { type: 'list[enum]', options: PREPROCESSING_ARTIFACT_TYPES, default: null },

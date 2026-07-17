@@ -6,6 +6,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   peanut_source: 'Peanut Source',
   coconut_source: 'Coconut Source',
   grapenut_source: 'Grapenut Source',
+  vebench_source: 'VE-Bench Source',
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
   lm_engine: 'LM Engine',

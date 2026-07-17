@@ -27,6 +27,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   peanut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   coconut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   grapenut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  vebench_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
