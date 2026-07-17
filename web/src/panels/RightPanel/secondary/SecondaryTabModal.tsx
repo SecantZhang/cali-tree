@@ -3,6 +3,7 @@ import { ResizeHandle } from '../../../components/ResizeHandle'
 import { useActiveGraphStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
 import { usePrefsStore } from '../../../store/prefsStore'
+import { AlignmentReportSecondaryTab } from './AlignmentReportSecondaryTab'
 import { ClAdversarialSecondaryTab } from './ClAdversarialSecondaryTab'
 import { ClRuleEvalSecondaryTab } from './ClRuleEvalSecondaryTab'
 import { ClRuleTreeSecondaryTab } from './ClRuleTreeSecondaryTab'
@@ -26,6 +27,7 @@ function DetailsTab({ node }: { node: VeNode }) {
   if (type === 'dataset') return <DatasetSecondaryTab node={node} />
   if (JUDGE_TYPES.has(type)) return <JudgeSecondaryTab node={node} />
   if (EVAL_TYPES.has(type)) return <EvalSecondaryTab node={node} />
+  if (type === 'alignment_report') return <AlignmentReportSecondaryTab node={node} />
   if (type === 'cl_rule_eval') return <ClRuleEvalSecondaryTab node={node} />
   if (type === 'lm_engine') return <LMEngineSecondaryTab node={node} />
   if (type === 'cl_adversarial') return <ClAdversarialSecondaryTab node={node} />

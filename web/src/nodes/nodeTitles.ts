@@ -14,6 +14,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   judge: 'Judge',
   eval: 'Eval',
   cl_rule_eval: 'Rule Comparison',
+  alignment_report: 'Alignment Report',
   cl_adversarial: 'Adversarial Calibration',
   cl_rule_tree: 'Rule/Tree Calibration',
   cl_semantic_tree: 'Semantic Tree Calibration',

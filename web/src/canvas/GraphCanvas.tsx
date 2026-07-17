@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useMemo, useRef, useState } from 'react'
 import { ClAdversarialNode } from '../nodes/ClAdversarialNode'
+import { AlignmentReportNode } from '../nodes/AlignmentReportNode'
 import { ClRuleEvalNode } from '../nodes/ClRuleEvalNode'
 import { ClRuleTreeNode } from '../nodes/ClRuleTreeNode'
 import { ClSemanticTreeNode } from '../nodes/ClSemanticTreeNode'
@@ -47,6 +48,7 @@ const NODE_TYPES = {
   judge: JudgeNode,
   eval: EvalNode,
   cl_rule_eval: ClRuleEvalNode,
+  alignment_report: AlignmentReportNode,
   cl_adversarial: ClAdversarialNode,
   cl_rule_tree: ClRuleTreeNode,
   cl_semantic_tree: ClSemanticTreeNode,

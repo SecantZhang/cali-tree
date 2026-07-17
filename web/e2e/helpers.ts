@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 export type NodeTypeName =
   | 'peanut_source' | 'coconut_source' | 'grapenut_source' | 'vebench_source'
   | 'dataset' | 'preprocessing' | 'lm_engine'
-  | 'judge_prompt' | 'judge' | 'eval' | 'cl_adversarial'
+  | 'judge_prompt' | 'judge' | 'eval' | 'alignment_report' | 'cl_adversarial'
 
 // `page.getByText('dataset')` is a case-insensitive substring match by default, which
 // also matches unrelated static UI text ("Datasets" tab label, "VEJudge" title) —

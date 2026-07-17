@@ -96,6 +96,12 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     input: { judge_rule: 'judge_rule' },
     output: { comparison: 'metrics_report' },
   },
+  // Frames an Eval node's metrics_report as SRCC/PLCC/KRCC + human ceiling vs published
+  // VE-Bench baselines. Pure display (node_eval), like cl_rule_eval.
+  alignment_report: {
+    input: { metrics_report: 'metrics_report' },
+    output: { comparison: 'metrics_report' },
+  },
   // Ontology-weighted semantic decision tree — same Model Calibration fitter contract as
   // cl_rule_tree (splits are concept-labeled and importance-weighted; see ontology.py).
   cl_semantic_tree: {

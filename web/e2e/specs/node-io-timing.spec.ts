@@ -2,13 +2,14 @@ import { expect, test } from '@playwright/test'
 import {
   addNode,
   addPipelineNodes,
+  connectSockets,
   dragConnect,
   PIPELINE_IDS,
   waitForPaletteLoaded,
   wirePipeline,
 } from '../helpers'
 
-const { PEANUT_SOURCE, DATASET, JUDGE } = PIPELINE_IDS
+const { DATASET, JUDGE, EVAL } = PIPELINE_IDS
 
 // The generic per-node secondary tabs (Details/Inputs/Outputs/Timing) + on-node run-time
 // badge — verified in a real browser after a real (dry) run so the run store is populated.
@@ -61,6 +62,33 @@ test.describe('node I/O + timing tabs', () => {
     await modal.getByRole('tab', { name: 'Timing' }).click()
     await expect(modal.getByText('System run waterfall')).toBeVisible()
     await expect(modal.getByText('This node — detailed breakdown')).toBeVisible()
+  })
+})
+
+// The Alignment Report node — reads the Eval node's metrics_report and frames it against the
+// published VE-Bench baselines.
+test.describe('Alignment Report node', () => {
+  test('reads the Eval report and shows the VE-Bench baseline reference', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+    await addPipelineNodes(page)
+    await addNode(page, 'alignment_report') // -> alignment_report-7 (global id counter)
+    await page.getByRole('button', { name: 'Fit View' }).click()
+    await wirePipeline(page)
+    // Eval's metrics_report output feeds the Alignment Report.
+    await connectSockets(page, EVAL, 'metrics_report', 'alignment_report-7', 'metrics_report')
+
+    const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
+    await runButton.click()
+    await expect(runButton).toHaveText('Run', { timeout: 15000 })
+
+    await page.getByTestId('rf__node-alignment_report-7').dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+    // The published VE-Bench reference table always renders once the node has run.
+    await expect(modal.getByText('VE-Bench published baselines (reference)')).toBeVisible()
+    await expect(modal.getByRole('cell', { name: 'VE-Bench QA' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).click()
   })
 })
 
