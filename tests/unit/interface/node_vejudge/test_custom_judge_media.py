@@ -4,7 +4,24 @@ stay single-video."""
 
 import json
 
-from vejudge.interface.node_vejudge.judge_spec import run_custom_judge
+from vejudge.interface.node_vejudge.judge_spec import fill_template, run_custom_judge
+
+
+def test_fill_template_leaves_literal_json_braces_intact():
+    # Regression: a custom judge template almost always shows a JSON output example. str.format
+    # would misparse `{"score": <1-10>}` ("Invalid format specifier"); fill_template must
+    # substitute {user_prompt} and pass the JSON through verbatim.
+    tmpl = (
+        'Rate: "{user_prompt}"\n'
+        'Respond JSON only: {"overall_editing_score": <integer 1-10>, "reasoning": "<one>"}'
+    )
+    out = fill_template(tmpl, {"input": {"user_prompt": "make it rain"}})
+    assert 'Rate: "make it rain"' in out
+    assert '{"overall_editing_score": <integer 1-10>, "reasoning": "<one>"}' in out
+
+
+def test_fill_template_leaves_unknown_placeholder_literal():
+    assert fill_template("hi {nope}", {"input": {}}) == "hi {nope}"
 
 _SPEC = {
     "kind": "custom", "spec_id": "eq", "label": "eq", "modality": "video",

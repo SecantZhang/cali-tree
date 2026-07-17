@@ -16,7 +16,6 @@ graph path and lets a future optimizer *produce* judges. Two kinds:
 
 from __future__ import annotations
 
-import string
 from typing import Any, Optional
 
 from ...core.judge.parse import parse_json_object
@@ -46,13 +45,6 @@ def spec_modality(spec: dict[str, Any]) -> str:
     return spec.get("modality", "text")
 
 
-class _SafeDict(dict):
-    # Leaves an unknown `{placeholder}` intact (rather than raising KeyError) so a typo in a
-    # custom template is visible in the sent prompt instead of crashing the whole run.
-    def __missing__(self, key: str) -> str:
-        return "{" + key + "}"
-
-
 def _template_fields(sample: dict[str, Any]) -> dict[str, Any]:
     """Flat, string-friendly view of a sample for `{placeholder}` filling in custom prompts."""
     fields: dict[str, Any] = {
@@ -69,7 +61,17 @@ def _template_fields(sample: dict[str, Any]) -> dict[str, Any]:
 
 
 def fill_template(template: str, sample: dict[str, Any]) -> str:
-    return string.Formatter().vformat(template, (), _SafeDict(_template_fields(sample)))
+    """Substitute only the known ``{placeholder}`` tokens; leave every other brace literal.
+
+    Deliberately NOT ``str.format`` — a custom judge's template almost always contains a
+    literal JSON output example (``{"score": ...}``), which ``str.format`` misparses as a
+    format field/spec ("Invalid format specifier"). A targeted replace passes any such JSON
+    (and any unknown ``{token}``) through verbatim, and can't crash the run.
+    """
+    out = template
+    for key, value in _template_fields(sample).items():
+        out = out.replace("{" + key + "}", "" if value is None else str(value))
+    return out
 
 
 def run_custom_judge(
