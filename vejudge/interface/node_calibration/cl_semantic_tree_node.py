@@ -20,6 +20,7 @@ the same features. Fit+report scope (in-sample + LOO), like the Rule/Tree node.
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 
@@ -171,23 +172,27 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         if ctx.progress_cb:
             ctx.progress_cb("calibration_progress_init", {"total": len(tasks)})
 
-        def _run(it: str) -> tuple[str, dict[str, Any]]:
+        item_timings: list[dict[str, Any]] = []
+
+        def _run(it: str) -> tuple[str, dict[str, Any], float]:
             if ctx.progress_cb:
                 ctx.progress_cb("calibration_item_start", {"item_id": it})
+            t0 = time.perf_counter()
             feats = extract_critic_features(
                 sample=samples[it], judge_rationale=_judge_rationale(anchored[it]["cr"]),
                 questions=bank, critic_engine=critic_engine,
             )
-            return it, feats
+            return it, feats, round((time.perf_counter() - t0) * 1000, 1)
 
         with ThreadPoolExecutor(max_workers=concurrency) as ex:
             futs = [ex.submit(_run, it) for it in tasks]
             for fut in as_completed(futs):
                 if fut.cancelled():
                     continue
-                it, feats = fut.result()
+                it, feats, ms = fut.result()
                 booleans[it] = feats["booleans"]
                 missing[it] = feats["missing"]
+                item_timings.append({"item_id": it, "ms": ms})
                 ctx.checkpoint.put(f"{ctx.node_id}::{it}::rule_features", feats)
                 if ctx.progress_cb:
                     ctx.progress_cb("calibration_item_done", {"item_id": it})
@@ -269,4 +274,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                  "booleans": booleans.get(it, []), "missing": missing.get(it, [])}
             for it in item_ids
         }
-        return NodeRunResult(outputs={"judge_rule": report}, meta={"n_items": len(item_ids)})
+        meta = {"n_items": len(item_ids)}
+        if item_timings:
+            meta["item_timings"] = item_timings
+        return NodeRunResult(outputs={"judge_rule": report}, meta=meta)

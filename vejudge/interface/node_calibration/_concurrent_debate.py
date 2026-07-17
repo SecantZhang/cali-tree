@@ -9,6 +9,7 @@ here.
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from typing import Any, Optional
@@ -92,14 +93,17 @@ def run_concurrent_debates(
     if ctx.progress_cb:
         ctx.progress_cb("calibration_progress_init", {"total": len(tasks)})
 
-    def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
+    item_timings: list[dict[str, Any]] = []
+
+    def _run_task(item_id: str) -> tuple[str, dict[str, Any], float]:
         if ctx.progress_cb:
             ctx.progress_cb("calibration_item_start", {"item_id": item_id})
+        t0 = time.perf_counter()
         result = _calibrate_one(
             anchors[item_id], judge_engine, human_engine, config, dataset[item_id],
             human_ctx=(human_context or {}).get(item_id),
         )
-        return item_id, result
+        return item_id, result, round((time.perf_counter() - t0) * 1000, 1)
 
     stopped = False
     newly_complete_count = 0
@@ -108,8 +112,9 @@ def run_concurrent_debates(
         for fut in as_completed(futs):
             if fut.cancelled():
                 continue
-            item_id, result = fut.result()
+            item_id, result, ms = fut.result()
             per_item[item_id] = result
+            item_timings.append({"item_id": item_id, "ms": ms})
             # Only persist a clean end-state so a total-failure item retries on --continue
             # (matches _concurrent_judging.py's "only persist success" convention).
             if "all_turns_failed" not in (result.get("flags") or []):
@@ -129,6 +134,8 @@ def run_concurrent_debates(
                         f.cancel()
 
     meta: dict[str, Any] = {"n_items": len(anchors)}
+    if item_timings:
+        meta["item_timings"] = item_timings
     if stopped:
         meta["stopped"] = True
         meta["n_items_done"] = len(per_item)

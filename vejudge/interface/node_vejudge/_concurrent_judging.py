@@ -14,6 +14,7 @@ is filed under ``spec_key(spec)``.
 from __future__ import annotations
 
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Optional
 
@@ -89,14 +90,18 @@ def run_concurrent_judging(
     if ctx.progress_cb:
         ctx.progress_cb("judge_progress_init", {"total": len(tasks)})
 
-    def _run_task(item_id: str) -> tuple[str, dict[str, Any]]:
+    item_timings: list[dict[str, Any]] = []
+
+    def _run_task(item_id: str) -> tuple[str, dict[str, Any], float]:
         if ctx.progress_cb:
             ctx.progress_cb("judge_item_start", {"item_id": item_id})
         per_item_ctx = (calibration or {}).get(item_id, {}).get("optimized_prompt")
         # General (dataset-wide) note first, then this item's own — either may be absent.
         parts = [p for p in (general_calibration, per_item_ctx) if p]
         extra_context = "\n\n".join(parts) if parts else None
-        return item_id, _judge_one(spec, engine, dataset[item_id], extra_context=extra_context)
+        t0 = time.perf_counter()
+        result = _judge_one(spec, engine, dataset[item_id], extra_context=extra_context)
+        return item_id, result, round((time.perf_counter() - t0) * 1000, 1)
 
     stopped = False
     newly_complete_count = 0
@@ -105,8 +110,9 @@ def run_concurrent_judging(
         for fut in as_completed(futs):
             if fut.cancelled():
                 continue
-            item_id, result = fut.result()
+            item_id, result, ms = fut.result()
             per_item[item_id][key] = result
+            item_timings.append({"item_id": item_id, "ms": ms})
             if not result.get("error") and not result.get("skipped"):
                 ctx.checkpoint.put(f"{ckpt_prefix}{item_id}::{key}", result)
             if ctx.progress_cb:
@@ -128,6 +134,8 @@ def run_concurrent_judging(
                         f.cancel()
 
     meta: dict[str, Any] = {"n_items": len(dataset)}
+    if item_timings:
+        meta["item_timings"] = item_timings
     if stopped:
         n_done = sum(1 for item in per_item.values() if item)
         meta["stopped"] = True

@@ -57,6 +57,35 @@ def test_linear_graph_passes_outputs_through(make_ctx):
     assert result.node_results["b"].status == "done"
 
 
+def test_every_node_gets_timing_meta_including_error_nodes(make_ctx):
+    # Central timing is stamped on EVERY node's result (success + error), so the Timing tab
+    # and on-node badge work for all current/future node types with no per-node code.
+    import time as _t
+
+    _register(
+        "__fx_slow__", outputs={"out": "dataset"},
+        run_fn=lambda ctx: (_t.sleep(0.02), NodeRunResult(outputs={"out": 1}))[1],
+    )
+    _register(
+        "__fx_boom__", inputs={"in": "dataset"},
+        run_fn=lambda ctx: NodeRunResult(status="error", error="x"),
+    )
+    graph = GraphSpec(
+        nodes=[NodeSpec(id="a", type="__fx_slow__"), NodeSpec(id="b", type="__fx_boom__")],
+        edges=[EdgeSpec("a", "out", "b", "in")],
+    )
+    ctx = make_ctx()
+    result = GraphExecutionEngine(graph, run=ctx.run, checkpoint=ctx.checkpoint).execute()
+
+    a, b = result.node_results["a"], result.node_results["b"]
+    # Both nodes timed; the slow node's elapsed reflects its ~20ms sleep.
+    assert a.meta["elapsed_ms"] >= 15
+    assert b.meta["elapsed_ms"] >= 0  # error node still timed
+    # start_offset present + ordered (b starts after a in this sequential executor).
+    assert a.meta["start_offset_ms"] == 0.0 or a.meta["start_offset_ms"] < b.meta["start_offset_ms"]
+    assert b.meta["start_offset_ms"] >= a.meta["start_offset_ms"]
+
+
 def test_upstream_error_blocks_only_dependents(make_ctx):
     _register(
         "__fx_bad__", outputs={"out": "dataset"},
@@ -217,7 +246,10 @@ def test_on_batch_triggers_a_preview_of_a_supports_partial_input_downstream_node
     # Node "b"'s own, normal, authoritative run afterward is completely unaffected — it
     # still runs once, at its regular topological position, against the real final input.
     assert result.node_results["b"].outputs == {"report": 2}
-    assert result.node_results["b"].meta == {"preview": False}
+    # The node's own meta (plus the centrally-stamped timing keys added by the executor).
+    assert result.node_results["b"].meta["preview"] is False
+    assert "elapsed_ms" in result.node_results["b"].meta
+    assert "start_offset_ms" in result.node_results["b"].meta
 
 
 def test_on_batch_is_a_no_op_downstream_for_a_node_that_does_not_opt_in(make_ctx):
