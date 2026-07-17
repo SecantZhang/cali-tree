@@ -58,6 +58,7 @@ class EvalNodeExecutor(NodeExecutor):
     label = "Eval"
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
+        from ...core.eval.rater_agreement import inter_rater_agreement
         from ...core.eval.report import per_dimension_agreement
 
         judge_result = ctx.inputs.get("judge_result")
@@ -78,10 +79,22 @@ class EvalNodeExecutor(NodeExecutor):
         dimensions = dimensions_for_judge_result(judge_result)
         items = sorted(set(judge_result) & set(labels))
         rows = build_aligned_rows(items, labels, judge_result, dimensions=dimensions)
+        # Human ceiling: how far raters sit from their own item mean, per dimension. Read the
+        # judge's per_dimension agreement against this — being within the inter-rater spread
+        # is the noise floor. Sourced from the per-rater values kept on each label record.
+        ceiling = {
+            dim: {"self_mae": ra.self_mae, "pairwise_mae": ra.pairwise_mae,
+                  "n_items": ra.n_items, "n_ratings": ra.n_ratings}
+            for dim, ra in inter_rater_agreement(
+                [getattr(labels[i], "raw_scores", {}) or {} for i in items],
+                dimensions=dimensions,
+            ).items()
+        }
         report = {
             "n_items": len(items),
             "n_aligned_rows": len(rows),
             "per_dimension": per_dimension_agreement(rows, dimensions=dimensions),
+            "human_ceiling": ceiling,
             # Raw per-item (human, judge_raw) pairs — the Eval secondary tab plots these
             # directly (a human-vs-judge scatter) which the aggregated stats can't reconstruct.
             "rows": rows,
