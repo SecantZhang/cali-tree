@@ -9,6 +9,7 @@ from .metrics import (
     quadratic_weighted_kappa,
     spearman,
 )
+from .rater_agreement import RaterAgreement, inter_rater_agreement
 from .report import per_dimension_agreement
 
 __all__ = [
@@ -20,4 +21,6 @@ __all__ = [
     "pairwise_accuracy",
     "by_category",
     "per_dimension_agreement",
+    "RaterAgreement",
+    "inter_rater_agreement",
 ]
