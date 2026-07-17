@@ -658,6 +658,28 @@ exactly why per dimension instead of leaving the panel silently empty. A per-cat
 chart and a worst-disagreement item list (drilling through to the originating Judge
 node's rationale) are not implemented yet.
 
+The metrics table now labels the correlations with the VQA-standard **SRCC / PLCC / KRCC**
+(Spearman / Pearson / Kendall), so they read directly against papers like VE-Bench.
+
+#### Alignment Report Node
+
+*Category: `node_eval`*
+
+Description: a **presentation/benchmark** node (like Rule Comparison) — it consumes an Eval
+node's `metrics_report` and frames the judge's human-alignment the way VQA papers do:
+per-dimension **SRCC / PLCC / KRCC + MAE** beside the **inter-rater human ceiling** (from the
+report's `human_ceiling`), plus the **published VE-Bench baselines** (CLIP-F/PickScore →
+DOVER/FastVQA/StableVQA → the trained VE-Bench QA) as a reference band, and a one-line verdict
+placing the judge's best-dimension SRCC among them. Recomputes nothing (the Eval node did the
+correlations); makes no gateway calls.
+
+Input: `metrics_report` (from an Eval node). Output: `comparison` (the framed report).
+
+Secondary tab: the "our judge" SRCC/PLCC/KRCC + human-ceiling table, the VE-Bench reference
+table, and the verdict. The VE-Bench baselines are a fixed published reference (only directly
+comparable when evaluating VE-Bench itself); it's a separate calibration/benchmark track from
+the peanut assembly metrics.
+
 ## Workflows
 
 A workflow is a saved node graph (JSON, stored under the left panel's *Workflows* tab). Every

@@ -127,6 +127,8 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   },
   // No params — it just renders the upstream judge_rule report.
   cl_rule_eval: {},
+  // No params — frames the upstream metrics_report.
+  alignment_report: {},
   cl_semantic_tree: {
     max_questions: { type: 'number', default: 5, min: 1 },
     batch_size: { type: 'number', default: 1, min: 1 },

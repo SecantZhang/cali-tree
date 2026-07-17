@@ -95,6 +95,6 @@ def test_only_the_in_scope_node_types_are_registered():
     assert real_types == {
         "peanut_source", "coconut_source", "grapenut_source", "vebench_source",
         "dataset", "preprocessing", "lm_engine",
-        "judge_prompt", "judge", "eval", "cl_rule_eval", "cl_adversarial", "cl_rule_tree",
-        "cl_semantic_tree",
+        "judge_prompt", "judge", "eval", "alignment_report", "cl_rule_eval",
+        "cl_adversarial", "cl_rule_tree", "cl_semantic_tree",
     }

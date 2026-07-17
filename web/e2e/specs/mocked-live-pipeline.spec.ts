@@ -129,9 +129,10 @@ test.describe('mocked live pipeline', () => {
 
     const row = evalModal.locator('.metrics-table tbody tr', { hasText: 'video_addresses_prompt' })
     await expect(row).toBeVisible()
+    // Columns: Dimension(0) n(1) SRCC(2) PLCC(3) KRCC(4) MAE(5) QWK(6).
     const cells = row.locator('td')
     await expect(cells.nth(1)).toHaveText('2') // n
-    await expect(cells.nth(4)).toHaveText('1.000') // MAE = |4 - 3|
+    await expect(cells.nth(5)).toHaveText('1.000') // MAE = |4 - 3|
 
     // Eval has no video path of its own (judge_result/labels never carry one) — it's
     // resolved client-side by tracing the wired graph back to the Dataset node feeding
