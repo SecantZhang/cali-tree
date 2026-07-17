@@ -317,3 +317,46 @@ Honest caveats: n=13, so the 0.315-vs-0.336 margin is directional, not conclusiv
 term still closes most of the 1.825→~0.5 gap, with the trees adding ~0.16-0.18 LOO on top.
 The full workflow's `cl_adversarial` stage was reused from cache (a from-scratch live run
 would re-debate all items). Next: larger labeled set / other metrics for a less-noisy margin.
+
+# VE-Bench judge baseline — human-alignment vs the paper (live)
+
+Brought the public **VE-Bench DB** into the system as a separate calibration track
+(`dl_vebench` loader + `vebench_source` node + `edit_quality` MOS labels materialized as
+per-item humaneval JSON; appearance/content editing, not peanut assembly). Stood up a
+**VE-Bench judge framework** — a custom video judge (Judge Prompt `preset=custom`, 1–10
+edit-quality) → Judge node → Eval node reporting SROCC/PLCC/KRCC vs the human MOS — as a
+baseline/comparison point, and ran it live on a **120-item subset** (gemini-2.5-pro,
+temp 0).
+
+Paper (VE-Bench, MOS 1–10, 24 raters, 8 editing methods, 1170 edits):
+
+| method | SROCC | PLCC |
+|---|---|---|
+| CLIP-F (zero-shot) | 0.228 | 0.186 |
+| PickScore (zero-shot) | 0.227 | 0.245 |
+| DOVER (VQA) | 0.612 | 0.630 |
+| FastVQA (VQA) | 0.633 | 0.633 |
+| StableVQA (VQA) | 0.689 | 0.678 |
+| **VE-Bench QA (trained on this data)** | **0.742** | **0.733** |
+
+Our zero-shot VLM judge on the 120-item subset:
+
+| judge variant | SROCC | PLCC | KRCC |
+|---|---|---|---|
+| edited video only (v1) | 0.365 | 0.367 | 0.263 |
+| **source + edited video (v2)** | **0.545** | **0.508** | **0.415** |
+
+Read: showing the **source** alongside the edited video (the principled fix — VE-Bench
+raters compared edit-vs-source) lifts SROCC 0.365 → 0.545. Our zero-shot judge clearly
+**beats the paper's zero-shot metrics** (CLIP-F/PickScore ~0.23) and **approaches the
+specialized VQA models** (DOVER 0.61), while trailing the trained VE-Bench QA (0.742) — a
+model fit on this exact data. That is the expected, honest position for a zero-shot
+LLM-judge baseline, and it gives a real comparison point on an external human-scored set.
+Framework changes: `run_custom_judge` now attaches a `source_video_path` before the edited
+video when present (no-op for peanut); Eval reports PLCC (Pearson) alongside SROCC.
+
+Caveats: n=120 subset (not the full 1170); VE-Bench ships only an aggregated MOS (no
+per-rater), so no inter-rater ceiling; a single overall 1–10 score (VE-Bench QA uses a
+richer multi-branch model). Closing the last gap to 0.742 would mean training/calibrating a
+metric, not a zero-shot prompt — which is where the adversarial-calibration + semantic-tree
+work would come in as the next step on this dataset.

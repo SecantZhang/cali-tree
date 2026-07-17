@@ -13,6 +13,7 @@ from .node_db.coconut_source_node import CoconutSourceNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
 from .node_db.grapenut_source_node import GrapenutSourceNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
+from .node_db.vebench_source_node import VeBenchSourceNodeExecutor
 from .node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
 from .node_eval.eval_node import EvalNodeExecutor
 from .node_preprocessing.preprocessing_node import PreprocessingNodeExecutor
@@ -24,6 +25,7 @@ __all__ = [
     "PeanutSourceNodeExecutor",
     "CoconutSourceNodeExecutor",
     "GrapenutSourceNodeExecutor",
+    "VeBenchSourceNodeExecutor",
     "DatasetNodeExecutor",
     "PreprocessingNodeExecutor",
     "LMEngineNodeExecutor",

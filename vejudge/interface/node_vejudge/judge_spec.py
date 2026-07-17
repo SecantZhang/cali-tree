@@ -82,9 +82,18 @@ def run_custom_judge(
     user = fill_template(spec.get("user_template") or "", sample)
     media: Optional[list[dict[str, Any]]] = None
     if spec.get("modality") == "video":
-        path = (sample.get("output") or {}).get("output_video_path", "")
-        if path:
-            media = [{"type": "video", "path": path}]
+        parts: list[dict[str, Any]] = []
+        # A source/original video, when the sample carries one (e.g. VE-Bench edits), is
+        # attached FIRST so a judge can compare edited-vs-source (instruction following,
+        # preservation). Peanut assembly samples have no source_video_path, so this is a
+        # no-op there and the edited video stays the only attachment.
+        src = (sample.get("input") or {}).get("source_video_path", "")
+        out = (sample.get("output") or {}).get("output_video_path", "")
+        if src:
+            parts.append({"type": "video", "path": src})
+        if out:
+            parts.append({"type": "video", "path": out})
+        media = parts or None
 
     result: dict[str, Any] = {
         "judge": spec.get("label") or spec_key(spec),

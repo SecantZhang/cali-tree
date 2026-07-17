@@ -25,6 +25,7 @@ import { LMEngineNode } from '../nodes/LMEngineNode'
 import { CoconutSourceNode } from '../nodes/CoconutSourceNode'
 import { GrapenutSourceNode } from '../nodes/GrapenutSourceNode'
 import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
+import { VeBenchSourceNode } from '../nodes/VeBenchSourceNode'
 import { PreprocessingNode } from '../nodes/PreprocessingNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
@@ -38,6 +39,7 @@ const NODE_TYPES = {
   peanut_source: PeanutSourceNode,
   coconut_source: CoconutSourceNode,
   grapenut_source: GrapenutSourceNode,
+  vebench_source: VeBenchSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
   lm_engine: LMEngineNode,
