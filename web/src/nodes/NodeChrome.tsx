@@ -63,13 +63,21 @@ interface NodeChromeProps {
   // SimpleParamNode) — locking freezes results + predecessors, unlocking cascades forward.
   onToggleLock?: () => void
   lockDisabledReason?: string | null
+  // Elapsed run time (ms) for a small on-node badge — shown live-ticking while running, then
+  // the final backend-measured value once done (see SimpleParamNode). Generic across all
+  // node types (executor stamps meta.elapsed_ms centrally).
+  elapsedMs?: number | null
   children?: ReactNode
+}
+
+function fmtElapsed(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`
 }
 
 export function NodeChrome({
   title, color, status, error, collapsed, onToggleCollapse, progress, sockets, selected,
   socketZoneHeight, orderIndex, stale, locked, onRun, onRerun, runDisabledReason,
-  rerunDisabledReason, onToggleLock, lockDisabledReason, children,
+  rerunDisabledReason, onToggleLock, lockDisabledReason, elapsedMs, children,
 }: NodeChromeProps) {
   const running = status === 'running'
   return (
@@ -104,6 +112,14 @@ export function NodeChrome({
           </span>
         )}
         {stale && <span className="rf-node-stale-badge" title="An upstream node was re-run since this last ran">stale</span>}
+        {typeof elapsedMs === 'number' && (
+          <span
+            className={`rf-node-time-badge${running ? ' is-running' : ''}`}
+            title={running ? 'Elapsed (running)' : 'Last run time'}
+          >
+            {fmtElapsed(elapsedMs)}
+          </span>
+        )}
         <span className={`status-dot status-${status}`} title={error ?? status} />
         {onRun && (
           <button

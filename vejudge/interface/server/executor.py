@@ -7,6 +7,7 @@ event loop, since node executors make blocking ``lm_engine`` calls.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -112,6 +113,9 @@ class GraphExecutionEngine:
 
         node_results: dict[str, NodeRunResult] = dict(self.seed_results or {})
         overall_status = "done"
+        # Wall-clock origin for per-node timing: each node records its elapsed run time and
+        # its start offset from here, so the Timing tab can lay out a whole-run waterfall.
+        run_start = time.perf_counter()
 
         for i, node_id in enumerate(order):
             if self.should_stop and self.should_stop():
@@ -128,7 +132,7 @@ class GraphExecutionEngine:
             node = nodes_by_id[node_id]
             self._emit("node_status", {"node_id": node_id, "status": "running"})
             result = self._run_node(
-                node, node_id, incoming, outgoing, node_results, nodes_by_id
+                node, node_id, incoming, outgoing, node_results, nodes_by_id, run_start
             )
             node_results[node_id] = result
 
@@ -141,7 +145,8 @@ class GraphExecutionEngine:
                 overall_status = "stopped"
             self._emit(
                 "node_status",
-                {"node_id": node_id, "status": result.status, "error": result.error},
+                {"node_id": node_id, "status": result.status, "error": result.error,
+                 "elapsed_ms": result.meta.get("elapsed_ms")},
             )
 
         return GraphRunResult(status=overall_status, node_results=node_results, order=order)
@@ -154,6 +159,7 @@ class GraphExecutionEngine:
         outgoing_map: dict[str, list[tuple[str, str, str]]],
         node_results: dict[str, NodeRunResult],
         nodes_by_id: dict[str, NodeSpec],
+        run_start: float = 0.0,
     ) -> NodeRunResult:
         incoming = incoming_map[node_id]
         executor_cls = NODE_EXECUTORS[node.type]
@@ -203,10 +209,17 @@ class GraphExecutionEngine:
             should_stop=self.should_stop,
             on_batch=on_batch,
         )
+        t0 = time.perf_counter()
         try:
-            return executor_cls().run(ctx)
+            result = executor_cls().run(ctx)
         except Exception as e:  # noqa: BLE001 - one node's bug must not crash the whole run
-            return NodeRunResult(status="error", error=f"{type(e).__name__}: {e}")
+            result = NodeRunResult(status="error", error=f"{type(e).__name__}: {e}")
+        # Per-node timing, stamped centrally so EVERY node type (current + future) gets it
+        # with no per-node code: total run time + start offset from the run origin (for the
+        # Timing tab's whole-run waterfall). Reads back on the client via NodeResultOut.meta.
+        result.meta["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        result.meta["start_offset_ms"] = round((t0 - run_start) * 1000, 1)
+        return result
 
     def _emit_partial_previews(
         self,

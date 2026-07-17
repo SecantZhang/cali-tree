@@ -1,7 +1,8 @@
 import type { Locator, Page } from '@playwright/test'
 
 export type NodeTypeName =
-  | 'peanut_source' | 'dataset' | 'preprocessing' | 'lm_engine'
+  | 'peanut_source' | 'coconut_source' | 'grapenut_source' | 'vebench_source'
+  | 'dataset' | 'preprocessing' | 'lm_engine'
   | 'judge_prompt' | 'judge' | 'eval' | 'cl_adversarial'
 
 // `page.getByText('dataset')` is a case-insensitive substring match by default, which

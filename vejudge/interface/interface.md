@@ -117,6 +117,11 @@ Every node shares the same chrome, regardless of category:
   green, separate from the "done" status color, so "currently executing" is never confused
   with "finished") and a thin **progress bar** directly under the header — see the Run
   controls section above for the determinate/indeterminate distinction.
+- **Run time** — a small elapsed-time badge next to the status dot: live-ticking while
+  `running`, then the final backend-measured value after. This is **generic** — the executor
+  stamps `meta.elapsed_ms` (+ `meta.start_offset_ms`) on *every* node's result centrally
+  (`server/executor.py::_run_node`), so all current and future node types get the badge with
+  no per-node code (see the timing contract under Secondary tab below).
 - **Execution-order badge** — top-left of the header, `[n]`: this node's 1-based position in
   the *most recently launched* run's actual scope, Jupyter-cell-style. Shown only for a node
   that was actually part of that run — a full-graph run badges every node; a per-node **Run**
@@ -146,7 +151,23 @@ Every node shares the same chrome, regardless of category:
   first unlocked node past the lock frontier. Implemented by generalizing the executor's
   self_only seed mechanism to a set of seeded ids: the run request carries `locked_node_ids` +
   `seed_run_id` (`server/schemas.py`, `routes/runs.py`, `executor.py`'s `seed_node_ids`).
-- **Double-click → secondary tab** — see each node's "Secondary tab" entry below.
+- **Double-click → secondary tab** — opens the secondary window, which has a **tab strip**:
+  a per-type **Details** tab (each node's bespoke visualization, documented per node below)
+  plus three **generic** tabs every node inherits automatically:
+  - **Inputs** — the raw value on each input socket, structured per the node's
+    `input_sockets`. Reconstructed client-side from incoming edges + upstream nodes' outputs
+    (fan-in sockets show a list); large values are summarized, not dumped.
+  - **Outputs** — the raw value on each output socket (`output_sockets`), from the last run
+    (live previews while running).
+  - **Timing** — a whole-run **waterfall** (every node's start offset + duration, this node
+    highlighted) plus, for loop nodes, a **per-item** breakdown from `meta.item_timings`.
+
+  **Enforced contract (why this is free for new nodes):** the three generic tabs are driven
+  by the static socket specs (`web/src/nodes/socketTypes.ts`) + the run store, and timing
+  comes from `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the
+  executor for every node, and optional `item_timings` that a loop node adds in its per-item
+  loop. A new node type therefore gets Inputs/Outputs/Timing tabs and the on-node run-time
+  badge with **no extra code**; it only writes a Details tab if it wants a bespoke view.
 
 **Groups** (ComfyUI-style, purely visual) — right-click empty canvas → **Add group here**
 drops a translucent, resizable rectangle *behind* the nodes with an editable title. Nodes
