@@ -24,10 +24,10 @@ test.describe('node I/O + timing tabs', () => {
     await runButton.click()
     await expect(runButton).toHaveText('Run', { timeout: 15000 })
 
-    // On-node elapsed badge: after a run, every node shows a run-time badge (dry-run still
-    // executes + times each node centrally).
+    // On-node elapsed time: after a run, every node shows its run time along the bottom
+    // (dry-run still executes + times each node centrally).
     const datasetNode = page.getByTestId(`rf__node-${DATASET}`)
-    await expect(datasetNode.locator('.rf-node-time-badge')).toBeVisible()
+    await expect(datasetNode.locator('.rf-node-time-footer')).toBeVisible()
 
     // Open the Dataset node's secondary window — the tab strip must be present.
     await datasetNode.dblclick()
@@ -47,18 +47,20 @@ test.describe('node I/O + timing tabs', () => {
     await expect(modal.locator('.io-socket-name', { hasText: 'raw_dataset' })).toBeVisible()
     await expect(modal.getByText('fan-in')).toBeVisible()
 
-    // Timing tab: the whole-run waterfall heading renders.
+    // Timing tab: both parts render — the system waterfall + this node's breakdown.
     await modal.getByRole('tab', { name: 'Timing' }).click()
-    await expect(modal.getByText(/Run waterfall/)).toBeVisible()
-    await expect(modal.getByText(/This node:/)).toBeVisible()
+    await expect(modal.getByText('System run waterfall')).toBeVisible()
+    await expect(modal.getByText('This node — detailed breakdown')).toBeVisible()
 
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(modal).toHaveCount(0)
 
-    // The Judge node (a loop node) reports a per-item breakdown in its Timing tab.
+    // The Judge node's Timing tab also shows both parts (its per-item breakdown appears
+    // when it ran items; the two-part structure is always present regardless).
     await page.getByTestId(`rf__node-${JUDGE}`).dblclick()
     await modal.getByRole('tab', { name: 'Timing' }).click()
-    await expect(modal.getByText(/Run waterfall/)).toBeVisible()
+    await expect(modal.getByText('System run waterfall')).toBeVisible()
+    await expect(modal.getByText('This node — detailed breakdown')).toBeVisible()
   })
 })
 

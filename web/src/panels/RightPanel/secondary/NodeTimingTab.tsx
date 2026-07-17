@@ -1,7 +1,10 @@
-// Generic Timing tab — every node inherits it. Two views:
-//  1) a whole-run WATERFALL: every node's run laid out by start offset + duration (this
-//     node highlighted), from the centrally-stamped meta.elapsed_ms / meta.start_offset_ms.
-//  2) a per-ITEM breakdown for loop nodes that report meta.item_timings (judge, calibration).
+// Generic Timing tab — every node inherits it. Two parts:
+//   1) SYSTEM WATERFALL — the big picture: every node's run laid out by start offset +
+//      duration (this node highlighted), from the centrally-stamped meta.start_offset_ms /
+//      meta.elapsed_ms.
+//   2) THIS NODE — the granular breakdown of the selected node's own run: per-item durations
+//      (+ summary stats) for loop nodes that report meta.item_timings, else its total time
+//      with a note that it's a single-phase node.
 import {
   Bar,
   BarChart,
@@ -29,7 +32,7 @@ export function NodeTimingTab({ node }: { node: VeNode }) {
   const nodes = useActiveGraphStore((s) => s.nodes)
   const typeById = new Map(nodes.map((n) => [n.id, n.type]))
 
-  // --- whole-run waterfall from every timed node ---
+  // --- Part 1: whole-run waterfall from every timed node ---
   const waterfall = Object.entries(lastNodeResults)
     .map(([id, r]) => {
       const meta = (r?.meta ?? {}) as Record<string, unknown>
@@ -42,27 +45,24 @@ export function NodeTimingTab({ node }: { node: VeNode }) {
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.offset - b.offset)
 
-  const thisResult = lastNodeResults[node.id]
-  const thisElapsed = (thisResult?.meta as Record<string, unknown> | undefined)?.elapsed_ms
-  const itemTimings = ((thisResult?.meta as Record<string, unknown> | undefined)?.item_timings ??
-    []) as ItemTiming[]
-  const items = [...itemTimings].sort((a, b) => b.ms - a.ms).slice(0, 40)
+  const thisMeta = (lastNodeResults[node.id]?.meta ?? {}) as Record<string, unknown>
+  const thisElapsed = typeof thisMeta.elapsed_ms === 'number' ? thisMeta.elapsed_ms : null
+  const itemTimings = (thisMeta.item_timings ?? []) as ItemTiming[]
+  const items = [...itemTimings].sort((a, b) => b.ms - a.ms)
+  const shown = items.slice(0, 40)
 
   if (waterfall.length === 0) {
     return <p className="empty-hint">No timing yet — run the graph to see per-node timings.</p>
   }
 
+  const total = items.reduce((s, i) => s + i.ms, 0)
+  const mean = items.length ? total / items.length : 0
+
   return (
     <div>
-      <div className="secondary-summary">
-        <div>
-          <strong>This node:</strong>{' '}
-          {typeof thisElapsed === 'number' ? fmtMs(thisElapsed) : '—'}
-        </div>
-        <div><strong>Nodes timed:</strong> {waterfall.length}</div>
-      </div>
-
-      <p className="schema-heading">Run waterfall (start offset → duration)</p>
+      {/* ---------- Part 1: system big picture ---------- */}
+      <p className="schema-heading">System run waterfall</p>
+      <p className="empty-hint">Every node by start offset → duration; this node highlighted.</p>
       <ResponsiveContainer width="100%" height={Math.max(120, waterfall.length * 34)}>
         <BarChart layout="vertical" data={waterfall} margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
           <XAxis type="number" tickFormatter={fmtMs} fontSize={10} />
@@ -70,7 +70,6 @@ export function NodeTimingTab({ node }: { node: VeNode }) {
           <Tooltip
             formatter={(v, key) => [fmtMs(Number(v)), key === 'elapsed' ? 'duration' : 'offset']}
           />
-          {/* transparent offset spacer + visible duration bar = a Gantt row */}
           <Bar dataKey="offset" stackId="t" fill="transparent" />
           <Bar dataKey="elapsed" stackId="t" radius={[2, 2, 2, 2]}>
             {waterfall.map((r) => (
@@ -80,13 +79,26 @@ export function NodeTimingTab({ node }: { node: VeNode }) {
         </BarChart>
       </ResponsiveContainer>
 
-      {items.length > 0 && (
+      {/* ---------- Part 2: this node's granular breakdown ---------- */}
+      <p className="schema-heading">This node — detailed breakdown</p>
+      <div className="secondary-summary">
+        <div><strong>Total:</strong> {thisElapsed != null ? fmtMs(thisElapsed) : '—'}</div>
+        {items.length > 0 && (
+          <>
+            <div><strong>Items:</strong> {items.length}</div>
+            <div><strong>Mean/item:</strong> {fmtMs(mean)}</div>
+            <div><strong>Slowest:</strong> {fmtMs(items[0].ms)}</div>
+          </>
+        )}
+      </div>
+
+      {items.length > 0 ? (
         <>
-          <p className="schema-heading">
-            Per-item breakdown ({itemTimings.length} items{itemTimings.length > 40 ? ', top 40' : ''})
+          <p className="empty-hint">
+            Per-item run time{items.length > 40 ? ' (top 40 slowest)' : ''}.
           </p>
-          <ResponsiveContainer width="100%" height={Math.max(120, items.length * 16)}>
-            <BarChart layout="vertical" data={items} margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={Math.max(120, shown.length * 16)}>
+            <BarChart layout="vertical" data={shown} margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
               <XAxis type="number" tickFormatter={fmtMs} fontSize={10} />
               <YAxis type="category" dataKey="item_id" width={140} fontSize={9} />
               <Tooltip formatter={(v) => [fmtMs(Number(v)), 'duration']} />
@@ -94,6 +106,11 @@ export function NodeTimingTab({ node }: { node: VeNode }) {
             </BarChart>
           </ResponsiveContainer>
         </>
+      ) : (
+        <p className="empty-hint">
+          Single-phase node — it runs as one step (no per-item loop), so its total run time
+          above is the full breakdown.
+        </p>
       )}
     </div>
   )

@@ -117,11 +117,12 @@ Every node shares the same chrome, regardless of category:
   green, separate from the "done" status color, so "currently executing" is never confused
   with "finished") and a thin **progress bar** directly under the header — see the Run
   controls section above for the determinate/indeterminate distinction.
-- **Run time** — a small elapsed-time badge next to the status dot: live-ticking while
-  `running`, then the final backend-measured value after. This is **generic** — the executor
-  stamps `meta.elapsed_ms` (+ `meta.start_offset_ms`) on *every* node's result centrally
-  (`server/executor.py::_run_node`), so all current and future node types get the badge with
-  no per-node code (see the timing contract under Secondary tab below).
+- **Run time** — a small, light-grey elapsed-time readout along the node's *bottom edge*
+  (kept off the title bar): live-ticking while `running`, then the final backend-measured
+  value after. This is **generic** — the executor stamps `meta.elapsed_ms` (+
+  `meta.start_offset_ms`) on *every* node's result centrally (`server/executor.py::_run_node`),
+  so all current and future node types get it with no per-node code (see the timing contract
+  under Secondary tab below).
 - **Execution-order badge** — top-left of the header, `[n]`: this node's 1-based position in
   the *most recently launched* run's actual scope, Jupyter-cell-style. Shown only for a node
   that was actually part of that run — a full-graph run badges every node; a per-node **Run**
@@ -159,8 +160,10 @@ Every node shares the same chrome, regardless of category:
     (fan-in sockets show a list); large values are summarized, not dumped.
   - **Outputs** — the raw value on each output socket (`output_sockets`), from the last run
     (live previews while running).
-  - **Timing** — a whole-run **waterfall** (every node's start offset + duration, this node
-    highlighted) plus, for loop nodes, a **per-item** breakdown from `meta.item_timings`.
+  - **Timing** — two parts: a whole-run **system waterfall** (every node's start offset +
+    duration, this node highlighted) for the big picture, then a **This node** breakdown —
+    per-item durations + summary stats from `meta.item_timings` for loop nodes, or the node's
+    total run time for a single-phase node.
 
   **Enforced contract (why this is free for new nodes):** the three generic tabs are driven
   by the static socket specs (`web/src/nodes/socketTypes.ts`) + the run store, and timing
