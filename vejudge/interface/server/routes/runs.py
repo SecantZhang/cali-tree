@@ -13,7 +13,14 @@ from .. import run_manager
 from ..graph import GraphError, ancestors_closure, topological_sort, validate_edges
 from ..registry import node_type_infos
 from ..run_registry import REGISTRY, RunHandle
-from ..schemas import GraphIn, NodeResultOut, RunRequest, RunStatusOut, to_graph_spec
+from ..schemas import (
+    DiskRunSummary,
+    GraphIn,
+    NodeResultOut,
+    RunRequest,
+    RunStatusOut,
+    to_graph_spec,
+)
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
@@ -190,9 +197,41 @@ def list_runs() -> list[str]:
     return REGISTRY.list_ids()
 
 
+# Declared BEFORE "/{run_id}" so "/disk" isn't captured as a run_id.
+@router.get("/disk", response_model=list[DiskRunSummary])
+def list_disk_runs() -> list[DiskRunSummary]:
+    """Past interface runs found on disk under logs/exps (survives server restart)."""
+    return [DiskRunSummary(**r) for r in run_manager.list_disk_runs()]
+
+
+@router.get("/{run_id}/graph")
+def get_run_graph(run_id: str) -> dict:
+    """The saved workflow_graph.json for a past run, to load into a tab (no canvas layout)."""
+    run_dir = run_manager.run_dir_for(run_id)
+    graph = run_manager.load_workflow_graph(run_dir)
+    if graph is None:
+        raise HTTPException(status_code=404, detail=f"No saved graph for run '{run_id}'")
+    return graph
+
+
 @router.get("/{run_id}", response_model=RunStatusOut)
 def get_run(run_id: str) -> RunStatusOut:
     handle = REGISTRY.get(run_id)
-    if handle is None:
+    if handle is not None:
+        return _status_out(handle)
+    # Not in the in-memory registry (e.g. after a restart) — reconstruct from the run dir so
+    # a past run's statuses + outputs can hydrate the UI (see run_manager.reconstruct_node_results).
+    run_dir = run_manager.run_dir_for(run_id)
+    if not run_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"No run '{run_id}'")
-    return _status_out(handle)
+    reco = run_manager.reconstruct_node_results(run_dir)
+    overall = (run_manager.load_run_status(run_dir) or {}).get("status", "interrupted")
+    return RunStatusOut(
+        run_id=run_id,
+        status=overall,
+        error=(run_manager.load_run_status(run_dir) or {}).get("error"),
+        node_results={
+            nid: NodeResultOut(**r) for nid, r in reco.get("node_results", {}).items()
+        },
+        order=reco.get("order", []),
+    )

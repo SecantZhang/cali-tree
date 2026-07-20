@@ -7,6 +7,17 @@ beforeEach(() => {
   store = createRunStore()
 })
 
+describe('attachRun (open a past run)', () => {
+  it('sets runId without going to running status (so useRunSocket hydrates it)', () => {
+    store.getState().beginRun('old', 2)
+    store.getState().attachRun('260720-10:00:00')
+    const s = store.getState()
+    expect(s.runId).toBe('260720-10:00:00')
+    expect(s.status).toBe('idle') // not 'running' — this is a hydrate, not a launch
+    expect(s.partialResults).toEqual({})
+  })
+})
+
 describe('runStore progress tracking', () => {
   it('beginRun resets progress state using the given node count', () => {
     store.getState().incrementNodeProgress('stale')
