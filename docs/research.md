@@ -106,3 +106,36 @@ labels; the peanut track has **13** (33 multi-model). We cannot fairly run Ruler
 won't self-flag), which is evidence for the critic. Also ablate ontology-weighting vs uniform.
 Deferred (not built): the `ridge_cdf` + `direct_rubrics` comparators, and a human study on
 rubric interpretability.
+
+## Future directions
+
+### Video reference database (retrieval-augmented judging) — parked
+
+**Idea:** index every item's videos (source assets + final edit) so we can look up
+structurally/perceptually **similar edits** (transition types, cut density, music/beat
+presence, pacing) and hand the judge similar, already-human-scored examples as **calibration
+anchors** at judgment time ("this transition pattern is like these, which humans scored ~3").
+This is retrieval-augmented / kNN-anchored judging.
+
+**Verdict: parked — not on the critical path, and premature at current scale.** Recorded here
+as a potential future direction, not a near-term task. Reasoning:
+- The core gap is **human-alignment/calibration**, not perception — the judge already sees the
+  full video, and preprocessing already extracts per-item pattern features (shot boundaries,
+  audio-event labels, blur/flicker, captions, transcript). A similarity DB doesn't directly
+  attack the calibration gap.
+- **Needs scale to work.** A retrieval pool of tens of items (peanut 13–54) returns neighbors
+  that aren't actually similar, adding noise, not grounding. Only meaningful at **VE-Bench
+  scale (~1,170)**.
+- It's a substantial new subsystem (edit/video embeddings + an index + transition/music
+  descriptors) orthogonal to the debate → rubric → semantic-tree thesis; high scope-creep risk.
+
+**If revisited, do it as a measurable ablation, not a silent pipeline change:** retrieve k
+human-scored neighbors as calibration anchors and A/B against the no-retrieval baseline on
+VE-Bench, only if semantic-tree calibration plateaus with a residual gap that "similar-example
+anchoring" plausibly closes.
+
+**Cheaper adjacent win (also future, lower-risk):** a corpus-level **pattern-feature store**
+(no similarity search) — a thin aggregation layer over the artifacts preprocessing already
+caches, keyed by item id — enabling corpus-wide analysis of which recurring edit patterns
+co-vary with human score. Those patterns become candidate **split features for the semantic
+decision tree** and candidate axes for debate-mined rubrics, directly serving the thesis.
