@@ -79,6 +79,40 @@ test.describe('secondary tabs', () => {
     await expect(modal).toHaveCount(0)
   })
 
+  test('the generic Inputs/Outputs tabs open with an API-sourced schema header', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+
+    // A Judge node has a rich contract: inputs samples/engine_config/judge_spec, output
+    // judge_result. The schema header must list them from the live /api/nodes schema, with
+    // no run needed (it's the contract, not a value).
+    await addNode(page, 'judge')
+    await page.getByTestId('rf__node-judge-1').dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+
+    await modal.getByRole('tab', { name: 'Inputs' }).click()
+    const inSchema = modal.locator('.socket-schema')
+    await expect(inSchema.getByText('Input schema')).toBeVisible()
+    for (const name of ['samples', 'engine_config', 'judge_spec']) {
+      await expect(inSchema.locator('.socket-schema-name', { hasText: new RegExp(`^${name}$`) })).toBeVisible()
+    }
+
+    await modal.getByRole('tab', { name: 'Outputs' }).click()
+    const outSchema = modal.locator('.socket-schema')
+    await expect(outSchema.getByText('Output schema')).toBeVisible()
+    await expect(outSchema.locator('.socket-schema-name', { hasText: /^judge_result$/ })).toBeVisible()
+
+    // The schema shows an expandable example payload per socket — expand it and read a
+    // real subfield of the judge_result example JSON (no run needed; it's the contract).
+    const example = outSchema.locator('.socket-schema-example details').first()
+    await example.locator('summary').click()
+    await expect(example.locator('.json-preview')).toContainText('overall_editing_score')
+
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modal).toHaveCount(0)
+  })
+
   test('the LM Engine secondary tab shows config, feeds, and a real (mock) endpoint health check', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)

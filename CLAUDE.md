@@ -176,10 +176,14 @@ Every module family (database loaders, LM engines, preprocessors) has an abstrac
 - Connects modules as a DAG. Each node corresponds to one module (db loader, preprocessor, judge, calibration).
 - Maps directly to the ComfyUI-style nodes in `interface/`.
 - **Every node** (current and future) auto-inherits generic **Inputs / Outputs / Timing**
-  secondary tabs + an on-node elapsed-time badge — driven by socket specs + `NodeRunResult.meta`
-  timing stamped centrally by the executor, so new node types get them with no extra code. See
-  the "Node anatomy" convention in `vejudge/interface/interface.md`; only add per-node code for
-  a bespoke **Details** tab.
+  secondary tabs + an on-node elapsed-time badge. The Inputs/Outputs tabs each open with an
+  **I/O schema header** (every socket as `name: type` + fan-in marker) sourced from the
+  **backend node-type API** (`GET /api/nodes` → each executor's `input_sockets`/`output_sockets`),
+  so it is the single source of truth: declaring those sockets on a new `NodeExecutor` is all
+  that's needed — the schema shows and **auto-reflects** future socket changes with no frontend
+  edit. Timing comes from `NodeRunResult.meta` stamped centrally by the executor. New node types
+  get all of this with no extra code. See the "Node anatomy" convention in
+  `vejudge/interface/interface.md`; only add per-node code for a bespoke **Details** tab.
 
 ---
 

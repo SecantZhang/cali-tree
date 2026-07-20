@@ -18,6 +18,123 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   judge_rule: 'var(--node-calibration)',
 }
 
+// A representative example payload per socket type, shown (collapsed, expandable) in the
+// Inputs/Outputs schema header so the contract reads as real JSON with its subfields, not just
+// a bare type name. Hand-maintained per socket *type* (like SOCKET_COLORS) — a brand-new type
+// simply has no example yet and falls back to name+type only. Kept faithful to the backend
+// shapes (JudgeSample, AggregatedHumanRecord, the eval report, etc.), abbreviated for clarity.
+export const SOCKET_EXAMPLES: Partial<Record<SocketType, unknown>> = {
+  // A source node's full item pool: item_id -> JudgeSample (dl_peanut_eval.curate shape).
+  raw_dataset: {
+    'travel_vlog::0::modelX': {
+      item_id: 'travel_vlog::0::modelX',
+      project: 'travel_vlog',
+      prompt_idx: 0,
+      model: 'modelX',
+      use_case: 'social_promo',
+      input: {
+        asset_filepaths: ['assets/clip_01.mp4', 'assets/clip_02.mp4', 'assets/music.mp3'],
+        user_prompt: 'Make a 30s upbeat travel promo with captions.',
+        target_duration: 30,
+        a_roll_transcript_text: 'Welcome to sunny Lisbon…',
+        prompt_index: 0,
+      },
+      output: {
+        output_video_path: 'rendered/travel_vlog/0/modelX.mp4',
+        assembly_json: { tracks: [{ clips: [{ src: 'clip_01.mp4', in: 0.0, out: 4.2 }] }] },
+      },
+    },
+  },
+  // The Dataset node's sampled subset — same JudgeSample shape as raw_dataset, fewer items.
+  samples: {
+    'travel_vlog::0::modelX': {
+      item_id: 'travel_vlog::0::modelX',
+      use_case: 'social_promo',
+      input: { user_prompt: 'Make a 30s upbeat travel promo…', target_duration: 30 },
+      output: { output_video_path: 'rendered/travel_vlog/0/modelX.mp4' },
+    },
+  },
+  // Human annotations: item_id -> AggregatedHumanRecord (per-rater raw_scores kept alongside
+  // the mean in `scores`).
+  labels: {
+    'travel_vlog::0::modelX': {
+      item_id: 'travel_vlog::0::modelX',
+      project: 'travel_vlog',
+      use_case: 'social_promo',
+      n_annotators: 3,
+      n_complete: 3,
+      scores: { story_flow_visuals: 3.67, video_addresses_prompt: 4.0 },
+      score_counts: { story_flow_visuals: 3, video_addresses_prompt: 3 },
+      raw_scores: { story_flow_visuals: [3, 4, 4], video_addresses_prompt: [4, 4, 4] },
+    },
+  },
+  // An LM Engine node's config.
+  engine_config: {
+    engine_kind: 'openai_compat',
+    model: 'gpt-4.1',
+    temperature: 0.0,
+    max_tokens: 1024,
+  },
+  // A Judge Prompt node's metric identity as data: a builtin M1–M6 preset…
+  judge_spec: {
+    kind: 'builtin',
+    metric_id: 'M3',
+    modality: 'text',
+    label: 'M3',
+    // …or a custom judge: { kind: "custom", spec_id, prompt_template, target_dimension, modality }
+  },
+  // A Judge node's output: item_id -> metric -> parsed/raw judge output.
+  judge_result: {
+    'travel_vlog::0::modelX': {
+      M3: {
+        parsed: {
+          overall_editing_score: 4,
+          rationale: 'Cuts are on-beat; one abrupt voiceover cutoff near 0:12.',
+          segments: [{ start: 0.0, end: 6.0, score: 4 }],
+        },
+        raw: '{"overall_editing_score": 4, …}',
+      },
+    },
+  },
+  // An Eval node's report: per-dimension agreement + the inter-rater human ceiling + raw rows.
+  metrics_report: {
+    n_items: 13,
+    n_aligned_rows: 13,
+    per_dimension: {
+      story_flow_visuals: { srcc: 0.62, plcc: 0.58, krcc: 0.49, qwk: 0.55, mae: 0.7, n: 13 },
+    },
+    human_ceiling: {
+      story_flow_visuals: { self_mae: 0.5, pairwise_mae: 0.8, n_items: 13, n_ratings: 39 },
+    },
+    rows: [{ item_id: 'travel_vlog::0::modelX', dimension: 'story_flow_visuals', human: 3.67, judge: 4 }],
+  },
+  // An adversarial-debate node's per-item calibrated results.
+  calibration_results: {
+    'travel_vlog::0::modelX': {
+      calibrated_score: 3.8,
+      optimized_prompt: 'Weigh abrupt voiceover cutoffs more heavily than visual ones.',
+      distilled_reasoning: 'Human penalized the 0:12 cutoff the judge overlooked.',
+      transcript: [
+        { role: 'judge', text: 'I score this 4/5…' },
+        { role: 'human_proxy', text: 'The abrupt cutoff should drop it to 3…' },
+      ],
+    },
+  },
+  // A dataset-wide (item-independent) calibration note.
+  general_calibration: {
+    corpus_note: 'Across this corpus, raters penalize abrupt voiceover cutoffs more than visual ones.',
+  },
+  // A Rule/Semantic Tree node's fitted report: mined rules + the tree + a held-out verdict.
+  judge_rule: {
+    rule_bank: [
+      { id: 'r1', question: 'Is there an abrupt voiceover cutoff?', concept: 'temporal_consistency' },
+    ],
+    tree: { feature: 'base_score', threshold: 3.5, left: { leaf: 2.5 }, right: { leaf: 4.1 } },
+    mae: { base: 0.9, bias: 0.8, rules_in_sample: 0.5, rules_loo: 0.7 },
+    verdict: 'Rules beat a plain bias correction held-out (LOO MAE 0.7 < 0.8).',
+  },
+}
+
 export interface NodeTypeSockets {
   input: Record<string, SocketType>
   output: Record<string, SocketType>
