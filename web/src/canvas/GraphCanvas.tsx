@@ -232,6 +232,21 @@ export function GraphCanvas() {
         onNodeContextMenu={openNodeMenu}
         onPaneContextMenu={openAddGroupMenu}
         onPaneClick={() => { selectNode(null); setMenu(null) }}
+        // Palette drag-and-drop: NodesTab items set 'application/vejudge-node' to the node
+        // type; drop it here to add the node where released (screen→flow coords via rfRef).
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes('application/vejudge-node')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+          }
+        }}
+        onDrop={(e) => {
+          const type = e.dataTransfer.getData('application/vejudge-node')
+          if (!type) return
+          e.preventDefault()
+          const pos = rfRef.current?.screenToFlowPosition({ x: e.clientX, y: e.clientY })
+          if (pos) activeGraphStore().getState().addNode(type, pos)
+        }}
         fitView
         // Configurable via the top bar's Settings menu (SettingsMenu.tsx) — pan-on-scroll
         // defaults to on, matching a trackpad's two-finger scroll to "move the board" rather

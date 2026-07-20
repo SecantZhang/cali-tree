@@ -63,6 +63,10 @@ export interface RunState {
   staleNodeIds: Set<string>
   setDryRun: (v: boolean) => void
   beginRun: (runId: string, totalNodes: number, isLive?: boolean) => void
+  // Point the tab at an existing (past) run without launching one: sets `runId` so
+  // useRunSocket resyncs + hydrates it from disk (terminal path), status filled by that
+  // resync. Distinct from beginRun (which sets status:'running' for a fresh launch).
+  attachRun: (runId: string) => void
   appendLog: (line: LogLine) => void
   setStatus: (status: RunStatus, error?: string | null) => void
   setLastNodeResults: (results: Record<string, NodeResultOut>) => void
@@ -105,6 +109,11 @@ export function createRunStore(): RunStoreApi {
       runId, status: 'running', error: null, logs: [], isLive, partialResults: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes, completedNodeIds: new Set(),
       runOrder: [],
+    }),
+
+    attachRun: (runId) => set({
+      runId, status: 'idle', error: null, logs: [], partialResults: {},
+      nodeProgress: {}, currentRunningNodeId: null,
     }),
 
     appendLog: (line) => set((s) => ({ logs: [...s.logs, line] })),

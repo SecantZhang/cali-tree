@@ -55,6 +55,13 @@ export function NodesTab() {
     <div
       key={n.type}
       className="node-palette-item"
+      // Click still adds at the next grid slot (keyboard/accessibility path); dragging drops
+      // the node where you release it on the canvas (GraphCanvas onDrop reads this payload).
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/vejudge-node', n.type)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
       onClick={() => handleAdd(n.type)}
       role="button"
       tabIndex={0}

@@ -15,7 +15,7 @@ Interface system so that users can directly use the interface to construct, run 
 The interface should be based on the idea of comfyui with each components being the nodes, parameters as the configuration for the node. We can connect the components to assemble a workflow. There are open/hidable left panel that contains the directory for the node/workflows/dataset.
 
 **Layout:**
-- **Left panel** (hidable) — three tabs: *Nodes* (palette, grouped by category, drag onto canvas), *Workflows* (saved graphs as JSON, one file per workflow), *Datasets* (browsable pointers into `data/` and `evaluation/` per `docs/data.md`, independent of any one graph).
+- **Left panel** (hidable) — four tabs: *Nodes* (palette, grouped by category; drag a node onto the canvas to place it at the cursor, or click to drop it at the next grid slot), *Workflows* (saved graphs as JSON, one file per workflow), *Runs* (past runs found under `logs/exps/`; open to inspect a reconstructed run or resume one from checkpoint — see § Loading a past run), *Datasets* (browsable pointers into `data/` and `evaluation/` per `docs/data.md`, independent of any one graph).
 - **Canvas (center)** — the node graph. Connections are typed sockets; a socket only connects to a compatible type (see Node anatomy below). Invalid connections are rejected inline, not at run time.
 - **Right panel** — inspector for the selected node: its parameters, current status, and a "view secondary tab" button.
 - **Bottom panel** — console/log, mirroring the run's `run.log` (and, when a node is selected, that node's slice of `llm-histories.log`) in real time.
@@ -708,3 +708,34 @@ workflow must round-trip to an equivalent CLI invocation — the interface is a 
 * **Cost Estimate / Dry Run** — any of the above with the dry-run toggle on; runs item matching
   and reports estimated call counts per Judge node without contacting the gateway. Equivalent to
   `run/estimate_cost.sh`.
+
+## Loading a past run
+
+The left panel's *Runs* tab lists every past run found under `logs/exps/*-exps` whose
+`run_config.json` marks it as an interface run (`benchmark == "interface_graph"`), newest first,
+with its status, workflow name, node count, and number of checkpointed judge calls. Two actions:
+
+* **Open (inspect)** — reconstructs the run into a fresh tab: the graph is loaded from the run
+  dir's `workflow_graph.json` (same node ids; positionless nodes auto-grid unless the run's
+  `workflow_name` still resolves to a saved workflow, in which case that layout is reused), and
+  per-node statuses + outputs hydrate through the normal run-socket path — `GET /api/runs/{id}`
+  now **falls back to disk** when the id isn't in the in-memory registry, so the entire existing
+  hydration works for a run from a previous server session with no new frontend code. Node
+  secondary tabs (Inputs/Outputs/Timing, Eval/Alignment reports) then read the reconstructed
+  results exactly as for a live run.
+* **Resume** — offered only for a run that stopped short (`error`/`stopped`/`interrupted`);
+  continues the existing disk-fresh `resume_from` path, re-executing the graph while skipping
+  per-item judge calls already in `judge_results.jsonl`. This is whole-graph resume, not
+  mid-node continuation.
+
+**How reconstruction works.** Each terminal run now persists a faithful `run_results.json`
+(`{order, node_results}`) alongside `run_status.json`; large collection outputs (e.g. a
+multi-thousand-item `raw_dataset`) are stored **summarized** (count + sample keys, matching the
+UI's own large-value summarization) to bound run-dir growth, while report/score outputs are
+stored in full. When `run_results.json` is present it is used verbatim. For older runs recorded
+before this landed, `reconstruct_node_results` does a best-effort rebuild: Eval-family
+`eval_*.json` / `alignment_report_*.json` / `rule_eval_*.json` files *are* the node's output;
+Judge nodes are reassembled from `judge_results.jsonl` keys (`<node_id>::<item>::<metric>`); other
+nodes get an inferred status (`done` if the overall run finished, else neutral) and empty
+outputs. These fidelity limits (absent source/dataset outputs, inferred statuses) are surfaced
+by the node tabs' existing empty states, not hidden.
