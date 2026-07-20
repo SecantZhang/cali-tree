@@ -63,6 +63,21 @@ def test_default_sampling_passes_every_item_through(make_ctx):
     }
 
 
+def test_fan_in_merges_multiple_source_pools(make_ctx):
+    # The executor delivers a fan-in socket as a list of raw_dataset dicts (one per wired
+    # source); the Dataset node merges them. Item ids are model-namespaced, so a peanut and
+    # a coconut source contribute distinct items with no collision.
+    peanut = _raw_dataset()
+    coconut = {
+        "prj-a::0::coconut": _raw_item("prj-a::0::coconut"),
+        "prj-c::0::coconut": _raw_item("prj-c::0::coconut"),
+    }
+    ctx = make_ctx(inputs={"raw_dataset": [peanut, coconut]})
+    result = DatasetNodeExecutor().run(ctx)
+    assert result.status == "done"
+    assert set(result.outputs["samples"]) == set(peanut) | set(coconut)
+
+
 def test_use_case_filter(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["speech-driven"]})
     result = DatasetNodeExecutor().run(ctx)

@@ -42,6 +42,28 @@ def spearman(x: Sequence[float], y: Sequence[float]) -> Optional[float]:
         return _rank_corr(xs, ys)
 
 
+def pearson(x: Sequence[float], y: Sequence[float]) -> Optional[float]:
+    """PLCC — linear correlation. Reported alongside SRCC for video-quality-assessment
+    comparability (VE-Bench and most VQA papers report both)."""
+    xs, ys = _clean_pairs(x, y)
+    if len(xs) < 3:
+        return None
+    try:
+        from scipy.stats import pearsonr
+
+        r, _ = pearsonr(xs, ys)
+        return None if (r is None or math.isnan(r)) else float(r)
+    except ImportError:
+        # Plain covariance/std fallback if scipy is absent.
+        n = len(xs)
+        mx, my = sum(xs) / n, sum(ys) / n
+        cov = sum((a - mx) * (b - my) for a, b in zip(xs, ys))
+        vx = sum((a - mx) ** 2 for a in xs)
+        vy = sum((b - my) ** 2 for b in ys)
+        denom = (vx * vy) ** 0.5
+        return None if denom == 0 else cov / denom
+
+
 def kendall(x: Sequence[float], y: Sequence[float]) -> Optional[float]:
     xs, ys = _clean_pairs(x, y)
     if len(xs) < 3:

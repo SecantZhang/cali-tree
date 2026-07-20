@@ -7,6 +7,7 @@ import { NodeChrome } from './NodeChrome'
 import { ParamField } from './ParamField'
 import type { ParamField as ParamFieldSchema } from './paramSchemas'
 import type { VeNodeData } from './types'
+import { useNodeElapsedMs } from './useNodeElapsed'
 
 interface SimpleParamNodeProps {
   id: string
@@ -55,6 +56,7 @@ export function SimpleParamNode({
   const priorRunId = useActiveRunStore((s) => s.runId)
   const runStatus = useActiveRunStore((s) => s.status)
   const lastRunNodeIds = useActiveRunStore((s) => s.lastRunNodeIds)
+  const elapsedMs = useNodeElapsedMs(id, data.status)
   const hasParams = Object.keys(schema).length > 0
 
   // Lock is only offerable once this node AND all its ancestors have a real result in the
@@ -142,6 +144,7 @@ export function SimpleParamNode({
       orderIndex={orderIndex}
       stale={stale}
       locked={data.locked}
+      elapsedMs={elapsedMs}
       onRun={handleRun}
       onRerun={handleRerun}
       onToggleLock={handleToggleLock}

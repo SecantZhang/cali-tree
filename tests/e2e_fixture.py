@@ -26,6 +26,7 @@ class FixturePaths:
     rendered_root: Path
     annotations_root: Path
     use_cases_path: Path
+    vebench_root: Path
 
 
 def build(root: Path) -> FixturePaths:
@@ -62,9 +63,34 @@ def build(root: Path) -> FixturePaths:
     use_cases_path.write_text(
         json.dumps({p: {"use_case": uc} for p, uc in USE_CASES.items()})
     )
+
+    # A tiny VE-Bench DB fixture (label.txt + edited/src videos), plus its MOS materialized
+    # as edit_quality humaneval JSON under the annotations root — so the vebench_source node
+    # + Dataset label lookup work in tests without the real 700MB dataset.
+    vebench_root = rendered_root / "ve-bench" / "VE-Bench-DB"
+    (vebench_root / "train_samples" / "edited").mkdir(parents=True, exist_ok=True)
+    (vebench_root / "train_samples" / "src").mkdir(parents=True, exist_ok=True)
+    _VEBENCH_ITEMS = {"001tokenflow_dog": 5.5, "02t2vzero_ship": 3.2}
+    (vebench_root / "label.txt").write_text(
+        "".join(f"{stem}.mp4|{mos}|edit prompt for {stem}\n" for stem, mos in _VEBENCH_ITEMS.items())
+    )
+    ve_ann = annotations_root / "vebench"
+    ve_ann.mkdir(parents=True, exist_ok=True)
+    for stem, mos in _VEBENCH_ITEMS.items():
+        (vebench_root / "train_samples" / "edited" / f"{stem}.mp4").write_text("x")
+        (vebench_root / "train_samples" / "src" / f"{stem}.mp4").write_text("x")
+        (ve_ann / f"vebench_{stem}_humaneval.json").write_text(
+            json.dumps({
+                "annotator": "vebench_mos", "project": stem, "model": "vebench",
+                "prompt_idx": 0, "cell_key": "prompt_0__vebench", "output_slot": 1,
+                "annotation": {"edit_quality": mos, "_complete": True},
+            })
+        )
+
     return FixturePaths(
         data_root=data_root, rendered_root=rendered_root,
         annotations_root=annotations_root, use_cases_path=use_cases_path,
+        vebench_root=vebench_root,
     )
 
 
@@ -79,6 +105,7 @@ def main(argv: "list[str] | None" = None) -> int:
         "rendered_root": str(paths.rendered_root),
         "annotations_root": str(paths.annotations_root),
         "use_cases_path": str(paths.use_cases_path),
+        "vebench_root": str(paths.vebench_root),
     }))
     return 0
 

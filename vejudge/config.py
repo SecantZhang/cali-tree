@@ -32,6 +32,11 @@ RENDERED_ROOT: Path = _env_path(
 HUMAN_ANNOTATIONS_ROOT: Path = _env_path(
     "VEJUDGE_HUMAN_ANNOTATIONS_ROOT", EVALUATION_ROOT / "human_annotations"
 )
+# VE-Bench DB (public text-driven video-editing quality set): label.txt +
+# train_samples/{edited,src}/*.mp4. Used by dl_vebench as a separate calibration track.
+VEBENCH_ROOT: Path = _env_path(
+    "VEJUDGE_VEBENCH_ROOT", DATA_ROOT / "ve-bench" / "VE-Bench-DB"
+)
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
 # Credentials entered manually via the interface's Settings modal — takes top precedence
 # over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient
@@ -59,6 +64,19 @@ MODEL_DIR_ALIASES: dict[str, str] = {
     "coconut": "coconut",
     "grapenut": "grapenut",
     "loopedit": "loopedit",
+}
+
+# On-disk rendered-output layout family per model (drives video_resolver dispatch; see
+# docs/data.md). Models share the human-annotation format but render to different trees:
+#   peanut   — videos/*prompt_{idx}_final.mp4 + notes/ + otio/  (discover via notes)
+#   coconut  — {project}/{NNN}/render.mp4 + timeline.otio + plan.md  (prompt_idx = NNN-1)
+#   grapenut — {project}/videos/{idx}_video.mp4 + otio/{idx}_timeline.otio
+# Unknown models fall back to the peanut layout.
+MODEL_LAYOUT: dict[str, str] = {
+    "peanut": "peanut",
+    "coconut": "coconut",
+    "grapenut": "grapenut",
+    "loopedit": "peanut",
 }
 
 # Soft warning threshold for base64 video uploads.

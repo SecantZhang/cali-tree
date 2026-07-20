@@ -3,7 +3,7 @@
 
 export type SocketType =
   | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
-  | 'metrics_report' | 'calibration_results'
+  | 'metrics_report' | 'calibration_results' | 'general_calibration' | 'judge_rule'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
@@ -14,6 +14,8 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   judge_result: 'var(--node-vejudge)',
   metrics_report: 'var(--node-eval)',
   calibration_results: 'var(--node-calibration)',
+  general_calibration: 'var(--node-calibration)',
+  judge_rule: 'var(--node-calibration)',
 }
 
 export interface NodeTypeSockets {
@@ -23,6 +25,9 @@ export interface NodeTypeSockets {
 
 export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   peanut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  coconut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  grapenut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  vebench_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
@@ -46,6 +51,9 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       // Optional: a cl_adversarial node's per-item calibrated results. When wired, each
       // item's own optimized_prompt is injected for that item's judge call only.
       calibration: 'calibration_results',
+      // Optional: a cl_adversarial node's item-independent corpus note, applied to every
+      // item's judge call (dataset-wide).
+      general_calibration: 'general_calibration',
     },
     output: { judge_result: 'judge_result' },
   },
@@ -65,8 +73,59 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       samples: 'samples', judge_result: 'judge_result', labels: 'labels',
       judge_engine: 'engine_config', human_engine: 'engine_config',
     },
-    output: { calibration_results: 'calibration_results' },
+    output: {
+      calibration_results: 'calibration_results',
+      general_calibration: 'general_calibration',
+    },
   },
+  // Mines reusable decision rules from an upstream cl_adversarial node's debates, has an
+  // independent critic answer them per item, and fits a decision tree [base + booleans]
+  // -> human score. Fit+report (in-sample + LOO MAE); terminal `judge_rule` output.
+  cl_rule_tree: {
+    input: {
+      samples: 'samples', calibration_results: 'calibration_results', labels: 'labels',
+      critic_engine: 'engine_config',
+    },
+    output: { judge_rule: 'judge_rule' },
+  },
+  // A standalone eval node that re-surfaces a Rule/Tree Calibration node's `judge_rule`
+  // report — the four-way MAE table (in-sample + held-out LOO), the mined rule bank, the
+  // fitted tree, and a verdict on whether the rules beat a plain bias correction held-out.
+  // Pure display (makes no calls); mirrors the Eval node's read-a-report role.
+  cl_rule_eval: {
+    input: { judge_rule: 'judge_rule' },
+    output: { comparison: 'metrics_report' },
+  },
+  // Frames an Eval node's metrics_report as SRCC/PLCC/KRCC + human ceiling vs published
+  // VE-Bench baselines. Pure display (node_eval), like cl_rule_eval.
+  alignment_report: {
+    input: { metrics_report: 'metrics_report' },
+    output: { comparison: 'metrics_report' },
+  },
+  // Ontology-weighted semantic decision tree — same Model Calibration fitter contract as
+  // cl_rule_tree (splits are concept-labeled and importance-weighted; see ontology.py).
+  cl_semantic_tree: {
+    input: {
+      samples: 'samples', calibration_results: 'calibration_results', labels: 'labels',
+      critic_engine: 'engine_config',
+    },
+    output: { judge_rule: 'judge_rule' },
+  },
+}
+
+// Static mirror of the backend's NodeExecutor.multi_input_sockets: input sockets that
+// accept fan-in (multiple incoming edges), keyed by node type. The Dataset node merges
+// several source nodes this way. Everything else stays one-edge-only.
+export const MULTI_INPUT_SOCKETS: Record<string, string[]> = {
+  dataset: ['raw_dataset'],
+}
+
+export function isMultiInputSocket(
+  nodeType: string | undefined,
+  socket: string | null | undefined,
+): boolean {
+  if (!nodeType || !socket) return false
+  return (MULTI_INPUT_SOCKETS[nodeType] ?? []).includes(socket)
 }
 
 export function isValidSocketConnection(

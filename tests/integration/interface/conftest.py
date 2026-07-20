@@ -37,6 +37,7 @@ def fixture_tree(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "RENDERED_ROOT", paths.rendered_root)
     monkeypatch.setattr(config, "HUMAN_ANNOTATIONS_ROOT", paths.annotations_root)
     monkeypatch.setattr(config, "USE_CASES_CONFIG", paths.use_cases_path)
+    monkeypatch.setattr(config, "VEBENCH_ROOT", paths.vebench_root)
     _use_cases.cache_clear()
     yield
     _use_cases.cache_clear()

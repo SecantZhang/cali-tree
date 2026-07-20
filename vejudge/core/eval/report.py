@@ -29,9 +29,10 @@ def per_dimension_agreement(
         h = [r["human"] for r in drows]
         j = [r["judge_raw"] for r in drows]
         per_dimension[dim] = {
-            "judge_signal": JUDGE_SIGNAL_LABEL[dim],
+            "judge_signal": JUDGE_SIGNAL_LABEL.get(dim, dim),
             "n": len(drows),
             "spearman": M.spearman(h, j),
+            "pearson": M.pearson(h, j),
             "kendall": M.kendall(h, j),
             "mae": M.mae(h, j),
             "qwk": M.quadratic_weighted_kappa(h, j),

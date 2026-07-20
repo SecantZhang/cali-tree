@@ -21,6 +21,7 @@ interface FixturePaths {
   rendered_root: string
   annotations_root: string
   use_cases_path: string
+  vebench_root: string
 }
 
 function waitForHttp(url: string, timeoutMs = 20000): Promise<void> {
@@ -92,6 +93,7 @@ export default async function globalSetup(): Promise<void> {
         VEJUDGE_RENDERED_ROOT: fixture.rendered_root,
         VEJUDGE_HUMAN_ANNOTATIONS_ROOT: fixture.annotations_root,
         VEJUDGE_USE_CASES_CONFIG: fixture.use_cases_path,
+        VEJUDGE_VEBENCH_ROOT: fixture.vebench_root,
         // Scratch areas — never the real repo's logs/, workflows/, or credentials file.
         VEJUDGE_WORKFLOWS_ROOT: path.join(tmpDir, 'workflows'),
         VEJUDGE_LOGS_ROOT: path.join(tmpDir, 'logs'),

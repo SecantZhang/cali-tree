@@ -103,6 +103,8 @@ def from_graph_spec(g: graph_mod.GraphSpec) -> GraphIn:
 class NodeTypeOut(BaseModel):
     type: str
     category: str
+    subcategory: Optional[str] = None
+    multi_input_sockets: list[str] = []
     input_sockets: dict[str, str]
     output_sockets: dict[str, str]
     param_schema: dict[str, Any]

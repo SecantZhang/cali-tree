@@ -186,29 +186,30 @@ describe('App shell', () => {
 
   it('editing a param inline on the node updates the same value the Inspector shows', async () => {
     renderApp()
-    fireEvent.click(await screen.findByText('peanut_source'))
+    fireEvent.click(await screen.findByText('dataset'))
 
-    // The node is expanded by default and shows the full param list inline — one "model"
-    // input on the node, one in the Inspector, both bound to the same store value.
-    const modelInputs = screen.getAllByDisplayValue('peanut')
-    expect(modelInputs.length).toBe(2)
-    fireEvent.change(modelInputs[0], { target: { value: 'coconut' } })
+    // The node is expanded by default and shows the full param list inline — sampling_mode
+    // defaults to 'unified', one select on the node and one in the Inspector, both bound to
+    // the same store value.
+    const modeSelects = screen.getAllByDisplayValue('unified')
+    expect(modeSelects.length).toBe(2)
+    fireEvent.change(modeSelects[0], { target: { value: 'stratified' } })
 
     // Inspector (right panel) reflects the same store value written by the inline edit.
-    const inspectorInputs = screen.getAllByDisplayValue('coconut')
-    expect(inspectorInputs.length).toBe(2) // one on the node, one in the Inspector
+    const inspectorSelects = screen.getAllByDisplayValue('stratified')
+    expect(inspectorSelects.length).toBe(2) // one on the node, one in the Inspector
   })
 
   it('collapsing a node hides its inline params behind a summary line', async () => {
     renderApp()
-    fireEvent.click(await screen.findByText('peanut_source'))
-    // Both the inline node and the Inspector show a "model" param label while expanded.
-    expect(screen.getAllByText('model').length).toBe(2)
+    fireEvent.click(await screen.findByText('dataset'))
+    // Both the inline node and the Inspector show a "sampling_ratio" param label while expanded.
+    expect(screen.getAllByText('sampling_ratio').length).toBe(2)
 
     fireEvent.click(screen.getByTitle('Collapse'))
     // Only the Inspector's copy remains — the node itself now shows the summary line.
-    expect(screen.getAllByText('model').length).toBe(1)
-    expect(screen.getByText('model: peanut')).toBeInTheDocument()
+    expect(screen.getAllByText('sampling_ratio').length).toBe(1)
+    expect(screen.getByText('sampling: unified')).toBeInTheDocument()
   })
 
   it('shows a green running border and a live progress bar while a node executes', async () => {

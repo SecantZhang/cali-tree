@@ -14,13 +14,14 @@ from __future__ import annotations
 from statistics import mean
 from typing import Any, Optional
 
-from ...core.calibration.debate import DebateConfig
+from ...core.calibration.debate import DebateConfig, render_corpus_calibration_prompt
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS, AggregatedHumanRecord
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ...postprocessing.align import ALIGNMENT
-from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
+from ..server.registry import NodeRunContext, NodeRunResult, register
 from ._concurrent_debate import run_concurrent_debates
+from ._templates import CalibrationProducerNode
 
 # Modality-appropriate engine default for the judge role (mirrors judge_node.py). The
 # human-proxy role is always plain text regardless of metric modality — debate turns
@@ -100,17 +101,11 @@ def _resolve_human_context(
 
 
 @register
-class ClAdversarialNodeExecutor(NodeExecutor):
+class ClAdversarialNodeExecutor(CalibrationProducerNode):
+    # Agent Calibration role — inherits the producer I/O contract (samples + judge_result +
+    # labels + judge/human engines -> calibration_results + general_calibration) from
+    # CalibrationProducerNode; see node_calibration._templates.
     node_type = "cl_adversarial"
-    category = "node_calibration"
-    input_sockets = {
-        "samples": "samples",
-        "judge_result": "judge_result",
-        "labels": "labels",
-        "judge_engine": "engine_config",
-        "human_engine": "engine_config",
-    }
-    output_sockets = {"calibration_results": "calibration_results"}
     param_schema = {
         "epsilon": {"type": "number", "default": 0.25},
         "max_rounds": {"type": "number", "default": 4, "min": 1},
@@ -187,7 +182,7 @@ class ClAdversarialNodeExecutor(NodeExecutor):
             # upstream Judge node's cost, already paid (or estimated) there.
             calls_per_item = max_rounds * 2
             return NodeRunResult(
-                outputs={"calibration_results": {}},
+                outputs={"calibration_results": {}, "general_calibration": ""},
                 meta={
                     "dry_run": True,
                     "n_items": len(dataset),
@@ -306,4 +301,14 @@ class ClAdversarialNodeExecutor(NodeExecutor):
 
         meta["n_items_no_judge_result"] = n_no_judge_result
         meta["n_items_unusable_anchor"] = n_unusable_anchor
-        return NodeRunResult(outputs={"calibration_results": per_item}, meta=meta)
+        # One item-independent calibration note distilling the failure modes that recur
+        # across this run's items — the generalizing artifact, meant to be applied to
+        # *unseen* items (unlike each per-item optimized_prompt, which re-judges its own
+        # item). Surfaced in meta rather than as a socket for now; a downstream Judge
+        # could inject it dataset-wide instead of per-item.
+        general = render_corpus_calibration_prompt(per_item.values())
+        meta["general_optimized_prompt"] = general  # kept in meta for the secondary tab
+        return NodeRunResult(
+            outputs={"calibration_results": per_item, "general_calibration": general},
+            meta=meta,
+        )

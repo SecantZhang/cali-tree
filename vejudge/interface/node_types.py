@@ -7,8 +7,15 @@ for the full node/workflow model and why the remaining node types aren't here ye
 """
 
 from .node_calibration.cl_adversarial_node import ClAdversarialNodeExecutor
+from .node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
+from .node_calibration.cl_semantic_tree_node import ClSemanticTreeNodeExecutor
+from .node_db.coconut_source_node import CoconutSourceNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
+from .node_db.grapenut_source_node import GrapenutSourceNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
+from .node_db.vebench_source_node import VeBenchSourceNodeExecutor
+from .node_eval.alignment_report_node import AlignmentReportNodeExecutor
+from .node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
 from .node_eval.eval_node import EvalNodeExecutor
 from .node_preprocessing.preprocessing_node import PreprocessingNodeExecutor
 from .node_vejudge.judge_node import JudgeNodeExecutor
@@ -17,11 +24,18 @@ from .node_vejudge.lm_engine_node import LMEngineNodeExecutor
 
 __all__ = [
     "PeanutSourceNodeExecutor",
+    "CoconutSourceNodeExecutor",
+    "GrapenutSourceNodeExecutor",
+    "VeBenchSourceNodeExecutor",
     "DatasetNodeExecutor",
     "PreprocessingNodeExecutor",
     "LMEngineNodeExecutor",
     "JudgePromptNodeExecutor",
     "JudgeNodeExecutor",
     "EvalNodeExecutor",
+    "AlignmentReportNodeExecutor",
+    "ClRuleEvalNodeExecutor",
     "ClAdversarialNodeExecutor",
+    "ClRuleTreeNodeExecutor",
+    "ClSemanticTreeNodeExecutor",
 ]

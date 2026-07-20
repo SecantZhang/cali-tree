@@ -74,4 +74,6 @@ class PeanutEvalLoader(DataLoader):
             use_case=use_case_for(project),
             notes_path=out.notes_path or "",
             output_video_path=out.video_path or "",
+            otio_path=out.otio_path or "",
+            plan_path=out.plan_path or "",
         )

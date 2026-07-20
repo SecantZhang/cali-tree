@@ -442,6 +442,51 @@ The benchmark joins the two: it judges a **rendered output video** (from `evalua
 against the **edit instruction + source material** (from `data/`), then compares the judge
 scores to the **human annotations** of the same video.
 
+### Rendered-output layouts (per model)
+
+Three models are human-annotated — **peanut, coconut, grapenut** (34 labeled items total:
+13 / 12 / 9). They share the annotation format but render to **different on-disk trees**
+under `RENDERED_ROOT/<alias>/<project>/`, so `video_resolver` dispatches on
+`config.MODEL_LAYOUT`:
+
+| model | layout | `prompt_idx N →` | assembly source |
+|---|---|---|---|
+| peanut | `videos/*prompt_{N}_final.mp4` + `notes/` + `otio/` | glob `prompt_{N}` | `notes.json` |
+| coconut | `{NNN}/render.mp4` + `timeline.otio` + `plan.md` | `{N+1:03d}/` (ordinal run subdir) | OTIO |
+| grapenut | `videos/{N}_video.mp4` + `otio/{N}_timeline.otio` | `{N}_video.mp4` | OTIO |
+
+Notes: coconut/grapenut have no `notes.json`, so the assembly comes from the OTIO timeline
+(`extract_assembly_from_otio`, best-effort; the video judge scores from the render
+regardless). The coconut ordinal mapping (`NNN → prompt NNN-1`) is inferred — the resolver
+warns if a project's run subdirs aren't contiguous `001..00N`. 33 of the 34 labeled items
+resolve with video (grapenut `prj-paris-2025` has no render). Source assets in `data/` are
+model-agnostic, so the edit instruction/transcript resolve for every model.
+
+### VE-Bench DB (public — a separate calibration track)
+
+`VEBENCH_ROOT` (default `data/ve-bench/VE-Bench-DB/`) holds the public VE-Bench quality set:
+**~1,170 edited videos from 8 text-driven-editing methods over 169 source videos, each with
+a human MOS (scale 1–10) from 24 annotators**. Layout:
+
+```
+label.txt                       # "<file>.mp4|<human_MOS>|<edit_prompt>" per line
+train_samples/edited/<file>.mp4  # the edited (output) video   -> output_video_path
+train_samples/src/<file>.mp4     # the source video (same stem) -> source_video_path asset
+```
+
+`dl_vebench.VeBenchLoader` maps each to a JudgeSample (item id `<stem>::0::vebench`, edit
+prompt → `user_prompt`); `materialize_vebench_labels()` writes each MOS as a per-item
+`*_humaneval.json` under `HUMAN_ANNOTATIONS_ROOT/vebench/` on the `edit_quality` dimension,
+so the standard Dataset node picks up VE-Bench labels by item id (no graph change). This is
+**appearance/content editing, not peanut's assembly editing** — a separate calibration track
+anchored on the single `edit_quality` MOS (its own 1–10 scale; calibration learns the map
+from the judge's score). VE-Bench ships only the aggregated MOS (no per-rater breakdown), so
+its `edit_quality` has one "annotator" and no inter-rater ceiling.
+
+Note: VEFX-Bench was evaluated but **not** ingested — its public release is source videos +
+instructions + a reward *model* (no released human scores or edited outputs), so it isn't a
+human-scored calibration set.
+
 ---
 
 ## 1. Source data — `data/<project>/`
