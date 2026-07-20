@@ -55,6 +55,16 @@ class DatasetNodeExecutor(NodeExecutor):
         # items" failure this guards against — a live run's Dataset sample missed every
         # labeled item even though 17/54 peanut items have one).
         "require_labels": {"type": "bool", "default": False},
+        # How multiple annotators' scores for the same video are combined into the `labels`
+        # output. mean (default) / median / max / min collapse to one point estimate per
+        # dimension; "none" does no aggregation — `scores` is left empty and the individual
+        # per-annotator ratings are exposed in `raw_scores` (Eval then scores the judge against
+        # each rater; calibration nodes require an aggregated method).
+        "aggregation_method": {
+            "type": "enum",
+            "options": ["mean", "median", "max", "min", "none"],
+            "default": "mean",
+        },
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
@@ -94,7 +104,11 @@ class DatasetNodeExecutor(NodeExecutor):
         # pre-sampling pool.
         records = load_human_annotations()
         use_case_by_project = {r.project: use_case_for(r.project) for r in records}
-        aggregated = aggregate_annotations(records, use_case_lookup=use_case_by_project)
+        aggregated = aggregate_annotations(
+            records,
+            use_case_lookup=use_case_by_project,
+            method=p.get("aggregation_method", "mean"),
+        )
         n_pool_labeled = sum(1 for iid in pool if iid in aggregated)
 
         if p.get("require_labels"):

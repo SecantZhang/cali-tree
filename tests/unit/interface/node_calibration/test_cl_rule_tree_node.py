@@ -87,6 +87,19 @@ def test_dry_run_estimates_without_calls(make_ctx):
     assert result.meta["estimated_calls"]["critic_calls"] == 2
 
 
+def test_unaggregated_labels_are_rejected(make_ctx):
+    # A Dataset node with aggregation_method="none" yields per-rater labels with no single
+    # anchor — the calibration node must reject them with a clear message, not fail opaquely.
+    items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0}
+    inputs = _inputs(items)
+    for rec in inputs["labels"].values():
+        rec.aggregation = "none"
+    ctx = make_ctx(inputs=inputs, dry_run=True)
+    result = ClRuleTreeNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "aggregation_method" in result.error and "none" in result.error
+
+
 def test_full_run_mines_bank_and_reports_mae(make_ctx):
     items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0, "c::0::peanut": 2.0}
     ctx = make_ctx(inputs=_inputs(items), dry_run=False, allow_live=True)

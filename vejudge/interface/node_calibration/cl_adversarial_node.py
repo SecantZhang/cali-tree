@@ -21,7 +21,7 @@ from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_liv
 from ...postprocessing.align import ALIGNMENT
 from ..server.registry import NodeRunContext, NodeRunResult, register
 from ._concurrent_debate import run_concurrent_debates
-from ._templates import CalibrationProducerNode
+from ._templates import CalibrationProducerNode, unaggregated_labels_error
 
 # Modality-appropriate engine default for the judge role (mirrors judge_node.py). The
 # human-proxy role is always plain text regardless of metric modality — debate turns
@@ -168,6 +168,8 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
                 "Engine Node's `engine_config` output)",
             )
         labels = ctx.inputs.get("labels")  # optional — only used for display/comparison
+        if (err := unaggregated_labels_error(labels)) is not None:
+            return NodeRunResult(status="error", error=err)
 
         max_rounds = max(1, int(p.get("max_rounds") or 4))
         config = DebateConfig(

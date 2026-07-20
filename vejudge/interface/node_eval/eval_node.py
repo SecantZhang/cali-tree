@@ -16,12 +16,56 @@ from __future__ import annotations
 
 from typing import Any
 
+from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...postprocessing.align import (
     ALIGNMENT,
     build_aligned_rows,
     diagnose_missing_rows,
+    judge_signal_for_dimension,
 )
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
+
+
+def build_per_rater_rows(
+    items: list[str],
+    labels: dict[str, Any],
+    judge_result: dict[str, Any],
+    *,
+    dimensions: frozenset[str],
+) -> list[dict[str, Any]]:
+    """`none`-aggregation variant of `build_aligned_rows`: one row per (item, dimension, RATER).
+
+    Instead of pairing the judge with a single aggregated human score, pair it with *each*
+    annotator's raw score (from ``AggregatedHumanRecord.raw_scores``) — so agreement stats are
+    computed judge-vs-each-rater. Mirrors `build_aligned_rows`'s row shape + skip logic.
+    """
+    dims = dimensions if dimensions is not None else HUMAN_DIMENSIONS
+    rows: list[dict[str, Any]] = []
+    for item_id in items:
+        agg = labels[item_id]
+        judge_results = judge_result.get(item_id, {})
+        raw_scores = getattr(agg, "raw_scores", {}) or {}
+        for dim in dims:
+            judge_score = judge_signal_for_dimension(judge_results, dim)
+            if judge_score is None:
+                continue
+            for rater_idx, human_score in enumerate(raw_scores.get(dim, [])):
+                rows.append({
+                    "item_id": item_id,
+                    "project": getattr(agg, "project", ""),
+                    "model": getattr(agg, "model", ""),
+                    "use_case": getattr(agg, "use_case", "unknown"),
+                    "dimension": dim,
+                    "rater": rater_idx,
+                    "human": human_score,
+                    "judge_raw": judge_score,
+                })
+    return rows
+
+
+def _labels_unaggregated(labels: dict[str, Any], items: list[str]) -> bool:
+    """True when the wired labels came from a Dataset node with aggregation_method="none"."""
+    return any(getattr(labels[i], "aggregation", "mean") == "none" for i in items)
 
 
 def dimensions_for_judge_result(judge_result: dict[str, Any]) -> frozenset[str]:
@@ -78,7 +122,14 @@ class EvalNodeExecutor(NodeExecutor):
 
         dimensions = dimensions_for_judge_result(judge_result)
         items = sorted(set(judge_result) & set(labels))
-        rows = build_aligned_rows(items, labels, judge_result, dimensions=dimensions)
+        # "none" aggregation → score the judge against each rater individually; otherwise
+        # against the single aggregated (mean/median/…) human score, as the CLI benchmark does.
+        unaggregated = _labels_unaggregated(labels, items)
+        rows = (
+            build_per_rater_rows(items, labels, judge_result, dimensions=dimensions)
+            if unaggregated
+            else build_aligned_rows(items, labels, judge_result, dimensions=dimensions)
+        )
         # Human ceiling: how far raters sit from their own item mean, per dimension. Read the
         # judge's per_dimension agreement against this — being within the inter-rater spread
         # is the noise floor. Sourced from the per-rater values kept on each label record.
@@ -93,6 +144,9 @@ class EvalNodeExecutor(NodeExecutor):
         report = {
             "n_items": len(items),
             "n_aligned_rows": len(rows),
+            # How the human labels were reduced upstream. "none" → each row is one rater
+            # (rows > items), so agreement stats are judge-vs-individual-rater, not vs-consensus.
+            "aggregation": "none" if unaggregated else "aggregated",
             "per_dimension": per_dimension_agreement(rows, dimensions=dimensions),
             "human_ceiling": ceiling,
             # Raw per-item (human, judge_raw) pairs — the Eval secondary tab plots these

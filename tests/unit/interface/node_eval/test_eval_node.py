@@ -23,6 +23,33 @@ def _judge_results(metric="M3"):
     }
 
 
+def _none_labels(dim="video_addresses_prompt", n_raters=3):
+    """Labels from a Dataset node with aggregation_method="none": no aggregate `scores`,
+    per-rater values in `raw_scores`, tagged aggregation="none"."""
+    return {
+        f"prj-x::{i}::peanut": AggregatedHumanRecord(
+            item_id=f"prj-x::{i}::peanut", project="prj-x", prompt_idx=i, model="peanut",
+            use_case="visual montage", aggregation="none",
+            scores={dim: None},
+            raw_scores={dim: [float(1 + (i % 5))] * n_raters},
+            n_annotators=n_raters,
+        )
+        for i in range(5)
+    }
+
+
+def test_none_aggregation_scores_judge_against_each_rater(make_ctx):
+    # 5 items × 3 raters → one aligned row per rater (15), not one per item (5).
+    ctx = make_ctx(inputs={"judge_result": _judge_results(), "labels": _none_labels(n_raters=3)})
+    result = EvalNodeExecutor().run(ctx)
+    assert result.status == "done"
+    report = result.outputs["metrics_report"]
+    assert report["aggregation"] == "none"
+    assert report["n_items"] == 5
+    assert report["n_aligned_rows"] == 15  # per-rater rows
+    assert report["per_dimension"]["video_addresses_prompt"]["n"] == 15
+
+
 def test_metrics_report_shape(make_ctx):
     ctx = make_ctx(inputs={"judge_result": _judge_results(), "labels": _labels()})
     result = EvalNodeExecutor().run(ctx)

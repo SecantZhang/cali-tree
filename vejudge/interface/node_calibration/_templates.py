@@ -25,11 +25,30 @@ not a member of this one.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar, Optional
 
 from ..server.registry import NodeExecutor
 
 CALIBRATION_CATEGORY = "node_calibration"
+
+# Calibration needs a single human anchor per item; a Dataset node with
+# aggregation_method="none" emits un-aggregated per-rater labels (scores=None), which have no
+# single target. All calibration nodes reject that upfront with the same clear message rather
+# than degrading silently / failing later with an opaque "no usable anchor" error.
+UNAGGREGATED_LABELS_ERROR = (
+    "This calibration node needs an aggregated human label per item, but the wired Dataset "
+    "node used aggregation_method='none' (per-rater labels with no single score). Set the "
+    "Dataset node's aggregation_method to mean/median/max/min."
+)
+
+
+def unaggregated_labels_error(labels: Optional[dict[str, Any]]) -> Optional[str]:
+    """Return the guard error string if `labels` is an un-aggregated ("none") set, else None."""
+    if not labels:
+        return None
+    if any(getattr(rec, "aggregation", "mean") == "none" for rec in labels.values()):
+        return UNAGGREGATED_LABELS_ERROR
+    return None
 
 
 class CalibrationProducerNode(NodeExecutor):

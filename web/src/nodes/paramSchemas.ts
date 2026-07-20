@@ -54,7 +54,16 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   grapenut_source: { projects: { type: 'list[string]', default: null } },
   // No params — loads the whole VE-Bench DB; sample/subset downstream in the Dataset node.
   vebench_source: {},
-  dataset: { ...SAMPLING_FIELDS },
+  dataset: {
+    ...SAMPLING_FIELDS,
+    // How multiple annotators' scores for the same video are combined into `labels`.
+    // mean/median/max/min collapse to one score per dimension; "none" does no aggregation
+    // (per-annotator scores kept in raw_scores; Eval scores the judge against each rater,
+    // calibration nodes require an aggregated method).
+    aggregation_method: {
+      type: 'enum', options: ['mean', 'median', 'max', 'min', 'none'], default: 'mean',
+    },
+  },
   preprocessing: {
     artifact_types: { type: 'list[enum]', options: PREPROCESSING_ARTIFACT_TYPES, default: null },
     input_strategy: { type: 'enum', options: ['A', 'B', 'C', 'D', 'E'], default: 'A' },

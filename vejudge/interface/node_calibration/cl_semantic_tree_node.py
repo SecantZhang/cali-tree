@@ -36,7 +36,7 @@ from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ..server.registry import NodeRunContext, NodeRunResult, register
-from ._templates import CalibrationFitterNode
+from ._templates import CalibrationFitterNode, unaggregated_labels_error
 from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _resolve_human_context
 from .cl_rule_tree_node import _DEFAULT_ENGINE_KIND, _judge_rationale
 
@@ -81,6 +81,8 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                     status="error",
                     error=f"Semantic Tree Calibration Node requires a '{name}' input.",
                 )
+        if (err := unaggregated_labels_error(labels)) is not None:
+            return NodeRunResult(status="error", error=err)
 
         overlap = sorted(set(samples) & set(calibration_results))
         usable_cr = {
