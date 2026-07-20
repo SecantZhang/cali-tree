@@ -117,6 +117,12 @@ Every node shares the same chrome, regardless of category:
   green, separate from the "done" status color, so "currently executing" is never confused
   with "finished") and a thin **progress bar** directly under the header — see the Run
   controls section above for the determinate/indeterminate distinction.
+- **Run time** — a small, light-grey elapsed-time readout along the node's *bottom edge*
+  (kept off the title bar): live-ticking while `running`, then the final backend-measured
+  value after. This is **generic** — the executor stamps `meta.elapsed_ms` (+
+  `meta.start_offset_ms`) on *every* node's result centrally (`server/executor.py::_run_node`),
+  so all current and future node types get it with no per-node code (see the timing contract
+  under Secondary tab below).
 - **Execution-order badge** — top-left of the header, `[n]`: this node's 1-based position in
   the *most recently launched* run's actual scope, Jupyter-cell-style. Shown only for a node
   that was actually part of that run — a full-graph run badges every node; a per-node **Run**
@@ -146,7 +152,25 @@ Every node shares the same chrome, regardless of category:
   first unlocked node past the lock frontier. Implemented by generalizing the executor's
   self_only seed mechanism to a set of seeded ids: the run request carries `locked_node_ids` +
   `seed_run_id` (`server/schemas.py`, `routes/runs.py`, `executor.py`'s `seed_node_ids`).
-- **Double-click → secondary tab** — see each node's "Secondary tab" entry below.
+- **Double-click → secondary tab** — opens the secondary window, which has a **tab strip**:
+  a per-type **Details** tab (each node's bespoke visualization, documented per node below)
+  plus three **generic** tabs every node inherits automatically:
+  - **Inputs** — the raw value on each input socket, structured per the node's
+    `input_sockets`. Reconstructed client-side from incoming edges + upstream nodes' outputs
+    (fan-in sockets show a list); large values are summarized, not dumped.
+  - **Outputs** — the raw value on each output socket (`output_sockets`), from the last run
+    (live previews while running).
+  - **Timing** — two parts: a whole-run **system waterfall** (every node's start offset +
+    duration, this node highlighted) for the big picture, then a **This node** breakdown —
+    per-item durations + summary stats from `meta.item_timings` for loop nodes, or the node's
+    total run time for a single-phase node.
+
+  **Enforced contract (why this is free for new nodes):** the three generic tabs are driven
+  by the static socket specs (`web/src/nodes/socketTypes.ts`) + the run store, and timing
+  comes from `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the
+  executor for every node, and optional `item_timings` that a loop node adds in its per-item
+  loop. A new node type therefore gets Inputs/Outputs/Timing tabs and the on-node run-time
+  badge with **no extra code**; it only writes a Details tab if it wants a bespoke view.
 
 **Groups** (ComfyUI-style, purely visual) — right-click empty canvas → **Add group here**
 drops a translucent, resizable rectangle *behind* the nodes with an editable title. Nodes
@@ -357,9 +381,49 @@ Node parameters: **preset** (M1–M6 or `custom`); the custom-only fields (**mod
 **system**/**user_template**, **expected_fields**, **score_path**, **target_dimension**,
 **spec_id**/**label**) are shown only when preset is `custom`.
 
+### Calibration sub-categories (roles)
+
+The `node_calibration` category splits into two **role sub-categories** (a node declares
+one via `NodeExecutor.subcategory`; the palette renders them as sub-folders). Each role has
+**one unified I/O contract**, defined once as an abstract template in
+`node_calibration/_templates.py` — concrete nodes subclass a template and inherit its
+sockets rather than declaring their own, so every node in a sub-category shares the same
+input/output shape and new implementations conform by construction. (Nodes elsewhere leave
+`subcategory = None` and render flat under their category.)
+
+- **Agent Calibration** (`subcategory="agent"`, `CalibrationProducerNode`) — *producers*.
+  Run LLM agents (a judge-vs-human-proxy debate) over a judged dataset to generate a
+  calibration signal. Contract: `samples + judge_result + labels + judge_engine +
+  human_engine` → `calibration_results + general_calibration`. Member: Adversarial
+  Calibration.
+- **Model Calibration** (`subcategory="model"`, `CalibrationFitterNode`) — *fitters*.
+  Consume a producer's `calibration_results` and fit an interpretable calibration model (a
+  rule/decision tree today; other `Calibrator` variants next). Contract: `samples +
+  calibration_results + labels + critic_engine` → `judge_rule` (the fitted model/rule).
+  Member: Rule/Tree Calibration.
+
+A downstream evaluator (Rule Comparison, `node_eval`) reads a fitter's `judge_rule`. If a
+new calibration node genuinely needs a different I/O shape, that is the signal it is a new
+*role* (a new template), not a member of an existing one.
+
+**Model Calibration members (fitters):**
+- **Rule/Tree Calibration** (`cl_rule_tree`) — mines free-text `qN` rules, an independent
+  critic answers them, fits a plain CART over `[base_score, q1..qK]`.
+- **Semantic Tree Calibration** (`cl_semantic_tree`) — an ontology-grounded variant. Its
+  features are concept-labeled — `fm:<concept>` counts (from each item's
+  `failure_mode_summary` over the fixed failure-mode taxonomy) plus `rule:<concept>` critic
+  booleans (each mined rule tagged to its taxonomy concept) — and it fits an
+  **ontology-weighted** decision tree (`SemanticDecisionTreeCalibrator`): split gain is
+  `variance_reduction × concept_importance`, where importance comes from the calibration
+  **knowledge base** (`vejudge/core/calibration/ontology.py`, built from
+  `FAILURE_MODE_TAXONOMY` + `_TENDENCY` + the `ALIGNMENT` dimension crosswalk). Its
+  `judge_rule` report adds a `semantic` comparator so the Rule Comparison node shows it
+  head-to-head with the CART baseline on the same features. Same fitter I/O contract as
+  `cl_rule_tree`; shares its secondary tab.
+
 #### Adversarial Calibration Node
 
-*Category: `node_calibration`*
+*Category: `node_calibration` · Sub-category: Agent Calibration (producer)*
 
 Description: runs a bounded judge-vs-human-proxy debate over a dataset
 (`vejudge/core/calibration/debate/`, wired via `vejudge/interface/node_calibration/`) to
@@ -593,6 +657,28 @@ invalid/skipped judge result, a non-numeric score, etc.), `meta.diagnostics` exp
 exactly why per dimension instead of leaving the panel silently empty. A per-category bar
 chart and a worst-disagreement item list (drilling through to the originating Judge
 node's rationale) are not implemented yet.
+
+The metrics table now labels the correlations with the VQA-standard **SRCC / PLCC / KRCC**
+(Spearman / Pearson / Kendall), so they read directly against papers like VE-Bench.
+
+#### Alignment Report Node
+
+*Category: `node_eval`*
+
+Description: a **presentation/benchmark** node (like Rule Comparison) — it consumes an Eval
+node's `metrics_report` and frames the judge's human-alignment the way VQA papers do:
+per-dimension **SRCC / PLCC / KRCC + MAE** beside the **inter-rater human ceiling** (from the
+report's `human_ceiling`), plus the **published VE-Bench baselines** (CLIP-F/PickScore →
+DOVER/FastVQA/StableVQA → the trained VE-Bench QA) as a reference band, and a one-line verdict
+placing the judge's best-dimension SRCC among them. Recomputes nothing (the Eval node did the
+correlations); makes no gateway calls.
+
+Input: `metrics_report` (from an Eval node). Output: `comparison` (the framed report).
+
+Secondary tab: the "our judge" SRCC/PLCC/KRCC + human-ceiling table, the VE-Bench reference
+table, and the verdict. The VE-Bench baselines are a fixed published reference (only directly
+comparable when evaluating VE-Bench itself); it's a separate calibration/benchmark track from
+the peanut assembly metrics.
 
 ## Workflows
 

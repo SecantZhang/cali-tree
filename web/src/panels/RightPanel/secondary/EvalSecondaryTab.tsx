@@ -12,6 +12,7 @@ interface DimensionReport {
   judge_signal: string
   n: number
   spearman: number | null
+  pearson: number | null
   kendall: number | null
   mae: number | null
   qwk: number | null
@@ -155,11 +156,14 @@ export function EvalSecondaryTab({ node }: { node: VeNode }) {
       {dims.length > 0 && (
         <table className="metrics-table">
           <thead>
+            {/* VQA-standard names (SRCC/PLCC/KRCC) so these read directly against papers
+                like VE-Bench; SRCC=Spearman, PLCC=Pearson, KRCC=Kendall. */}
             <tr>
               <th>Dimension</th>
               <th>n</th>
-              <th>Spearman</th>
-              <th>Kendall</th>
+              <th title="Spearman rank correlation">SRCC</th>
+              <th title="Pearson linear correlation">PLCC</th>
+              <th title="Kendall rank correlation">KRCC</th>
               <th>MAE</th>
               <th>QWK</th>
             </tr>
@@ -170,6 +174,7 @@ export function EvalSecondaryTab({ node }: { node: VeNode }) {
                 <td>{dim}</td>
                 <td>{d.n}</td>
                 <td>{fmt(d.spearman)}</td>
+                <td>{fmt(d.pearson)}</td>
                 <td>{fmt(d.kendall)}</td>
                 <td>{fmt(d.mae)}</td>
                 <td>{fmt(d.qwk)}</td>

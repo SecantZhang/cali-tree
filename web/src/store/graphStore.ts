@@ -10,7 +10,7 @@ import {
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { defaultParamsFor } from '../nodes/paramSchemas'
-import { isValidSocketConnection } from '../nodes/socketTypes'
+import { isMultiInputSocket, isValidSocketConnection } from '../nodes/socketTypes'
 import type { VeNodeData } from '../nodes/types'
 
 // The wire format shared with the backend (server/schemas.py's GraphIn). position/size
@@ -157,9 +157,19 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
       ) {
         return
       }
-      // No fan-in: a new edge into a target socket replaces any existing one there.
-      const withoutConflicting = edges.filter(
-        (e) => !(e.target === connection.target && e.targetHandle === connection.targetHandle),
+      // A normal target socket holds one edge — a new edge replaces any existing one there.
+      // A fan-in socket (e.g. Dataset's raw_dataset) keeps them all; we only drop an exact
+      // duplicate (same source handle → same target handle).
+      const multi = isMultiInputSocket(targetType, connection.targetHandle)
+      const withoutConflicting = edges.filter((e) =>
+        multi
+          ? !(
+              e.source === connection.source &&
+              e.sourceHandle === connection.sourceHandle &&
+              e.target === connection.target &&
+              e.targetHandle === connection.targetHandle
+            )
+          : !(e.target === connection.target && e.targetHandle === connection.targetHandle),
       )
       const newEdge: Edge = {
         id: edgeId({

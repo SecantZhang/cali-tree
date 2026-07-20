@@ -13,9 +13,12 @@ from vejudge.lm_engine.creds import PlutoCreds
 
 # A superset response satisfying D1's and D2's debate-turn schemas at once —
 # validate_judge_output only checks for the presence of each schema's required keys.
+# Cites a real taxonomy key so the debate yields a non-empty failure_mode_summary — the
+# de-leaked optimized_prompt is built purely from flagged tendencies (calibrated_result.
+# render_optimized_prompt_addendum), so without one it would be "".
 _CANNED = {
     "score_1_to_5": 3, "revised": False, "evidence": [],
-    "agrees_with_judge": True, "cited_failure_modes": [],
+    "agrees_with_judge": True, "cited_failure_modes": ["overconfident_rationale"],
     "reasoning_lines": ["looks fine"],
 }
 
@@ -185,7 +188,9 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     assert r["original_score"] == 3.0
     assert r["final_score"] == 3.0
     assert r["converged"] is True
+    # De-leaked: general tendencies only, no revised/target score, no "→".
     assert "optimized_prompt" in r and r["optimized_prompt"]
+    assert "tendency to" in r["optimized_prompt"] and "→" not in r["optimized_prompt"]
     assert "reasoning" in r and r["reasoning"]
     assert "transcript" in r and r["transcript"]["turns"]
     assert r["human_scores"] == {}  # no labels wired

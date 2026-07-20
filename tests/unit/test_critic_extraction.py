@@ -1,0 +1,63 @@
+"""Offline tests for the independent-critic rule-boolean answering (no LM calls)."""
+
+import json
+
+from vejudge.core.calibration.debate.eval.critic_extraction import (
+    build_critic_prompt,
+    extract_critic_features,
+)
+
+
+class _ScriptedEngine:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def generate(self, prompt, media_inputs=None, schema=None, *, system=None, model=None):
+        return {"content": json.dumps(self.payload)}
+
+
+_SAMPLE = {"item_id": "prj-x::0::peanut", "input": {"user_prompt": "assemble the montage"},
+           "output": {"assembly_json": {"clips": ["a", "b"]}}}
+_QUESTIONS = [
+    {"question": "Does the judge penalize user-requested repetition?", "raises_score_when": "no"},
+    {"question": "Does the judge penalize an unstated constraint?", "raises_score_when": "no"},
+]
+
+
+def test_prompt_frames_auditing_not_rescoring_and_lists_questions():
+    prompt = build_critic_prompt(_SAMPLE, "the judge said the audio was repetitive", _QUESTIONS)
+    assert "auditing" in prompt.lower() or "audit" in prompt.lower()
+    assert "decision_answers" in prompt
+    assert "q1" in prompt and "q2" in prompt
+    assert "assemble the montage" in prompt  # item context present
+    assert "the judge said the audio was repetitive" in prompt  # rationale present
+
+
+def test_independent_critic_can_flag_the_judge_unlike_a_cold_self_answer():
+    # The critic answers q1=false -> matches raises_when 'no' -> oriented 1 (the
+    # score-raising condition is present). q2 omitted -> missing/0.
+    eng = _ScriptedEngine({"decision_answers": {"q1": False}})
+    feats = extract_critic_features(
+        sample=_SAMPLE, judge_rationale="...", questions=_QUESTIONS, critic_engine=eng,
+    )
+    assert feats["booleans"] == [1, 0]
+    assert feats["missing"] == ["q2"]
+
+
+def test_critic_call_failure_yields_all_zero_not_a_crash():
+    class Boom:
+        def generate(self, *a, **k):
+            raise RuntimeError("gateway down")
+
+    feats = extract_critic_features(
+        sample=_SAMPLE, judge_rationale="...", questions=_QUESTIONS, critic_engine=Boom(),
+    )
+    assert feats["booleans"] == [0, 0]
+    assert feats["missing"] == ["q1", "q2"]
+
+
+def test_no_questions_is_empty():
+    feats = extract_critic_features(
+        sample=_SAMPLE, judge_rationale="...", questions=[], critic_engine=_ScriptedEngine({}),
+    )
+    assert feats == {"booleans": [], "raw_answers": {}, "missing": []}

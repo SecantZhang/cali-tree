@@ -13,13 +13,20 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useMemo, useRef, useState } from 'react'
 import { ClAdversarialNode } from '../nodes/ClAdversarialNode'
+import { AlignmentReportNode } from '../nodes/AlignmentReportNode'
+import { ClRuleEvalNode } from '../nodes/ClRuleEvalNode'
+import { ClRuleTreeNode } from '../nodes/ClRuleTreeNode'
+import { ClSemanticTreeNode } from '../nodes/ClSemanticTreeNode'
 import { DatasetNode } from '../nodes/DatasetNode'
 import { EvalNode } from '../nodes/EvalNode'
 import { GroupNode } from '../nodes/GroupNode'
 import { JudgeNode } from '../nodes/JudgeNode'
 import { JudgePromptNode } from '../nodes/JudgePromptNode'
 import { LMEngineNode } from '../nodes/LMEngineNode'
+import { CoconutSourceNode } from '../nodes/CoconutSourceNode'
+import { GrapenutSourceNode } from '../nodes/GrapenutSourceNode'
 import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
+import { VeBenchSourceNode } from '../nodes/VeBenchSourceNode'
 import { PreprocessingNode } from '../nodes/PreprocessingNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
@@ -31,13 +38,20 @@ import { CanvasContextMenu, type ContextMenuItem } from './CanvasContextMenu'
 
 const NODE_TYPES = {
   peanut_source: PeanutSourceNode,
+  coconut_source: CoconutSourceNode,
+  grapenut_source: GrapenutSourceNode,
+  vebench_source: VeBenchSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
   lm_engine: LMEngineNode,
   judge_prompt: JudgePromptNode,
   judge: JudgeNode,
   eval: EvalNode,
+  cl_rule_eval: ClRuleEvalNode,
+  alignment_report: AlignmentReportNode,
   cl_adversarial: ClAdversarialNode,
+  cl_rule_tree: ClRuleTreeNode,
+  cl_semantic_tree: ClSemanticTreeNode,
   group: GroupNode,
 }
 

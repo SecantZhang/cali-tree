@@ -63,13 +63,21 @@ interface NodeChromeProps {
   // SimpleParamNode) — locking freezes results + predecessors, unlocking cascades forward.
   onToggleLock?: () => void
   lockDisabledReason?: string | null
+  // Elapsed run time (ms) for a small on-node badge — shown live-ticking while running, then
+  // the final backend-measured value once done (see SimpleParamNode). Generic across all
+  // node types (executor stamps meta.elapsed_ms centrally).
+  elapsedMs?: number | null
   children?: ReactNode
+}
+
+function fmtElapsed(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`
 }
 
 export function NodeChrome({
   title, color, status, error, collapsed, onToggleCollapse, progress, sockets, selected,
   socketZoneHeight, orderIndex, stale, locked, onRun, onRerun, runDisabledReason,
-  rerunDisabledReason, onToggleLock, lockDisabledReason, children,
+  rerunDisabledReason, onToggleLock, lockDisabledReason, elapsedMs, children,
 }: NodeChromeProps) {
   const running = status === 'running'
   return (
@@ -150,6 +158,14 @@ export function NodeChrome({
       </div>
       {running && <ProgressBar progress={progress ?? { completed: 0, total: null }} className="node-progress-bar" />}
       <div className="rf-node-body">{children}</div>
+      {typeof elapsedMs === 'number' && (
+        <div
+          className={`rf-node-time-footer${running ? ' is-running' : ''}`}
+          title={running ? 'Elapsed (running)' : 'Last run time'}
+        >
+          {fmtElapsed(elapsedMs)}
+        </div>
+      )}
     </div>
   )
 }

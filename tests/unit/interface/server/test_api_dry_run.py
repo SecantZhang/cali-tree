@@ -62,9 +62,20 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
     assert resp.status_code == 200
     types = {n["type"] for n in resp.json()}
     assert types == {
-        "peanut_source", "dataset", "preprocessing", "lm_engine",
-        "judge_prompt", "judge", "eval", "cl_adversarial",
+        "peanut_source", "coconut_source", "grapenut_source", "vebench_source",
+        "dataset", "preprocessing", "lm_engine",
+        "judge_prompt", "judge", "eval", "alignment_report", "cl_rule_eval",
+        "cl_adversarial", "cl_rule_tree", "cl_semantic_tree",
     }
+
+
+def test_node_types_expose_calibration_subcategories(client):
+    by_type = {n["type"]: n for n in client.get("/api/nodes").json()}
+    assert by_type["cl_adversarial"]["subcategory"] == "agent"
+    assert by_type["cl_rule_tree"]["subcategory"] == "model"
+    assert by_type["cl_semantic_tree"]["subcategory"] == "model"
+    # Nodes outside a sub-folder report null, so the palette renders them flat.
+    assert by_type["judge"]["subcategory"] is None
 
 
 def test_workflow_save_load_round_trip(client):

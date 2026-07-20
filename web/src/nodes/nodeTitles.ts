@@ -4,13 +4,20 @@
 // type isn't listed (e.g. a future node type not yet added here).
 export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   peanut_source: 'Peanut Source',
+  coconut_source: 'Coconut Source',
+  grapenut_source: 'Grapenut Source',
+  vebench_source: 'VE-Bench Source',
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
   lm_engine: 'LM Engine',
   judge_prompt: 'Judge Prompt',
   judge: 'Judge',
   eval: 'Eval',
+  cl_rule_eval: 'Rule Comparison',
+  alignment_report: 'Alignment Report',
   cl_adversarial: 'Adversarial Calibration',
+  cl_rule_tree: 'Rule/Tree Calibration',
+  cl_semantic_tree: 'Semantic Tree Calibration',
 }
 
 export function nodeTitle(type: string | undefined): string {

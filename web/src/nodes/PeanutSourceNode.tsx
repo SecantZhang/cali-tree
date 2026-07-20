@@ -15,7 +15,7 @@ export function PeanutSourceNode({ id, data, selected }: NodeProps) {
       title="Peanut Source"
       color="var(--node-db)"
       schema={NODE_PARAM_SCHEMAS.peanut_source}
-      summaryLine={(p) => `model: ${p.model ?? 'peanut'}`}
+      summaryLine={() => 'model: peanut'}
       sockets={
         <SocketHandle
           kind="source" id="raw_dataset" label="raw_dataset" top={socketTop(0, 1)}

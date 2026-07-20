@@ -23,6 +23,9 @@ HUMAN_DIMENSIONS: list[str] = [
     "section_placement_middle",
     "section_placement_closing",
     "video_addresses_prompt",
+    # Public text-driven video-editing quality (VE-Bench MOS; its own scale, not 1-5) — a
+    # separate calibration track from the peanut assembly dimensions above.
+    "edit_quality",
 ]
 
 
@@ -37,6 +40,11 @@ class AggregatedHumanRecord:
     n_complete: int = 0
     scores: dict[str, Optional[float]] = field(default_factory=dict)
     score_counts: dict[str, int] = field(default_factory=dict)
+    # Per-rater numeric scores kept alongside the mean (`scores`) + count (`score_counts`),
+    # so the individual raters aren't discarded on aggregation. Used to measure inter-rater
+    # agreement (the human ceiling) — see core.eval.rater_agreement. `scores[dim]` stays the
+    # mean of `raw_scores[dim]`; nothing that reads `scores` is affected.
+    raw_scores: dict[str, list[float]] = field(default_factory=dict)
     pairwise: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -82,6 +90,8 @@ def aggregate_annotations(
             ]
             agg.scores[dim] = mean(vals) if vals else None
             agg.score_counts[dim] = len(vals)
+            if vals:
+                agg.raw_scores[dim] = vals
 
         for r in recs:
             ranking = _num(r.annotation.get("overall_ranking"))

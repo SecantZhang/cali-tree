@@ -167,3 +167,26 @@ def test_validate_edges_rejects_fan_in():
     )
     with pytest.raises(GraphError, match="fan-in"):
         validate_edges(graph, NODE_TYPES)
+
+
+def test_validate_edges_allows_fan_in_on_a_multi_input_socket():
+    # A socket that declares itself multi-input accepts several incoming edges.
+    node_types = {
+        "dataset": NodeTypeInfo(input_sockets={}, output_sockets={"dataset": "dataset"}),
+        "merge": NodeTypeInfo(
+            input_sockets={"dataset": "dataset"}, output_sockets={},
+            multi_input_sockets=frozenset({"dataset"}),
+        ),
+    }
+    graph = GraphSpec(
+        nodes=[
+            NodeSpec(id="ds1", type="dataset"),
+            NodeSpec(id="ds2", type="dataset"),
+            NodeSpec(id="m", type="merge"),
+        ],
+        edges=[
+            EdgeSpec("ds1", "dataset", "m", "dataset"),
+            EdgeSpec("ds2", "dataset", "m", "dataset"),
+        ],
+    )
+    validate_edges(graph, node_types)  # no raise

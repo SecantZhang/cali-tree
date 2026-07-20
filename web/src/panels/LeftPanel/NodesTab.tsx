@@ -1,8 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { fetchNodeTypes, type NodeTypeOut } from '../../api/nodes'
-import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_ORDER } from '../../nodes/categoryColors'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  SUBCATEGORY_LABELS,
+  SUBCATEGORY_ORDER,
+} from '../../nodes/categoryColors'
 import { activeGraphStore, useActiveGraphStore } from '../../store/activeTab'
+
+const SUB_NONE = '__none__'
+
+// Order a category's subcategory keys: known ones first (SUBCATEGORY_ORDER), then any
+// others alphabetically, and the "no subcategory" bucket last.
+function orderedSubKeys(keys: string[]): string[] {
+  const known = SUBCATEGORY_ORDER.filter((k) => keys.includes(k))
+  const rest = keys.filter((k) => k !== SUB_NONE && !known.includes(k)).sort()
+  const none = keys.includes(SUB_NONE) ? [SUB_NONE] : []
+  return [...known, ...rest, ...none]
+}
 
 export function NodesTab() {
   const { data, isLoading, isError } = useQuery({
@@ -24,12 +41,64 @@ export function NodesTab() {
     addNode(type, { x: 80 + (n % 5) * 280, y: 80 + Math.floor(n / 5) * 220 })
   }
 
-  const toggleCategory = (category: string) => {
+  // Reused for both category keys and composite `category::subcategory` keys.
+  const toggleCategory = (key: string) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
+    })
+  }
+
+  const renderItem = (n: NodeTypeOut) => (
+    <div
+      key={n.type}
+      className="node-palette-item"
+      onClick={() => handleAdd(n.type)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') handleAdd(n.type)
+      }}
+    >
+      <span className="swatch" style={{ background: CATEGORY_COLORS[n.category] }} />
+      {n.type}
+    </div>
+  )
+
+  // A category renders flat unless some of its nodes declare a subcategory, in which case
+  // it splits into collapsible sub-folders (keyed `category::sub`) with any un-subcategorized
+  // nodes falling into a trailing bucket.
+  const renderCategoryBody = (category: string, items: NodeTypeOut[]) => {
+    const bySub = new Map<string, NodeTypeOut[]>()
+    for (const n of items) {
+      const key = n.subcategory || SUB_NONE
+      const list = bySub.get(key) ?? []
+      list.push(n)
+      bySub.set(key, list)
+    }
+    if (bySub.size === 1 && bySub.has(SUB_NONE)) return items.map(renderItem)
+
+    return orderedSubKeys([...bySub.keys()]).map((sub) => {
+      const subItems = bySub.get(sub) ?? []
+      const subKey = `${category}::${sub}`
+      const subCollapsed = collapsedCategories.has(subKey)
+      return (
+        <div key={subKey} className="node-palette-subcategory">
+          {sub !== SUB_NONE && (
+            <button
+              className="node-palette-subcategory-header"
+              onClick={() => toggleCategory(subKey)}
+              aria-expanded={!subCollapsed}
+            >
+              <span className={`category-chevron${subCollapsed ? ' collapsed' : ''}`}>▾</span>
+              {SUBCATEGORY_LABELS[sub] ?? sub}
+            </button>
+          )}
+          {!subCollapsed && subItems.map(renderItem)}
+        </div>
+      )
     })
   }
 
@@ -64,21 +133,7 @@ export function NodesTab() {
               <span className={`category-chevron${collapsed ? ' collapsed' : ''}`}>▾</span>
               {CATEGORY_LABELS[category] ?? category}
             </button>
-            {!collapsed && items.map((n) => (
-              <div
-                key={n.type}
-                className="node-palette-item"
-                onClick={() => handleAdd(n.type)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') handleAdd(n.type)
-                }}
-              >
-                <span className="swatch" style={{ background: CATEGORY_COLORS[n.category] }} />
-                {n.type}
-              </div>
-            ))}
+            {!collapsed && renderCategoryBody(category, items)}
           </div>
         )
       })}

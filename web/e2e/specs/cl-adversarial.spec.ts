@@ -74,11 +74,12 @@ const JUDGE_BASELINE = 'judge-6'
 const CALIBRATION = 'cl_adversarial-7'
 const JUDGE_CALIBRATED = 'judge-8'
 
-// The mock gateway always returns the same fixed score (3) for every call — the debate's
-// judge-agent turn therefore always confirms it holds up (delta 0 < epsilon), so every
-// item converges in round 1 with this exact addendum (see calibrated_result.py).
+// The de-leaked optimized_prompt (calibrated_result.py) carries ONLY the general
+// failure-mode tendencies — no score, no item narrative. The mock gateway's debate turns
+// cite "audio_neglect" (mock_gateway.py), so the addendum every item produces is this
+// exact tendency line (audio_neglect -> "ignore the audio track", see _TENDENCY).
 const OPTIMIZED_PROMPT_MARKER =
-  'A prior adversarial review of this item confirmed the original score of 3 held up under scrutiny.'
+  "A prior adversarial review flagged this judge's tendency to ignore the audio track."
 
 test.describe('adversarial calibration node', () => {
   test('calibrates an upstream Judge node\'s result and the optimized prompt reaches a second Judge node', async ({

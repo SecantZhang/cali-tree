@@ -34,6 +34,9 @@ class JudgeNodeExecutor(NodeExecutor):
         # each item's own `optimized_prompt` is injected as that item's extra_context
         # (builtin specs only — see _concurrent_judging.py).
         "calibration": "calibration_results",
+        # Optional: a cl_adversarial node's item-independent corpus calibration note,
+        # applied dataset-wide (appended to every item's extra_context).
+        "general_calibration": "general_calibration",
     }
     output_sockets = {"judge_result": "judge_result"}
     param_schema = {
@@ -64,6 +67,7 @@ class JudgeNodeExecutor(NodeExecutor):
                 "`judge_spec` output)",
             )
         calibration = ctx.inputs.get("calibration")  # optional
+        general_calibration = ctx.inputs.get("general_calibration")  # optional
 
         modality = spec_modality(spec)
         label = spec.get("label") or spec_key(spec)
@@ -109,6 +113,7 @@ class JudgeNodeExecutor(NodeExecutor):
             ctx=ctx,
             should_skip=_should_skip if modality == "video" else None,
             calibration=calibration,
+            general_calibration=general_calibration,
         )
         meta["spec"] = label
         return NodeRunResult(outputs={"judge_result": per_item}, meta=meta)

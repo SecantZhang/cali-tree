@@ -46,10 +46,14 @@ const SAMPLING_FIELDS: Record<string, ParamField> = {
 }
 
 export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
-  peanut_source: {
-    model: { type: 'string', default: 'peanut' },
-    projects: { type: 'list[string]', default: null },
-  },
+  // One source node per model (Peanut/Coconut/Grapenut); wire several into one Dataset
+  // node (its raw_dataset is a fan-in socket) to calibrate across models. Each loads its
+  // own model; `projects` optionally restricts to a subset.
+  peanut_source: { projects: { type: 'list[string]', default: null } },
+  coconut_source: { projects: { type: 'list[string]', default: null } },
+  grapenut_source: { projects: { type: 'list[string]', default: null } },
+  // No params — loads the whole VE-Bench DB; sample/subset downstream in the Dataset node.
+  vebench_source: {},
   dataset: { ...SAMPLING_FIELDS },
   preprocessing: {
     artifact_types: { type: 'list[enum]', options: PREPROCESSING_ARTIFACT_TYPES, default: null },
@@ -114,6 +118,22 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // closing the gap to it, not just round-to-round self-stability. Off by default —
     // changes what the debate optimizes for, so it's a deliberate choice.
     ground_in_human_labels: { type: 'bool', default: false },
+  },
+  cl_rule_tree: {
+    max_questions: { type: 'number', default: 5, min: 1 },
+    batch_size: { type: 'number', default: 1, min: 1 },
+    // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
+    human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+  },
+  // No params — it just renders the upstream judge_rule report.
+  cl_rule_eval: {},
+  // No params — frames the upstream metrics_report.
+  alignment_report: {},
+  cl_semantic_tree: {
+    max_questions: { type: 'number', default: 5, min: 1 },
+    batch_size: { type: 'number', default: 1, min: 1 },
+    // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
+    human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
   },
 }
 
