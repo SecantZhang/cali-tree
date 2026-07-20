@@ -49,7 +49,8 @@ test.describe('palette drag-and-drop', () => {
 // Feature B — load a past run from disk. Run a dry-run, then reopen it from the Runs tab and
 // assert the graph + per-node statuses + the Eval node's report reconstruct from disk. The
 // E2E backend uses a fresh temp logs dir and the suite is serial (workers:1), so the run we
-// just created is the newest on disk — the first entry in the Runs list.
+// located by its unique workflow name (the run records the tab's workflow_name), so this is
+// robust to other specs' runs sharing the backend's logs dir.
 test.describe('load a past run', () => {
   test('a completed dry-run reopens from the Runs tab with graph + statuses + outputs', async ({ page }) => {
     await page.goto('/')
@@ -59,19 +60,28 @@ test.describe('load a past run', () => {
     await page.getByRole('button', { name: 'Fit View' }).click()
     await wirePipeline(page)
 
+    // Save as a uniquely-named workflow so the run records that name — lets us find this exact
+    // run in the Runs list regardless of what other specs left on disk (run_ids collide at
+    // 1s precision, so "newest" isn't reliable in the full suite).
+    const workflowName = `e2e-load-run-${Date.now()}`
+    await page.getByRole('button', { name: 'Workflows', exact: true }).click()
+    await page.getByPlaceholder('workflow name').fill(workflowName)
+    await page.getByRole('button', { name: 'Save current graph' }).click()
+    await expect(page.locator('.workflow-item', { hasText: workflowName })).toBeVisible()
+
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
     await runButton.click()
     await expect(runButton).toHaveText('Run', { timeout: 10000 })
 
-    // Switch to the Runs tab; the newest disk run (the one we just finished) is first.
+    // Switch to the Runs tab and find THIS run by its workflow name (not "first").
     await page.getByRole('button', { name: 'Runs' }).click()
-    const firstRun = page.locator('.run-item').first()
-    await expect(firstRun).toBeVisible({ timeout: 10000 })
+    const thisRun = page.locator('.run-item', { hasText: workflowName })
+    await expect(thisRun).toBeVisible({ timeout: 10000 })
     // A completed run is done, so it is NOT offered a Resume button (Resume gates on
     // error/stopped/interrupted) — but it can always be Opened.
-    await expect(firstRun.locator('.run-status-tag')).toHaveText('done')
-    await expect(firstRun.getByRole('button', { name: 'Resume' })).toHaveCount(0)
-    await firstRun.getByRole('button', { name: 'Open' }).click()
+    await expect(thisRun.locator('.run-status-tag')).toHaveText('done')
+    await expect(thisRun.getByRole('button', { name: 'Resume' })).toHaveCount(0)
+    await thisRun.getByRole('button', { name: 'Open' }).click()
 
     // Opening spawns a fresh tab whose graph is reconstructed from workflow_graph.json (same
     // node ids) and whose statuses + Eval outputs hydrate via the disk-fallback GET /runs/{id}.

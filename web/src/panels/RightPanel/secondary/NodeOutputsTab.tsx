@@ -1,10 +1,12 @@
 // Generic Outputs tab — every node inherits it. Shows the raw value on each of the node's
-// output sockets (from the run store), structured per NODE_SOCKETS[type].output. Live
-// previews (partialResults) win while the node is running.
-import { NODE_SOCKETS } from '../../../nodes/socketTypes'
+// output sockets (from the run store). The output schema is sourced from the live node-type
+// API (useNodeSchema), not the static mirror, so it auto-reflects any backend socket change
+// for every current/future node. Live previews (partialResults) win while the node is running.
+import { useNodeSchema } from '../../../nodes/useNodeSchema'
 import { useActiveRunStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
 import { DataValueView } from './DataValueView'
+import { SocketSchema } from './SocketSchema'
 
 export function NodeOutputsTab({ node }: { node: VeNode }) {
   const type = node.type ?? ''
@@ -12,7 +14,7 @@ export function NodeOutputsTab({ node }: { node: VeNode }) {
   const partial = useActiveRunStore((s) => s.partialResults[node.id])
   const running = node.data.status === 'running'
   const outputs = (running && partial ? partial.outputs : lastResult?.outputs) ?? {}
-  const sockets = NODE_SOCKETS[type]?.output ?? {}
+  const sockets = useNodeSchema(type).output
   const socketNames = Object.keys(sockets)
 
   if (socketNames.length === 0) {
@@ -22,6 +24,7 @@ export function NodeOutputsTab({ node }: { node: VeNode }) {
 
   return (
     <div className="io-tab">
+      <SocketSchema title="Output schema" sockets={sockets} />
       {!hasRun && (
         <p className="empty-hint">No outputs yet — run this node to populate them.</p>
       )}

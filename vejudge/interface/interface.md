@@ -155,22 +155,37 @@ Every node shares the same chrome, regardless of category:
 - **Double-click → secondary tab** — opens the secondary window, which has a **tab strip**:
   a per-type **Details** tab (each node's bespoke visualization, documented per node below)
   plus three **generic** tabs every node inherits automatically:
-  - **Inputs** — the raw value on each input socket, structured per the node's
-    `input_sockets`. Reconstructed client-side from incoming edges + upstream nodes' outputs
-    (fan-in sockets show a list); large values are summarized, not dumped.
-  - **Outputs** — the raw value on each output socket (`output_sockets`), from the last run
+  - **Inputs** — a **schema header** at the top (the node's full input contract: every socket
+    as `name: type` with a color swatch + a `fan-in` tag + an **expandable example payload**
+    showing that socket type's JSON shape/subfields, shown regardless of runtime state), then
+    the raw value on each input socket. Values are reconstructed client-side from incoming edges
+    + upstream nodes' outputs (fan-in sockets show a list); large values are summarized, not
+    dumped.
+  - **Outputs** — a **schema header** (the node's `name: type` output contract + the expandable
+    per-type example) at the top, then the raw value on each output socket, from the last run
     (live previews while running).
   - **Timing** — two parts: a whole-run **system waterfall** (every node's start offset +
     duration, this node highlighted) for the big picture, then a **This node** breakdown —
     per-item durations + summary stats from `meta.item_timings` for loop nodes, or the node's
     total run time for a single-phase node.
 
-  **Enforced contract (why this is free for new nodes):** the three generic tabs are driven
-  by the static socket specs (`web/src/nodes/socketTypes.ts`) + the run store, and timing
-  comes from `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the
-  executor for every node, and optional `item_timings` that a loop node adds in its per-item
-  loop. A new node type therefore gets Inputs/Outputs/Timing tabs and the on-node run-time
-  badge with **no extra code**; it only writes a Details tab if it wants a bespoke view.
+  **Enforced contract (why this is free for new nodes):** the Inputs/Outputs tabs — **including
+  their schema header** — are driven by the **backend node-type API** (`GET /api/nodes`, which
+  projects each executor's `input_sockets`/`output_sockets`/`multi_input_sockets` straight from
+  `registry.py::type_info()`), read via `web/src/nodes/useNodeSchema.ts` and rendered by
+  `SocketSchema.tsx`. The API is therefore the **single source of truth** for a node's I/O
+  schema: declaring `input_sockets`/`output_sockets` on a new `NodeExecutor` is all that's
+  needed — the schema header + socket lists show for that node and **auto-reflect** any later
+  socket change with **no frontend edit**. (`socketTypes.ts` is now only the source for socket
+  *colors*, the per-type **example payloads** (`SOCKET_EXAMPLES`, rendered expandably by
+  `DataValueView`), and *synchronous connection validation*; these are keyed by socket *type*,
+  so the one remaining manual touch is adding a `SOCKET_COLORS`/`SOCKET_EXAMPLES` entry for a
+  brand-new socket type — display-only, it falls back to a neutral swatch / name+type only
+  otherwise.) The value cards + timing still come from the run store and
+  `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the executor for
+  every node, and optional `item_timings` a loop node adds in its per-item loop. A new node type
+  gets Inputs/Outputs/Timing tabs and the on-node run-time badge with **no extra code**; it only
+  writes a Details tab if it wants a bespoke view.
 
 **Groups** (ComfyUI-style, purely visual) — right-click empty canvas → **Add group here**
 drops a translucent, resizable rectangle *behind* the nodes with an editable title. Nodes
