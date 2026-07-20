@@ -268,8 +268,10 @@ Input: `raw_dataset` (a Data Source node's output, e.g. Peanut Source Node).
 
 Outputs: `samples` — the sampled subset of the input, same item shape (named `samples`, not
 `dataset`, so it can't be confused with the node's own name or with the sibling `labels`
-output). `labels` — the aggregated human-annotation record for each sampled item that has one
-(items with no annotation yet are simply absent, not an error).
+output). `labels` — the human-annotation record for each sampled item that has one (items with
+no annotation yet are simply absent, not an error), one record per item, reduced across
+annotators per the **Aggregation method** below. Every record always keeps the individual
+per-rater values in `raw_scores` alongside the (possibly-null) aggregate `scores`.
 
 Node parameters:
 * **Sampling ratio**: percentage, default to 100%.
@@ -284,6 +286,17 @@ Node parameters:
   never lands on zero overlap by an unlucky small sample. `meta.n_pool_labeled` (the
   pre-sampling pool's label coverage) is always reported regardless of this toggle, and a
   warning fires when it's off and the sample happens to land on zero labeled items anyway.
+* **Aggregation method**: dropdown, default `mean` — how multiple annotators' scores for the
+  *same* video are combined into each `labels` record's per-dimension `scores`: `mean` /
+  `median` / `max` / `min` (a single point estimate), or **`none`** = no aggregation. Under
+  `none`, `scores` is left empty and only the individual per-annotator ratings are exposed (in
+  `raw_scores`); the record stays keyed by `item_id` (one per video), so the join to `samples`
+  is unchanged. Downstream: a wired **Eval** node detects `none` and scores the judge against
+  *each rater individually* (one aligned row per rater, so agreement is judge-vs-rater, not
+  judge-vs-consensus — reported as `aggregation: "none"` in its metrics report); **calibration**
+  nodes need a single anchor per item and therefore *reject* `none` with a clear error telling
+  you to pick an aggregated method. mean/median/max/min are consumed identically by everything
+  downstream (they only change the `scores` value), so the default is fully backward-compatible.
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
@@ -293,7 +306,9 @@ completed a run — a list+detail **item browser** over this node's *own sampled
 output* (not the raw loader): the item list flags which items carry a human label, and
 selecting one shows the same structured preview the Peanut Source Node uses (prompt, video
 player, transcript/captions/assembly-JSON sections, raw-JSON fallback) plus that item's
-per-dimension human scores when a label exists. Unlike the raw source browser, this reads the
+per-dimension human scores when a label exists — the aggregate score per dimension for
+mean/median/max/min, or a **per-rater breakdown** (a column per annotator) when the
+aggregation method is `none`. Unlike the raw source browser, this reads the
 node's cached `samples`/`labels` outputs from the last run (via the run-status GET, no extra
 `/api/datasets` call), so it reflects exactly what was sampled — the shared preview component
 lives in `web/src/panels/RightPanel/secondary/JudgeSamplePreview.tsx`.

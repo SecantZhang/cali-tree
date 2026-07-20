@@ -1,6 +1,7 @@
 """Human annotation loader + multi-annotator aggregation."""
 
 from .aggregate import (
+    AGGREGATION_METHODS,
     HUMAN_DIMENSIONS,
     AggregatedHumanRecord,
     aggregate_annotations,
@@ -8,6 +9,7 @@ from .aggregate import (
 from .loader import HumanAnnotationRecord, load_human_annotations
 
 __all__ = [
+    "AGGREGATION_METHODS",
     "HUMAN_DIMENSIONS",
     "AggregatedHumanRecord",
     "aggregate_annotations",

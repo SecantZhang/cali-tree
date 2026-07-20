@@ -61,8 +61,49 @@ export function JudgeSamplePreview({
 
 function HumanLabelBlock({ label }: { label: Record<string, unknown> }) {
   const scores = (label.scores as Record<string, number | null> | undefined) ?? {}
+  const rawScores = (label.raw_scores as Record<string, number[]> | undefined) ?? {}
   const nAnnotators = Number(label.n_annotators ?? 0)
   const nComplete = Number(label.n_complete ?? 0)
+  // aggregation_method="none" on the Dataset node → no single score per dimension; show each
+  // annotator's raw score instead of one aggregate. Detect via the record's `aggregation` tag.
+  const unaggregated = label.aggregation === 'none'
+
+  if (unaggregated) {
+    // Column per rater (max across dimensions), one row per dimension.
+    const nRaters = Math.max(0, ...HUMAN_DIMENSIONS.map((d) => rawScores[d]?.length ?? 0))
+    return (
+      <div className="human-label-block">
+        <div className="item-field">
+          <strong>Human label (no aggregation):</strong> {nAnnotators} annotator(s),{' '}
+          {nComplete} complete — per-rater scores
+        </div>
+        <table className="label-score-table">
+          <tbody>
+            {HUMAN_DIMENSIONS.map((dim) => {
+              const vals = rawScores[dim] ?? []
+              return (
+                <tr key={dim}>
+                  <td className="label-dim">{dim}</td>
+                  {Array.from({ length: nRaters }).map((_, r) => {
+                    const v = vals[r]
+                    return (
+                      <td
+                        key={r}
+                        className={`label-score${v == null ? ' label-score-missing' : ''}`}
+                      >
+                        {v == null ? '—' : v.toFixed(0)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   return (
     <div className="human-label-block">
       <div className="item-field">

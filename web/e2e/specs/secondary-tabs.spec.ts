@@ -79,6 +79,42 @@ test.describe('secondary tabs', () => {
     await expect(modal).toHaveCount(0)
   })
 
+  test('the Dataset node with aggregation_method=none shows a per-rater label breakdown', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+
+    await addNode(page, 'peanut_source')
+    await addNode(page, 'dataset')
+    await page.getByRole('button', { name: 'Fit View' }).click()
+    await connect(page, 'peanut_source-1', 'raw_dataset', 'dataset-2', 'raw_dataset')
+
+    // Switch the aggregation dropdown to "none" (no aggregation) on the inline node body.
+    const datasetNode = page.getByTestId('rf__node-dataset-2')
+    await datasetNode.locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('none')
+
+    const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
+    await runButton.click()
+    await expect(runButton).toHaveText('Run', { timeout: 10000 })
+    await expect(datasetNode.locator('.status-dot.status-done')).toBeVisible()
+
+    await datasetNode.dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+
+    // A labeled item now renders the un-aggregated per-rater breakdown, not a single mean.
+    const labeledItem = modal.locator('.secondary-item-list li', {
+      has: page.locator('.item-has-label'),
+    })
+    await expect(labeledItem.first()).toBeVisible()
+    await labeledItem.first().click()
+    await expect(modal.locator('.human-label-block')).toContainText('no aggregation')
+    await expect(modal.locator('.human-label-block')).toContainText('per-rater scores')
+
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modal).toHaveCount(0)
+  })
+
   test('the generic Inputs/Outputs tabs open with an API-sourced schema header', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)

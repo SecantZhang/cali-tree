@@ -63,6 +63,9 @@ export const SOCKET_EXAMPLES: Partial<Record<SocketType, unknown>> = {
       use_case: 'social_promo',
       n_annotators: 3,
       n_complete: 3,
+      // Set by the Dataset node's aggregation_method: mean (default) / median / max / min, or
+      // "none" — then `scores` is null and consumers read the per-annotator `raw_scores`.
+      aggregation: 'mean',
       scores: { story_flow_visuals: 3.67, video_addresses_prompt: 4.0 },
       score_counts: { story_flow_visuals: 3, video_addresses_prompt: 3 },
       raw_scores: { story_flow_visuals: [3, 4, 4], video_addresses_prompt: [4, 4, 4] },
