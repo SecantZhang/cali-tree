@@ -127,9 +127,9 @@ def concept_for_feature(name: str) -> Optional[str]:
     """Recover the concept key from a feature name (``fm:<key>`` / ``rule:<key>``).
     ``base_score`` and any un-prefixed name → None (no concept; importance 1.0)."""
     if name.startswith("fm:"):
-        key = name[3:]
+        key = name[3:].split(":", 1)[0]
     elif name.startswith("rule:"):
-        key = name[5:]
+        key = name[5:].split(":", 1)[0]
     else:
         return None
     return key if key in CONCEPTS else None

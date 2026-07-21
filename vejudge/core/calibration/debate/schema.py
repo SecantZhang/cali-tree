@@ -122,6 +122,7 @@ class DebateTranscript:
     # False (the default, safe for old checkpoints via from_dict) means blind debate,
     # whether by choice or because no usable human anchor existed for this item.
     grounded: bool = False
+    human_disagreement_profile: dict[str, Any] = field(default_factory=dict)
 
     def as_text(self) -> str:
         """Render prior turns as a compact numbered log for injection into the next
@@ -165,6 +166,7 @@ class DebateTranscript:
             initial_judge_result=data.get("initial_judge_result") or {},
             created_at=data.get("created_at", ""),
             grounded=bool(data.get("grounded", False)),
+            human_disagreement_profile=dict(data.get("human_disagreement_profile") or {}),
         )
 
 
@@ -215,6 +217,7 @@ class DebateVerdict:
     # See DebateTranscript.grounded — mirrored here since CalibratedResult is built
     # straight from a DebateVerdict, not from its nested transcript.
     grounded: bool = False
+    human_disagreement_profile: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -235,4 +238,5 @@ class DebateVerdict:
             failure_mode_summary=dict(data.get("failure_mode_summary") or {}),
             transcript=DebateTranscript.from_dict(data["transcript"]),
             grounded=bool(data.get("grounded", False)),
+            human_disagreement_profile=dict(data.get("human_disagreement_profile") or {}),
         )

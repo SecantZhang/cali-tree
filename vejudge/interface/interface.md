@@ -307,10 +307,10 @@ Node parameters:
   is unchanged. Downstream: a wired **Eval** node detects `none` and scores the judge against
   *each rater individually* (one aligned row per rater, so agreement is judge-vs-rater, not
   judge-vs-consensus — reported as `aggregation: "none"` in its metrics report). **Calibration**
-  fitters likewise preserve raw ratings: each rating becomes a separate target observation
-  with the video's feature row repeated, and leave-one-out folds remain grouped by video to
-  prevent rater leakage. The adversarial human proxy sees the unreduced score list and is told
-  not to collapse it. mean/median/max/min instead provide one target per video.
+  fitters likewise preserve raw ratings: each rating remains a separate target observation,
+  but receives weight `1 / ratings_for_video`, so every video contributes one unit regardless
+  of annotator count. Validation stays grouped by video. The adversarial human proxy receives
+  one immutable disagreement profile rather than switching between individual targets.
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
@@ -452,11 +452,12 @@ new calibration node genuinely needs a different I/O shape, that is the signal i
 
 **Model Calibration members (fitters):**
 - **Rule/Tree Calibration** (`cl_rule_tree`) — mines free-text `qN` rules, an independent
-  critic answers them, fits a plain CART over `[base_score, q1..qK]`.
+  critic answers them, fits a plain CART over `[base_score, q1..qK]`. New nodes mine the
+  bank from a deterministic training partition and evaluate it on a frozen holdout;
+  legacy nodes without the mode remain explicitly exploratory grouped LOO.
 - **Semantic Tree Calibration** (`cl_semantic_tree`) — an ontology-grounded variant. Its
-  features are concept-labeled — `fm:<concept>` counts (from each item's
-  `failure_mode_summary` over the fixed failure-mode taxonomy) plus `rule:<concept>` critic
-  booleans (each mined rule tagged to its taxonomy concept) — and it fits an
+  deployable features are question-level `rule:<concept>:qN` critic booleans. Grounded
+  transcript failure counts are excluded because they require held-out labels. It fits an
   **ontology-weighted** decision tree (`SemanticDecisionTreeCalibrator`): split gain is
   `variance_reduction × concept_importance`, where importance comes from the calibration
   **knowledge base** (`vejudge/core/calibration/ontology.py`, built from
@@ -531,7 +532,7 @@ content.
 
 Node parameters:
 * **Epsilon**: score-delta convergence threshold (default 0.25).
-* **Max rounds**: hard cap on debate rounds (default 4).
+* **Max rounds**: hard cap on debate rounds (default 4, maximum 6).
 * **Retrieval enabled**: bool, default on — grounds the human-proxy's critique in a
   similar real human-annotation note when one exists; falls back to persona-only
   otherwise.
@@ -546,10 +547,10 @@ Node parameters:
   against itself round-to-round (which is what let a self-consistent-but-wrong debate
   report as a clean, validated result with nothing flagging the miss). When on, the
   human-proxy's own prompt also cites the real score explicitly as ground truth. With
-  Dataset aggregation `none`, the proxy instead receives every raw rating and an explicit
-  instruction not to average/vote/collapse them; because there is intentionally no scalar
-  target, convergence remains round-to-round stability while the debate is still marked
-  grounded. (The
+  Dataset aggregation `none`, the proxy instead receives one immutable histogram/range/
+  median/mode disagreement profile with required lower- and higher-rating considerations;
+  because there is intentionally no scalar target, convergence remains semantic/score
+  stability while the debate is still marked grounded. (The
   judge agent never sees it directly — it only ever reacts to the proxy's argued
   critique, preserving the adversarial debate structure). Off by default since this
   changes what the debate optimizes for; an item with no usable human evidence for this
@@ -558,6 +559,15 @@ Node parameters:
   call per calibrated item through `summarizer_engine`. Invalid, unsafe, or failed output
   visibly falls back to the deterministic rule-based summary. Saved legacy workflows that
   lack this parameter remain rule-based and make no new calls.
+
+Negotiation stops after two rounds without a new normalized semantic finding and detects
+`A-B-A-B` score cycles. An oscillating debate is marked unresolved and retains the original
+score rather than whichever position happened to speak last. Rule/Tree and Semantic Tree
+nodes expose **Evaluation mode**, **Validation fraction**, and **Split seed**. Frozen holdout
+defaults to 20% at seed 0, mines only from validated training-item semantic summaries, drops
+questions constant on training data, weights raw ratings equally per video, and requires at
+least five validation videos plus a ≥0.05 bootstrap-supported MAE improvement before the UI
+claims that semantic rules beat global bias.
 
 Secondary tab: a summary strip (item count, converged count, average `|score_delta|`)
 above a left item list (score-delta indicator + converged check) and a right detail

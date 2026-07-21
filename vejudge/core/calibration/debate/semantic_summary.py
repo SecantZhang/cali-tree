@@ -100,6 +100,19 @@ def _structured(turn: Any) -> Optional[dict[str, Any]]:
     return value if isinstance(value, dict) else None
 
 
+def _stable_judge_structure(judges: list[Any], *, unresolved: bool) -> Optional[dict[str, Any]]:
+    structured = [value for turn in judges if (value := _structured(turn)) is not None]
+    if not structured:
+        return None
+    if not unresolved:
+        return structured[-1]
+    keys = [json.dumps(value, sort_keys=True, default=str) for value in structured]
+    # Most frequently repeated semantic position wins; ties preserve the earliest
+    # position rather than whichever side happened to speak last in an oscillation.
+    best = max(range(len(keys)), key=lambda index: (keys.count(keys[index]), -index))
+    return structured[best]
+
+
 def rule_based_summary(
     transcript: DebateTranscript,
     failure_mode_summary: dict[str, int],
@@ -113,8 +126,7 @@ def rule_based_summary(
     valid = [t for t in transcript.turns if t.valid and t.parsed]
     judges = [t for t in valid if t.role == "judge"]
     proxies = [t for t in valid if t.role == "human_proxy"]
-    final_judge = judges[-1] if judges else None
-    primary = _structured(final_judge) if final_judge else None
+    primary = _stable_judge_structure(judges, unresolved=not transcript.converged)
 
     ranked = sorted(
         ((key, n) for key, n in failure_mode_summary.items() if key in tendencies),

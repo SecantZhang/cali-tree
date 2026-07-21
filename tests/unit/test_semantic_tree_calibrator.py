@@ -7,7 +7,7 @@ from vejudge.core.calibration.base import Calibrator
 def test_is_a_calibrator():
     c = SemanticDecisionTreeCalibrator()
     assert isinstance(c, Calibrator)
-    assert c.version == "semantic-tree-v1"
+    assert c.version == "semantic-tree-v2-weighted"
 
 
 def test_predict_before_fit_raises():

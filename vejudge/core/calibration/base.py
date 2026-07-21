@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 
 class Calibrator(ABC):
@@ -12,7 +12,13 @@ class Calibrator(ABC):
     version: str = "base"
 
     @abstractmethod
-    def fit(self, X: Sequence[Sequence[float]], y: Sequence[float]) -> "Calibrator":
+    def fit(
+        self,
+        X: Sequence[Sequence[float]],
+        y: Sequence[float],
+        *,
+        sample_weight: Optional[Sequence[float]] = None,
+    ) -> "Calibrator":
         ...
 
     @abstractmethod

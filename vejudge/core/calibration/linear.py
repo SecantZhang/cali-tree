@@ -13,15 +13,23 @@ from .base import Calibrator
 
 
 class LinearCalibrator(Calibrator):
-    version = "linear-v1"
+    version = "linear-v2-weighted"
 
     def __init__(self) -> None:
         self._model: Optional[Any] = None
 
-    def fit(self, X: Sequence[Sequence[float]], y: Sequence[float]) -> "LinearCalibrator":
+    def fit(
+        self,
+        X: Sequence[Sequence[float]],
+        y: Sequence[float],
+        *,
+        sample_weight: Optional[Sequence[float]] = None,
+    ) -> "LinearCalibrator":
         from sklearn.linear_model import LinearRegression  # lazy import
 
-        self._model = LinearRegression().fit(list(X), list(y))
+        self._model = LinearRegression().fit(
+            list(X), list(y), sample_weight=None if sample_weight is None else list(sample_weight)
+        )
         return self
 
     def predict(self, X: Sequence[Sequence[float]]) -> list[float]:

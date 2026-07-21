@@ -86,15 +86,20 @@ def test_d2_build_includes_real_score_block_when_grounded():
     assert "supporting evidence, not a hard override" not in spec.user
 
 
-def test_d2_build_preserves_raw_scores_without_aggregating():
+def test_d2_build_uses_one_immutable_disagreement_profile():
     spec = d2_human_proxy_debate.build(
         sample=_sample(), metric_id="M4", original_output=_original_output(),
         transcript_text="", round_no=1, retrieved_note=None,
-        real_human_scores=[2.0, 4.0, 5.0],
+        human_disagreement_profile={
+            "version": "human-disagreement-v1", "rating_count": 3,
+            "histogram": {"2": 1, "4": 1, "5": 1}, "range": 3.0,
+            "median": 4.0, "modes": [2.0, 4.0, 5.0], "polarized": True,
+            "required_perspectives": ["lower", "higher", "stable tradeoff"],
+        },
     )
-    assert "[2, 4, 5]/5" in spec.user
-    assert "do not average" in spec.user
-    assert "aggregate score" not in spec.user
+    assert '"histogram": {"2": 1, "4": 1, "5": 1}' in spec.user
+    assert "immutable disagreement profile" in spec.user
+    assert "Never select one annotator" in spec.user
 
 
 def test_d2_schema_is_compatible_with_the_shared_judge_output_validator():

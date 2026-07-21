@@ -8,6 +8,7 @@ from vejudge.interface.node_calibration.cl_adversarial_node import (
     ClAdversarialNodeExecutor,
     _resolve_human_context,
 )
+from vejudge.interface.node_calibration._concurrent_debate import DEBATE_CHECKPOINT_VERSION
 from vejudge.lm_engine import openai_compat
 from vejudge.lm_engine.creds import PlutoCreds
 
@@ -21,6 +22,10 @@ _CANNED = {
     "agrees_with_judge": True, "cited_failure_modes": ["overconfident_rationale"],
     "reasoning_lines": ["looks fine"],
 }
+
+
+def _debate_key(item_id: str, metric_id: str) -> str:
+    return f"{item_id}::calibration::{metric_id}::debate::{DEBATE_CHECKPOINT_VERSION}"
 
 
 def _sample(item_id):
@@ -332,7 +337,13 @@ def test_unaggregated_labels_are_accepted_and_preserved(monkeypatch, make_ctx):
     assert calibrated["grounded"] is True
     assert "epsilon_raw_grounded" in calibrated["flags"]
     proxy_prompt = calibrated["transcript"]["turns"][0]["prompt_user"]
-    assert "[3, 4]/5" in proxy_prompt and "do not average" in proxy_prompt
+    assert '"histogram": {"3": 1, "4": 1}' in proxy_prompt
+    assert "immutable disagreement profile" in proxy_prompt
+    assert calibrated["human_disagreement_profile"]["rating_count"] == 2
+    assert calibrated["score_provenance"] == {
+        "metric_id": "M3", "parsed_field": "score_1_to_5", "raw_value": 3.0,
+        "model": None, "aggregation": "none",
+    }
 
 
 def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
@@ -505,11 +516,32 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
     assert result1.status == "done"
     n_first = calls["n"]
     assert n_first > 0
-    assert ctx.checkpoint.has("prj-x::0::peanut::calibration::M3")
+    assert ctx.checkpoint.has(_debate_key("prj-x::0::peanut", "M3"))
 
     result2 = ClAdversarialNodeExecutor().run(ctx)
     assert result2.status == "done"
     assert calls["n"] == n_first  # unchanged — served from checkpoint
+
+
+def test_legacy_debate_checkpoint_is_invalidated_by_prompt_and_profile_version(monkeypatch, make_ctx):
+    calls = {"n": 0}
+
+    def fake_chat(**kwargs):
+        calls["n"] += 1
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+    item = "prj-x::0::peanut"
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        inputs=_inputs({item: _sample(item)}, _judge_result(item, metric_id="M3", score=3.0)),
+        dry_run=False, allow_live=True,
+    )
+    ctx.checkpoint.put(f"{item}::calibration::M3", {"final_score": 5.0})
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "done"
+    assert calls["n"] > 0
+    assert ctx.checkpoint.has(_debate_key(item, "M3"))
 
 
 def test_human_scores_and_gap_survive_a_disk_reload(monkeypatch, make_ctx):
@@ -542,7 +574,7 @@ def test_human_scores_and_gap_survive_a_disk_reload(monkeypatch, make_ctx):
     assert result.status == "done"
 
     reloaded = CheckpointStore(ctx.checkpoint.path)
-    entry = reloaded.get("prj-x::0::peanut::calibration::M3")
+    entry = reloaded.get(_debate_key("prj-x::0::peanut", "M3"))
     assert entry is not None
     assert entry["human_scores"] == {"video_addresses_prompt": {"score": 4.0, "n": 2}}
     assert entry["human_gap"]["video_addresses_prompt"] is not None
@@ -765,4 +797,4 @@ def test_all_turns_failed_item_is_not_checkpointed(monkeypatch, make_ctx):
     r = result.outputs["calibration_results"]["prj-x::0::peanut"]
     assert r["final_score"] is None
     assert r["flags"] == ["all_turns_failed"]
-    assert not ctx.checkpoint.has("prj-x::0::peanut::calibration::M3")
+    assert not ctx.checkpoint.has(_debate_key("prj-x::0::peanut", "M3"))
