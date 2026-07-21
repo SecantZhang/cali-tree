@@ -25,7 +25,10 @@ class _ScriptedCritic:
             payload = {"concepts": [
                 {"index": 1, "key": "category_imbalance"}, {"index": 2, "key": None}]}
         elif "auditing an AI judge" in s:
-            payload = {"decision_answers": {"q1": False, "q2": True}}
+            payload = {"decision_answers": {
+                "q1": "a::0::peanut" not in prompt,
+                "q2": "c::0::peanut" not in prompt,
+            }}
         else:
             payload = {}
         return {"content": json.dumps(payload), "model": "m",
@@ -41,6 +44,12 @@ def _calib(item_id, *, base, fms):
     return {
         "item_id": item_id, "metric_id": "M5", "original_score": base, "final_score": base,
         "score_delta": 0.0, "reasoning": "x", "failure_mode_summary": dict(fms),
+        "semantic_summary": {
+            "principle": "Apply edit-category rules consistently.",
+            "applies_when": "The requested edit contains repetition.",
+            "evidence_to_check": ["Check requested repetition."],
+            "scoring_guidance": "Audit the rationale using observable evidence only.",
+        },
         "transcript": {
             "item_id": item_id, "metric_id": "M5", "turns": [],
             "initial_judge_result": {"parsed": {"reasoning_lines": ["too repetitive"]}},
@@ -78,7 +87,10 @@ def test_dry_run_estimates_critic_and_tagging_calls(make_ctx):
     ctx = make_ctx(inputs=_inputs(items, {}), dry_run=True)
     result = ClSemanticTreeNodeExecutor().run(ctx)
     assert result.status == "done"
-    assert result.meta["estimated_calls"] == {"critic_calls": 2, "tagging_calls": 1}
+    assert result.meta["estimated_calls"] == {
+        "rule_extraction_calls": 2, "bank_calls": 1,
+        "critic_calls": 2, "tagging_calls": 1,
+    }
 
 
 def test_unaggregated_labels_become_raw_fit_observations(make_ctx):
@@ -111,11 +123,11 @@ def test_full_run_builds_concept_features_and_a_semantic_comparator(make_ctx):
     assert jr["n_items"] == 3
     names = jr["feature_names"]
     assert names[0] == "base_score"
-    # Ontology-native fm count feature (audio_neglect was cited) + a concept-tagged rule
-    # feature (q1 -> category_imbalance); q2 was untagged and dropped.
-    assert "fm:audio_neglect" in names
-    assert "rule:category_imbalance" in names
-    assert "rule:" + "category_imbalance" in names and not any(n.startswith("q") for n in names)
+    # Only target-blind independent-critic answers are deployable features. Grounded
+    # transcript failure-mode counts are intentionally excluded.
+    assert not any(name.startswith("fm:") for name in names)
+    assert "rule:category_imbalance:q1" in names
+    assert "rule:untagged:q2" in names
     # The report carries the semantic comparator alongside base/bias/linear/tree.
     for split in ("insample_mae", "loo_mae"):
         assert "semantic" in jr[split] and "tree" in jr[split]

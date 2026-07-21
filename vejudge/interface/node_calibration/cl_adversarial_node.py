@@ -150,7 +150,7 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
     node_type = "cl_adversarial"
     param_schema = {
         "epsilon": {"type": "number", "default": 0.25},
-        "max_rounds": {"type": "number", "default": 4, "min": 1},
+        "max_rounds": {"type": "number", "default": 4, "min": 1, "max": 6},
         "retrieval_enabled": {"type": "boolean", "default": True},
         "batch_size": {"type": "number", "default": 1, "min": 1},
         # "" (default) = auto-detect via ALIGNMENT; a non-empty value overrides it for
@@ -222,7 +222,7 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
             )
         labels = ctx.inputs.get("labels")  # optional — only used for display/comparison
 
-        max_rounds = max(1, int(p.get("max_rounds") or 4))
+        max_rounds = min(6, max(1, int(p.get("max_rounds") or 4)))
         config = DebateConfig(
             epsilon=float(p.get("epsilon")) if p.get("epsilon") is not None else 0.25,
             max_rounds=max_rounds,

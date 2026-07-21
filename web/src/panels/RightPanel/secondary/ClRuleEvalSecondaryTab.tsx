@@ -24,6 +24,10 @@ interface Comparison {
   bank?: BankEntry[]
   verdict?: string
   beats_bias?: boolean
+  evaluation_mode?: string
+  n_validation_items?: number
+  warnings?: string[]
+  improvement_ci_95?: number[]
 }
 
 function fmt(v: number | null | undefined): string {
@@ -53,9 +57,15 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
   return (
     <div>
       <div className="secondary-summary">
-        <div><strong>Items:</strong> {comp.n_items ?? '—'}</div>
+        <div><strong>Videos:</strong> {comp.n_items ?? '—'}</div>
         <div><strong>Metric:</strong> {comp.metric ?? '—'}</div>
+        <div><strong>Evaluation:</strong> {comp.evaluation_mode?.replaceAll('_', ' ') ?? 'legacy'}</div>
+        <div><strong>Validation:</strong> {comp.n_validation_items ?? '—'}</div>
       </div>
+
+      {(comp.warnings ?? []).map((warning, index) => (
+        <p className="meta-warning" key={index}>{warning}</p>
+      ))}
 
       {comp.verdict && (
         <p
@@ -71,13 +81,13 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
         </p>
       )}
 
-      <p className="schema-heading">MAE vs human — does the rule tree beat a plain bias shift?</p>
+      <p className="schema-heading">Item-macro MAE vs human — does the rule tree beat a plain bias shift?</p>
       <table className="schema-table">
         <tbody>
           <tr>
             <td className="schema-field">comparator</td>
-            <td className="schema-type">in-sample</td>
-            <td className="schema-type">held-out (LOO)</td>
+            <td className="schema-type">training</td>
+            <td className="schema-type">held-out</td>
           </tr>
           {rows.map((r) => (
             <tr key={r.key}>
@@ -89,8 +99,8 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
         </tbody>
       </table>
       <p className="empty-hint">
-        The rules add signal only if (c)/(d) held-out beats (b). In-sample at small n
-        overfits — trust the LOO column.
+        A positive claim requires frozen holdout, at least five validation videos, an MAE
+        improvement of at least 0.05, and a paired 95% bootstrap interval above zero.
       </p>
 
       {bank.length > 0 && (

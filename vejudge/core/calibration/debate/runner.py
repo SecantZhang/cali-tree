@@ -18,6 +18,7 @@ from ...judge.validate import validate_judge_output
 from ...prompts import d1_judge_debate, d2_human_proxy_debate
 from ...prompts.spec import PromptSpec
 from .retrieval import find_similar_human_note
+from .disagreement import build_disagreement_profile
 from .schema import (
     DebateTranscript,
     DebateTurn,
@@ -46,6 +47,27 @@ class DebateConfig:
     # proxy without inventing a consensus target. Numeric convergence therefore uses
     # ordinary score stability while the proxy continues to see the full disagreement.
     human_raw_scores: Optional[list[float]] = None
+
+    def __post_init__(self) -> None:
+        self.max_rounds = min(6, max(1, int(self.max_rounds)))
+
+
+def _semantic_signature(parsed: dict[str, Any]) -> tuple[str, ...]:
+    summary = parsed.get("semantic_summary")
+    if not isinstance(summary, dict):
+        return ()
+    text = " ".join(
+        str(value) if not isinstance(value, list) else " ".join(map(str, value))
+        for value in summary.values()
+    ).lower()
+    return tuple(sorted({token.strip(".,:;!?()[]{}\"'") for token in text.split() if token}))
+
+
+def _same_semantic_finding(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
+    if not a or not b:
+        return False
+    sa, sb = set(a), set(b)
+    return len(sa & sb) / max(1, len(sa | sb)) >= 0.9
 
 
 class DebateTurnRunner:
@@ -149,6 +171,7 @@ class DebateRunner:
         # item -- the second half is what makes per-item fallback automatic (an item
         # with no human data behaves exactly like today, no special-cased branch).
         raw_grounded = bool(self.config.human_raw_scores)
+        disagreement_profile = build_disagreement_profile(self.config.human_raw_scores or [])
         grounded = bool(
             self.config.ground_in_human_labels
             and (self.config.human_anchor_score is not None or raw_grounded)
@@ -168,12 +191,16 @@ class DebateRunner:
             human_proxy_model=self._proxy_runner.model,
             initial_judge_result=original_output,
             created_at=datetime.now(timezone.utc).isoformat(),
+            human_disagreement_profile=disagreement_profile,
         )
 
         prev_score = initial_score
         converged = False
         convergence_reason = ""
         rounds_run = 0
+        score_history: list[float] = []
+        previous_semantic: tuple[str, ...] = ()
+        semantic_stale_rounds = 0
 
         for round_no in range(1, self.config.max_rounds + 1):
             rounds_run = round_no
@@ -189,7 +216,7 @@ class DebateRunner:
                     round_no=round_no,
                     retrieved_note=retrieved_note_text,
                     real_human_score=(self.config.human_anchor_score if grounded else None),
-                    real_human_scores=(self.config.human_raw_scores if grounded else None),
+                    human_disagreement_profile=(disagreement_profile if grounded else None),
                 ),
                 round_no=round_no,
             )
@@ -221,6 +248,26 @@ class DebateRunner:
                 convergence_reason = "invalid_turn"
                 break
             new_score = float(new_score)
+            score_history.append(new_score)
+
+            current_semantic = _semantic_signature(judge_turn.parsed)
+            if _same_semantic_finding(previous_semantic, current_semantic):
+                semantic_stale_rounds += 1
+            else:
+                semantic_stale_rounds = 0
+            if current_semantic:
+                previous_semantic = current_semantic
+
+            if (
+                len(score_history) >= 4
+                and score_history[-4] == score_history[-2]
+                and score_history[-3] == score_history[-1]
+                and score_history[-4] != score_history[-3]
+            ):
+                convergence_reason = "oscillation_detected"
+                converged = False
+                prev_score = initial_score
+                break
 
             # Grounded: self-stability alone is NOT enough to declare convergence --
             # that's exactly the reported failure mode (a stubborn, self-consistent,
@@ -237,6 +284,12 @@ class DebateRunner:
                 prev_score = new_score
                 converged = True
                 convergence_reason = "epsilon_raw_grounded" if grounded else "epsilon"
+                break
+
+            if semantic_stale_rounds >= 2:
+                prev_score = new_score
+                converged = True
+                convergence_reason = "semantic_stable"
                 break
 
             prev_score = new_score
@@ -263,6 +316,9 @@ class DebateRunner:
                 if isinstance(score, (int, float)) and not isinstance(score, bool):
                     final_score = float(score)
                 break
+
+        if convergence_reason == "oscillation_detected":
+            final_score = initial_score
 
         if all(t.error for t in transcript.turns):
             convergence_reason = "all_turns_failed"
@@ -296,4 +352,5 @@ class DebateRunner:
             failure_mode_summary=failure_mode_summary,
             transcript=transcript,
             grounded=grounded,
+            human_disagreement_profile=disagreement_profile,
         )

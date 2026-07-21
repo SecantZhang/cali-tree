@@ -233,8 +233,9 @@ def test_raw_grounded_mode_preserves_ratings_and_uses_stability_convergence():
     assert verdict.grounded is True
     assert verdict.converged is True
     assert "epsilon_raw_grounded" in verdict.flags
-    assert "[2, 4]/5" in verdict.transcript.turns[0].prompt_user
-    assert "do not average" in verdict.transcript.turns[0].prompt_user
+    assert '"histogram": {"2": 1, "4": 1}' in verdict.transcript.turns[0].prompt_user
+    assert verdict.human_disagreement_profile["polarized"] is True
+    assert "Never select one annotator" in verdict.transcript.turns[0].prompt_user
 
 
 def test_failure_mode_tags_are_normalized_and_counted():
@@ -254,3 +255,55 @@ def test_failure_mode_tags_are_normalized_and_counted():
     proxy_turn = verdict.transcript.turns[0]
     assert proxy_turn.failure_modes == ["audio_neglect"]
     assert "unknown_failure_mode:made_up_mode" in proxy_turn.validation_flags
+
+
+def test_alternating_scores_stop_as_oscillation_and_keep_original_score():
+    judge = [
+        _out({
+            "score_1_to_5": score, "revised": True,
+            "reasoning_lines": [f"view {score}"], "evidence": ["e"],
+            "semantic_summary": {
+                "principle": f"principle {score}", "applies_when": "condition",
+                "evidence_to_check": [f"evidence {score}"], "scoring_guidance": "weigh it",
+            },
+        })
+        for score in (3, 5, 3, 5)
+    ]
+    proxy = [_out({
+        "score_1_to_5": 2, "agrees_with_judge": False,
+        "reasoning_lines": ["stable disagreement"], "cited_failure_modes": [],
+    }) for _ in range(4)]
+    verdict = _runner(
+        judge, proxy, epsilon=0.25, max_rounds=6,
+        ground_in_human_labels=True, human_raw_scores=[2.0, 5.0],
+    ).run(_sample(), _original_output(score=2.0))
+    assert verdict.converged is False
+    assert verdict.rounds_run == 4
+    assert verdict.final_score == 2.0
+    assert verdict.score_delta == 0.0
+    assert "oscillation_detected" in verdict.flags
+
+
+def test_repeated_semantics_stop_after_two_stale_rounds():
+    semantic = {
+        "principle": "Use observable evidence.", "applies_when": "The edit is ambiguous.",
+        "evidence_to_check": ["Check the same fact."], "scoring_guidance": "Weigh it consistently.",
+    }
+    judge = [_out({
+        "score_1_to_5": score, "revised": True, "reasoning_lines": ["same finding"],
+        "evidence": ["e"], "semantic_summary": semantic,
+    }) for score in (2, 3, 4)]
+    proxy = [_out({
+        "score_1_to_5": 1, "agrees_with_judge": False,
+        "reasoning_lines": ["same critique"], "cited_failure_modes": [],
+    }) for _ in range(3)]
+    verdict = _runner(judge, proxy, epsilon=0.1, max_rounds=6).run(
+        _sample(), _original_output(score=1.0),
+    )
+    assert verdict.converged is True
+    assert verdict.rounds_run == 3
+    assert "semantic_stable" in verdict.flags
+
+
+def test_debate_config_hard_caps_rounds_at_six():
+    assert DebateConfig(max_rounds=20).max_rounds == 6

@@ -1,3 +1,10 @@
+## 260721-15:57:14 — Stabilize semantic calibration and held-out evaluation
+- Type: fix
+- Scope: weighted calibrators, adversarial negotiation, rule/semantic tree evaluation, calibration UI and tests
+- What: Added equal-video raw-rating weights, fixed disagreement profiles and cycle stopping, leakage-safe frozen rule banks, deployment-only features, diagnostics, and uncertainty-aware verdicts.
+- Why: Fix unstable polarized debates, repeated-rating pseudoreplication, label leakage, constant features/scores, and negligible gains being reported as meaningful.
+- Details: logs/updates/details/260721-15:57:14-updates.md
+
 ## 260721-15:30:41 — Restore credential parser fixture
 - Type: fix
 - Scope: credential parser test fixture

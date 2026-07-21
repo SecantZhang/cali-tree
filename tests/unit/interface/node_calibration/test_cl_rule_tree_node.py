@@ -5,6 +5,7 @@ import pytest
 from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
 from vejudge.interface.node_calibration import cl_rule_tree_node
 from vejudge.interface.node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
+from vejudge.interface.node_calibration.evaluation_support import stable_holdout_split
 from vejudge.lm_engine.creds import PlutoCreds
 
 
@@ -21,7 +22,10 @@ class _ScriptedCritic:
                 {"question": "Does the judge penalize user-requested repetition?", "raises_score_when": "no"},
                 {"question": "Does the judge penalize an unstated constraint?", "raises_score_when": "no"}]}
         elif "auditing an AI judge" in s:
-            payload = {"decision_answers": {"q1": False, "q2": True}}
+            payload = {"decision_answers": {
+                "q1": "a::0::peanut" not in prompt,
+                "q2": "c::0::peanut" not in prompt,
+            }}
         else:
             payload = {}
         return {"content": json.dumps(payload), "model": "m",
@@ -37,6 +41,12 @@ def _calib(item_id, *, base, metric_id="M5"):
     return {
         "item_id": item_id, "metric_id": metric_id, "original_score": base,
         "final_score": base, "score_delta": 0.0, "reasoning": "Original judge rationale: x",
+        "semantic_summary": {
+            "principle": f"Judge requested repetition consistently for {item_id}.",
+            "applies_when": "The edit intentionally repeats material.",
+            "evidence_to_check": ["Check the request and repeated clips."],
+            "scoring_guidance": "Do not penalize requested repetition.",
+        },
         "transcript": {
             "item_id": item_id, "metric_id": metric_id, "turns": [],
             "initial_judge_result": {"parsed": {"reasoning_lines": ["the judge said it was too repetitive"]}},
@@ -84,7 +94,9 @@ def test_dry_run_estimates_without_calls(make_ctx):
     result = ClRuleTreeNodeExecutor().run(ctx)
     assert result.status == "done"
     assert result.outputs["judge_rule"] == {}
-    assert result.meta["estimated_calls"]["critic_calls"] == 2
+    assert result.meta["estimated_calls"] == {
+        "rule_extraction_calls": 2, "bank_calls": 1, "critic_calls": 2,
+    }
 
 
 def test_unaggregated_labels_become_raw_fit_observations(make_ctx):
@@ -125,6 +137,33 @@ def test_full_run_mines_bank_and_reports_mae(make_ctx):
     assert "tree_rule" in jr and jr["per_item"]["a::0::peanut"]["booleans"] == [1, 0]
 
 
+def test_frozen_holdout_mines_only_training_semantic_summaries(make_ctx, monkeypatch):
+    class RecordingCritic(_ScriptedCritic):
+        def __init__(self):
+            self.extraction_prompts = []
+
+        def generate(self, prompt, *args, system=None, **kwargs):
+            if "extract reusable evaluation rules" in (system or ""):
+                self.extraction_prompts.append(prompt)
+            return super().generate(prompt, *args, system=system, **kwargs)
+
+    critic = RecordingCritic()
+    monkeypatch.setattr(cl_rule_tree_node, "get_engine", lambda *a, **k: critic)
+    items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0, "c::0::peanut": 2.0}
+    training, validation = stable_holdout_split(list(items), validation_fraction=0.2, split_seed=0)
+    ctx = make_ctx(
+        inputs=_inputs(items), dry_run=False, allow_live=True,
+        params={"evaluation_mode": "frozen_holdout", "validation_fraction": 0.2, "split_seed": 0},
+    )
+    report = ClRuleTreeNodeExecutor().run(ctx).outputs["judge_rule"]
+    combined = "\n".join(critic.extraction_prompts)
+    assert report["train_item_ids"] == training
+    assert report["validation_item_ids"] == validation
+    assert len(critic.extraction_prompts) == len(training)
+    assert all(item in combined for item in training)
+    assert all(item not in combined for item in validation)
+
+
 def test_no_human_anchor_is_an_error(make_ctx):
     # Labels present but with no M5-aligned dimensions -> no usable anchor.
     inp = _inputs({"a::0::peanut": 2.0})
@@ -132,3 +171,19 @@ def test_no_human_anchor_is_an_error(make_ctx):
     ctx = make_ctx(inputs=inp, dry_run=False, allow_live=True)
     result = ClRuleTreeNodeExecutor().run(ctx)
     assert result.status == "error" and "human targets" in result.error
+
+
+def test_preflight_reports_metric_aligned_label_skips_and_constant_raw_scores(make_ctx):
+    items = {"a::0::peanut": 2.0, "b::0::peanut": 2.0}
+    inputs = _inputs(items)
+    inputs["labels"]["b::0::peanut"] = _label(
+        "b::0::peanut", video_addresses_prompt=4.0,
+    )
+    report = ClRuleTreeNodeExecutor().run(
+        make_ctx(inputs=inputs, dry_run=False, allow_live=True),
+    ).outputs["judge_rule"]
+    assert report["diagnostics"]["skipped_items"] == {
+        "b::0::peanut": "no_usable_metric_aligned_human_target",
+    }
+    assert report["diagnostics"]["score_source"]["parsed_field"] == "score_1_to_5"
+    assert any("constant" in warning for warning in report["warnings"])

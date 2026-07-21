@@ -24,8 +24,14 @@ from ...core.calibration.debate.semantic_summary import (
     render_summary,
     rule_based_summary,
 )
+from ...core.prompts import d1_judge_debate, d2_human_proxy_debate
 from ...lm_engine.lm_template import LMEngine
 from ..server.registry import NodeRunContext
+
+
+DEBATE_CHECKPOINT_VERSION = (
+    f"d1-{d1_judge_debate.VERSION}-d2-{d2_human_proxy_debate.VERSION}-profile-v1"
+)
 
 
 def _calibrate_one(
@@ -50,6 +56,14 @@ def _calibrate_one(
     )
     verdict = debater.run(sample, original_output)
     result = to_calibrated_result(verdict).to_dict()
+    score_field = "overall_av_sync_score" if metric_id == "M6" else "score_1_to_5"
+    result["score_provenance"] = {
+        "metric_id": metric_id,
+        "parsed_field": score_field,
+        "raw_value": ((original_output.get("parsed") or {}).get(score_field)),
+        "model": original_output.get("model"),
+        "aggregation": "none",
+    }
 
     # Merged in HERE, before the caller's checkpoint.put() — not in a post-loop after
     # run_concurrent_debates returns, which is what caused the checkpoint-ordering bug:
@@ -60,6 +74,9 @@ def _calibrate_one(
     human_scores: dict[str, dict[str, Any]] = (human_ctx or {}).get("human_scores") or {}
     final_score = result.get("final_score")
     result["human_scores"] = human_scores
+    result["human_disagreement_profile"] = dict(
+        result.get("human_disagreement_profile") or {}
+    )
     result["human_gap"] = {}
     for dim, info in human_scores.items():
         if final_score is None:
@@ -139,7 +156,7 @@ def run_concurrent_debates(
             }
         summary_key = (
             f"{item_id}::calibration::{anchors[item_id]['metric_id']}::summary::"
-            f"{SUMMARY_VERSION}::{summarizer_config_hash}"
+            f"{DEBATE_CHECKPOINT_VERSION}::{SUMMARY_VERSION}::{summarizer_config_hash}"
         )
         if ctx.checkpoint.has(summary_key):
             return {**rule_result, **ctx.checkpoint.get(summary_key)}
@@ -170,7 +187,10 @@ def run_concurrent_debates(
         if ctx.progress_cb:
             ctx.progress_cb("calibration_item_start", {"item_id": item_id})
         t0 = time.perf_counter()
-        ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
+        ckpt_key = (
+            f"{item_id}::calibration::{anchors[item_id]['metric_id']}::debate::"
+            f"{DEBATE_CHECKPOINT_VERSION}"
+        )
         if ctx.checkpoint.has(ckpt_key):
             result = ctx.checkpoint.get(ckpt_key)
         else:
@@ -181,6 +201,19 @@ def run_concurrent_debates(
             if "all_turns_failed" not in (result.get("flags") or []):
                 # Base debate checkpoint is independent from the selected summary mode.
                 ctx.checkpoint.put(ckpt_key, result)
+        if "score_provenance" not in result:
+            metric_id = anchors[item_id]["metric_id"]
+            score_field = "overall_av_sync_score" if metric_id == "M6" else "score_1_to_5"
+            result = {
+                **result,
+                "score_provenance": {
+                    "metric_id": metric_id,
+                    "parsed_field": score_field,
+                    "raw_value": ((anchors[item_id].get("parsed") or {}).get(score_field)),
+                    "model": anchors[item_id].get("model"),
+                    "aggregation": "none",
+                },
+            }
         result = _apply_requested_summary(item_id, result)
         return item_id, result, round((time.perf_counter() - t0) * 1000, 1)
 
