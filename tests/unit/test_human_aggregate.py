@@ -58,6 +58,41 @@ def test_raw_scores_preserve_each_rater_alongside_the_mean():
     assert "story_flow_visuals" not in rec.raw_scores
 
 
+def test_aggregation_method_picks_the_point_estimate():
+    recs = [
+        _rec("a", 1, {"video_addresses_prompt": "3"}),
+        _rec("b", 1, {"video_addresses_prompt": "4"}),
+        _rec("c", 1, {"video_addresses_prompt": "5"}),
+    ]
+
+    def score(method):
+        return aggregate_annotations(recs, method=method)["prj-x::0::peanut"]
+
+    assert score("mean").scores["video_addresses_prompt"] == 4.0
+    assert score("median").scores["video_addresses_prompt"] == 4.0
+    assert score("max").scores["video_addresses_prompt"] == 5.0
+    assert score("min").scores["video_addresses_prompt"] == 3.0
+    for m in ("mean", "median", "max", "min"):
+        assert score(m).aggregation == m
+        # raw per-rater values are kept regardless of the reduction method.
+        assert score(m).raw_scores["video_addresses_prompt"] == [3.0, 4.0, 5.0]
+
+
+def test_none_method_keeps_raw_scores_but_no_aggregate():
+    recs = [
+        _rec("a", 1, {"video_addresses_prompt": "3"}),
+        _rec("b", 1, {"video_addresses_prompt": "5"}),
+    ]
+    rec = aggregate_annotations(recs, method="none")["prj-x::0::peanut"]
+    assert rec.aggregation == "none"
+    # No single point estimate…
+    assert rec.scores["video_addresses_prompt"] is None
+    # …but the individual ratings + counts are still there (one entry per video still).
+    assert rec.raw_scores["video_addresses_prompt"] == [3.0, 5.0]
+    assert rec.score_counts["video_addresses_prompt"] == 2
+    assert rec.n_annotators == 2
+
+
 def test_pairwise_derivation():
     recs = [_rec("a", 1, {"video_addresses_prompt": "5"}, ranking="1")]
     out = aggregate_annotations(recs)

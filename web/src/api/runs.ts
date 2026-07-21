@@ -58,6 +58,27 @@ export function getRun(runId: string): Promise<RunStatusOut> {
   return api.get(`/api/runs/${encodeURIComponent(runId)}`)
 }
 
+// Past runs discovered on disk under logs/exps (the Runs browser). Survives restarts —
+// unlike the in-memory-only `GET /api/runs` id list.
+export interface DiskRunSummary {
+  run_id: string
+  workflow_name: string | null
+  status: string
+  finished_at: string | null
+  n_checkpointed: number
+  n_nodes: number | null
+}
+
+export function listDiskRuns(): Promise<DiskRunSummary[]> {
+  return api.get('/api/runs/disk')
+}
+
+// The saved graph for a past run (workflow_graph.json shape — no canvas layout, so
+// positions auto-grid on load). Loadable into a tab via loadGraph/openRunTab.
+export function getRunGraph(runId: string): Promise<GraphSpecJSON> {
+  return api.get(`/api/runs/${encodeURIComponent(runId)}/graph`)
+}
+
 export function stopRun(runId: string): Promise<RunStatusOut> {
   return api.post(`/api/runs/${encodeURIComponent(runId)}/stop`)
 }

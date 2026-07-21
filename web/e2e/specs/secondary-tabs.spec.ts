@@ -45,6 +45,11 @@ test.describe('secondary tabs', () => {
 
     await connect(page, 'peanut_source-1', 'raw_dataset', 'dataset-2', 'raw_dataset')
 
+    // Aggregated (mean) labels — the node now defaults to "none" (per-rater); this test covers
+    // the single-score-per-item path (a separate test below covers "none").
+    await page.getByTestId('rf__node-dataset-2').locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('mean')
+
     // A dry run is enough — the Dataset node samples the real fixture data (and joins human
     // labels) regardless of dry-run, which only gates the Judge nodes' gateway calls.
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
@@ -74,6 +79,76 @@ test.describe('secondary tabs', () => {
     await labeledItem.first().click()
     await expect(modal.locator('.item-preview h4')).toBeVisible()
     await expect(modal.locator('.human-label-block')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modal).toHaveCount(0)
+  })
+
+  test('the Dataset node with aggregation_method=none shows a per-rater label breakdown', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+
+    await addNode(page, 'peanut_source')
+    await addNode(page, 'dataset')
+    await page.getByRole('button', { name: 'Fit View' }).click()
+    await connect(page, 'peanut_source-1', 'raw_dataset', 'dataset-2', 'raw_dataset')
+
+    // Switch the aggregation dropdown to "none" (no aggregation) on the inline node body.
+    const datasetNode = page.getByTestId('rf__node-dataset-2')
+    await datasetNode.locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('none')
+
+    const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
+    await runButton.click()
+    await expect(runButton).toHaveText('Run', { timeout: 10000 })
+    await expect(datasetNode.locator('.status-dot.status-done')).toBeVisible()
+
+    await datasetNode.dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+
+    // A labeled item now renders the un-aggregated per-rater breakdown, not a single mean.
+    const labeledItem = modal.locator('.secondary-item-list li', {
+      has: page.locator('.item-has-label'),
+    })
+    await expect(labeledItem.first()).toBeVisible()
+    await labeledItem.first().click()
+    await expect(modal.locator('.human-label-block')).toContainText('no aggregation')
+    await expect(modal.locator('.human-label-block')).toContainText('per-rater scores')
+
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(modal).toHaveCount(0)
+  })
+
+  test('the generic Inputs/Outputs tabs open with an API-sourced schema header', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+
+    // A Judge node has a rich contract: inputs samples/engine_config/judge_spec, output
+    // judge_result. The schema header must list them from the live /api/nodes schema, with
+    // no run needed (it's the contract, not a value).
+    await addNode(page, 'judge')
+    await page.getByTestId('rf__node-judge-1').dblclick()
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible()
+
+    await modal.getByRole('tab', { name: 'Inputs' }).click()
+    const inSchema = modal.locator('.socket-schema')
+    await expect(inSchema.getByText('Input schema')).toBeVisible()
+    for (const name of ['samples', 'engine_config', 'judge_spec']) {
+      await expect(inSchema.locator('.socket-schema-name', { hasText: new RegExp(`^${name}$`) })).toBeVisible()
+    }
+
+    await modal.getByRole('tab', { name: 'Outputs' }).click()
+    const outSchema = modal.locator('.socket-schema')
+    await expect(outSchema.getByText('Output schema')).toBeVisible()
+    await expect(outSchema.locator('.socket-schema-name', { hasText: /^judge_result$/ })).toBeVisible()
+
+    // The schema shows an expandable example payload per socket — expand it and read a
+    // real subfield of the judge_result example JSON (no run needed; it's the contract).
+    const example = outSchema.locator('.socket-schema-example details').first()
+    await example.locator('summary').click()
+    await expect(example.locator('.json-preview')).toContainText('overall_editing_score')
 
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(modal).toHaveCount(0)

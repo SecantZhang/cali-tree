@@ -19,7 +19,7 @@ from ...logging.exp_logger import ExperimentRun
 from .executor import GraphExecutionEngine, GraphRunResult
 from .graph import GraphSpec
 from .registry import NodeRunResult
-from .run_manager import start_run
+from .run_manager import save_run_results, start_run
 from .schemas import utcnow_iso
 
 
@@ -99,6 +99,8 @@ class RunRegistry:
                 "run_status.json",
                 {"status": result.status, "error": result.error, "finished_at": utcnow_iso()},
             )
+            # Faithful per-node snapshot for later disk reconstruction (inspect a past run).
+            save_run_results(run, result.node_results, result.order)
             handle.events.put(
                 {"type": "run_complete", "status": result.status, "error": result.error}
             )
