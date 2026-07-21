@@ -1,3 +1,10 @@
+## 260721-15:30:41 — Restore credential parser fixture
+- Type: fix
+- Scope: credential parser test fixture
+- What: Restored the non-secret `.env-raw` sample expected by the credential parser tests.
+- Why: Allow the complete backend suite to run without three missing-file failures.
+- Details: logs/updates/details/260721-15:30:41-updates.md
+
 ## 260721-14:10:58 — Immediate hard stop for interface runs
 - Type: feature
 - Scope: interface run worker lifecycle, Stop/Resume API and UI, persistence, tests and documentation
