@@ -13,6 +13,19 @@ async function connect(
 }
 
 test.describe('secondary tabs', () => {
+  test('new calibration trees default to frozen holdout and expose deterministic split controls', async ({ page }) => {
+    await page.goto('/')
+    await waitForPaletteLoaded(page)
+    await addNode(page, 'cl_semantic_tree')
+    const tree = page.getByTestId('rf__node-cl_semantic_tree-1')
+    await expect(tree.locator('.param-row', { hasText: 'evaluation_mode' }).locator('select'))
+      .toHaveValue('frozen_holdout')
+    await expect(tree.locator('.param-row', { hasText: 'validation_fraction' }).locator('input'))
+      .toHaveValue('0.2')
+    await expect(tree.locator('.param-row', { hasText: 'split_seed' }).locator('input'))
+      .toHaveValue('0')
+  })
+
   test('the top-bar progress bars are visible in a flat idle state before any run', async ({ page }) => {
     await page.goto('/')
     await waitForPaletteLoaded(page)

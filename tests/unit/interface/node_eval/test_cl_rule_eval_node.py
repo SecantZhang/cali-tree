@@ -21,6 +21,12 @@ def _judge_rule(*, insample=_UNSET, loo=_UNSET, **extra):
                  "left": {"leaf": True, "samples": 8, "value": 2.0},
                  "right": {"leaf": True, "samples": 5, "value": 4.0}},
         "bank": [{"question": "Does the judge over-penalize a flaw?", "raises_score_when": "no"}],
+        "evaluation_mode": "frozen_holdout",
+        "n_validation_items": 6,
+        "per_item_errors": {
+            f"item-{i}": {"bias": 0.50, "linear": 0.47, "tree": 0.40}
+            for i in range(6)
+        },
     }
     jr.update(extra)
     return jr
@@ -61,11 +67,17 @@ def test_verdict_says_rules_help_when_a_rule_model_beats_bias_held_out(make_ctx)
 def test_verdict_says_rules_do_not_help_when_bias_wins_held_out(make_ctx):
     # Both rule models are worse held-out than the bias term → the bias captures it all.
     loo = {"base": 1.83, "bias": 0.40, "linear": 0.55, "tree": 0.52}
-    ctx = make_ctx(inputs={"judge_rule": _judge_rule(loo=loo)})
+    ctx = make_ctx(inputs={"judge_rule": _judge_rule(
+        loo=loo,
+        per_item_errors={
+            f"item-{i}": {"bias": 0.40, "linear": 0.55, "tree": 0.52}
+            for i in range(6)
+        },
+    )})
     result = ClRuleEvalNodeExecutor().run(ctx)
     comp = result.outputs["comparison"]
     assert comp["beats_bias"] is False
-    assert "do NOT beat" in comp["verdict"]
+    assert "Indistinguishable" in comp["verdict"]
 
 
 def test_verdict_handles_missing_loo_gracefully(make_ctx):
@@ -74,6 +86,19 @@ def test_verdict_handles_missing_loo_gracefully(make_ctx):
     comp = result.outputs["comparison"]
     assert comp["beats_bias"] is False
     assert "Not enough data" in comp["verdict"]
+
+
+def test_negligible_tree_gain_is_not_reported_as_an_improvement(make_ctx):
+    loo = {"base": 1.76, "bias": 0.9444, "linear": 2.09, "tree": 0.9439}
+    errors = {
+        f"item-{i}": {"bias": 0.9444, "linear": 2.09, "tree": 0.9439}
+        for i in range(6)
+    }
+    comp = ClRuleEvalNodeExecutor().run(make_ctx(inputs={
+        "judge_rule": _judge_rule(loo=loo, per_item_errors=errors),
+    })).outputs["comparison"]
+    assert comp["beats_bias"] is False
+    assert "Indistinguishable from global bias" in comp["verdict"]
 
 
 def test_writes_report_json_to_run_dir(make_ctx):

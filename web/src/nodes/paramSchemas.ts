@@ -124,7 +124,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   // only for the secondary tab's judge-vs-human score comparison, not the debate itself).
   cl_adversarial: {
     epsilon: { type: 'number', default: 0.25, min: 0, step: 0.05 },
-    max_rounds: { type: 'number', default: 4, min: 1 },
+    max_rounds: { type: 'number', default: 4, min: 1, max: 6 },
     retrieval_enabled: { type: 'bool', default: true },
     batch_size: { type: 'number', default: 1, min: 1 },
     // "" (default) = auto-detect via the ALIGNMENT crosswalk; set only for metrics
@@ -143,6 +143,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     batch_size: { type: 'number', default: 1, min: 1 },
     // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
     human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+    evaluation_mode: {
+      type: 'enum', options: ['frozen_holdout', 'grouped_loo_exploratory'], default: 'frozen_holdout',
+    },
+    validation_fraction: { type: 'number', default: 0.2, min: 0.1, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 0, min: 0 },
   },
   // No params — it just renders the upstream judge_rule report.
   cl_rule_eval: {},
@@ -153,6 +158,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     batch_size: { type: 'number', default: 1, min: 1 },
     // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
     human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
+    evaluation_mode: {
+      type: 'enum', options: ['frozen_holdout', 'grouped_loo_exploratory'], default: 'frozen_holdout',
+    },
+    validation_fraction: { type: 'number', default: 0.2, min: 0.1, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 0, min: 0 },
   },
 }
 

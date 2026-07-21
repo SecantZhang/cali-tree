@@ -11,6 +11,19 @@ interface BankEntry {
 
 interface JudgeRule {
   n_items?: number
+  n_observations?: number
+  evaluation_mode?: string
+  n_train_items?: number
+  n_validation_items?: number
+  warnings?: string[]
+  dropped_features?: Array<{ question?: string; reason?: string }>
+  diagnostics?: {
+    n_raw_ratings?: number
+    n_unique_base_scores?: number
+    base_score_variance?: number
+    score_source?: { parsed_field?: string }
+    skipped_items?: Record<string, string>
+  }
   bank?: BankEntry[]
   feature_names?: string[]
   insample_mae?: Record<string, number | null>
@@ -71,9 +84,20 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
   return (
     <div>
       <div className="secondary-summary">
-        <div><strong>Items:</strong> {jr.n_items ?? perItem.length}</div>
+        <div><strong>Videos:</strong> {jr.n_items ?? perItem.length}</div>
+        <div><strong>Raw ratings:</strong> {jr.n_observations ?? jr.diagnostics?.n_raw_ratings ?? '—'}</div>
         <div><strong>Rules:</strong> {bank.length}</div>
+        <div><strong>Evaluation:</strong> {jr.evaluation_mode?.replaceAll('_', ' ') ?? 'legacy'}</div>
       </div>
+
+      {(jr.warnings ?? []).map((warning, index) => (
+        <p className="meta-warning" key={index}>{warning}</p>
+      ))}
+      <p className="empty-hint">
+        Train/validation videos: {jr.n_train_items ?? '—'} / {jr.n_validation_items ?? '—'} · raw score field:{' '}
+        {jr.diagnostics?.score_source?.parsed_field ?? '—'} · unique raw scores:{' '}
+        {jr.diagnostics?.n_unique_base_scores ?? '—'}
+      </p>
 
       <p className="schema-heading">Mined decision rules (semantic booleans)</p>
       {bank.length > 0 ? (
@@ -88,10 +112,10 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
         <p className="empty-hint">No rules mined (the debates surfaced no reusable questions).</p>
       )}
 
-      <p className="schema-heading">MAE vs human — does the rule tree beat a plain bias shift?</p>
+      <p className="schema-heading">Item-macro MAE vs human — does the rule tree beat a plain bias shift?</p>
       <table className="schema-table">
         <tbody>
-          <tr><td className="schema-field">comparator</td><td className="schema-type">in-sample</td><td className="schema-type">held-out (LOO)</td></tr>
+          <tr><td className="schema-field">comparator</td><td className="schema-type">training</td><td className="schema-type">held-out</td></tr>
           {comparatorKeys(jr).map((key) => (
             <tr key={key}>
               <td className="schema-desc">{COMPARATOR_LABELS[key] ?? key}</td>
@@ -102,9 +126,18 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
         </tbody>
       </table>
       <p className="empty-hint">
-        The rules add signal only if (c)/(d) held-out beats (b). In-sample at small n
-        overfits — trust the LOO column.
+        Raw ratings remain separate targets but are weighted so each video contributes one
+        unit. Frozen holdout mines rules from training videos only; legacy grouped LOO is exploratory.
       </p>
+
+      {(jr.dropped_features?.length ?? 0) > 0 && (
+        <details>
+          <summary>Dropped constant questions ({jr.dropped_features?.length})</summary>
+          <ul>{jr.dropped_features?.map((entry, index) => (
+            <li key={index}>{entry.question ?? `q${index + 1}`} — {entry.reason}</li>
+          ))}</ul>
+        </details>
+      )}
 
       {jr.tree ? (
         <>

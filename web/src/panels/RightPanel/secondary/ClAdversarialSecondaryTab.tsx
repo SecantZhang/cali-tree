@@ -61,6 +61,22 @@ interface CalibrationItem {
   summary_mode_used?: 'llm' | 'rule_based' | 'rule_based_fallback'
   summary_version?: string
   summary_error?: string | null
+  human_disagreement_profile?: {
+    rating_count?: number
+    histogram?: Record<string, number>
+    range?: number
+    median?: number
+    modes?: number[]
+    polarized?: boolean
+    required_perspectives?: string[]
+  }
+  score_provenance?: {
+    metric_id?: string
+    parsed_field?: string
+    raw_value?: number
+    model?: string | null
+    aggregation?: string
+  }
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
@@ -236,6 +252,12 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
         <div className="rationale-view">
           <div className="debate-score-strip">
             <div><strong>Original:</strong> {item.original_score ?? '—'}</div>
+            {item.score_provenance && (
+              <div>
+                <strong>Raw source:</strong> {item.score_provenance.parsed_field ?? '—'}
+                {' = '}{item.score_provenance.raw_value ?? '—'}
+              </div>
+            )}
             <div><strong>Calibrated:</strong> {item.final_score ?? '—'}</div>
             <div><strong>Δ:</strong> <DeltaBadge delta={item.score_delta} /></div>
             {humanDims.length > 0 ? (
@@ -278,6 +300,18 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
               <TurnBubble key={i} turn={turn} />
             ))}
           </div>
+
+          {item.human_disagreement_profile?.rating_count && (
+            <details open={item.human_disagreement_profile.polarized}>
+              <summary>
+                Fixed human disagreement profile
+                {item.human_disagreement_profile.polarized ? ' — polarized' : ''}
+              </summary>
+              <pre className="json-preview">
+                {JSON.stringify(item.human_disagreement_profile, null, 2)}
+              </pre>
+            </details>
+          )}
 
           <details>
             <summary>Calibrated reasoning</summary>

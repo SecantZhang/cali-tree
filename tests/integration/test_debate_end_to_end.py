@@ -64,9 +64,9 @@ def test_full_two_round_debate_converges_and_produces_verdict():
     assert "title card missing on B-roll" in verdict.reasoning_trace
 
     assert verdict.failure_mode_summary == {"surface_realism_bias": 1}
-    assert debate_prompt_versions() == {"D1": "v2", "D2": "v3"}
-    assert verdict.transcript.judge_agent_prompt_version == "v2"
-    assert verdict.transcript.human_proxy_prompt_version == "v3"
+    assert debate_prompt_versions() == {"D1": "v3", "D2": "v4"}
+    assert verdict.transcript.judge_agent_prompt_version == "v3"
+    assert verdict.transcript.human_proxy_prompt_version == "v4"
 
 
 def test_retrieval_note_reaches_the_human_proxy_prompt(monkeypatch):

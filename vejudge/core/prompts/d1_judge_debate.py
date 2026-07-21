@@ -13,7 +13,7 @@ from typing import Any
 from .spec import PromptSpec
 from ..rubric.definitions import metric_definition
 
-VERSION = "v2"
+VERSION = "v3"
 
 SCHEMA = {
     "score_1_to_5": "integer",
@@ -43,7 +43,9 @@ def build(
 You are the same evaluation judge that produced the original score below. A skeptical \
 human-annotator reviewer is now scrutinizing that score. Defend it if it holds up, but \
 revise it if the critique points to something concrete you missed in the actual input \
--- do not cave to pressure alone, and do not revise without citing specific evidence."""
+-- do not cave to pressure alone, and do not revise without citing specific evidence. \
+Do not alternate between score interpretations unless a genuinely new observable fact \
+appears; preserve unresolved counter-considerations explicitly."""
 
     transcript_block = transcript_text or "(no prior debate turns yet)"
 

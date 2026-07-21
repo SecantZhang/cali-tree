@@ -17,21 +17,29 @@ calibrator makes the split rule pure and unit-testable. ``metadata()['tree']`` m
 
 from __future__ import annotations
 
-from statistics import mean
 from typing import Any, Optional, Sequence
 
 from .base import Calibrator
 
 
-def _variance(ys: list[float]) -> float:
+def _weighted_mean(ys: list[float], weights: list[float]) -> float:
+    total = sum(weights)
+    return sum(y * w for y, w in zip(ys, weights)) / total if total > 0 else 0.0
+
+
+def _variance(ys: list[float], weights: Optional[list[float]] = None) -> float:
     if not ys:
         return 0.0
-    m = mean(ys)
-    return sum((y - m) ** 2 for y in ys) / len(ys)
+    ws = weights or [1.0] * len(ys)
+    total = sum(ws)
+    if total <= 0:
+        return 0.0
+    m = _weighted_mean(ys, ws)
+    return sum(w * (y - m) ** 2 for y, w in zip(ys, ws)) / total
 
 
 class SemanticDecisionTreeCalibrator(Calibrator):
-    version = "semantic-tree-v1"
+    version = "semantic-tree-v2-weighted"
 
     def __init__(
         self,
@@ -57,30 +65,40 @@ class SemanticDecisionTreeCalibrator(Calibrator):
         y: Sequence[float],
         *,
         feature_names: Optional[Sequence[str]] = None,
+        sample_weight: Optional[Sequence[float]] = None,
     ) -> "SemanticDecisionTreeCalibrator":
         rows = [list(map(float, r)) for r in X]
         ys = [float(v) for v in y]
+        weights = (
+            [float(v) for v in sample_weight]
+            if sample_weight is not None else [1.0] * len(ys)
+        )
         n_feats = len(rows[0]) if rows else 0
         self._feature_names = (
             list(feature_names) if feature_names is not None else [f"x{j}" for j in range(n_feats)]
         )
-        self._tree = self._build(list(range(len(rows))), rows, ys, depth=0)
+        self._tree = self._build(list(range(len(rows))), rows, ys, weights, depth=0)
         return self
 
-    def _build(self, idxs: list[int], rows: list[list[float]], ys: list[float], *, depth: int) -> dict[str, Any]:
+    def _build(
+        self, idxs: list[int], rows: list[list[float]], ys: list[float],
+        weights: list[float], *, depth: int,
+    ) -> dict[str, Any]:
         node_ys = [ys[i] for i in idxs]
+        node_weights = [weights[i] for i in idxs]
         node: dict[str, Any] = {
             "leaf": True,
             "samples": len(idxs),
-            "value": round(mean(node_ys), 3) if node_ys else 0.0,
+            "weighted_samples": round(sum(node_weights), 3),
+            "value": round(_weighted_mean(node_ys, node_weights), 3) if node_ys else 0.0,
         }
         # A split needs enough rows to leave min_samples_leaf on each side, and depth budget.
-        if depth >= self.max_depth or len(idxs) < 2 * self.min_samples_leaf:
+        if depth >= self.max_depth or sum(node_weights) < 2 * self.min_samples_leaf:
             return node
 
         best: Optional[tuple[float, int, float, list[int], list[int]]] = None
-        parent_var = _variance(node_ys)
-        n = len(idxs)
+        parent_var = _variance(node_ys, node_weights)
+        total_weight = sum(node_weights)
         for j in range(len(self._feature_names or [])):
             w = self._weight(self._feature_names[j])
             values = sorted({rows[i][j] for i in idxs})
@@ -88,11 +106,18 @@ class SemanticDecisionTreeCalibrator(Calibrator):
                 thr = (a + b) / 2
                 left = [i for i in idxs if rows[i][j] <= thr]
                 right = [i for i in idxs if rows[i][j] > thr]
-                if len(left) < self.min_samples_leaf or len(right) < self.min_samples_leaf:
+                if (
+                    sum(weights[i] for i in left) < self.min_samples_leaf
+                    or sum(weights[i] for i in right) < self.min_samples_leaf
+                ):
                     continue
+                left_weight = sum(weights[i] for i in left)
+                right_weight = sum(weights[i] for i in right)
                 child_var = (
-                    len(left) / n * _variance([ys[i] for i in left])
-                    + len(right) / n * _variance([ys[i] for i in right])
+                    left_weight / total_weight
+                    * _variance([ys[i] for i in left], [weights[i] for i in left])
+                    + right_weight / total_weight
+                    * _variance([ys[i] for i in right], [weights[i] for i in right])
                 )
                 weighted_gain = w * (parent_var - child_var)
                 # Strictly-better wins; ties keep the earlier (lower-index) feature for
@@ -108,11 +133,12 @@ class SemanticDecisionTreeCalibrator(Calibrator):
         return {
             "leaf": False,
             "samples": len(idxs),
-            "value": round(mean(node_ys), 3),
+            "weighted_samples": round(sum(node_weights), 3),
+            "value": round(_weighted_mean(node_ys, node_weights), 3),
             "feature": self._feature_names[j],
             "threshold": round(thr, 3),
-            "left": self._build(left, rows, ys, depth=depth + 1),
-            "right": self._build(right, rows, ys, depth=depth + 1),
+            "left": self._build(left, rows, ys, weights, depth=depth + 1),
+            "right": self._build(right, rows, ys, weights, depth=depth + 1),
         }
 
     def predict(self, X: Sequence[Sequence[float]]) -> list[float]:

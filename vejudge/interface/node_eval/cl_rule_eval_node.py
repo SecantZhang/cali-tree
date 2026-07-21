@@ -12,6 +12,7 @@ rule/tree calibration comparison instead of the human-vs-judge agreement gap.
 
 from __future__ import annotations
 
+import random
 from typing import Any
 
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
@@ -31,6 +32,17 @@ _COMPARATOR_ORDER = ["base", "bias", "linear", "tree", "semantic"]
 # The rule-based models (vs. the plain base / bias-shift baselines) — a report "helps" only
 # if one of these beats the bias correction held-out.
 _RULE_MODELS = ("semantic", "tree", "linear")
+
+
+def _bootstrap_interval(values: list[float], *, draws: int = 2000) -> tuple[float, float]:
+    if not values:
+        return (0.0, 0.0)
+    rng = random.Random(0)
+    means = sorted(
+        sum(rng.choice(values) for _ in values) / len(values)
+        for _ in range(draws)
+    )
+    return means[int(0.025 * (draws - 1))], means[int(0.975 * (draws - 1))]
 
 
 @register
@@ -73,21 +85,50 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             if isinstance(v, (int, float)) and (best_rule_loo is None or v < best_rule_loo):
                 best_rule_key, best_rule_loo = k, float(v)
 
+        evaluation_mode = judge_rule.get("evaluation_mode", "grouped_loo_exploratory")
+        n_validation = int(judge_rule.get("n_validation_items") or 0)
+        per_item_errors = judge_rule.get("per_item_errors") or {}
+        paired_improvements = [
+            float(errors["bias"]) - float(errors[best_rule_key])
+            for errors in per_item_errors.values()
+            if best_rule_key is not None
+            and isinstance(errors, dict)
+            and isinstance(errors.get("bias"), (int, float))
+            and isinstance(errors.get(best_rule_key), (int, float))
+        ]
+        ci_low, ci_high = _bootstrap_interval(paired_improvements)
+        improvement = (
+            float(bias_loo) - best_rule_loo
+            if best_rule_loo is not None and isinstance(bias_loo, (int, float)) else None
+        )
+
         if best_rule_loo is None or not isinstance(bias_loo, (int, float)):
-            verdict = "Not enough data to compare held-out (LOO) MAE."
+            verdict = "Not enough data to compare held-out MAE."
             beats_bias = False
-        elif best_rule_loo < bias_loo:
+        elif evaluation_mode != "frozen_holdout":
+            verdict = (
+                "Exploratory grouped LOO only: the rule bank was not isolated from held-out "
+                "items, so no generalization claim is made."
+            )
+            beats_bias = False
+        elif n_validation < 5:
+            verdict = (
+                f"Insufficient validation data: {n_validation} independent video(s); at least "
+                "5 are required before claiming improvement over global bias."
+            )
+            beats_bias = False
+        elif improvement is not None and improvement >= 0.05 and ci_low > 0:
             verdict = (
                 f"Rules help: {best_rule_key} beats a plain bias correction held-out "
-                f"({best_rule_loo:.2f} vs {bias_loo:.2f} LOO MAE, "
-                f"Δ {bias_loo - best_rule_loo:.2f})."
+                f"({best_rule_loo:.2f} vs {bias_loo:.2f} MAE, "
+                f"Δ {improvement:.2f}, 95% bootstrap CI [{ci_low:.2f}, {ci_high:.2f}])."
             )
             beats_bias = True
         else:
             verdict = (
-                f"Rules do NOT beat a plain bias correction held-out ({best_rule_key} "
-                f"{best_rule_loo:.2f} vs bias {float(bias_loo):.2f} LOO MAE) — the bias "
-                "term alone captures the correction at this n."
+                f"Indistinguishable from global bias: {best_rule_key} {best_rule_loo:.2f} "
+                f"vs bias {float(bias_loo):.2f} held-out MAE (Δ {float(improvement or 0):.2f}, "
+                f"95% bootstrap CI [{ci_low:.2f}, {ci_high:.2f}])."
             )
             beats_bias = False
 
@@ -102,6 +143,12 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             "bank": judge_rule.get("bank"),
             "verdict": verdict,
             "beats_bias": beats_bias,
+            "evaluation_mode": evaluation_mode,
+            "n_validation_items": n_validation,
+            "improvement_over_bias": improvement,
+            "improvement_ci_95": [ci_low, ci_high],
+            "diagnostics": judge_rule.get("diagnostics"),
+            "warnings": judge_rule.get("warnings") or [],
         }
 
         ctx.run.write_json(f"rule_eval_{ctx.node_id}.json", report)
