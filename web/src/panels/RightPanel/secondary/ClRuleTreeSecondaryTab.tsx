@@ -18,7 +18,7 @@ interface JudgeRule {
   tree_rule?: string
   tree?: DecisionTreeNode | null
   feature_labels?: Record<string, string>
-  per_item?: Record<string, { base: number; human: number; booleans: number[]; missing: string[] }>
+  per_item?: Record<string, { base: number; human: number | number[]; booleans: number[]; missing: string[] }>
 }
 
 // Label + order for known comparators. The table renders whichever keys are actually
@@ -142,7 +142,9 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
               <tr key={iid}>
                 <td className="schema-desc">{iid}</td>
                 <td className="label-score">{r.base}</td>
-                <td className="label-score">{r.human}</td>
+                <td className="label-score">
+                  {Array.isArray(r.human) ? `[${r.human.join(', ')}]` : r.human}
+                </td>
                 <td className="label-score">
                   [{r.booleans.join(', ')}]{r.missing.length > 0 && <span className="tag tag-error">missing {r.missing.length}</span>}
                 </td>

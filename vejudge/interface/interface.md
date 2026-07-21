@@ -28,6 +28,12 @@ bypasses the CLI's safety rails):
   since Judge/LM Engine nodes make real, billable gateway calls.
 - **Cost estimate preview** — before a non-dry run starts, show matched item count and estimated
   call count per Judge node (mirrors `run/estimate_cost.sh`).
+- **Immediate Stop** — every graph run executes in a dedicated spawned worker process group.
+  Stop hard-terminates that group and transitions directly from `running` to terminal
+  `stopped`; it never waits for an in-flight HTTP/model call or local descendant process to
+  return. Completed append-only checkpoints remain reusable, while the interrupted unit is
+  deliberately absent and reruns on Resume. Closing the local client connection cannot
+  guarantee that a remote provider cancels work it already accepted.
 - **Checkpoint/resume indicator** — each Dataset/Judge node shows a small badge for
   cached-and-skipped vs. to-run items, backed by the same `CheckpointStore`
   (`judge_results.jsonl`) the CLI's `--continue` uses. Re-running a graph never redoes a
@@ -300,10 +306,11 @@ Node parameters:
   `raw_scores`); the record stays keyed by `item_id` (one per video), so the join to `samples`
   is unchanged. Downstream: a wired **Eval** node detects `none` and scores the judge against
   *each rater individually* (one aligned row per rater, so agreement is judge-vs-rater, not
-  judge-vs-consensus — reported as `aggregation: "none"` in its metrics report); **calibration**
-  nodes need a single anchor per item and therefore *reject* `none` with a clear error telling
-  you to pick an aggregated method. mean/median/max/min are consumed identically by everything
-  downstream (they only change the `scores` value), so the default is fully backward-compatible.
+  judge-vs-consensus — reported as `aggregation: "none"` in its metrics report). **Calibration**
+  fitters likewise preserve raw ratings: each rating becomes a separate target observation
+  with the video's feature row repeated, and leave-one-out folds remain grouped by video to
+  prevent rater leakage. The adversarial human proxy sees the unreduced score list and is told
+  not to collapse it. mean/median/max/min instead provide one target per video.
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
@@ -493,11 +500,14 @@ the debate itself); `judge_engine` and `human_engine` (two separate `engine_conf
 inputs from two LM Engine nodes — deliberately two distinct sockets of the same type,
 so the two roles can run on different model families to mitigate self-bias; in
 practice `judge_engine` is usually the same LM Engine Node feeding the upstream
-baseline Judge Node, since the judge agent is defending its own prior answer).
+baseline Judge Node, since the judge agent is defending its own prior answer). An optional
+`summarizer_engine` is required when **Use LLM summarization** is enabled and controls the
+model, temperature, concurrency, and cost of the extra per-item distillation call.
 
 Output: `calibration_results` — `{item_id: {item_id, metric_id, original_score,
 final_score, score_delta, converged, rounds_run, flags, optimized_prompt, reasoning,
-transcript, human_scores, human_gap, grounded}}`. `optimized_prompt` is per-item extra
+transcript, human_scores, human_gap, grounded, semantic_summary, summary_mode_requested,
+summary_mode_used, summary_version, summary_error}}`. `optimized_prompt` is per-item extra
 guidance text (derived from that item's own debate, not a corpus-wide synthesis) meant
 to be wired into a downstream Judge Node's `calibration` input (see below), which
 injects it as that item's `extra_context` for a re-score. `reasoning` is the debate's
@@ -507,13 +517,17 @@ the transcript's actual first message. `human_scores` — `{dim: {score, n}}`, `
 the rater count for that dimension — is populated via
 `postprocessing.align.ALIGNMENT`'s reverse lookup (or the **Human dimension override**
 param below) when `labels` is wired and the metric has a mapped human dimension.
+Under aggregation `none`, each entry additionally carries `scores: number[]` while
+`score` remains null, preserving the unreduced ratings.
 `human_gap` — `{dim: |final_score - human_score| or null}` — is always computed
 alongside `human_scores` (independent of **Ground in human labels** below), a raw
 passive signal with no invented pass/fail threshold; a human reviewer judges severity
-themselves, weighing it against `n`. `grounded` is `true` only when this item's debate
-actually used a real human anchor score as its convergence target (opted in *and* a
-usable anchor existed for this specific item — otherwise it silently falls back to
-blind debate, same as if the option were off).
+themselves, weighing it against `n`; under `none`, the gap is also a list, one per raw
+rating. `grounded` is `true` when this item's debate used either a scalar human anchor
+or unreduced raw human ratings (and grounding was opted in). The optimized prompt uses a
+shared semantic structure (principle, applicability, observable evidence, scoring guidance,
+and optional counter-consideration), with strict removal of human-rating and target-score
+content.
 
 Node parameters:
 * **Epsilon**: score-delta convergence threshold (default 0.25).
@@ -524,18 +538,26 @@ Node parameters:
 * **Batch size**: streaming batch-eval, same convention as the Judge Node.
 * **Human dimension override**: optional — overrides the automatic `ALIGNMENT` lookup
   for metrics (M1/M2/M4) with no direct human-dimension mapping.
-* **Ground in human labels**: bool, default off — opts into letting the debate's own
-  convergence require closing the gap to this item's real human aggregate score (a
+* **Ground in human labels**: bool, default off — with an aggregated Dataset mode, opts
+  into letting the debate's own convergence require closing the gap to this item's score (a
   **rater-count-weighted mean** across the metric's mapped human dimensions, so a
   well-supported dimension counts more than an n=1 one; `core.calibration.debate.runner.DebateRunner.run`),
   instead of merely stabilizing
   against itself round-to-round (which is what let a self-consistent-but-wrong debate
   report as a clean, validated result with nothing flagging the miss). When on, the
-  human-proxy's own prompt also cites the real score explicitly as ground truth (the
+  human-proxy's own prompt also cites the real score explicitly as ground truth. With
+  Dataset aggregation `none`, the proxy instead receives every raw rating and an explicit
+  instruction not to average/vote/collapse them; because there is intentionally no scalar
+  target, convergence remains round-to-round stability while the debate is still marked
+  grounded. (The
   judge agent never sees it directly — it only ever reacts to the proxy's argued
   critique, preserving the adversarial debate structure). Off by default since this
-  changes what the debate optimizes for; an item with no usable human anchor for this
+  changes what the debate optimizes for; an item with no usable human evidence for this
   run falls back to blind debate automatically regardless of this setting.
+* **Use LLM summarization**: bool, default on for newly created nodes — makes one extra
+  call per calibrated item through `summarizer_engine`. Invalid, unsafe, or failed output
+  visibly falls back to the deterministic rule-based summary. Saved legacy workflows that
+  lack this parameter remain rule-based and make no new calls.
 
 Secondary tab: a summary strip (item count, converged count, average `|score_delta|`)
 above a left item list (score-delta indicator + converged check) and a right detail
@@ -544,8 +566,10 @@ panel for the selected item — a chat view opening with the upstream Judge run 
 judge-vs-human-proxy debate turns (alternating bubbles, each showing round/score/
 reasoning/whether it was grounded in a retrieved note), a score-comparison strip
 (original/calibrated/human scores + rater count + gap + delta + flags, plus a
-**grounded** tag when this item's debate used a real human anchor), and per-item
-**Calibrated reasoning**/**Optimized prompt** collapsible sections.
+**grounded** tag when this item's debate used real human evidence), and per-item
+**Calibrated reasoning**/**Optimized prompt** collapsible sections. The score strip shows
+whether the requested summary used the LLM, deterministic rules, or a visible fallback;
+the prompt section shows the summary version and fallback error when present.
 
 #### Judge Node
 

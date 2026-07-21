@@ -22,7 +22,10 @@ def test_d1_build_includes_original_score_and_transcript():
     assert "do a thing" in spec.user
     assert "missing b-roll" in spec.user
     assert "'score_1_to_5': 4" in spec.user or "score_1_to_5" in spec.user
-    assert set(spec.schema.keys()) == {"score_1_to_5", "revised", "reasoning_lines", "evidence"}
+    assert set(spec.schema.keys()) == {
+        "score_1_to_5", "revised", "reasoning_lines", "evidence", "semantic_summary",
+    }
+    assert spec.optional_fields == {"semantic_summary"}
 
 
 def test_d1_build_handles_empty_transcript_on_round_one():
@@ -42,7 +45,9 @@ def test_d2_build_includes_failure_mode_taxonomy_always():
         assert key in spec.system
     assert set(spec.schema.keys()) == {
         "score_1_to_5", "agrees_with_judge", "reasoning_lines", "cited_failure_modes",
+        "semantic_summary",
     }
+    assert spec.optional_fields == {"semantic_summary"}
 
 
 def test_d2_build_states_no_grounding_when_note_is_none():
@@ -81,6 +86,17 @@ def test_d2_build_includes_real_score_block_when_grounded():
     assert "supporting evidence, not a hard override" not in spec.user
 
 
+def test_d2_build_preserves_raw_scores_without_aggregating():
+    spec = d2_human_proxy_debate.build(
+        sample=_sample(), metric_id="M4", original_output=_original_output(),
+        transcript_text="", round_no=1, retrieved_note=None,
+        real_human_scores=[2.0, 4.0, 5.0],
+    )
+    assert "[2, 4, 5]/5" in spec.user
+    assert "do not average" in spec.user
+    assert "aggregate score" not in spec.user
+
+
 def test_d2_schema_is_compatible_with_the_shared_judge_output_validator():
     # Regression test: an earlier draft named this field "critique_lines", which the
     # shared vejudge.core.judge.validate.validate_judge_output rationale check doesn't
@@ -94,7 +110,11 @@ def test_d2_schema_is_compatible_with_the_shared_judge_output_validator():
         "cited_failure_modes": ["audio_neglect"],
     }
     result = validate_judge_output(
-        well_formed_response, required_fields=list(d2_human_proxy_debate.SCHEMA.keys())
+        well_formed_response,
+        required_fields=[
+            key for key in d2_human_proxy_debate.SCHEMA
+            if key not in d2_human_proxy_debate.OPTIONAL_FIELDS
+        ],
     )
     assert result.ok is True
     assert result.flags == []

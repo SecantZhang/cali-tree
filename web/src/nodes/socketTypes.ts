@@ -192,6 +192,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     input: {
       samples: 'samples', judge_result: 'judge_result', labels: 'labels',
       judge_engine: 'engine_config', human_engine: 'engine_config',
+      summarizer_engine: 'engine_config',
     },
     output: {
       calibration_results: 'calibration_results',

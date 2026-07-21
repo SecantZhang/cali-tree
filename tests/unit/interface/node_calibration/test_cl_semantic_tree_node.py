@@ -81,16 +81,23 @@ def test_dry_run_estimates_critic_and_tagging_calls(make_ctx):
     assert result.meta["estimated_calls"] == {"critic_calls": 2, "tagging_calls": 1}
 
 
-def test_unaggregated_labels_are_rejected(make_ctx):
-    # aggregation_method="none" labels have no single anchor → rejected with a clear message.
+def test_unaggregated_labels_become_raw_fit_observations(make_ctx):
     items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0}
     inp = _inputs(items, {})
     for rec in inp["labels"].values():
         rec.aggregation = "none"
-    ctx = make_ctx(inputs=inp, dry_run=True)
+        rec.scores = {d: None for d in rec.scores}
+        rec.raw_scores = {
+            "story_flow_visuals": [2.0, 4.0],
+            "story_flow_voiceover": [3.0],
+        }
+    ctx = make_ctx(inputs=inp, dry_run=False, allow_live=True)
     result = ClSemanticTreeNodeExecutor().run(ctx)
-    assert result.status == "error"
-    assert "aggregation_method" in result.error and "none" in result.error
+    assert result.status == "done"
+    report = result.outputs["judge_rule"]
+    assert report["n_items"] == 2
+    assert report["n_observations"] == 6
+    assert report["per_item"]["a::0::peanut"]["human"] == [3.0, 2.0, 4.0]
 
 
 def test_full_run_builds_concept_features_and_a_semantic_comparator(make_ctx):
@@ -125,4 +132,4 @@ def test_no_human_anchor_is_an_error(make_ctx):
         scores={"video_addresses_prompt": 4.0}, score_counts={"video_addresses_prompt": 3})}
     ctx = make_ctx(inputs=inp, dry_run=False, allow_live=True)
     result = ClSemanticTreeNodeExecutor().run(ctx)
-    assert result.status == "error" and "human anchor" in result.error
+    assert result.status == "error" and "human targets" in result.error

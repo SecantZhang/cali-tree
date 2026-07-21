@@ -33,15 +33,19 @@ class DebateConfig:
     epsilon: float = 0.25
     max_rounds: int = 4
     retrieval_enabled: bool = True
-    # Opt-in: when True AND a real human anchor score is available for this item
-    # (human_anchor_score is not None), convergence requires closing the gap to that
-    # real score instead of just round-to-round self-stability — see DebateRunner.run.
+    # Opt-in when a scalar human anchor or unreduced raw ratings are available. A
+    # scalar target requires closing its gap; raw ratings ground the proxy while
+    # preserving disagreement and therefore retain score-stability convergence.
     ground_in_human_labels: bool = False
     # Per-item real human aggregate score (set via dataclasses.replace() per call, the
     # same way metric_id is already resolved per item by the caller) — None means "no
     # usable human anchor for this item," which silently falls back to blind debate
     # behavior even if ground_in_human_labels is True.
     human_anchor_score: Optional[float] = None
+    # Raw per-rater scores for aggregation_method="none". These ground the human
+    # proxy without inventing a consensus target. Numeric convergence therefore uses
+    # ordinary score stability while the proxy continues to see the full disagreement.
+    human_raw_scores: Optional[list[float]] = None
 
 
 class DebateTurnRunner:
@@ -86,7 +90,11 @@ class DebateTurnRunner:
         except (ValueError, TypeError):
             parsed = None
 
-        validation = validate_judge_output(parsed, required_fields=list(spec.schema.keys()))
+        validation = validate_judge_output(
+            parsed, required_fields=[
+                key for key in spec.schema if key not in spec.optional_fields
+            ],
+        )
 
         failure_modes: list[str] = []
         flags = list(validation.flags)
@@ -140,8 +148,10 @@ class DebateRunner:
         # Grounded only when both opted in AND a real anchor actually exists for this
         # item -- the second half is what makes per-item fallback automatic (an item
         # with no human data behaves exactly like today, no special-cased branch).
+        raw_grounded = bool(self.config.human_raw_scores)
         grounded = bool(
-            self.config.ground_in_human_labels and self.config.human_anchor_score is not None
+            self.config.ground_in_human_labels
+            and (self.config.human_anchor_score is not None or raw_grounded)
         )
 
         note = None
@@ -179,6 +189,7 @@ class DebateRunner:
                     round_no=round_no,
                     retrieved_note=retrieved_note_text,
                     real_human_score=(self.config.human_anchor_score if grounded else None),
+                    real_human_scores=(self.config.human_raw_scores if grounded else None),
                 ),
                 round_no=round_no,
             )
@@ -216,7 +227,7 @@ class DebateRunner:
             # but factually wrong judge). Only closing the gap to the real human
             # anchor counts; hitting max_rounds without doing so still ends up
             # converged=False, convergence_reason="max_rounds", same shape as today.
-            if grounded:
+            if grounded and self.config.human_anchor_score is not None:
                 if abs(new_score - self.config.human_anchor_score) < self.config.epsilon:
                     prev_score = new_score
                     converged = True
@@ -225,7 +236,7 @@ class DebateRunner:
             elif prev_score is not None and abs(new_score - prev_score) < self.config.epsilon:
                 prev_score = new_score
                 converged = True
-                convergence_reason = "epsilon"
+                convergence_reason = "epsilon_raw_grounded" if grounded else "epsilon"
                 break
 
             prev_score = new_score

@@ -87,17 +87,23 @@ def test_dry_run_estimates_without_calls(make_ctx):
     assert result.meta["estimated_calls"]["critic_calls"] == 2
 
 
-def test_unaggregated_labels_are_rejected(make_ctx):
-    # A Dataset node with aggregation_method="none" yields per-rater labels with no single
-    # anchor — the calibration node must reject them with a clear message, not fail opaquely.
+def test_unaggregated_labels_become_raw_fit_observations(make_ctx):
     items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0}
     inputs = _inputs(items)
     for rec in inputs["labels"].values():
         rec.aggregation = "none"
-    ctx = make_ctx(inputs=inputs, dry_run=True)
+        rec.scores = {d: None for d in rec.scores}
+        rec.raw_scores = {
+            "story_flow_visuals": [2.0, 4.0],
+            "story_flow_voiceover": [3.0],
+        }
+    ctx = make_ctx(inputs=inputs, dry_run=False, allow_live=True)
     result = ClRuleTreeNodeExecutor().run(ctx)
-    assert result.status == "error"
-    assert "aggregation_method" in result.error and "none" in result.error
+    assert result.status == "done"
+    report = result.outputs["judge_rule"]
+    assert report["n_items"] == 2
+    assert report["n_observations"] == 6
+    assert report["per_item"]["a::0::peanut"]["human"] == [3.0, 2.0, 4.0]
 
 
 def test_full_run_mines_bank_and_reports_mae(make_ctx):
@@ -125,4 +131,4 @@ def test_no_human_anchor_is_an_error(make_ctx):
     inp["labels"] = {"a::0::peanut": _label("a::0::peanut", video_addresses_prompt=4.0)}
     ctx = make_ctx(inputs=inp, dry_run=False, allow_live=True)
     result = ClRuleTreeNodeExecutor().run(ctx)
-    assert result.status == "error" and "human anchor" in result.error
+    assert result.status == "error" and "human targets" in result.error

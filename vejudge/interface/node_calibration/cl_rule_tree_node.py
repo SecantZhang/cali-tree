@@ -26,8 +26,8 @@ from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ..server.registry import NodeRunContext, NodeRunResult, register
-from ._templates import CalibrationFitterNode, unaggregated_labels_error
-from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _resolve_human_context
+from ._templates import CalibrationFitterNode
+from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _human_targets
 
 _DEFAULT_ENGINE_KIND = {"text": "gpt", "video": "gemini"}
 
@@ -69,9 +69,6 @@ class ClRuleTreeNodeExecutor(CalibrationFitterNode):
                     status="error",
                     error=f"Rule/Tree Calibration Node requires a '{name}' input.",
                 )
-        if (err := unaggregated_labels_error(labels)) is not None:
-            return NodeRunResult(status="error", error=err)
-
         overlap = sorted(set(samples) & set(calibration_results))
         # A usable item has a debate transcript + a numeric original (base) score.
         usable_cr = {
@@ -99,21 +96,22 @@ class ClRuleTreeNodeExecutor(CalibrationFitterNode):
         except LiveCallNotAllowed as e:
             return NodeRunResult(status="error", error=str(e))
 
-        # Human anchor (rater-count-weighted) + base score per item; drop items lacking a
-        # usable human anchor (nothing to fit against).
+        # Human targets + base score per item. Aggregated Dataset modes provide one
+        # target; `none` provides every raw rating and is expanded into repeated fit
+        # observations below.
         override = p.get("human_dimension_override") or None
         dims = [override] if override else _DIMENSIONS_FOR_METRIC.get(metric_id, [])
         anchored: dict[str, dict[str, Any]] = {}
         for it, cr in usable_cr.items():
             agg = labels.get(it) if labels else None
-            anchor = _resolve_human_context(agg, dims).get("anchor_score")
-            if anchor is not None:
-                anchored[it] = {"cr": cr, "human": float(anchor),
+            targets = _human_targets(agg, dims)
+            if targets:
+                anchored[it] = {"cr": cr, "humans": targets,
                                 "base": float(cr["original_score"])}
         if not anchored:
             return NodeRunResult(
                 status="error",
-                error=f"No items with a usable human anchor for metric {metric_id} "
+                error=f"No items with usable human targets for metric {metric_id} "
                 "(check 'labels' cover the metric's mapped dimensions).",
             )
 
@@ -189,18 +187,35 @@ class ClRuleTreeNodeExecutor(CalibrationFitterNode):
                             f.cancel()
 
         # --- fit + evaluate (in-sample + LOO) ---
-        bases = {it: anchored[it]["base"] for it in item_ids}
-        humans = {it: anchored[it]["human"] for it in item_ids}
-        feats_full = {it: [bases[it]] + [float(x) for x in booleans.get(it, [])] for it in item_ids}
+        observation_ids = [
+            f"{it}::human::{j}"
+            for it in item_ids for j, _ in enumerate(anchored[it]["humans"])
+        ]
+        observation_item = {
+            f"{it}::human::{j}": it
+            for it in item_ids for j, _ in enumerate(anchored[it]["humans"])
+        }
+        bases = {obs: anchored[it]["base"] for obs, it in observation_item.items()}
+        humans = {
+            f"{it}::human::{j}": score
+            for it in item_ids for j, score in enumerate(anchored[it]["humans"])
+        }
+        feats_full = {
+            obs: [bases[obs]] + [float(x) for x in booleans.get(it, [])]
+            for obs, it in observation_item.items()
+        }
         feature_names = ["base_score"] + [f"q{i + 1}" for i in range(len(bank))]
         report = fit_and_evaluate(
-            item_ids=item_ids, bases=bases, humans=humans,
+            item_ids=observation_ids, bases=bases, humans=humans,
             feats_full=feats_full, feature_names=feature_names,
+            loo_groups=observation_item,
         )
         report["metric"] = metric_id
         report["bank"] = bank
         report["per_item"] = {
-            it: {"base": bases[it], "human": round(humans[it], 2),
+            it: {"base": anchored[it]["base"],
+                 "human": [round(v, 2) for v in anchored[it]["humans"]]
+                 if len(anchored[it]["humans"]) > 1 else round(anchored[it]["humans"][0], 2),
                  "booleans": booleans.get(it, []), "missing": missing.get(it, [])}
             for it in item_ids
         }

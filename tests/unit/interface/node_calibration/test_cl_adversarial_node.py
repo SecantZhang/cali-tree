@@ -109,7 +109,9 @@ def test_dry_run_estimates_calls_without_gateway(monkeypatch, make_ctx):
     assert result.meta["dry_run"] is True
     assert result.meta["n_items"] == 1
     # up to 4 rounds * 2 debate turns = 8 — no anchor call anymore (that's upstream's cost).
-    assert result.meta["estimated_calls"] == {"max_calls": 8}
+    assert result.meta["estimated_calls"] == {
+        "debate_calls": 8, "summary_calls": 0, "max_calls": 8,
+    }
     assert result.outputs["calibration_results"] == {}
 
 
@@ -170,6 +172,106 @@ def test_missing_human_engine_input_is_a_node_error(make_ctx):
     assert "human_engine" in result.error
 
 
+def test_llm_summary_requires_dedicated_engine(make_ctx):
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    ctx = make_ctx(
+        params={"use_llm_summarization": True},
+        inputs=_inputs(dataset, judge_result={}), dry_run=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "summarizer_engine" in result.error
+
+
+def test_llm_summary_dry_run_counts_one_extra_call_per_item(make_ctx):
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    inputs = _inputs(dataset, judge_result={})
+    inputs["summarizer_engine"] = _engine_config(model="summary-model")
+    ctx = make_ctx(
+        params={"max_rounds": 4, "use_llm_summarization": True},
+        inputs=inputs, dry_run=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "done"
+    assert result.meta["estimated_calls"] == {
+        "debate_calls": 8, "summary_calls": 1, "max_calls": 9,
+    }
+
+
+def test_llm_summary_success_and_checkpoint_reuse(monkeypatch, make_ctx):
+    calls = {"debate": 0, "summary": 0}
+    semantic = {
+        "principle": "Evaluate pacing across the complete edit, not isolated frames.",
+        "applies_when": "Cuts repeatedly return to the same static composition.",
+        "evidence_to_check": ["Abrupt returns to one shot create a stuttering rhythm."],
+        "scoring_guidance": "Weigh cumulative watchability alongside topical relevance.",
+        "counter_consideration": "",
+    }
+
+    def fake_chat(**kwargs):
+        system = str((kwargs.get("messages") or [{}])[0].get("content") or "")
+        if "distill an adversarial" in system:
+            calls["summary"] += 1
+            return _fake_chat_result(semantic)
+        calls["debate"] += 1
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+    item = "prj-x::0::peanut"
+    dataset = {item: _sample(item)}
+    inputs = _inputs(dataset, _judge_result(item, metric_id="M3", score=3.0))
+    inputs["summarizer_engine"] = _engine_config(model="summary-model")
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False,
+                "use_llm_summarization": True},
+        inputs=inputs, dry_run=False, allow_live=True,
+    )
+    first = ClAdversarialNodeExecutor().run(ctx)
+    entry = first.outputs["calibration_results"][item]
+    assert entry["summary_mode_requested"] == "llm"
+    assert entry["summary_mode_used"] == "llm"
+    assert semantic["principle"] in entry["optimized_prompt"]
+    assert calls == {"debate": 2, "summary": 1}
+
+    second = ClAdversarialNodeExecutor().run(ctx)
+    assert second.status == "done"
+    assert calls == {"debate": 2, "summary": 1}
+
+    # A summarizer config change invalidates only the summary cache, not the debate.
+    ctx.inputs["summarizer_engine"]["model"] = "summary-model-v2"
+    third = ClAdversarialNodeExecutor().run(ctx)
+    assert third.status == "done"
+    assert calls == {"debate": 2, "summary": 2}
+
+
+def test_unsafe_llm_summary_visibly_falls_back(monkeypatch, make_ctx):
+    def fake_chat(**kwargs):
+        system = str((kwargs.get("messages") or [{}])[0].get("content") or "")
+        if "distill an adversarial" in system:
+            return _fake_chat_result({
+                "principle": "Copy the median human rating of 2/5.",
+                "applies_when": "always", "evidence_to_check": [],
+                "scoring_guidance": "copy it", "counter_consideration": "",
+            })
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+    item = "prj-x::0::peanut"
+    dataset = {item: _sample(item)}
+    inputs = _inputs(dataset, _judge_result(item, metric_id="M3", score=3.0))
+    inputs["summarizer_engine"] = _engine_config(model="summary-model")
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False,
+                "use_llm_summarization": True},
+        inputs=inputs, dry_run=False, allow_live=True,
+    )
+    result = ClAdversarialNodeExecutor().run(ctx)
+    entry = result.outputs["calibration_results"][item]
+    assert entry["summary_mode_used"] == "rule_based_fallback"
+    assert "human_label_or_target" in entry["summary_error"]
+    assert result.meta["n_summary_fallbacks"] == 1
+
+
 def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 
@@ -200,19 +302,37 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     assert result.meta["n_items_unusable_anchor"] == 0
 
 
-def test_unaggregated_labels_are_rejected(make_ctx):
-    # aggregation_method="none" labels can't ground the debate (no single anchor) → clear error,
-    # not the previous silent fall-back to blind behavior.
+def test_unaggregated_labels_are_accepted_and_preserved(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
     dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
     judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
     labels = {"prj-x::0::peanut": AggregatedHumanRecord(
         item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
         aggregation="none", scores={"video_addresses_prompt": None},
         raw_scores={"video_addresses_prompt": [3.0, 4.0]})}
-    ctx = make_ctx(inputs=_inputs(dataset, judge_result, labels=labels), dry_run=True)
+    ctx = make_ctx(
+        inputs=_inputs(dataset, judge_result, labels=labels),
+        params={"max_rounds": 1, "retrieval_enabled": False,
+                "ground_in_human_labels": True},
+        dry_run=False, allow_live=True,
+    )
     result = ClAdversarialNodeExecutor().run(ctx)
-    assert result.status == "error"
-    assert "aggregation_method" in result.error and "none" in result.error
+    assert result.status == "done"
+    human = _resolve_human_context(labels["prj-x::0::peanut"], ["video_addresses_prompt"])
+    assert human == {
+        "human_scores": {
+            "video_addresses_prompt": {"score": None, "scores": [3.0, 4.0], "n": 2},
+        },
+        "anchor_score": None,
+        "raw_anchor_scores": [3.0, 4.0],
+    }
+    calibrated = result.outputs["calibration_results"]["prj-x::0::peanut"]
+    assert calibrated["human_scores"] == human["human_scores"]
+    assert calibrated["human_gap"]["video_addresses_prompt"] == [0.0, 1.0]
+    assert calibrated["grounded"] is True
+    assert "epsilon_raw_grounded" in calibrated["flags"]
+    proxy_prompt = calibrated["transcript"]["turns"][0]["prompt_user"]
+    assert "[3, 4]/5" in proxy_prompt and "do not average" in proxy_prompt
 
 
 def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
