@@ -17,4 +17,5 @@ class PromptSpec:
     system: Optional[str]
     user: str
     schema: dict[str, Any] = field(default_factory=dict)
+    optional_fields: set[str] = field(default_factory=set)
     version: str = "v1"

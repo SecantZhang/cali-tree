@@ -3,15 +3,11 @@ produces: a ``DebateVerdict`` plus a concise, injectable ``optimized_prompt`` a
 downstream ``Judge.run(..., extra_context=...)`` call can use to re-score *this same
 item* with the debate's own feedback in view.
 
-Two levels of calibration text, both deterministic (no extra LM call):
+Two levels of calibration text:
 
-- **Per-item** (``render_optimized_prompt_addendum``): a *distilled* lesson — the score
-  correction, the judge failure-mode tendencies the debate flagged (from the fixed
-  ``FAILURE_MODE_TAXONOMY``), and at most one short guidance clause. Deliberately NOT the
-  full round-by-round transcript: that lives in ``reasoning`` for display only, and
-  dumping it verbatim into a judge prompt produced 300–2400-word addenda that overfit to
-  one item and swamped the base prompt. The distilled form is bounded (~40-50 words) no
-  matter how many rounds ran.
+- **Per-item**: a shared semantic schema and bounded renderer fed either by deterministic
+  rule extraction or one optional LLM summarization call. Both retain reusable principles
+  plus observable evidence while filtering human labels and target-score leakage.
 - **Corpus** (``render_corpus_calibration_prompt``): the deferred "aggregation" — one
   *item-independent* prompt distilling the failure modes that recur *across* a whole run
   into a short, transferable calibration note, meant to be applied to unseen items. This
@@ -27,6 +23,7 @@ from typing import Any, Iterable, Optional
 
 from ...prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
 from .schema import DebateTranscript, DebateVerdict
+from .semantic_summary import SUMMARY_VERSION, render_summary, rule_based_summary
 
 # Short, infinitive-phrased restatements of each judge failure mode, sized to slot into
 # "tendency to {phrase}" / "to {phrase}" frames. Kept separate from
@@ -69,6 +66,11 @@ class CalibratedResult:
     # aggregation can read it straight off calibration_results / a reloaded checkpoint,
     # without re-walking the transcript turns.
     failure_mode_summary: dict[str, int] = field(default_factory=dict)
+    summary_mode_requested: str = "rule_based"
+    summary_mode_used: str = "rule_based"
+    summary_version: str = SUMMARY_VERSION
+    semantic_summary: dict[str, Any] = field(default_factory=dict)
+    summary_error: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -90,6 +92,11 @@ class CalibratedResult:
             transcript=DebateTranscript.from_dict(data["transcript"]),
             grounded=bool(data.get("grounded", False)),
             failure_mode_summary=dict(data.get("failure_mode_summary") or {}),
+            summary_mode_requested=data.get("summary_mode_requested", "rule_based"),
+            summary_mode_used=data.get("summary_mode_used", "rule_based"),
+            summary_version=data.get("summary_version", "legacy"),
+            semantic_summary=dict(data.get("semantic_summary") or {}),
+            summary_error=data.get("summary_error"),
         )
 
 
@@ -104,28 +111,11 @@ def _top_tendencies(failure_mode_summary: dict[str, int], k: int) -> list[str]:
 
 
 def render_optimized_prompt_addendum(verdict: DebateVerdict) -> str:
-    """A concise, injectable calibration lesson for re-judging *this same item*.
-
-    Deterministic (no extra LM call). Deliberately carries ONLY the general, fixed-
-    taxonomy failure-mode tendencies the debate flagged — **not** the debate's revised
-    score, nor any item-specific narrative. Earlier versions embedded the score
-    correction ("adjusted the score 1→3") and the last critique verbatim; in grounded
-    mode that handed the re-judging judge the human-anchored target, so it parroted the
-    number instead of re-deriving it (the near-tautological result). Stripping the score
-    and the narrative leaves a transferable principle the judge must actually apply. The
-    full round-by-round trace still lives in ``reasoning`` for display only.
-
-    Returns ``""`` when no tendencies were flagged — nothing generalizable to inject, so
-    the downstream judge re-scores uncalibrated rather than being told an answer.
-    """
-    tendencies = _top_tendencies(verdict.failure_mode_summary, k=2)
-    if not tendencies:
-        return ""
-    return (
-        "A prior adversarial review flagged this judge's tendency to "
-        + "; to ".join(tendencies)
-        + ". Weigh these when scoring."
+    """Deterministically retain safe semantic rules and observable debate evidence."""
+    summary = rule_based_summary(
+        verdict.transcript, verdict.failure_mode_summary, _TENDENCY,
     )
+    return render_summary(summary)
 
 
 def render_corpus_calibration_prompt(results: Iterable[dict[str, Any]]) -> str:
@@ -187,6 +177,9 @@ def render_corpus_calibration_prompt(results: Iterable[dict[str, Any]]) -> str:
 
 
 def to_calibrated_result(verdict: DebateVerdict) -> CalibratedResult:
+    semantic = rule_based_summary(
+        verdict.transcript, verdict.failure_mode_summary, _TENDENCY,
+    )
     return CalibratedResult(
         item_id=verdict.item_id,
         metric_id=verdict.metric_id,
@@ -196,9 +189,10 @@ def to_calibrated_result(verdict: DebateVerdict) -> CalibratedResult:
         converged=verdict.converged,
         rounds_run=verdict.rounds_run,
         flags=list(verdict.flags),
-        optimized_prompt=render_optimized_prompt_addendum(verdict),
+        optimized_prompt=render_summary(semantic),
         reasoning=verdict.reasoning_trace,
         transcript=verdict.transcript,
         grounded=verdict.grounded,
         failure_mode_summary=dict(verdict.failure_mode_summary),
+        semantic_summary=semantic.to_dict(),
     )

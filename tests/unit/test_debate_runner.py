@@ -217,6 +217,26 @@ def test_grounded_mode_real_score_reaches_only_the_human_proxy_prompt():
     assert "3.1" not in judge_turn.prompt_user
 
 
+def test_raw_grounded_mode_preserves_ratings_and_uses_stability_convergence():
+    runner = _runner(
+        judge_responses=[_out({"score_1_to_5": 3.0, "revised": False,
+                               "reasoning_lines": ["stable"], "evidence": []})],
+        proxy_responses=[_out({"score_1_to_5": 2, "agrees_with_judge": False,
+                               "reasoning_lines": ["raters disagree"],
+                               "cited_failure_modes": []})],
+        epsilon=0.25, max_rounds=4, ground_in_human_labels=True,
+        human_raw_scores=[2.0, 4.0],
+    )
+
+    verdict = runner.run(_sample(), _original_output(score=3.0))
+
+    assert verdict.grounded is True
+    assert verdict.converged is True
+    assert "epsilon_raw_grounded" in verdict.flags
+    assert "[2, 4]/5" in verdict.transcript.turns[0].prompt_user
+    assert "do not average" in verdict.transcript.turns[0].prompt_user
+
+
 def test_failure_mode_tags_are_normalized_and_counted():
     runner = _runner(
         judge_responses=[_out({"score_1_to_5": 3.1, "revised": True, "reasoning_lines": ["ok"], "evidence": []})],

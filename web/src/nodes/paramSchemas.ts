@@ -116,7 +116,8 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     batch_size: { type: 'number', default: 1, min: 1 },
   },
   eval: {},
-  // judge_engine/human_engine come from two required upstream LM Engine Node
+  // judge_engine/human_engine come from two required upstream LM Engine Nodes;
+  // summarizer_engine is required only when use_llm_summarization is enabled.
   // `engine_config` inputs; `judge_result` (a Judge Node's output) supplies the anchor
   // score and metric identity — there's no metric_id param, the metric is a wired
   // artifact same as everywhere else in this node system. `labels` is optional (used
@@ -133,6 +134,9 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // closing the gap to it, not just round-to-round self-stability. Off by default —
     // changes what the debate optimizes for, so it's a deliberate choice.
     ground_in_human_labels: { type: 'bool', default: false },
+    // New nodes default to richer, billable semantic distillation. Saved legacy graphs
+    // omit this key and the backend keeps them on deterministic rule-based mode.
+    use_llm_summarization: { type: 'bool', default: true },
   },
   cl_rule_tree: {
     max_questions: { type: 'number', default: 5, min: 1 },
