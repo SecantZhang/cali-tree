@@ -15,13 +15,14 @@ from statistics import mean
 from typing import Any, Optional
 
 from ...core.calibration.debate import DebateConfig, render_corpus_calibration_prompt
+from ...core.calibration.debate.semantic_summary import summary_cache_hash
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS, AggregatedHumanRecord
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ...postprocessing.align import ALIGNMENT
 from ..server.registry import NodeRunContext, NodeRunResult, register
 from ._concurrent_debate import run_concurrent_debates
-from ._templates import CalibrationProducerNode, unaggregated_labels_error
+from ._templates import CalibrationProducerNode
 
 # Modality-appropriate engine default for the judge role (mirrors judge_node.py). The
 # human-proxy role is always plain text regardless of metric modality — debate turns
@@ -83,6 +84,26 @@ def _resolve_human_context(
     """
     if not agg or not dims:
         return {"human_scores": {}, "anchor_score": None}
+    if agg.aggregation == "none":
+        human_scores = {
+            d: {
+                "score": None,
+                "scores": list(agg.raw_scores.get(d, [])),
+                "n": len(agg.raw_scores.get(d, [])),
+            }
+            for d in dims
+        }
+        raw = [score for info in human_scores.values() for score in info["scores"]]
+        # A single raw observation is already a scalar and can safely serve as the
+        # convergence target. With multiple raters there is deliberately no scalar
+        # anchor: choosing one or averaging them would defeat aggregation_method="none".
+        # The full list still grounds the proxy, and downstream model calibrators
+        # consume every raw observation separately.
+        return {
+            "human_scores": human_scores,
+            "anchor_score": float(raw[0]) if len(raw) == 1 else None,
+            "raw_anchor_scores": [float(score) for score in raw],
+        }
     human_scores = {d: {"score": agg.scores.get(d), "n": agg.score_counts.get(d, 0)} for d in dims}
     contributing = [
         (v["score"], v["n"]) for v in human_scores.values() if v["score"] is not None
@@ -98,6 +119,27 @@ def _resolve_human_context(
     else:
         anchor_score = None
     return {"human_scores": human_scores, "anchor_score": anchor_score}
+
+
+def _human_targets(
+    agg: Optional[AggregatedHumanRecord], dims: list[str],
+) -> list[float]:
+    """Return calibration targets without overriding the Dataset's reduction choice.
+
+    Aggregated modes yield their one configured point estimate. ``none`` yields every
+    raw rating across the mapped dimensions, so fitters can duplicate the item's
+    feature row once per human observation instead of manufacturing an aggregate.
+    """
+    if not agg or not dims:
+        return []
+    if agg.aggregation == "none":
+        return [
+            float(score)
+            for dim in dims
+            for score in (agg.raw_scores.get(dim, []) or [])
+        ]
+    anchor = _resolve_human_context(agg, dims).get("anchor_score")
+    return [] if anchor is None else [float(anchor)]
 
 
 @register
@@ -123,6 +165,8 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
         # not a silent default. An item with no usable human anchor falls back to
         # today's blind behavior automatically, regardless of this setting.
         "ground_in_human_labels": {"type": "boolean", "default": False},
+        # Missing means legacy workflow (rule-based); newly-created UI nodes persist True.
+        "use_llm_summarization": {"type": "boolean", "default": True},
     }
     # Deliberately NOT opted into streaming batch-eval previews (see
     # NodeExecutor.supports_partial_input's docstring: "only a node whose run() is cheap
@@ -167,9 +211,16 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
                 error="Calibration Node requires a 'human_engine' input (wire a second LM "
                 "Engine Node's `engine_config` output)",
             )
+        use_llm_summarization = p.get("use_llm_summarization", False) is True
+        summarizer_engine_config = ctx.inputs.get("summarizer_engine")
+        if use_llm_summarization and summarizer_engine_config is None:
+            return NodeRunResult(
+                status="error",
+                error="Calibration Node has LLM summarization enabled and requires a "
+                "'summarizer_engine' input (wire a dedicated LM Engine Node, or disable "
+                "LLM summarization for deterministic rule-based distillation)",
+            )
         labels = ctx.inputs.get("labels")  # optional — only used for display/comparison
-        if (err := unaggregated_labels_error(labels)) is not None:
-            return NodeRunResult(status="error", error=err)
 
         max_rounds = max(1, int(p.get("max_rounds") or 4))
         config = DebateConfig(
@@ -182,13 +233,18 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
         if ctx.dry_run:
             # Up to max_rounds*2 debate turns per item — no anchor call, that's the
             # upstream Judge node's cost, already paid (or estimated) there.
-            calls_per_item = max_rounds * 2
+            debate_calls = len(dataset) * max_rounds * 2
+            summary_calls = len(dataset) if use_llm_summarization else 0
             return NodeRunResult(
                 outputs={"calibration_results": {}, "general_calibration": ""},
                 meta={
                     "dry_run": True,
                     "n_items": len(dataset),
-                    "estimated_calls": {"max_calls": len(dataset) * calls_per_item},
+                    "estimated_calls": {
+                        "debate_calls": debate_calls,
+                        "summary_calls": summary_calls,
+                        "max_calls": debate_calls + summary_calls,
+                    },
                 },
             )
 
@@ -273,6 +329,10 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
 
         judge_engine = _build_engine(judge_engine_config, _DEFAULT_ENGINE_KIND.get(modality, "gpt"))
         human_engine = _build_engine(human_engine_config, "gpt")
+        summarizer_engine = (
+            _build_engine(summarizer_engine_config, "gpt")
+            if use_llm_summarization and summarizer_engine_config is not None else None
+        )
 
         # Precomputed BEFORE run_concurrent_debates — not in a post-loop after it
         # returns, which is what caused the checkpoint-ordering bug (the post-loop's
@@ -294,6 +354,15 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
             anchors=anchors,
             judge_engine=judge_engine,
             human_engine=human_engine,
+            summarizer_engine=summarizer_engine,
+            use_llm_summarization=use_llm_summarization,
+            summarizer_config_hash=(
+                summary_cache_hash(summarizer_engine_config)
+                if summarizer_engine_config is not None else "rule"
+            ),
+            summarizer_concurrency=max(
+                1, int((summarizer_engine_config or {}).get("concurrency") or 1),
+            ),
             config=config,
             concurrency=concurrency,
             batch_size=max(1, int(p.get("batch_size") or 1)),

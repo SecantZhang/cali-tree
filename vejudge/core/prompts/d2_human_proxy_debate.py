@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from .spec import PromptSpec
 
-VERSION = "v1"
+VERSION = "v3"
 
 # Fixed vocabulary of judge failure modes. Owned here (prompt content) and imported by
 # vejudge.core.calibration.debate.schema to normalize/count ``cited_failure_modes``.
@@ -38,7 +38,12 @@ SCHEMA = {
     # (which is not modified for this feature) working unchanged for this role too.
     "reasoning_lines": ["string", "string", "string"],
     "cited_failure_modes": ["string"],
+    "semantic_summary": {
+        "principle": "string", "applies_when": "string",
+        "evidence_to_check": ["string"], "scoring_guidance": "string",
+    },
 }
+OPTIONAL_FIELDS = {"semantic_summary"}
 
 
 def build(
@@ -55,6 +60,9 @@ def build(
     # existing caller, and any ungrounded/fallback item) omits this block entirely,
     # producing byte-identical output to before this parameter existed.
     real_human_score: Optional[float] = None,
+    # Unreduced ratings for THIS EXACT item. Kept separate from real_human_score so
+    # aggregation_method="none" never manufactures a consensus value.
+    real_human_scores: Optional[list[float]] = None,
 ) -> PromptSpec:
     inp = sample.get("input") or {}
     original_parsed = original_output.get("parsed") or {}
@@ -88,6 +96,14 @@ score genuinely holds up, say so."""
         "number."
         if real_human_score is not None else ""
     )
+    if real_human_scores:
+        rendered = ", ".join(f"{score:g}" for score in real_human_scores)
+        real_score_block = (
+            "Real human annotators gave THIS EXACT item these unreduced scores: "
+            f"[{rendered}]/5. Preserve their disagreement as evidence; do not average, "
+            "vote, or otherwise collapse these ratings into a single target. Use the "
+            "individual ratings to identify concrete reasons the judge may be wrong."
+        )
 
     transcript_block = transcript_text or "(no prior debate turns yet)"
 
@@ -97,11 +113,19 @@ This is round {round_no}. Respond with JSON only (no markdown fences):
   "score_1_to_5": integer,
   "agrees_with_judge": boolean,
   "reasoning_lines": [string, string, string],
-  "cited_failure_modes": [string]
+  "cited_failure_modes": [string],
+  "semantic_summary": {{
+    "principle": "a reusable evaluation rule, with no target score",
+    "applies_when": "the observable conditions where it matters",
+    "evidence_to_check": ["concrete editing facts; never human ratings"],
+    "scoring_guidance": "how to weigh those facts without prescribing a score"
+  }}
 }}
 - "cited_failure_modes": zero or more keys from the failure-mode list above (use the
   exact keys, e.g. "surface_realism_bias"), only when genuinely applicable.
-- "reasoning_lines": exactly 2-3 sentences of your critique, concrete and evidence-based."""
+- "reasoning_lines": exactly 2-3 sentences of your critique, concrete and evidence-based.
+- "semantic_summary" must generalize the critique and must not mention human ratings,
+  rating distributions, target scores, or correction magnitudes."""
 
     # Joined as a list (not one big f-string) so the optional real_score_block adds no
     # stray blank section when it's "" (the default/every-existing-caller case).
@@ -118,4 +142,7 @@ This is round {round_no}. Respond with JSON only (no markdown fences):
         if block
     )
 
-    return PromptSpec(system=system, user=user, schema=SCHEMA, version=VERSION)
+    return PromptSpec(
+        system=system, user=user, schema=SCHEMA,
+        optional_fields=OPTIONAL_FIELDS, version=VERSION,
+    )

@@ -65,11 +65,11 @@ def test_prompt_carries_only_general_tendencies():
         failure_mode_summary={"scale_drift": 3, "overconfident_rationale": 5, "audio_neglect": 1},
     )
     text = render_optimized_prompt_addendum(verdict)
-    # Top-2 by count appear; the third (audio_neglect, count 1) does not.
+    # Top-3 semantic tendencies are retained.
     assert _TENDENCY["overconfident_rationale"] in text
     assert _TENDENCY["scale_drift"] in text
-    assert _TENDENCY["audio_neglect"] not in text
-    assert "tendency to" in text and "Weigh these when scoring" in text
+    assert _TENDENCY["audio_neglect"] in text
+    assert "Principle:" in text and "Scoring guidance:" in text
 
 
 def test_prompt_does_not_leak_the_score_or_item_narrative():
@@ -100,7 +100,7 @@ def test_prompt_is_short_and_bounded_regardless_of_rounds():
         failure_mode_summary={"scale_drift": 9, "overconfident_rationale": 6},
     )
     text = render_optimized_prompt_addendum(verdict)
-    assert len(text.split()) <= 30  # just the two tendencies + framing
+    assert len(text.split()) <= 250
     assert "→" not in text
 
 

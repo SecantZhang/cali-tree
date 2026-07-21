@@ -30,9 +30,9 @@ class NodeRunContext:
     dry_run: bool = True
     allow_live: bool = False
     progress_cb: Optional[Callable[[str, dict[str, Any]], None]] = None
-    # Graceful-stop check: a node loop that iterates external calls (e.g. Judge Node's
-    # per-item loop) should poll this between calls and wind down rather than starting new
-    # work once it returns True. None means "never asked to stop" (e.g. in tests).
+    # Cooperative cancellation remains useful to direct executor tests and non-interface
+    # callers. Interface graph runs use a process boundary and hard-kill the whole worker,
+    # since a thread blocked in a synchronous HTTP call cannot poll this callback.
     should_stop: Optional[Callable[[], bool]] = None
     # Streaming batch-eval hook (Judge Node only calls this today): a node whose output
     # arrives incrementally can call `on_batch(output_socket, partial_value)` at a batch

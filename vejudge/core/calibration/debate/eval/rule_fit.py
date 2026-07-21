@@ -35,10 +35,15 @@ def fit_and_evaluate(
     humans: dict[str, float],
     feats_full: dict[str, list[float]],
     feature_names: list[str],
+    loo_groups: Optional[dict[str, str]] = None,
     extra_calibrators: Optional[dict[str, Callable[[], Calibrator]]] = None,
 ) -> dict:
     """Return the report dict: in-sample + LOO MAE per comparator, the fitted tree rule
     text, and feature importances. ``feats_full[i] == [base_i, b1_i..bK_i]``.
+
+    ``loo_groups`` keeps repeated observations from the same source item in the same
+    fold. This is required for raw per-rater targets: all ratings of a held-out video
+    must be excluded from training together, otherwise identical item features leak.
 
     ``extra_calibrators`` maps a comparator name to a zero-arg factory building a fresh
     ``Calibrator`` (fit signature ``fit(X, y, *, feature_names)``). Each is fit on the same
@@ -74,13 +79,18 @@ def fit_and_evaluate(
     insample = eval_split(item_ids, item_ids)
     insample_mae = {k: mae(v, truth) for k, v in insample.items()}
 
+    groups = loo_groups or {i: i for i in item_ids}
+    group_order = list(dict.fromkeys(groups[i] for i in item_ids))
     loo = {k: [] for k in comparators}
-    for held in item_ids:
-        rest = [i for i in item_ids if i != held]
-        one = eval_split(rest, [held])
+    loo_truth: list[float] = []
+    for held_group in group_order:
+        held = [i for i in item_ids if groups[i] == held_group]
+        rest = [i for i in item_ids if groups[i] != held_group]
+        one = eval_split(rest, held)
+        loo_truth.extend(humans[i] for i in held)
         for k in loo:
-            loo[k].append(one[k][0])
-    loo_mae = {k: mae(v, truth) for k, v in loo.items()}
+            loo[k].extend(one[k])
+    loo_mae = {k: mae(v, loo_truth) for k, v in loo.items()}
 
     tree_full = (
         DecisionTreeCalibrator().fit([feats_full[i] for i in item_ids],
@@ -89,7 +99,8 @@ def fit_and_evaluate(
     )
     meta = tree_full.metadata() if tree_full else {}
     return {
-        "n_items": len(item_ids),
+        "n_items": len(group_order),
+        "n_observations": len(item_ids),
         "feature_names": feature_names,
         "insample_mae": insample_mae,
         "loo_mae": loo_mae,

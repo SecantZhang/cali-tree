@@ -50,15 +50,17 @@ interface CalibrationItem {
   optimized_prompt: string
   reasoning: string
   transcript: DebateTranscript
-  // n = rater count for that dimension — the reliability signal (n=1 is weaker
-  // evidence than n=3-4) alongside the mean score itself.
-  human_scores: Record<string, { score: number | null; n: number }>
+  // Aggregated mode uses `score`; raw mode uses the unreduced `scores` list.
+  human_scores: Record<string, { score: number | null; scores?: number[]; n: number }>
   // Always computed (independent of `grounded`/ground_in_human_labels) — raw
-  // |final_score - human_score| per dimension, no invented pass/fail threshold.
-  human_gap: Record<string, number | null>
-  // True only when a real human anchor was actually available AND
-  // ground_in_human_labels was set — see core.calibration.debate.schema.DebateVerdict.
+  // |final_score - human_score| per dimension/rating, no invented pass/fail threshold.
+  human_gap: Record<string, number | number[] | null>
+  // True when scalar or raw human evidence was available AND grounding was enabled.
   grounded: boolean
+  summary_mode_requested?: 'llm' | 'rule_based'
+  summary_mode_used?: 'llm' | 'rule_based' | 'rule_based_fallback'
+  summary_version?: string
+  summary_error?: string | null
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
@@ -239,10 +241,16 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
             {humanDims.length > 0 ? (
               humanDims.map(([dim, info]) => (
                 <div key={dim}>
-                  <strong>Human ({dim}):</strong> {info.score ?? '—'}{' '}
+                  <strong>Human ({dim}):</strong>{' '}
+                  {info.scores?.length ? info.scores.join(', ') : (info.score ?? '—')}{' '}
                   {info.n > 0 && <span className="tag">n={info.n}</span>}{' '}
-                  {item.human_gap?.[dim] != null && (
-                    <span className="tag">gap {item.human_gap[dim]!.toFixed(2)}</span>
+                  {typeof item.human_gap?.[dim] === 'number' && (
+                    <span className="tag">gap {item.human_gap[dim].toFixed(2)}</span>
+                  )}
+                  {Array.isArray(item.human_gap?.[dim]) && (
+                    <span className="tag">
+                      gaps {(item.human_gap[dim] as number[]).map((v) => v.toFixed(2)).join(', ')}
+                    </span>
                   )}
                 </div>
               ))
@@ -253,6 +261,11 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
               <span className="tag">{item.converged ? 'converged' : 'not converged'}</span>{' '}
               <span className="tag">{item.rounds_run} round(s)</span>{' '}
               {item.grounded && <span className="tag">grounded</span>}
+              {item.summary_mode_used && (
+                <span className={item.summary_mode_used === 'rule_based_fallback' ? 'tag tag-error' : 'tag'}>
+                  summary: {item.summary_mode_used.replaceAll('_', ' ')}
+                </span>
+              )}
               {item.flags.map((f) => (
                 <span key={f} className="tag">{f}</span>
               ))}
@@ -271,7 +284,13 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
             <p className="reasoning">{item.reasoning}</p>
           </details>
           <details>
-            <summary>Optimized prompt</summary>
+            <summary>
+              Optimized prompt
+              {item.summary_version ? ` (${item.summary_version})` : ''}
+            </summary>
+            {item.summary_error && (
+              <p className="rationale-error">LLM summary fallback: {item.summary_error}</p>
+            )}
             <pre className="json-preview">{item.optimized_prompt}</pre>
           </details>
         </div>

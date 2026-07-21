@@ -13,14 +13,19 @@ from typing import Any
 from .spec import PromptSpec
 from ..rubric.definitions import metric_definition
 
-VERSION = "v1"
+VERSION = "v2"
 
 SCHEMA = {
     "score_1_to_5": "integer",
     "revised": "boolean",
     "reasoning_lines": ["string", "string", "string"],
     "evidence": ["string"],
+    "semantic_summary": {
+        "principle": "string", "applies_when": "string",
+        "evidence_to_check": ["string"], "scoring_guidance": "string",
+    },
 }
+OPTIONAL_FIELDS = {"semantic_summary"}
 
 
 def build(
@@ -60,13 +65,24 @@ This is round {round_no}. Respond with JSON only (no markdown fences):
   "score_1_to_5": integer,
   "revised": boolean,
   "reasoning_lines": [string, string, string],
-  "evidence": [string]
+  "evidence": [string],
+  "semantic_summary": {{
+    "principle": "a reusable evaluation rule, with no target score",
+    "applies_when": "the observable conditions where it matters",
+    "evidence_to_check": ["concrete editing facts; never human ratings"],
+    "scoring_guidance": "how to weigh those facts without prescribing a score"
+  }}
 }}
 - "revised": true only if this score differs from your immediately preceding score in
   this debate.
 - "evidence": concrete, specific points from the input that justify holding or revising
   the score -- not general reassurance.
 - "reasoning_lines": exactly 2-3 sentences explaining your score in light of the
-  critique."""
+  critique.
+- "semantic_summary" must generalize the negotiated lesson and must not mention human
+  ratings, rating distributions, target scores, or correction magnitudes."""
 
-    return PromptSpec(system=system, user=user, schema=SCHEMA, version=VERSION)
+    return PromptSpec(
+        system=system, user=user, schema=SCHEMA,
+        optional_fields=OPTIONAL_FIELDS, version=VERSION,
+    )
