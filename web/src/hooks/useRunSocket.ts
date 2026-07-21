@@ -19,9 +19,8 @@ interface RunEvent {
   order?: string[]
 }
 
-// "stopping" is an in-between state — not running-as-normal, but not terminal either (it
-// will still transition to "stopped") — so anywhere this repo checks "is this run over",
-// it must check against this set, not just `!== 'running'`.
+// New hard-stop runs transition directly to "stopped". "stopping" remains tolerated in
+// the wire/store types for older servers or already-open sessions.
 const TERMINAL_STATUSES = new Set(['done', 'error', 'stopped'])
 
 // A node can finish with status "done" and still have done nothing useful (e.g. a Dataset

@@ -3,23 +3,10 @@ import time
 import pytest
 
 import vejudge.config as config
+from vejudge.checkpoint import CheckpointStore
 from vejudge.interface.server.graph import GraphSpec, NodeSpec
-from vejudge.interface.server.registry import (
-    NODE_EXECUTORS,
-    NodeExecutor,
-    NodeRunContext,
-    NodeRunResult,
-    register,
-)
 from vejudge.interface.server.run_manager import start_run
 from vejudge.interface.server.run_registry import RunRegistry
-
-
-@pytest.fixture(autouse=True)
-def _clean_fake_types():
-    yield
-    for t in [t for t in NODE_EXECUTORS if t.startswith("__stopfx_")]:
-        NODE_EXECUTORS.pop(t, None)
 
 
 @pytest.fixture(autouse=True)
@@ -27,32 +14,12 @@ def _isolate_logs_root(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "LOGS_ROOT", tmp_path)
 
 
-def _register_slow(node_type, delay=0.2):
-    class _Slow(NodeExecutor):
-        def run(self, ctx: NodeRunContext) -> NodeRunResult:
-            time.sleep(delay)
-            return NodeRunResult(outputs={})
-
-    _Slow.node_type = node_type
-    _Slow.category = "node_db"
-    return register(_Slow)
-
-
-def _register_marker(node_type, ran: list[str]):
-    class _Marker(NodeExecutor):
-        def run(self, ctx: NodeRunContext) -> NodeRunResult:
-            ran.append(node_type)
-            return NodeRunResult(outputs={})
-
-    _Marker.node_type = node_type
-    _Marker.category = "node_db"
-    return register(_Marker)
-
-
 def _wait_until_terminal(handle, timeout=5.0):
     deadline = time.time() + timeout
     while handle.status not in ("stopped", "done", "error") and time.time() < deadline:
         time.sleep(0.02)
+    if handle.monitor_thread is not None:
+        handle.monitor_thread.join(timeout=max(0.0, deadline - time.time()))
 
 
 def test_request_stop_on_unknown_run_id_returns_false():
@@ -61,31 +28,57 @@ def test_request_stop_on_unknown_run_id_returns_false():
 
 
 def test_request_stop_halts_the_second_node_and_finishes_stopped():
-    ran: list[str] = []
-    _register_slow("__stopfx_slow__", delay=0.3)
-    _register_marker("__stopfx_marker__", ran)
     graph = GraphSpec(
         nodes=[
-            NodeSpec(id="a", type="__stopfx_slow__"),
+            NodeSpec(id="a", type="__stopfx_slow__", params={"delay": 3.0}),
             NodeSpec(id="b", type="__stopfx_marker__"),
         ],
         edges=[],
     )
 
-    registry = RunRegistry()
+    registry = RunRegistry(worker_imports=["tests.hard_stop_nodes"])
     handle = registry.start(graph, dry_run=True, allow_live=False)
-    time.sleep(0.05)  # let node "a" start (it sleeps 0.3s)
+    time.sleep(0.2)  # let the spawned worker enter node "a"
     assert handle.status == "running"
+    t0 = time.perf_counter()
     assert registry.request_stop(handle.run_id) is True
-    assert handle.status == "stopping"
+    elapsed = time.perf_counter() - t0
+    assert handle.status == "stopped"
+    assert elapsed < 0.5
 
     _wait_until_terminal(handle)
 
     assert handle.status == "stopped"
-    assert ran == []  # node "b" never ran
     assert handle.result is not None
-    assert handle.result.node_results["a"].status == "done"  # "a" finished on its own
+    assert handle.result.node_results["a"].status == "stopped"
     assert handle.result.node_results["b"].status == "stopped"
+    assert registry.request_stop(handle.run_id) is False
+
+    deadline = time.time() + 2.0
+    while handle.process is not None and handle.process.is_alive() and time.time() < deadline:
+        time.sleep(0.01)
+    assert handle.process is not None and not handle.process.is_alive()
+
+
+def test_hard_stop_preserves_flushed_checkpoint_but_not_interrupted_work():
+    graph = GraphSpec(nodes=[
+        NodeSpec(
+            id="a", type="__stopfx_checkpoint_sleep__", params={"delay": 3.0},
+        ),
+    ], edges=[])
+    registry = RunRegistry(worker_imports=["tests.hard_stop_nodes"])
+    handle = registry.start(graph, dry_run=True, allow_live=False)
+    checkpoint_path = handle.run.run_dir / "judge_results.jsonl"
+
+    deadline = time.time() + 2.0
+    while (not checkpoint_path.is_file() or checkpoint_path.stat().st_size == 0) and time.time() < deadline:
+        time.sleep(0.01)
+    assert checkpoint_path.is_file()
+    assert registry.request_stop(handle.run_id) is True
+
+    checkpoint = CheckpointStore(checkpoint_path)
+    assert checkpoint.get("completed-before-stop") == {"ok": True}
+    assert not checkpoint.has("must-not-exist-after-stop")
 
 
 def test_try_claim_resume_dir_blocks_a_second_concurrent_claim(tmp_path):
@@ -98,7 +91,6 @@ def test_try_claim_resume_dir_blocks_a_second_concurrent_claim(tmp_path):
 
 
 def test_resumed_run_releases_its_claim_once_finished():
-    _register_marker("__stopfx_resumeok__", [])
     graph = GraphSpec(nodes=[NodeSpec(id="a", type="__stopfx_resumeok__")], edges=[])
 
     # Materialize a real run dir the way a first run would, then "resume" it directly
@@ -107,20 +99,27 @@ def test_resumed_run_releases_its_claim_once_finished():
     run_dir = run.run_dir
     run.close()
 
-    registry = RunRegistry()
+    registry = RunRegistry(worker_imports=["tests.hard_stop_nodes"])
     assert registry.try_claim_resume_dir(run_dir) is True
     handle = registry.start(graph, dry_run=True, allow_live=False, resume_from=run_dir)
     _wait_until_terminal(handle)
     assert handle.status == "done"
-    # The background thread's own finally block should have released the claim.
+    assert handle.result is not None
+    assert handle.result.node_results["a"].outputs == {"resumed": True}
+    event_types = []
+    while not handle.events.empty():
+        event_types.append(handle.events.get_nowait()["type"])
+    assert "run_order" in event_types
+    assert "node_status" in event_types
+    assert "run_complete" in event_types
+    # The worker monitor should have released the claim.
     assert registry.try_claim_resume_dir(run_dir) is True
 
 
 def test_request_stop_on_a_finished_run_returns_false():
-    _register_marker("__stopfx_marker2__", [])
     graph = GraphSpec(nodes=[NodeSpec(id="a", type="__stopfx_marker2__")], edges=[])
 
-    registry = RunRegistry()
+    registry = RunRegistry(worker_imports=["tests.hard_stop_nodes"])
     handle = registry.start(graph, dry_run=True, allow_live=False)
     _wait_until_terminal(handle)
     assert handle.status == "done"
