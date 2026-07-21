@@ -274,7 +274,13 @@ annotators per the **Aggregation method** below. Every record always keeps the i
 per-rater values in `raw_scores` alongside the (possibly-null) aggregate `scores`.
 
 Node parameters:
-* **Sampling ratio**: percentage, default to 100%.
+* **Sampling ratio**: dual-purpose size control, default `1.0`. A value **≤ 1** is a *fraction*
+  of the dataset (`0.5` = 50%); a value **> 1** is an *absolute item count* (`5` = five items,
+  clamped to what's available). Deterministic selection within either mode (see `sampling.py`).
+* **Full dataset**: bool toggle, default off. When on, selects the entire (filtered) pool and
+  ignores **Sampling ratio** — an explicit "100%" control so `1` in the ratio field is never
+  ambiguous between "the whole set" and "a single item". (With the toggle off, the default ratio
+  `1.0` also selects everything, so default behavior is unchanged.)
 * **Sampling mode**: stratified, or unified (uniform, the default). No separate "full"
   mode — a ratio of 100% under either mode already selects every item, so a mode that
   ignored ratio entirely was redundant and a footgun (silently no-oping ratio for anyone
@@ -286,9 +292,10 @@ Node parameters:
   never lands on zero overlap by an unlucky small sample. `meta.n_pool_labeled` (the
   pre-sampling pool's label coverage) is always reported regardless of this toggle, and a
   warning fires when it's off and the sample happens to land on zero labeled items anyway.
-* **Aggregation method**: dropdown, default `mean` — how multiple annotators' scores for the
+* **Aggregation method**: dropdown, default **`none`** — how multiple annotators' scores for the
   *same* video are combined into each `labels` record's per-dimension `scores`: `mean` /
-  `median` / `max` / `min` (a single point estimate), or **`none`** = no aggregation. Under
+  `median` / `max` / `min` (a single point estimate), or **`none`** = no aggregation (the
+  default, so individual annotator scores are preserved unless you opt into a summary). Under
   `none`, `scores` is left empty and only the individual per-annotator ratings are exposed (in
   `raw_scores`); the record stays keyed by `item_id` (one per video), so the join to `samples`
   is unchanged. Downstream: a wired **Eval** node detects `none` and scores the judge against

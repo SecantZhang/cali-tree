@@ -10,7 +10,9 @@ def _graph():
     return GraphSpec(
         nodes=[
             NodeSpec(id="peanut_src", type="peanut_source", params={}),
-            NodeSpec(id="ds", type="dataset", params={}),
+            # Aggregated labels (mean) — the Dataset node now defaults to "none" (per-rater),
+            # but this shared eval-graph fixture asserts judge-vs-consensus agreement.
+            NodeSpec(id="ds", type="dataset", params={"aggregation_method": "mean"}),
             NodeSpec(id="engine", type="lm_engine", params={"engine_kind": "gpt"}),
             NodeSpec(id="prompt", type="judge_prompt", params={"preset": "M3"}),
             NodeSpec(id="judge", type="judge", params={}),

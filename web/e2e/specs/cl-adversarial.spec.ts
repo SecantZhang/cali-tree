@@ -118,6 +118,11 @@ test.describe('adversarial calibration node', () => {
     // to these freshly-added nodes' real positions.
     await page.getByRole('button', { name: 'Fit View' }).click()
 
+    // Calibration needs one aggregated human anchor per item; the Dataset node now defaults to
+    // "none" (per-rater), which calibration rejects — so pick mean here.
+    await datasetNode.locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('mean')
+
     // Judge Prompt lands in row 0's last column (see the module-level comment on
     // dragNodeIntoEmptySpace) — move it into genuinely empty canvas space so the final
     // layout's bounding box stays reachable.
