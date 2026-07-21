@@ -1,9 +1,25 @@
 """Shared fixture-tree builder for interface integration tests."""
 
+import multiprocessing
+
 import pytest
 
 from tests.e2e_fixture import build as build_fixture_tree
 from vejudge.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
+from vejudge.interface.server.run_registry import REGISTRY
+
+
+@pytest.fixture(autouse=True)
+def _inherit_integration_monkeypatches_in_workers():
+    if "fork" not in multiprocessing.get_all_start_methods():
+        yield
+        return
+    previous = REGISTRY._mp
+    REGISTRY._mp = multiprocessing.get_context("fork")
+    try:
+        yield
+    finally:
+        REGISTRY._mp = previous
 
 
 def _graph():

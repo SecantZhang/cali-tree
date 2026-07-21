@@ -41,6 +41,7 @@ const NODE_TYPES = [
 let warnRunNodeId = ''
 // Set by the Resume-button test to control what /api/workflows/<name>/runs reports.
 let workflowRunsResponse: unknown[] = []
+let stopRequestFails = false
 
 function mockJsonFor(url: string): unknown {
   if (url.endsWith('/api/nodes')) return NODE_TYPES
@@ -52,6 +53,9 @@ function mockJsonFor(url: string): unknown {
   }
   if (url.endsWith('/api/settings/credentials')) {
     return { configured: false, source: 'none', base_url: null }
+  }
+  if (url.endsWith('/api/runs/run-to-stop/stop')) {
+    return { run_id: 'run-to-stop', status: 'stopped', error: null, node_results: {}, order: [] }
   }
   if (url.endsWith('/api/runs/warn-run-1')) {
     return {
@@ -75,13 +79,18 @@ function mockJsonFor(url: string): unknown {
 beforeEach(() => {
   localStorage.clear()
   workflowRunsResponse = []
+  stopRequestFails = false
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string) => ({
-      ok: true,
-      status: 200,
-      json: async () => mockJsonFor(url),
-    })),
+    vi.fn(async (url: string) => {
+      if (stopRequestFails && url.endsWith('/api/runs/run-to-stop/stop')) {
+        return {
+          ok: false, status: 500, statusText: 'Stop failed',
+          json: async () => ({ detail: 'could not stop worker' }),
+        }
+      }
+      return { ok: true, status: 200, json: async () => mockJsonFor(url) }
+    }),
   )
 })
 
@@ -336,10 +345,25 @@ describe('App shell', () => {
       expect(stopCall).toBeTruthy()
       expect(stopCall?.[1]?.method).toBe('POST')
     })
-    expect(activeRunStore().getState().status).toBe('stopping')
-    // Once stopping, the button disappears — there's nothing further to do but wait.
+    await waitFor(() => expect(activeRunStore().getState().status).toBe('stopped'))
+    // Hard Stop is terminal immediately; the ordinary Run action is available again.
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Stopping…' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument()
+  })
+
+  it('keeps a run active and reports the error when hard Stop fails', async () => {
+    renderApp()
+    act(() => {
+      activeRunStore().getState().beginRun('run-to-stop', 2)
+    })
+    stopRequestFails = true
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+
+    await waitFor(() => expect(alert).toHaveBeenCalledWith('could not stop worker'))
+    expect(activeRunStore().getState().status).toBe('running')
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
   it('surfaces a node meta.warning as a console log line and inside its secondary tab', async () => {

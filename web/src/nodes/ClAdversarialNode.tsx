@@ -16,29 +16,33 @@ export function ClAdversarialNode({ id, data, selected }: NodeProps) {
       color="var(--node-calibration)"
       schema={NODE_PARAM_SCHEMAS.cl_adversarial}
       summaryLine={(p) => `max ${p.max_rounds ?? 4} rounds`}
-      // 5 target sockets — the default 44px zone (fine for ≤3) packs handles too close
+      // 6 target sockets — the default 44px zone (fine for ≤3) packs handles too close
       // together to reliably tell apart (see NodeChrome's socketZoneHeight doc).
-      socketZoneHeight={100}
+      socketZoneHeight={120}
       sockets={
         <>
           <SocketHandle
-            kind="target" id="samples" label="samples" top={socketTop(0, 5)}
+            kind="target" id="samples" label="samples" top={socketTop(0, 6)}
             color={SOCKET_COLORS.samples}
           />
           <SocketHandle
-            kind="target" id="judge_result" label="judge_result" top={socketTop(1, 5)}
+            kind="target" id="judge_result" label="judge_result" top={socketTop(1, 6)}
             color={SOCKET_COLORS.judge_result}
           />
           <SocketHandle
-            kind="target" id="labels" label="labels" top={socketTop(2, 5)}
+            kind="target" id="labels" label="labels" top={socketTop(2, 6)}
             color={SOCKET_COLORS.labels}
           />
           <SocketHandle
-            kind="target" id="judge_engine" label="judge_engine" top={socketTop(3, 5)}
+            kind="target" id="judge_engine" label="judge_engine" top={socketTop(3, 6)}
             color={SOCKET_COLORS.engine_config}
           />
           <SocketHandle
-            kind="target" id="human_engine" label="human_engine" top={socketTop(4, 5)}
+            kind="target" id="human_engine" label="human_engine" top={socketTop(4, 6)}
+            color={SOCKET_COLORS.engine_config}
+          />
+          <SocketHandle
+            kind="target" id="summarizer_engine" label="summarizer_engine" top={socketTop(5, 6)}
             color={SOCKET_COLORS.engine_config}
           />
           <SocketHandle

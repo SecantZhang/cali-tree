@@ -21,8 +21,9 @@ test.describe('stop and resume', () => {
     const evalNode = page.getByTestId(`rf__node-${EVAL}`)
     await page.getByRole('button', { name: 'Fit View' }).click()
 
-    // Default M1 preset (text modality) × 2 fixture items = 2 real mock-gateway calls, run
-    // strictly sequentially (concurrency defaults to 1) at the mock's ~200ms per-call delay.
+    // Temperature 9.9 is the mock gateway's deliberate 3-second delay sentinel. A hard
+    // Stop must return while that first real HTTP request is still blocked, not after it.
+    await lmEngineNode.locator('.param-row', { hasText: 'temperature' }).locator('input').fill('9.9')
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
     await wirePipeline(page)
@@ -42,21 +43,21 @@ test.describe('stop and resume', () => {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /^Run(ning…)?$/ }).click()
 
-    // Stop partway through the first call — the second item is still queued (concurrency 1),
-    // so it gets cancelled and only completes on Resume from checkpoint.
-    await page.waitForTimeout(120)
+    // Stop partway through the first call. Neither the active item nor the queued second
+    // item is checkpointed, and the isolated worker must die immediately.
+    await page.waitForTimeout(500)
     const stopButton = page.getByRole('button', { name: 'Stop' })
     await expect(stopButton).toBeVisible()
+    const stopStarted = Date.now()
     await stopButton.click()
 
-    await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 20000 })
+    await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 1500 })
+    expect(Date.now() - stopStarted).toBeLessThan(1500)
     await expect(page.locator('.console-header')).toContainText('Run status: stopped')
 
-    // Judge itself finishes gracefully ("done" — it produced a real, if partial, result);
-    // Eval never got to run at all ("stopped") since should_stop was already true by the
-    // time the executor reached it (topological order: lm_engine, peanut_source, dataset,
-    // judge, eval — Eval is always last).
-    await expect(judgeNode.locator('.status-dot.status-done')).toBeVisible()
+    // The active Judge and pending Eval are both terminal immediately. Fast upstream nodes
+    // completed before the kill and retain their ordinary done results.
+    await expect(judgeNode.locator('.status-dot.status-stopped')).toBeVisible()
     await expect(evalNode.locator('.status-dot.status-stopped')).toBeVisible()
 
     // Resume: reopens the same run directory/checkpoint, so already-completed (item,
@@ -66,15 +67,18 @@ test.describe('stop and resume', () => {
     page.once('dialog', (dialog) => dialog.accept())
     await resumeButton.click()
 
-    await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 20000 })
+    // First observe the resumed attempt actually start; otherwise an immediate `Run`
+    // assertion can pass against the stopped attempt before resumeRun's POST resolves.
+    await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Running…')
+    await expect(page.getByRole('button', { name: /^Run(ning…)?$/ })).toHaveText('Run', { timeout: 30000 })
     await expect(page.locator('.console-header')).toContainText('Run status: done')
     for (const node of [peanutSourceNode, datasetNode, lmEngineNode, promptNode, judgeNode, evalNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()
     }
     await expect(page.getByRole('button', { name: 'Resume' })).toHaveCount(0)
 
-    // Both item calls are accounted for by the end — one from the first attempt (checkpointed
-    // before Stop), the other completed after Resume.
+    // Both item calls are accounted for after Resume. The killed in-flight call was not
+    // checkpointed, so it was safely rerun along with the item that had remained queued.
     await judgeNode.dblclick()
     const judgeModal = page.locator('.modal-panel')
     await expect(judgeModal.locator('.secondary-summary')).toContainText('Valid calls: 2 / 2')

@@ -1,8 +1,8 @@
 """Graph execution engine: sequential topological execution of Dataset/Judge/Eval nodes.
 
-Runs the whole graph inline (blocking). The caller (the FastAPI run route, once it
-exists) is responsible for running this on a background thread so it doesn't block the
-event loop, since node executors make blocking ``lm_engine`` calls.
+Runs the whole graph inline (blocking). The interface registry invokes it inside a
+dedicated spawned worker process so blocking ``lm_engine`` calls neither block FastAPI nor
+prevent immediate hard cancellation.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from .graph import GraphError, GraphSpec, NodeSpec, topological_sort, validate_e
 from .registry import NODE_EXECUTORS, NodeRunContext, NodeRunResult, node_type_infos
 
 ProgressCb = Callable[[str, dict[str, Any]], None]
+NodeResultCb = Callable[[str, "NodeRunResult"], None]
 
 
 @dataclass
@@ -44,6 +45,7 @@ class GraphExecutionEngine:
         dry_run: bool = True,
         allow_live: bool = False,
         progress_cb: Optional[ProgressCb] = None,
+        node_result_cb: Optional[NodeResultCb] = None,
         should_stop: Optional[Callable[[], bool]] = None,
         # Per-node Re-run (self_only mode — see schemas.RunRequest): when both are set,
         # `graph` stays the FULL graph (so this node's real upstream edges still resolve),
@@ -68,6 +70,7 @@ class GraphExecutionEngine:
         self.dry_run = dry_run
         self.allow_live = allow_live
         self.progress_cb = progress_cb
+        self.node_result_cb = node_result_cb
         self.should_stop = should_stop
         self.target_node_id = target_node_id
         self.seed_results = seed_results
@@ -119,9 +122,8 @@ class GraphExecutionEngine:
 
         for i, node_id in enumerate(order):
             if self.should_stop and self.should_stop():
-                # Graceful stop, checked only between nodes at this level — a node already
-                # running (e.g. Judge mid-item) finishes on its own terms (see judge_node.py's
-                # own should_stop check for the finer-grained per-item version of this).
+                # Cooperative path for direct/non-process callers. Interface runs normally
+                # stop by terminating their isolated worker, so they do not wait here.
                 for remaining_id in order[i:]:
                     node_results[remaining_id] = NodeRunResult(status="stopped")
                     self._emit("node_status", {"node_id": remaining_id, "status": "stopped"})
@@ -135,6 +137,12 @@ class GraphExecutionEngine:
                 node, node_id, incoming, outgoing, node_results, nodes_by_id, run_start
             )
             node_results[node_id] = result
+            if self.node_result_cb:
+                # The process-backed interface runner uses this private callback to copy
+                # each fully completed node result back to the parent. If a later node is
+                # hard-killed, already-finished outputs remain available for inspection
+                # and safe locked-node reuse instead of being reduced to status-only data.
+                self.node_result_cb(node_id, result)
 
             if result.status == "error":
                 overall_status = "error"

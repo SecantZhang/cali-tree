@@ -12,9 +12,18 @@ from __future__ import annotations
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
+from threading import Semaphore
 from typing import Any, Optional
 
 from ...core.calibration.debate import DebateConfig, DebateRunner, to_calibrated_result
+from ...core.calibration.debate.calibrated_result import _TENDENCY
+from ...core.calibration.debate.schema import DebateTranscript
+from ...core.calibration.debate.semantic_summary import (
+    SUMMARY_VERSION,
+    llm_summary,
+    render_summary,
+    rule_based_summary,
+)
 from ...lm_engine.lm_template import LMEngine
 from ..server.registry import NodeRunContext
 
@@ -31,7 +40,11 @@ def _calibrate_one(
     # Per-item anchor score (mirrors how metric_id is already resolved per item, not
     # once for the whole run) — dataclasses.replace() so the caller's shared `config`
     # object is never mutated across items.
-    item_config = replace(config, human_anchor_score=(human_ctx or {}).get("anchor_score"))
+    item_config = replace(
+        config,
+        human_anchor_score=(human_ctx or {}).get("anchor_score"),
+        human_raw_scores=(human_ctx or {}).get("raw_anchor_scores"),
+    )
     debater = DebateRunner(
         metric_id=metric_id, judge_engine=judge_engine, proxy_engine=human_engine, config=item_config,
     )
@@ -47,14 +60,16 @@ def _calibrate_one(
     human_scores: dict[str, dict[str, Any]] = (human_ctx or {}).get("human_scores") or {}
     final_score = result.get("final_score")
     result["human_scores"] = human_scores
-    result["human_gap"] = {
-        dim: (
-            abs(final_score - info["score"])
-            if final_score is not None and info.get("score") is not None
-            else None
-        )
-        for dim, info in human_scores.items()
-    }
+    result["human_gap"] = {}
+    for dim, info in human_scores.items():
+        if final_score is None:
+            result["human_gap"][dim] = None
+        elif info.get("score") is not None:
+            result["human_gap"][dim] = abs(final_score - info["score"])
+        elif info.get("scores"):
+            result["human_gap"][dim] = [abs(final_score - s) for s in info["scores"]]
+        else:
+            result["human_gap"][dim] = None
     return result
 
 
@@ -64,6 +79,10 @@ def run_concurrent_debates(
     anchors: dict[str, dict[str, Any]],
     judge_engine: LMEngine,
     human_engine: LMEngine,
+    summarizer_engine: Optional[LMEngine],
+    use_llm_summarization: bool,
+    summarizer_config_hash: str,
+    summarizer_concurrency: int,
     config: DebateConfig,
     concurrency: int,
     batch_size: int,
@@ -76,33 +95,93 @@ def run_concurrent_debates(
     ``anchors`` is ``{item_id: judge_dict}`` — the caller's already-filtered map of
     items with a usable (non-skipped, non-errored, parsed) upstream judge result; only
     these items are candidates. ``human_context`` (optional), if given, is
-    ``{item_id: {"human_scores": {dim: {"score": float|None, "n": int}}, "anchor_score":
-    float|None}}`` — precomputed by the caller (which owns the metric->human-dimension
+    ``{item_id: {"human_scores": {dim: {"score": float|None, "scores": list[float],
+    "n": int}}, "anchor_score": float|None, "raw_anchor_scores": list[float]}}`` —
+    precomputed by the caller (which owns the metric->human-dimension
     mapping) and merged into each item's result before it's checkpointed. Returns
     ``(per_item, meta)``; ``per_item`` is ``{item_id: CalibratedResult_dict}``.
     """
     per_item: dict[str, dict[str, Any]] = {}
-    tasks: list[str] = []
-    for item_id in anchors:
-        ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
-        if ctx.checkpoint.has(ckpt_key):
-            per_item[item_id] = ctx.checkpoint.get(ckpt_key)
-            continue
-        tasks.append(item_id)
+    tasks = list(anchors)
 
     if ctx.progress_cb:
         ctx.progress_cb("calibration_progress_init", {"total": len(tasks)})
 
     item_timings: list[dict[str, Any]] = []
 
+    summary_slots = Semaphore(max(1, summarizer_concurrency))
+
+    def _apply_rule(result: dict[str, Any]) -> dict[str, Any]:
+        semantic = rule_based_summary(
+            DebateTranscript.from_dict(result["transcript"]),
+            dict(result.get("failure_mode_summary") or {}), _TENDENCY,
+        )
+        return {
+            **result,
+            "optimized_prompt": render_summary(semantic),
+            "semantic_summary": semantic.to_dict(),
+            "summary_mode_requested": "rule_based",
+            "summary_mode_used": "rule_based",
+            "summary_version": SUMMARY_VERSION,
+            "summary_error": None,
+        }
+
+    def _apply_requested_summary(item_id: str, result: dict[str, Any]) -> dict[str, Any]:
+        rule_result = _apply_rule(result)
+        if not use_llm_summarization:
+            return rule_result
+        if "all_turns_failed" in (result.get("flags") or []):
+            return {
+                **rule_result,
+                "summary_mode_requested": "llm",
+                "summary_mode_used": "rule_based_fallback",
+                "summary_error": "debate_has_no_valid_turns",
+            }
+        summary_key = (
+            f"{item_id}::calibration::{anchors[item_id]['metric_id']}::summary::"
+            f"{SUMMARY_VERSION}::{summarizer_config_hash}"
+        )
+        if ctx.checkpoint.has(summary_key):
+            return {**rule_result, **ctx.checkpoint.get(summary_key)}
+        assert summarizer_engine is not None  # validated by the node before live calls
+        with summary_slots:
+            semantic, error = llm_summary(
+                DebateTranscript.from_dict(result["transcript"]), summarizer_engine,
+            )
+        if semantic is None:
+            return {
+                **rule_result,
+                "summary_mode_requested": "llm",
+                "summary_mode_used": "rule_based_fallback",
+                "summary_error": error or "unknown_summarizer_failure",
+            }
+        summary_fields = {
+            "optimized_prompt": render_summary(semantic),
+            "semantic_summary": semantic.to_dict(),
+            "summary_mode_requested": "llm",
+            "summary_mode_used": "llm",
+            "summary_version": SUMMARY_VERSION,
+            "summary_error": None,
+        }
+        ctx.checkpoint.put(summary_key, summary_fields)
+        return {**rule_result, **summary_fields}
+
     def _run_task(item_id: str) -> tuple[str, dict[str, Any], float]:
         if ctx.progress_cb:
             ctx.progress_cb("calibration_item_start", {"item_id": item_id})
         t0 = time.perf_counter()
-        result = _calibrate_one(
-            anchors[item_id], judge_engine, human_engine, config, dataset[item_id],
-            human_ctx=(human_context or {}).get(item_id),
-        )
+        ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
+        if ctx.checkpoint.has(ckpt_key):
+            result = ctx.checkpoint.get(ckpt_key)
+        else:
+            result = _calibrate_one(
+                anchors[item_id], judge_engine, human_engine, config, dataset[item_id],
+                human_ctx=(human_context or {}).get(item_id),
+            )
+            if "all_turns_failed" not in (result.get("flags") or []):
+                # Base debate checkpoint is independent from the selected summary mode.
+                ctx.checkpoint.put(ckpt_key, result)
+        result = _apply_requested_summary(item_id, result)
         return item_id, result, round((time.perf_counter() - t0) * 1000, 1)
 
     stopped = False
@@ -115,11 +194,6 @@ def run_concurrent_debates(
             item_id, result, ms = fut.result()
             per_item[item_id] = result
             item_timings.append({"item_id": item_id, "ms": ms})
-            # Only persist a clean end-state so a total-failure item retries on --continue
-            # (matches _concurrent_judging.py's "only persist success" convention).
-            if "all_turns_failed" not in (result.get("flags") or []):
-                ckpt_key = f"{item_id}::calibration::{anchors[item_id]['metric_id']}"
-                ctx.checkpoint.put(ckpt_key, result)
             if ctx.progress_cb:
                 ctx.progress_cb("calibration_item_done", {"item_id": item_id})
 
@@ -133,7 +207,14 @@ def run_concurrent_debates(
                     if not f.done():
                         f.cancel()
 
-    meta: dict[str, Any] = {"n_items": len(anchors)}
+    meta: dict[str, Any] = {
+        "n_items": len(anchors),
+        "summary_mode_requested": "llm" if use_llm_summarization else "rule_based",
+        "n_summary_fallbacks": sum(
+            1 for result in per_item.values()
+            if result.get("summary_mode_used") == "rule_based_fallback"
+        ),
+    }
     if item_timings:
         meta["item_timings"] = item_timings
     if stopped:

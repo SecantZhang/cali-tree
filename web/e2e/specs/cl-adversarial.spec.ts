@@ -74,12 +74,8 @@ const JUDGE_BASELINE = 'judge-6'
 const CALIBRATION = 'cl_adversarial-7'
 const JUDGE_CALIBRATED = 'judge-8'
 
-// The de-leaked optimized_prompt (calibrated_result.py) carries ONLY the general
-// failure-mode tendencies — no score, no item narrative. The mock gateway's debate turns
-// cite "audio_neglect" (mock_gateway.py), so the addendum every item produces is this
-// exact tendency line (audio_neglect -> "ignore the audio track", see _TENDENCY).
 const OPTIMIZED_PROMPT_MARKER =
-  "A prior adversarial review flagged this judge's tendency to ignore the audio track."
+  'Evaluate audiovisual coherence across the complete edit.'
 
 test.describe('adversarial calibration node', () => {
   test('calibrates an upstream Judge node\'s result and the optimized prompt reaches a second Judge node', async ({
@@ -148,6 +144,7 @@ test.describe('adversarial calibration node', () => {
     await connectSocketsVerified(page, DATASET, 'labels', CALIBRATION, 'labels')
     await connectSocketsVerified(page, JUDGE_ENGINE, 'engine_config', CALIBRATION, 'judge_engine')
     await connectSocketsVerified(page, HUMAN_ENGINE, 'engine_config', CALIBRATION, 'human_engine')
+    await connectSocketsVerified(page, HUMAN_ENGINE, 'engine_config', CALIBRATION, 'summarizer_engine')
 
     await connectSocketsVerified(page, DATASET, 'samples', JUDGE_CALIBRATED, 'samples')
     await connectSocketsVerified(page, JUDGE_ENGINE, 'engine_config', JUDGE_CALIBRATED, 'engine_config')
@@ -202,6 +199,7 @@ test.describe('adversarial calibration node', () => {
     await expect(scoreStrip).toContainText(/n=\d+/)
     await expect(scoreStrip).toContainText('gap 1.00')
     await expect(scoreStrip).toContainText('converged')
+    await expect(scoreStrip).toContainText('summary: llm')
 
     // The chat view opens with the upstream Judge node's own (baseline) run, followed
     // by real alternating judge/human-proxy debate turns. Left collapsed (not clicked

@@ -36,8 +36,8 @@ from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ..server.registry import NodeRunContext, NodeRunResult, register
-from ._templates import CalibrationFitterNode, unaggregated_labels_error
-from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _resolve_human_context
+from ._templates import CalibrationFitterNode
+from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _human_targets
 from .cl_rule_tree_node import _DEFAULT_ENGINE_KIND, _judge_rationale
 
 
@@ -81,9 +81,6 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                     status="error",
                     error=f"Semantic Tree Calibration Node requires a '{name}' input.",
                 )
-        if (err := unaggregated_labels_error(labels)) is not None:
-            return NodeRunResult(status="error", error=err)
-
         overlap = sorted(set(samples) & set(calibration_results))
         usable_cr = {
             it: calibration_results[it] for it in overlap
@@ -115,14 +112,14 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         anchored: dict[str, dict[str, Any]] = {}
         for it, cr in usable_cr.items():
             agg = labels.get(it) if labels else None
-            anchor = _resolve_human_context(agg, dims).get("anchor_score")
-            if anchor is not None:
-                anchored[it] = {"cr": cr, "human": float(anchor),
+            targets = _human_targets(agg, dims)
+            if targets:
+                anchored[it] = {"cr": cr, "humans": targets,
                                 "base": float(cr["original_score"])}
         if not anchored:
             return NodeRunResult(
                 status="error",
-                error=f"No items with a usable human anchor for metric {metric_id} "
+                error=f"No items with usable human targets for metric {metric_id} "
                 "(check 'labels' cover the metric's mapped dimensions).",
             )
 
@@ -225,15 +222,26 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             + [f"fm:{k}" for k in fm_concepts]
             + [f"rule:{k}" for k in rule_concepts]
         )
-        bases = {it: anchored[it]["base"] for it in item_ids}
-        humans = {it: anchored[it]["human"] for it in item_ids}
+        observation_ids = [
+            f"{it}::human::{j}"
+            for it in item_ids for j, _ in enumerate(anchored[it]["humans"])
+        ]
+        observation_item = {
+            f"{it}::human::{j}": it
+            for it in item_ids for j, _ in enumerate(anchored[it]["humans"])
+        }
+        bases = {obs: anchored[it]["base"] for obs, it in observation_item.items()}
+        humans = {
+            f"{it}::human::{j}": score
+            for it in item_ids for j, score in enumerate(anchored[it]["humans"])
+        }
         feats_full = {
-            it: (
-                [bases[it]]
+            obs: (
+                [bases[obs]]
                 + [float(fm_counts[it].get(k, 0)) for k in fm_concepts]
                 + [float(_rule_val(it, k)) for k in rule_concepts]
             )
-            for it in item_ids
+            for obs, it in observation_item.items()
         }
         feature_weights = {
             n: onto.concept_importance(onto.concept_for_feature(n), metric_id)
@@ -242,8 +250,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
 
         # --- fit + evaluate (base/bias/linear/tree(CART) + semantic), in-sample + LOO ---
         report = fit_and_evaluate(
-            item_ids=item_ids, bases=bases, humans=humans,
+            item_ids=observation_ids, bases=bases, humans=humans,
             feats_full=feats_full, feature_names=feature_names,
+            loo_groups=observation_item,
             extra_calibrators={
                 "semantic": lambda: SemanticDecisionTreeCalibrator(feature_weights=feature_weights)
             },
@@ -251,9 +260,10 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
 
         # The exported tree + rule text should be the SEMANTIC tree (what this node is about),
         # not the CART one fit_and_evaluate exports by default. Refit on all items for display.
-        if len(item_ids) >= 2:
+        if len(set(observation_item.values())) >= 2:
             semantic = SemanticDecisionTreeCalibrator(feature_weights=feature_weights).fit(
-                [feats_full[i] for i in item_ids], [humans[i] for i in item_ids],
+                [feats_full[i] for i in observation_ids],
+                [humans[i] for i in observation_ids],
                 feature_names=feature_names,
             )
             sem_meta = semantic.metadata()
@@ -272,7 +282,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         labels_map["base_score"] = "the judge's own 1–5 score"
         report["feature_labels"] = {n: labels_map.get(n, n) for n in feature_names}
         report["per_item"] = {
-            it: {"base": bases[it], "human": round(humans[it], 2),
+            it: {"base": anchored[it]["base"],
+                 "human": [round(v, 2) for v in anchored[it]["humans"]]
+                 if len(anchored[it]["humans"]) > 1 else round(anchored[it]["humans"][0], 2),
                  "booleans": booleans.get(it, []), "missing": missing.get(it, [])}
             for it in item_ids
         }
