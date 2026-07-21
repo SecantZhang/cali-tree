@@ -42,7 +42,13 @@ class DatasetNodeExecutor(NodeExecutor):
     multi_input_sockets = frozenset({"raw_dataset"})
     output_sockets = {"samples": "samples", "labels": "labels"}
     param_schema = {
-        "sampling_ratio": {"type": "number", "default": 1.0, "min": 0.0, "max": 1.0},
+        # Dual-purpose size control: a value ≤ 1 is a fraction (0.5 = 50%), a value > 1 is an
+        # absolute item count (5 = five items). The `full_dataset` toggle below overrides it.
+        "sampling_ratio": {"type": "number", "default": 1.0, "min": 0.0},
+        # Explicit "use the entire dataset (100%)" switch — disambiguates the number field so a
+        # user never has to wonder whether "1" means the whole set or a single item. When on,
+        # `sampling_ratio` is ignored.
+        "full_dataset": {"type": "bool", "default": False},
         "sampling_mode": {
             "type": "enum", "options": ["unified", "stratified"], "default": "unified",
         },
@@ -63,7 +69,7 @@ class DatasetNodeExecutor(NodeExecutor):
         "aggregation_method": {
             "type": "enum",
             "options": ["mean", "median", "max", "min", "none"],
-            "default": "mean",
+            "default": "none",
         },
     }
 
@@ -107,16 +113,27 @@ class DatasetNodeExecutor(NodeExecutor):
         aggregated = aggregate_annotations(
             records,
             use_case_lookup=use_case_by_project,
-            method=p.get("aggregation_method", "mean"),
+            method=p.get("aggregation_method") or "none",
         )
         n_pool_labeled = sum(1 for iid in pool if iid in aggregated)
 
         if p.get("require_labels"):
             pool = [iid for iid in pool if iid in aggregated]
 
+        # `sampling_ratio` is dual-purpose: > 1 is an absolute item count, ≤ 1 is a fraction.
+        # The `full_dataset` toggle overrides both with the whole (filtered) pool.
+        raw_size = float(p.get("sampling_ratio", 1.0))
+        if p.get("full_dataset"):
+            ratio, count = 1.0, None
+        elif raw_size > 1:
+            ratio, count = 1.0, int(raw_size)
+        else:
+            ratio, count = raw_size, None
+
         items = select_items(
             pool,
-            ratio=float(p.get("sampling_ratio", 1.0)),
+            ratio=ratio,
+            count=count,
             mode=p.get("sampling_mode", "unified"),
             use_case_lookup=item_use_case,
         )

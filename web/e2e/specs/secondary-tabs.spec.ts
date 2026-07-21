@@ -45,6 +45,11 @@ test.describe('secondary tabs', () => {
 
     await connect(page, 'peanut_source-1', 'raw_dataset', 'dataset-2', 'raw_dataset')
 
+    // Aggregated (mean) labels — the node now defaults to "none" (per-rater); this test covers
+    // the single-score-per-item path (a separate test below covers "none").
+    await page.getByTestId('rf__node-dataset-2').locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('mean')
+
     // A dry run is enough — the Dataset node samples the real fixture data (and joins human
     // labels) regardless of dry-run, which only gates the Judge nodes' gateway calls.
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })

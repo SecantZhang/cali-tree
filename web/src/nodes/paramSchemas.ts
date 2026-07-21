@@ -34,7 +34,13 @@ const PREPROCESSING_ARTIFACT_TYPES = [
 // either mode below, so a dedicated mode that ignored ratio entirely was redundant and a
 // footgun (it silently no-oped ratio for anyone who changed the ratio but not the mode).
 const SAMPLING_FIELDS: Record<string, ParamField> = {
-  sampling_ratio: { type: 'number', default: 1.0, min: 0, max: 1, step: 0.05 },
+  // Dual-purpose: a value ≤ 1 is a fraction (0.5 = 50%); a value > 1 is an absolute item
+  // count (5 = five items). No `max` so counts above 1 are allowed. Ignored when
+  // `full_dataset` is on.
+  sampling_ratio: { type: 'number', default: 1.0, min: 0, step: 0.05 },
+  // Explicit "use the entire dataset (100%)" switch, so "1" in the field above is never
+  // ambiguous between the whole set and a single item.
+  full_dataset: { type: 'bool', default: false },
   sampling_mode: {
     type: 'enum', options: ['unified', 'stratified'], default: 'unified',
   },
@@ -61,7 +67,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     // (per-annotator scores kept in raw_scores; Eval scores the judge against each rater,
     // calibration nodes require an aggregated method).
     aggregation_method: {
-      type: 'enum', options: ['mean', 'median', 'max', 'min', 'none'], default: 'mean',
+      type: 'enum', options: ['mean', 'median', 'max', 'min', 'none'], default: 'none',
     },
   },
   preprocessing: {
