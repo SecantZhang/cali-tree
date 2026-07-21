@@ -6,11 +6,12 @@ and, when available, a retrieved real human annotation note for grounding (the
 
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from .spec import PromptSpec
 
-VERSION = "v3"
+VERSION = "v4"
 
 # Fixed vocabulary of judge failure modes. Owned here (prompt content) and imported by
 # vejudge.core.calibration.debate.schema to normalize/count ``cited_failure_modes``.
@@ -62,7 +63,7 @@ def build(
     real_human_score: Optional[float] = None,
     # Unreduced ratings for THIS EXACT item. Kept separate from real_human_score so
     # aggregation_method="none" never manufactures a consensus value.
-    real_human_scores: Optional[list[float]] = None,
+    human_disagreement_profile: Optional[dict[str, Any]] = None,
 ) -> PromptSpec:
     inp = sample.get("input") or {}
     original_parsed = original_output.get("parsed") or {}
@@ -96,13 +97,14 @@ score genuinely holds up, say so."""
         "number."
         if real_human_score is not None else ""
     )
-    if real_human_scores:
-        rendered = ", ".join(f"{score:g}" for score in real_human_scores)
+    if human_disagreement_profile:
+        rendered = json.dumps(human_disagreement_profile, sort_keys=True)
         real_score_block = (
-            "Real human annotators gave THIS EXACT item these unreduced scores: "
-            f"[{rendered}]/5. Preserve their disagreement as evidence; do not average, "
-            "vote, or otherwise collapse these ratings into a single target. Use the "
-            "individual ratings to identify concrete reasons the judge may be wrong."
+            "Use this immutable disagreement profile for THIS EXACT item in every round: "
+            f"{rendered}. Address every required perspective using observable editing "
+            "evidence. Never select one annotator, mode, median, or endpoint as the target; "
+            "never change which viewpoint you advocate between rounds. Preserve unresolved "
+            "tradeoffs explicitly instead of forcing consensus."
         )
 
     transcript_block = transcript_text or "(no prior debate turns yet)"

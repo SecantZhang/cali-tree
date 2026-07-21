@@ -71,6 +71,7 @@ class CalibratedResult:
     summary_version: str = SUMMARY_VERSION
     semantic_summary: dict[str, Any] = field(default_factory=dict)
     summary_error: Optional[str] = None
+    human_disagreement_profile: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -97,6 +98,7 @@ class CalibratedResult:
             summary_version=data.get("summary_version", "legacy"),
             semantic_summary=dict(data.get("semantic_summary") or {}),
             summary_error=data.get("summary_error"),
+            human_disagreement_profile=dict(data.get("human_disagreement_profile") or {}),
         )
 
 
@@ -195,4 +197,5 @@ def to_calibrated_result(verdict: DebateVerdict) -> CalibratedResult:
         grounded=verdict.grounded,
         failure_mode_summary=dict(verdict.failure_mode_summary),
         semantic_summary=semantic.to_dict(),
+        human_disagreement_profile=dict(verdict.human_disagreement_profile),
     )

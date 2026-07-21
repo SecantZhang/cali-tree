@@ -34,6 +34,7 @@ def _export_tree_dict(model: Any, feature_names: Optional[Sequence[str]]) -> dic
             "samples": int(t.n_node_samples[i]),
             # Regression tree: value has shape (1, n_outputs); single-output here.
             "value": round(float(t.value[i][0][0]), 3),
+            "weighted_samples": round(float(t.weighted_n_node_samples[i]), 3),
         }
         if not is_leaf:
             fi = int(t.feature[i])
@@ -50,7 +51,7 @@ def _export_tree_dict(model: Any, feature_names: Optional[Sequence[str]]) -> dic
 
 
 class DecisionTreeCalibrator(Calibrator):
-    version = "decision-tree-v1"
+    version = "decision-tree-v2-weighted"
 
     def __init__(self, *, max_depth: int = 2, min_samples_leaf: int = 2) -> None:
         self.max_depth = max_depth
@@ -64,12 +65,26 @@ class DecisionTreeCalibrator(Calibrator):
         y: Sequence[float],
         *,
         feature_names: Optional[Sequence[str]] = None,
+        sample_weight: Optional[Sequence[float]] = None,
     ) -> "DecisionTreeCalibrator":
         from sklearn.tree import DecisionTreeRegressor  # lazy import
 
-        self._model = DecisionTreeRegressor(
-            max_depth=self.max_depth, min_samples_leaf=self.min_samples_leaf,
-        ).fit(list(X), list(y))
+        weights = None if sample_weight is None else list(sample_weight)
+        tree_kwargs: dict[str, Any] = {
+            "max_depth": self.max_depth,
+            "min_samples_leaf": self.min_samples_leaf,
+        }
+        if weights is not None and sum(weights) > 0:
+            # Raw ratings from one video share a feature row and weights summing to one.
+            # Constrain leaves by effective video mass rather than annotation row count.
+            tree_kwargs["min_samples_leaf"] = 1
+            tree_kwargs["min_weight_fraction_leaf"] = min(
+                0.5, self.min_samples_leaf / sum(weights),
+            )
+        self._model = DecisionTreeRegressor(**tree_kwargs).fit(
+            list(X), list(y),
+            sample_weight=weights,
+        )
         self._feature_names = list(feature_names) if feature_names is not None else None
         return self
 
