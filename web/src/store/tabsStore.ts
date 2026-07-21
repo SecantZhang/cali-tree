@@ -16,6 +16,7 @@ interface TabsState {
   activeTabId: string | null
   openBlankTab: () => string
   openWorkflowTab: (name: string, graph: GraphSpecJSON) => string
+  openRunTab: (runId: string, graph: GraphSpecJSON, workflowName?: string | null) => string
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   markDirty: (tabId: string) => void
@@ -66,6 +67,21 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     // it's read straight off the raw saved graph here rather than through loadGraph.
     const staleIds = graph.nodes.filter((n) => n.stale).map((n) => n.id)
     if (staleIds.length) tab.runStore.getState().markNodesStale(staleIds)
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.tabId }))
+    return tab.tabId
+  },
+
+  // Open a PAST run (from disk) into a new tab: load its graph, then attach the run id so
+  // useRunSocket hydrates the reconstructed statuses/outputs (inspect). `workflowName` (from
+  // the run's config) is set so the existing Resume path can find it if desired.
+  openRunTab: (runId, graph, workflowName) => {
+    const tab = makeTab(runId)
+    tab.graphStore.getState().loadGraph(graph)
+    if (workflowName) {
+      tab.graphStore.getState().setCurrentWorkflowName(workflowName)
+      tab.workflowName = workflowName
+    }
+    tab.runStore.getState().attachRun(runId)
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.tabId }))
     return tab.tabId
   },

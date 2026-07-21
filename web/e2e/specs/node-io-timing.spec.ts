@@ -43,10 +43,11 @@ test.describe('node I/O + timing tabs', () => {
     await expect(modal.locator('.io-socket-name', { hasText: 'samples' })).toBeVisible()
     await expect(modal.locator('.io-socket-name', { hasText: 'labels' })).toBeVisible()
 
-    // Inputs tab: reconstructed raw_dataset input, marked fan-in.
+    // Inputs tab: reconstructed raw_dataset input, marked fan-in (the tag now appears in both
+    // the schema header and the value card, so match the first).
     await modal.getByRole('tab', { name: 'Inputs' }).click()
     await expect(modal.locator('.io-socket-name', { hasText: 'raw_dataset' })).toBeVisible()
-    await expect(modal.getByText('fan-in')).toBeVisible()
+    await expect(modal.getByText('fan-in').first()).toBeVisible()
 
     // Timing tab: both parts render — the system waterfall + this node's breakdown.
     await modal.getByRole('tab', { name: 'Timing' }).click()

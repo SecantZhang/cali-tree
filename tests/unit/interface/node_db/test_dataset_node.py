@@ -99,6 +99,29 @@ def test_sampling_ratio_unified(make_ctx):
     assert len(result.outputs["samples"]) == 2
 
 
+def test_sampling_ratio_above_one_is_an_absolute_count(make_ctx):
+    # _raw_dataset() has 4 items; a value > 1 samples exactly that many, not a fraction.
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 3})
+    result = DatasetNodeExecutor().run(ctx)
+    assert len(result.outputs["samples"]) == 3
+
+
+def test_count_is_clamped_to_the_available_items(make_ctx):
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"sampling_ratio": 99})
+    result = DatasetNodeExecutor().run(ctx)
+    assert len(result.outputs["samples"]) == 4  # only 4 exist
+
+
+def test_full_dataset_toggle_overrides_the_ratio(make_ctx):
+    # full_dataset on → the whole (filtered) pool, ignoring a fractional sampling_ratio.
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"sampling_ratio": 0.25, "full_dataset": True},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    assert len(result.outputs["samples"]) == 4
+
+
 def test_sampling_ratio_alone_takes_effect_without_an_explicit_mode(make_ctx):
     # Regression guard: sampling_mode used to default to a "full" mode that silently
     # ignored ratio entirely — setting only sampling_ratio (leaving mode unset) must
@@ -149,7 +172,10 @@ def test_labels_are_joined_by_item_id_for_exactly_the_sampled_items(make_ctx, mo
             _human_record("prj-a::1::peanut", 3),
         ],
     )
-    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["visual montage"]})
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"use_case_filter": ["visual montage"], "aggregation_method": "mean"},
+    )
     result = DatasetNodeExecutor().run(ctx)
     assert set(result.outputs["samples"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}
     assert set(result.outputs["labels"]) == {"prj-a::0::peanut", "prj-a::1::peanut"}

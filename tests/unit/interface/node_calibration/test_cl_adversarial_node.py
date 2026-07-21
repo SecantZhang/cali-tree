@@ -200,6 +200,21 @@ def test_full_run_produces_calibrated_result_per_item(monkeypatch, make_ctx):
     assert result.meta["n_items_unusable_anchor"] == 0
 
 
+def test_unaggregated_labels_are_rejected(make_ctx):
+    # aggregation_method="none" labels can't ground the debate (no single anchor) → clear error,
+    # not the previous silent fall-back to blind behavior.
+    dataset = {"prj-x::0::peanut": _sample("prj-x::0::peanut")}
+    judge_result = _judge_result("prj-x::0::peanut", metric_id="M3", score=3.0)
+    labels = {"prj-x::0::peanut": AggregatedHumanRecord(
+        item_id="prj-x::0::peanut", project="prj-x", prompt_idx=0, model="peanut",
+        aggregation="none", scores={"video_addresses_prompt": None},
+        raw_scores={"video_addresses_prompt": [3.0, 4.0]})}
+    ctx = make_ctx(inputs=_inputs(dataset, judge_result, labels=labels), dry_run=True)
+    result = ClAdversarialNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "aggregation_method" in result.error and "none" in result.error
+
+
 def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
     def boom(**kwargs):
         raise AssertionError("must fail before any gateway call")

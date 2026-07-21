@@ -15,7 +15,7 @@ Interface system so that users can directly use the interface to construct, run 
 The interface should be based on the idea of comfyui with each components being the nodes, parameters as the configuration for the node. We can connect the components to assemble a workflow. There are open/hidable left panel that contains the directory for the node/workflows/dataset.
 
 **Layout:**
-- **Left panel** (hidable) — three tabs: *Nodes* (palette, grouped by category, drag onto canvas), *Workflows* (saved graphs as JSON, one file per workflow), *Datasets* (browsable pointers into `data/` and `evaluation/` per `docs/data.md`, independent of any one graph).
+- **Left panel** (hidable) — four tabs: *Nodes* (palette, grouped by category; drag a node onto the canvas to place it at the cursor, or click to drop it at the next grid slot), *Workflows* (saved graphs as JSON, one file per workflow), *Runs* (past runs found under `logs/exps/`; open to inspect a reconstructed run or resume one from checkpoint — see § Loading a past run), *Datasets* (browsable pointers into `data/` and `evaluation/` per `docs/data.md`, independent of any one graph).
 - **Canvas (center)** — the node graph. Connections are typed sockets; a socket only connects to a compatible type (see Node anatomy below). Invalid connections are rejected inline, not at run time.
 - **Right panel** — inspector for the selected node: its parameters, current status, and a "view secondary tab" button.
 - **Bottom panel** — console/log, mirroring the run's `run.log` (and, when a node is selected, that node's slice of `llm-histories.log`) in real time.
@@ -155,22 +155,37 @@ Every node shares the same chrome, regardless of category:
 - **Double-click → secondary tab** — opens the secondary window, which has a **tab strip**:
   a per-type **Details** tab (each node's bespoke visualization, documented per node below)
   plus three **generic** tabs every node inherits automatically:
-  - **Inputs** — the raw value on each input socket, structured per the node's
-    `input_sockets`. Reconstructed client-side from incoming edges + upstream nodes' outputs
-    (fan-in sockets show a list); large values are summarized, not dumped.
-  - **Outputs** — the raw value on each output socket (`output_sockets`), from the last run
+  - **Inputs** — a **schema header** at the top (the node's full input contract: every socket
+    as `name: type` with a color swatch + a `fan-in` tag + an **expandable example payload**
+    showing that socket type's JSON shape/subfields, shown regardless of runtime state), then
+    the raw value on each input socket. Values are reconstructed client-side from incoming edges
+    + upstream nodes' outputs (fan-in sockets show a list); large values are summarized, not
+    dumped.
+  - **Outputs** — a **schema header** (the node's `name: type` output contract + the expandable
+    per-type example) at the top, then the raw value on each output socket, from the last run
     (live previews while running).
   - **Timing** — two parts: a whole-run **system waterfall** (every node's start offset +
     duration, this node highlighted) for the big picture, then a **This node** breakdown —
     per-item durations + summary stats from `meta.item_timings` for loop nodes, or the node's
     total run time for a single-phase node.
 
-  **Enforced contract (why this is free for new nodes):** the three generic tabs are driven
-  by the static socket specs (`web/src/nodes/socketTypes.ts`) + the run store, and timing
-  comes from `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the
-  executor for every node, and optional `item_timings` that a loop node adds in its per-item
-  loop. A new node type therefore gets Inputs/Outputs/Timing tabs and the on-node run-time
-  badge with **no extra code**; it only writes a Details tab if it wants a bespoke view.
+  **Enforced contract (why this is free for new nodes):** the Inputs/Outputs tabs — **including
+  their schema header** — are driven by the **backend node-type API** (`GET /api/nodes`, which
+  projects each executor's `input_sockets`/`output_sockets`/`multi_input_sockets` straight from
+  `registry.py::type_info()`), read via `web/src/nodes/useNodeSchema.ts` and rendered by
+  `SocketSchema.tsx`. The API is therefore the **single source of truth** for a node's I/O
+  schema: declaring `input_sockets`/`output_sockets` on a new `NodeExecutor` is all that's
+  needed — the schema header + socket lists show for that node and **auto-reflect** any later
+  socket change with **no frontend edit**. (`socketTypes.ts` is now only the source for socket
+  *colors*, the per-type **example payloads** (`SOCKET_EXAMPLES`, rendered expandably by
+  `DataValueView`), and *synchronous connection validation*; these are keyed by socket *type*,
+  so the one remaining manual touch is adding a `SOCKET_COLORS`/`SOCKET_EXAMPLES` entry for a
+  brand-new socket type — display-only, it falls back to a neutral swatch / name+type only
+  otherwise.) The value cards + timing still come from the run store and
+  `NodeRunResult.meta` — `elapsed_ms` + `start_offset_ms` stamped centrally by the executor for
+  every node, and optional `item_timings` a loop node adds in its per-item loop. A new node type
+  gets Inputs/Outputs/Timing tabs and the on-node run-time badge with **no extra code**; it only
+  writes a Details tab if it wants a bespoke view.
 
 **Groups** (ComfyUI-style, purely visual) — right-click empty canvas → **Add group here**
 drops a translucent, resizable rectangle *behind* the nodes with an editable title. Nodes
@@ -253,11 +268,19 @@ Input: `raw_dataset` (a Data Source node's output, e.g. Peanut Source Node).
 
 Outputs: `samples` — the sampled subset of the input, same item shape (named `samples`, not
 `dataset`, so it can't be confused with the node's own name or with the sibling `labels`
-output). `labels` — the aggregated human-annotation record for each sampled item that has one
-(items with no annotation yet are simply absent, not an error).
+output). `labels` — the human-annotation record for each sampled item that has one (items with
+no annotation yet are simply absent, not an error), one record per item, reduced across
+annotators per the **Aggregation method** below. Every record always keeps the individual
+per-rater values in `raw_scores` alongside the (possibly-null) aggregate `scores`.
 
 Node parameters:
-* **Sampling ratio**: percentage, default to 100%.
+* **Sampling ratio**: dual-purpose size control, default `1.0`. A value **≤ 1** is a *fraction*
+  of the dataset (`0.5` = 50%); a value **> 1** is an *absolute item count* (`5` = five items,
+  clamped to what's available). Deterministic selection within either mode (see `sampling.py`).
+* **Full dataset**: bool toggle, default off. When on, selects the entire (filtered) pool and
+  ignores **Sampling ratio** — an explicit "100%" control so `1` in the ratio field is never
+  ambiguous between "the whole set" and "a single item". (With the toggle off, the default ratio
+  `1.0` also selects everything, so default behavior is unchanged.)
 * **Sampling mode**: stratified, or unified (uniform, the default). No separate "full"
   mode — a ratio of 100% under either mode already selects every item, so a mode that
   ignored ratio entirely was redundant and a footgun (silently no-oping ratio for anyone
@@ -269,6 +292,18 @@ Node parameters:
   never lands on zero overlap by an unlucky small sample. `meta.n_pool_labeled` (the
   pre-sampling pool's label coverage) is always reported regardless of this toggle, and a
   warning fires when it's off and the sample happens to land on zero labeled items anyway.
+* **Aggregation method**: dropdown, default **`none`** — how multiple annotators' scores for the
+  *same* video are combined into each `labels` record's per-dimension `scores`: `mean` /
+  `median` / `max` / `min` (a single point estimate), or **`none`** = no aggregation (the
+  default, so individual annotator scores are preserved unless you opt into a summary). Under
+  `none`, `scores` is left empty and only the individual per-annotator ratings are exposed (in
+  `raw_scores`); the record stays keyed by `item_id` (one per video), so the join to `samples`
+  is unchanged. Downstream: a wired **Eval** node detects `none` and scores the judge against
+  *each rater individually* (one aligned row per rater, so agreement is judge-vs-rater, not
+  judge-vs-consensus — reported as `aggregation: "none"` in its metrics report); **calibration**
+  nodes need a single anchor per item and therefore *reject* `none` with a clear error telling
+  you to pick an aggregated method. mean/median/max/min are consumed identically by everything
+  downstream (they only change the `scores` value), so the default is fully backward-compatible.
 
 Secondary tab: sampling config (mode/ratio/filters) plus — once run — the resulting selection
 count against the raw input's total count, and how many of those got a matching human label.
@@ -278,7 +313,9 @@ completed a run — a list+detail **item browser** over this node's *own sampled
 output* (not the raw loader): the item list flags which items carry a human label, and
 selecting one shows the same structured preview the Peanut Source Node uses (prompt, video
 player, transcript/captions/assembly-JSON sections, raw-JSON fallback) plus that item's
-per-dimension human scores when a label exists. Unlike the raw source browser, this reads the
+per-dimension human scores when a label exists — the aggregate score per dimension for
+mean/median/max/min, or a **per-rater breakdown** (a column per annotator) when the
+aggregation method is `none`. Unlike the raw source browser, this reads the
 node's cached `samples`/`labels` outputs from the last run (via the run-status GET, no extra
 `/api/datasets` call), so it reflects exactly what was sampled — the shared preview component
 lives in `web/src/panels/RightPanel/secondary/JudgeSamplePreview.tsx`.
@@ -708,3 +745,34 @@ workflow must round-trip to an equivalent CLI invocation — the interface is a 
 * **Cost Estimate / Dry Run** — any of the above with the dry-run toggle on; runs item matching
   and reports estimated call counts per Judge node without contacting the gateway. Equivalent to
   `run/estimate_cost.sh`.
+
+## Loading a past run
+
+The left panel's *Runs* tab lists every past run found under `logs/exps/*-exps` whose
+`run_config.json` marks it as an interface run (`benchmark == "interface_graph"`), newest first,
+with its status, workflow name, node count, and number of checkpointed judge calls. Two actions:
+
+* **Open (inspect)** — reconstructs the run into a fresh tab: the graph is loaded from the run
+  dir's `workflow_graph.json` (same node ids; positionless nodes auto-grid unless the run's
+  `workflow_name` still resolves to a saved workflow, in which case that layout is reused), and
+  per-node statuses + outputs hydrate through the normal run-socket path — `GET /api/runs/{id}`
+  now **falls back to disk** when the id isn't in the in-memory registry, so the entire existing
+  hydration works for a run from a previous server session with no new frontend code. Node
+  secondary tabs (Inputs/Outputs/Timing, Eval/Alignment reports) then read the reconstructed
+  results exactly as for a live run.
+* **Resume** — offered only for a run that stopped short (`error`/`stopped`/`interrupted`);
+  continues the existing disk-fresh `resume_from` path, re-executing the graph while skipping
+  per-item judge calls already in `judge_results.jsonl`. This is whole-graph resume, not
+  mid-node continuation.
+
+**How reconstruction works.** Each terminal run now persists a faithful `run_results.json`
+(`{order, node_results}`) alongside `run_status.json`; large collection outputs (e.g. a
+multi-thousand-item `raw_dataset`) are stored **summarized** (count + sample keys, matching the
+UI's own large-value summarization) to bound run-dir growth, while report/score outputs are
+stored in full. When `run_results.json` is present it is used verbatim. For older runs recorded
+before this landed, `reconstruct_node_results` does a best-effort rebuild: Eval-family
+`eval_*.json` / `alignment_report_*.json` / `rule_eval_*.json` files *are* the node's output;
+Judge nodes are reassembled from `judge_results.jsonl` keys (`<node_id>::<item>::<metric>`); other
+nodes get an inferred status (`done` if the overall run finished, else neutral) and empty
+outputs. These fidelity limits (absent source/dataset outputs, inferred statuses) are surfaced
+by the node tabs' existing empty states, not hidden.

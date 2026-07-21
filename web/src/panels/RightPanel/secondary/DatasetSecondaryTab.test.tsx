@@ -62,4 +62,37 @@ describe('DatasetSecondaryTab', () => {
     fireEvent.click(screen.getByText('prj-b::0::peanut'))
     expect(screen.queryByText(/annotator\(s\)/)).toBeNull()
   })
+
+  it('shows a per-rater breakdown for an un-aggregated (none) label', () => {
+    const node = seedDatasetNode()
+    activeRunStore().getState().setLastNodeResults({
+      [node.id]: {
+        status: 'done', error: null, meta: { n_items: 1 },
+        outputs: {
+          samples: {
+            'prj-a::0::peanut': {
+              item_id: 'prj-a::0::peanut', use_case: 'visual montage',
+              input: { user_prompt: 'a' }, output: { output_video_path: '' },
+            },
+          },
+          // aggregation="none": no aggregate scores, per-rater values in raw_scores.
+          labels: {
+            'prj-a::0::peanut': {
+              aggregation: 'none', n_annotators: 3, n_complete: 3,
+              scores: {}, raw_scores: { video_addresses_prompt: [3, 4, 5] },
+            },
+          },
+        },
+      },
+    })
+
+    render(<DatasetSecondaryTab node={node} />)
+    fireEvent.click(screen.getByText('prj-a::0::peanut'))
+    // The "no aggregation" header + each rater's individual score (3/4/5) are shown.
+    expect(screen.getByText(/no aggregation/)).toBeInTheDocument()
+    expect(screen.getByText(/per-rater scores/)).toBeInTheDocument()
+    for (const v of ['3', '4', '5']) {
+      expect(screen.getAllByText(v).length).toBeGreaterThan(0)
+    }
+  })
 })

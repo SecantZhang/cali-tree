@@ -1,19 +1,23 @@
 // Generic Inputs tab — every node inherits it. Inputs aren't emitted by the backend, but a
 // node's inputs ARE its upstream nodes' outputs: reconstruct them client-side from incoming
 // edges + the run store (the same trick EvalSecondaryTab.findVideoPath uses, and what the
-// executor itself does in _run_node), structured per NODE_SOCKETS[type].input. Fan-in
-// sockets (MULTI_INPUT_SOCKETS) collect a list, matching the executor's merge.
-import { MULTI_INPUT_SOCKETS, NODE_SOCKETS } from '../../../nodes/socketTypes'
+// executor itself does in _run_node), structured per the node's input schema. Fan-in sockets
+// collect a list, matching the executor's merge. The schema (sockets + fan-in) is sourced from
+// the live node-type API (useNodeSchema), not the static mirror, so it auto-reflects any
+// backend socket change for every current/future node.
+import { useNodeSchema } from '../../../nodes/useNodeSchema'
 import { useActiveGraphStore, useActiveRunStore } from '../../../store/activeTab'
 import type { VeNode } from '../../../store/graphStore'
 import { DataValueView } from './DataValueView'
+import { SocketSchema } from './SocketSchema'
 
 export function NodeInputsTab({ node }: { node: VeNode }) {
   const type = node.type ?? ''
   const edges = useActiveGraphStore((s) => s.edges)
   const lastNodeResults = useActiveRunStore((s) => s.lastNodeResults)
-  const sockets = NODE_SOCKETS[type]?.input ?? {}
-  const multi = new Set(MULTI_INPUT_SOCKETS[type] ?? [])
+  const schema = useNodeSchema(type)
+  const sockets = schema.input
+  const multi = schema.multiInput
   const socketNames = Object.keys(sockets)
 
   if (socketNames.length === 0) {
@@ -32,6 +36,7 @@ export function NodeInputsTab({ node }: { node: VeNode }) {
 
   return (
     <div className="io-tab">
+      <SocketSchema title="Input schema" sockets={sockets} multi={multi} />
       <p className="empty-hint">
         Reconstructed from upstream outputs. Inputs seeded from a different locked/prior run
         show empty until that upstream runs here.

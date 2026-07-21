@@ -172,6 +172,16 @@ class WorkflowRunSummary(BaseModel):
     n_checkpointed: int  # how many (item, metric) results are already in judge_results.jsonl
 
 
+class DiskRunSummary(BaseModel):
+    """A past run discovered on disk under logs/exps (for the Runs browser)."""
+    run_id: str
+    workflow_name: Optional[str] = None
+    status: str
+    finished_at: Optional[str] = None
+    n_checkpointed: int = 0
+    n_nodes: Optional[int] = None
+
+
 def utcnow_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
 

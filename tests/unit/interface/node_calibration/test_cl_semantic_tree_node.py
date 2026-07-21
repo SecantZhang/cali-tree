@@ -81,6 +81,18 @@ def test_dry_run_estimates_critic_and_tagging_calls(make_ctx):
     assert result.meta["estimated_calls"] == {"critic_calls": 2, "tagging_calls": 1}
 
 
+def test_unaggregated_labels_are_rejected(make_ctx):
+    # aggregation_method="none" labels have no single anchor → rejected with a clear message.
+    items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0}
+    inp = _inputs(items, {})
+    for rec in inp["labels"].values():
+        rec.aggregation = "none"
+    ctx = make_ctx(inputs=inp, dry_run=True)
+    result = ClSemanticTreeNodeExecutor().run(ctx)
+    assert result.status == "error"
+    assert "aggregation_method" in result.error and "none" in result.error
+
+
 def test_full_run_builds_concept_features_and_a_semantic_comparator(make_ctx):
     items = {"a::0::peanut": 2.0, "b::0::peanut": 1.0, "c::0::peanut": 2.0}
     fms = {"a::0::peanut": {"audio_neglect": 2}, "b::0::peanut": {"audio_neglect": 1}}

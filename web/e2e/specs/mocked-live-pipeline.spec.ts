@@ -29,6 +29,11 @@ test.describe('mocked live pipeline', () => {
 
     await page.getByRole('button', { name: 'Fit View' }).click()
 
+    // The Dataset node now defaults to aggregation_method="none" (per-rater labels); this
+    // test asserts judge-vs-consensus agreement, so pick mean (one aggregated score per item).
+    await datasetNode.locator('.param-row', { hasText: 'aggregation_method' })
+      .locator('select').selectOption('mean')
+
     // Use the M3 preset on the Judge Prompt node — M3 is text-modality and the only metric
     // with a human-annotation crosswalk in ALIGNMENT (see postprocessing/align.py), so this
     // makes exactly 2 mock HTTP calls (one per fixture item) and never touches a video

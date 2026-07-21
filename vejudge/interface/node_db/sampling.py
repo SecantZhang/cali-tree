@@ -66,26 +66,30 @@ def select_items(
     items: list[str],
     *,
     ratio: float = 1.0,
+    count: Optional[int] = None,
     mode: str = "unified",
     use_case_lookup: Optional[dict[str, str]] = None,
 ) -> list[str]:
-    """Deterministically pick a subset of ``items`` per sampling mode and ratio.
+    """Deterministically pick a subset of ``items`` per sampling mode and a size target.
 
-    There is no separate "full" mode — ``ratio=1.0`` (the default) already selects every
-    item under either mode below, so a dedicated mode that ignored ``ratio`` entirely was
-    redundant and, worse, a footgun: it silently no-oped ``ratio`` for anyone who changed
-    the ratio without also changing the mode off its default.
+    The size target is either a **fraction** (``ratio`` ∈ [0, 1]) or an **absolute count**
+    (``count`` — takes precedence when given, clamped to the available item total). The
+    Dataset node maps its single ``sampling_ratio`` field to one of these: a value > 1 is a
+    count, ≤ 1 is a ratio (and its "full dataset" toggle forces ``ratio=1.0``).
 
     - ``"unified"``: evenly-spaced selection across the sorted item list.
     - ``"stratified"``: group by ``use_case_lookup`` (item id -> use_case, missing ->
-      ``"unknown"``), allocate the ratio-derived target count proportionally across
-      groups, then evenly-spaced selection within each group.
+      ``"unknown"``), allocate the target count proportionally across groups, then
+      evenly-spaced selection within each group.
     """
     if mode not in VALID_MODES:
         raise ValueError(f"Unknown sampling mode '{mode}'. Options: {sorted(VALID_MODES)}")
 
     ordered = sorted(items)
-    target = _target_count(len(ordered), ratio)
+    if count is not None:
+        target = max(0, min(int(count), len(ordered)))
+    else:
+        target = _target_count(len(ordered), ratio)
     if target == 0:
         return []
 

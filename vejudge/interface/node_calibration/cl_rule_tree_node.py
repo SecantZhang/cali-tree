@@ -26,7 +26,7 @@ from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
 from ..server.registry import NodeRunContext, NodeRunResult, register
-from ._templates import CalibrationFitterNode
+from ._templates import CalibrationFitterNode, unaggregated_labels_error
 from .cl_adversarial_node import _DIMENSIONS_FOR_METRIC, _resolve_human_context
 
 _DEFAULT_ENGINE_KIND = {"text": "gpt", "video": "gemini"}
@@ -69,6 +69,8 @@ class ClRuleTreeNodeExecutor(CalibrationFitterNode):
                     status="error",
                     error=f"Rule/Tree Calibration Node requires a '{name}' input.",
                 )
+        if (err := unaggregated_labels_error(labels)) is not None:
+            return NodeRunResult(status="error", error=err)
 
         overlap = sorted(set(samples) & set(calibration_results))
         # A usable item has a debate transcript + a numeric original (base) score.
