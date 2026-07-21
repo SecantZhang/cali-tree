@@ -71,6 +71,10 @@ test.describe('load a past run', () => {
 
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
     await runButton.click()
+    // A spawned worker takes a moment to launch. Observe the attempt enter `running`
+    // before waiting for `Run` again; otherwise the assertion can pass against the
+    // pre-POST label and open the Runs tab while initialization is still in flight.
+    await expect(runButton).toHaveText('Running…')
     await expect(runButton).toHaveText('Run', { timeout: 10000 })
 
     // Switch to the Runs tab and find THIS run by its workflow name (not "first").

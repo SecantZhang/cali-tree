@@ -166,7 +166,7 @@ class WorkflowOut(BaseModel):
 
 class WorkflowRunSummary(BaseModel):
     run_id: str
-    status: str  # "running" | "stopping" | "done" | "error" | "stopped" | "interrupted"
+    status: str  # "running" | "done" | "error" | "stopped" | legacy "stopping"
     dry_run: bool
     allow_live: bool
     n_checkpointed: int  # how many (item, metric) results are already in judge_results.jsonl

@@ -293,33 +293,19 @@ def test_workflow_runs_listing_reflects_a_resumes_final_status_not_the_original(
     # A resume gets its own fresh run_id/handle sharing the original's directory — the
     # ORIGINAL run_id's own in-memory handle never learns the resume finished "done"; it's
     # frozen at "stopped" forever. The listing must not report that stale value.
-    from vejudge.interface.server.registry import (
-        NODE_EXECUTORS, NodeExecutor, NodeRunContext, NodeRunResult, register,
-    )
+    import tests.hard_stop_nodes as hard_stop_nodes
+    from vejudge.interface.server.registry import NODE_EXECUTORS
+    from vejudge.interface.server.run_registry import REGISTRY
 
-    class _Slow(NodeExecutor):
-        node_type = "__wf_slow__"
-        category = "node_db"
-
-        def run(self, ctx: NodeRunContext) -> NodeRunResult:
-            time.sleep(0.3)
-            return NodeRunResult(outputs={})
-
-    class _Marker(NodeExecutor):
-        node_type = "__wf_marker__"
-        category = "node_db"
-
-        def run(self, ctx: NodeRunContext) -> NodeRunResult:
-            return NodeRunResult(outputs={})
-
-    register(_Slow)
-    register(_Marker)
+    hard_stop_nodes.register_worker_nodes()
+    old_imports = list(REGISTRY.worker_imports)
+    REGISTRY.worker_imports = [*old_imports, "tests.hard_stop_nodes"]
     try:
         # Two nodes so the between-nodes stop check (executor.py) has a second node left
         # to mark "stopped" once should_stop() flips true while the first is still running.
         graph = {
             "nodes": [
-                {"id": "a", "type": "__wf_slow__", "params": {}},
+                {"id": "a", "type": "__wf_slow__", "params": {"delay": 3.0}},
                 {"id": "b", "type": "__wf_marker__", "params": {}},
             ],
             "edges": [],
@@ -329,10 +315,11 @@ def test_workflow_runs_listing_reflects_a_resumes_final_status_not_the_original(
             json={"graph": graph, "dry_run": True, "workflow_name": "wf_resume_status"},
         )
         run_id = resp.json()["run_id"]
-        time.sleep(0.05)  # let the slow node start before stopping it
-        client.post(f"/api/runs/{run_id}/stop")
-        # _wait_for_run only waits for "not running", which "stopping" also satisfies —
-        # this needs the genuinely terminal status, so it polls directly instead.
+        time.sleep(0.2)  # let the spawned worker enter the slow node
+        t0 = time.perf_counter()
+        stopped = client.post(f"/api/runs/{run_id}/stop")
+        assert time.perf_counter() - t0 < 0.5
+        assert stopped.json()["status"] == "stopped"
         assert _wait_for_terminal(client, run_id)["status"] == "stopped"
 
         time.sleep(1.1)  # cross the second boundary for a genuinely distinct resumed id
@@ -346,8 +333,14 @@ def test_workflow_runs_listing_reflects_a_resumes_final_status_not_the_original(
         assert runs[0]["run_id"] == run_id  # keyed by directory == original run_id
         assert runs[0]["status"] == "done"  # the resume's outcome, not the stale "stopped"
     finally:
+        REGISTRY.worker_imports = old_imports
         NODE_EXECUTORS.pop("__wf_slow__", None)
         NODE_EXECUTORS.pop("__wf_marker__", None)
+        NODE_EXECUTORS.pop("__stopfx_slow__", None)
+        NODE_EXECUTORS.pop("__stopfx_marker__", None)
+        NODE_EXECUTORS.pop("__stopfx_resumeok__", None)
+        NODE_EXECUTORS.pop("__stopfx_marker2__", None)
+        NODE_EXECUTORS.pop("__stopfx_checkpoint_sleep__", None)
 
 
 def test_resume_unknown_run_id_returns_404(client):

@@ -102,10 +102,11 @@ export function RunControls() {
     if (!runId) return
     setStopping(true)
     try {
-      await stopRun(runId)
-      // The backend already flips to "stopping" synchronously — reflect that immediately
-      // rather than waiting for the next websocket event to arrive.
-      setStatus('stopping')
+      const result = await stopRun(runId)
+      // Hard Stop is terminal: the backend has already signalled the isolated worker and
+      // persisted a resumable snapshot. Reflect the response directly instead of showing
+      // the old grace-period "Stopping…" state while an HTTP call drains.
+      setStatus(result.status === 'stopped' ? 'stopped' : 'error', result.error)
     } catch (e) {
       window.alert(e instanceof Error ? e.message : String(e))
     } finally {

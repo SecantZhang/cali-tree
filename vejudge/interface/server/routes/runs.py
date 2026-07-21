@@ -1,8 +1,8 @@
 """POST/GET /api/runs — start a graph run and report its status.
 
 Dry-run/--live gating is enforced inside the Judge Node executor itself (server-side,
-not just here) — this route only rejects a structurally invalid graph before spending a
-thread on it.
+not just here) — this route rejects a structurally invalid graph before spawning its
+isolated worker process.
 """
 
 from __future__ import annotations
@@ -163,9 +163,8 @@ def _create_resumed_run(resume_from: str) -> RunStatusOut:
         REGISTRY.release_resume_dir(run_dir)
         raise
 
-    # Once the background thread actually starts, its own finally block owns releasing the
-    # claim when the resumed run reaches a terminal state — only a failure before that
-    # point (e.g. start_run() itself raising) needs releasing here.
+    # Once the worker starts, its monitor owns releasing the claim at a terminal state —
+    # only a failure before that point needs releasing here.
     try:
         handle = REGISTRY.start(
             spec,
