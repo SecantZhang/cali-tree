@@ -16,15 +16,21 @@ from typing import Any, Optional
 from .....lm_engine.lm_template import LMEngine
 from ....judge.parse import parse_json_object
 from ....prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
+from .....postprocessing.align import ALIGNMENT
 
-_TAG_VERSION = "concept-tag-v1"
+_TAG_VERSION = "concept-tag-v2-rubric"
 
 _CONCEPT_LINES = "\n".join(f"- {k}: {v}" for k, v in FAILURE_MODE_TAXONOMY.items())
+_RUBRIC_LINES = "\n".join(f"- rubric:{key}" for key in ALIGNMENT)
 
 _SYSTEM = f"""\
 You map each evaluation question to the ONE judge failure-mode concept it most directly
 tests, from this fixed taxonomy:
 {_CONCEPT_LINES}
+
+Questions that directly measure an evaluation dimension may instead use one of these
+rubric keys:
+{_RUBRIC_LINES}
 
 If a question fits none of them, return null for that question. Do not invent new concept
 keys — use only the keys listed above."""
@@ -51,7 +57,10 @@ def tag_questions_to_concepts(
     """
     if not bank:
         return []
-    fallback: list[Optional[str]] = [None] * len(bank)
+    fallback: list[Optional[str]] = [
+        entry.get("semantic_key") if _valid_key(entry.get("semantic_key")) else None
+        for entry in bank
+    ]
     try:
         out = engine.generate(_user(bank), system=_SYSTEM)
         parsed = parse_json_object(out.get("content") or "")
@@ -70,5 +79,14 @@ def tag_questions_to_concepts(
         idx = e.get("index")
         key = e.get("key")
         if isinstance(idx, int) and 1 <= idx <= len(bank):
-            tags[idx - 1] = key if key in FAILURE_MODE_TAXONOMY else None
+            if fallback[idx - 1] is None:
+                tags[idx - 1] = key if _valid_key(key) else None
     return tags
+
+
+def _valid_key(key: Any) -> bool:
+    return key in FAILURE_MODE_TAXONOMY or (
+        isinstance(key, str)
+        and key.startswith("rubric:")
+        and key.removeprefix("rubric:") in ALIGNMENT
+    )

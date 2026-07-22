@@ -20,16 +20,15 @@ from .....lm_engine.lm_template import LMEngine
 from ....judge.parse import parse_json_object
 from .feature_extraction import _as_bool
 
-_CRITIC_VERSION = "rule-critic-v2-video-grounded"
+_CRITIC_VERSION = "rule-critic-v3-graded-semantic"
 
 _SYSTEM = """\
-You are an independent reviewer auditing an AI judge's evaluation of a video edit. You are
-NOT re-scoring the edit. For each yes/no question, decide whether the judge exhibited the
-described reasoning error, based on the user's request, the assembled edit, and the judge's
-own stated rationale. When the rendered video is attached, inspect it directly and treat it
-as the authority for observable audio/visual claims. Do not accept or reject a claim merely
-because the judge stated it confidently. Answer strictly true/false; be willing to say the
-judge erred."""
+You are an independent semantic reviewer of a video edit and its AI-judge evaluation.
+Questions marked item_quality ask about observable properties of the edit itself; questions
+marked judge_reasoning audit the judge's reasoning. When the rendered video is attached,
+inspect it directly and treat it as authoritative for audio/visual claims. For every answer,
+give true/false plus evidence strength from 0 (uncertain/unobservable) to 3 (unambiguous),
+and one short observable justification. Do not infer a human rating or target score."""
 
 
 def build_critic_prompt(
@@ -37,7 +36,9 @@ def build_critic_prompt(
 ) -> str:
     inp = sample.get("input") or {}
     out = sample.get("output") or {}
-    numbered = "\n".join(f'  "q{i + 1}": true/false  // {q["question"]}'
+    numbered = "\n".join(f'  "q{i + 1}": {{"answer": true/false, "strength": 0|1|2|3, '
+                         f'"evidence": "short observable justification"}}  // '
+                         f'[{q.get("scope", "judge_reasoning")}] {q["question"]}'
                          for i, q in enumerate(questions))
     return f"""\
 User's request:
@@ -49,8 +50,8 @@ The assembled edit under review:
 The judge's stated rationale (what you are auditing — NOT re-scoring):
 {judge_rationale}
 
-Answer each question about the JUDGE's reasoning as booleans, in a JSON object only (no
-markdown fences), under a top-level key "decision_answers":
+Answer each scoped question in a JSON object only (no markdown fences), under a top-level
+key "decision_answers":
 {{
 "decision_answers": {{
 {numbered}
@@ -65,9 +66,11 @@ def extract_critic_features(
     questions: list[dict[str, Any]],
     critic_engine: LMEngine,
 ) -> dict[str, Any]:
-    """Return ``{booleans, raw_answers, missing}`` — the critic's oriented answers to the
-    rule bank for one item. Oriented like ``feature_extraction``: 1 means the score-raising
-    condition is present (answer == the question's ``raises_score_when``)."""
+    """Return backward-compatible booleans plus graded signed semantic values.
+
+    ``semantic_values`` is in [-1, 1]: positive means evidence for the score-raising
+    condition, negative means evidence against it, and magnitude is evidence strength.
+    """
     if not questions:
         return {"booleans": [], "raw_answers": {}, "missing": []}
     prompt = build_critic_prompt(sample, judge_rationale, questions)
@@ -85,20 +88,31 @@ def extract_critic_features(
         answers = {}
 
     booleans: list[int] = []
+    semantic_values: list[float] = []
     raw_answers: dict[str, Any] = {}
     missing: list[str] = []
     for i, q in enumerate(questions):
         qid = f"q{i + 1}"
         raw_answers[qid] = answers.get(qid)
-        b = _as_bool(answers.get(qid))
+        answer = answers.get(qid)
+        payload = answer if isinstance(answer, dict) else {}
+        b = _as_bool(payload.get("answer") if payload else answer)
         if b is None:
             missing.append(qid)
             booleans.append(0)
+            semantic_values.append(0.0)
         else:
             raises_when_yes = q.get("raises_score_when", "yes") == "yes"
-            booleans.append(1 if (b == raises_when_yes) else 0)
+            oriented = 1 if (b == raises_when_yes) else 0
+            booleans.append(oriented)
+            strength = payload.get("strength", 3)
+            if not isinstance(strength, (int, float)) or isinstance(strength, bool):
+                strength = 3
+            magnitude = min(3.0, max(0.0, float(strength))) / 3.0
+            semantic_values.append(round(magnitude if oriented else -magnitude, 4))
     return {
         "booleans": booleans,
+        "semantic_values": semantic_values,
         "raw_answers": raw_answers,
         "missing": missing,
         "media_grounded": bool(media_inputs),

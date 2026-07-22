@@ -15,7 +15,7 @@ export function ClSemanticTreeNode({ id, data, selected }: NodeProps) {
       title="Semantic Tree Calibration"
       color="var(--node-calibration)"
       schema={NODE_PARAM_SCHEMAS.cl_semantic_tree}
-      summaryLine={(p) => `ontology-weighted · up to ${p.max_questions ?? 5} rules`}
+      summaryLine={(p) => `graded semantic tree · up to ${p.max_questions ?? 12} decisions`}
       // Same 4 target sockets as the Rule/Tree fitter — widen the zone (see NodeChrome).
       socketZoneHeight={90}
       sockets={
