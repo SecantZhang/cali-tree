@@ -10,6 +10,7 @@ import {
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { defaultParamsFor } from '../nodes/paramSchemas'
+import { topologicalLayout } from '../nodes/topologicalLayout'
 import { isMultiInputSocket, isValidSocketConnection } from '../nodes/socketTypes'
 import type { VeNodeData } from '../nodes/types'
 
@@ -82,6 +83,8 @@ export interface GraphState {
   selectNode: (id: string | null) => void
   openSecondaryTab: (id: string) => void
   closeSecondaryTab: () => void
+  autoLayoutNodes: () => void
+  layoutRevision: number
   setNodeStatus: (id: string, status: VeNodeData['status'], error?: string | null) => void
   resetAllStatuses: () => void
   // Locking a node locks all its predecessors; unlocking cascades forward to descendants
@@ -135,6 +138,7 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
     selectedNodeId: null,
     secondaryTabNodeId: null,
     currentWorkflowName: null,
+    layoutRevision: 0,
     setCurrentWorkflowName: (name) => set({ currentWorkflowName: name }),
 
     onNodesChange: (changes) => {
@@ -252,6 +256,18 @@ export function createGraphStore(onDirty: () => void): GraphStoreApi {
 
     openSecondaryTab: (id) => set({ secondaryTabNodeId: id }),
     closeSecondaryTab: () => set({ secondaryTabNodeId: null }),
+
+    autoLayoutNodes: () => {
+      const { nodes, edges, groups, layoutRevision } = get()
+      if (!nodes.length) return
+      const layout = topologicalLayout(nodes, edges, groups)
+      set({
+        nodes: layout.nodes,
+        groups: layout.groups,
+        layoutRevision: layoutRevision + 1,
+      })
+      onDirty()
+    },
 
     setNodeStatus: (id, status, error = null) => {
       set({
