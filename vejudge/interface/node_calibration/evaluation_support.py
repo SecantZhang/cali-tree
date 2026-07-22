@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from statistics import mean, pvariance
+from statistics import mean, median, pvariance
 from typing import Any
 
 from ...core.calibration.debate.semantic_summary import validate_summary
 
 
-EVALUATION_VERSION = "calibration-eval-v3-video-critic"
+EVALUATION_VERSION = "calibration-eval-v4-graded-rubric-tree"
 
 
 def stable_holdout_split(
@@ -67,7 +67,7 @@ def evaluation_cache_suffix(
 
 
 def build_observations(
-    anchored: dict[str, dict[str, Any]], booleans: dict[str, list[int]],
+    anchored: dict[str, dict[str, Any]], semantic_features: dict[str, list[float]],
 ) -> tuple[list[str], dict[str, str], dict[str, float], dict[str, float], dict[str, list[float]], dict[str, float]]:
     observation_ids: list[str] = []
     observation_item: dict[str, str] = {}
@@ -84,20 +84,20 @@ def build_observations(
             observation_item[obs] = item
             bases[obs] = float(record["base"])
             humans[obs] = float(target)
-            feats[obs] = [bases[obs], *[float(value) for value in booleans.get(item, [])]]
+            feats[obs] = [bases[obs], *[float(value) for value in semantic_features.get(item, [])]]
             weights[obs] = weight
     return observation_ids, observation_item, bases, humans, feats, weights
 
 
 def filter_constant_questions(
-    bank: list[dict[str, Any]], booleans: dict[str, list[int]], training_ids: list[str],
-) -> tuple[list[dict[str, Any]], dict[str, list[int]], list[dict[str, Any]], list[dict[str, Any]]]:
+    bank: list[dict[str, Any]], features: dict[str, list[float]], training_ids: list[str],
+) -> tuple[list[dict[str, Any]], dict[str, list[float]], list[dict[str, Any]], list[dict[str, Any]]]:
     kept_indices: list[int] = []
     prevalence: list[dict[str, Any]] = []
     dropped: list[dict[str, Any]] = []
     for index, question in enumerate(bank):
-        values = [booleans.get(item, [])[index] for item in training_ids
-                  if index < len(booleans.get(item, []))]
+        values = [features.get(item, [])[index] for item in training_ids
+                  if index < len(features.get(item, []))]
         rate = mean(values) if values else None
         info = {"question_index": index, "question": question.get("question"),
                 "positive_rate": rate, "n_training": len(values)}
@@ -109,9 +109,47 @@ def filter_constant_questions(
     kept_bank = [bank[index] for index in kept_indices]
     filtered = {
         item: [values[index] for index in kept_indices if index < len(values)]
-        for item, values in booleans.items()
+        for item, values in features.items()
     }
     return kept_bank, filtered, prevalence, dropped
+
+
+def impute_missing_semantic_values(
+    values: dict[str, list[float]],
+    missing: dict[str, list[str]],
+    training_ids: list[str],
+) -> tuple[dict[str, list[float]], list[dict[str, Any]]]:
+    """Impute critic failures with training-only feature medians.
+
+    Zero is meaningful evidence strength (uncertain), so failed answers must not silently
+    masquerade as zeros. Each question is imputed independently and validation values never
+    influence the fill value.
+    """
+    width = max((len(row) for row in values.values()), default=0)
+    fill: list[float] = []
+    diagnostics: list[dict[str, Any]] = []
+    for index in range(width):
+        qid = f"q{index + 1}"
+        observed = [
+            values[item][index]
+            for item in training_ids
+            if index < len(values.get(item, [])) and qid not in set(missing.get(item, []))
+        ]
+        replacement = float(median(observed)) if observed else 0.0
+        fill.append(replacement)
+        diagnostics.append({
+            "question_index": index,
+            "training_median": replacement,
+            "n_training_observed": len(observed),
+        })
+    imputed: dict[str, list[float]] = {}
+    for item, row in values.items():
+        missing_set = set(missing.get(item, []))
+        imputed[item] = [
+            fill[index] if f"q{index + 1}" in missing_set else float(value)
+            for index, value in enumerate(row)
+        ]
+    return imputed, diagnostics
 
 
 def preflight_diagnostics(

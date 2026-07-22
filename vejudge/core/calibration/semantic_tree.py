@@ -2,12 +2,13 @@
 
 Adapts the Semantic Decision Tree idea (Adv. Eng. Informatics 58, 2023 — ID3 split gain
 adjusted by ontology-derived attribute importance) to our regression setting: a compact,
-greedy, shallow tree over concept-labeled features (``base_score`` + ``fm:<concept>`` counts
-+ ``rule:<concept>`` critic booleans) mapping to the human score. At each node it picks the
-split maximizing ``importance(feature) * variance_reduction`` — so a concept the ontology
+greedy tree over concept-labeled features (``base_score`` plus graded semantic evidence)
+mapping to the human score. At each node it picks the split maximizing ontology-weighted
+absolute-error reduction — so a concept the ontology
 says is relevant to the metric being calibrated is preferred over an equally-predictive but
 off-topic one. sklearn can't weight per-feature gain, so the tree is implemented directly;
-it stays depth-2 (like the CART baseline) because the labeled batch is tiny.
+it can represent several semantic decisions while robust median leaves optimize the primary
+item-macro MAE objective directly.
 
 Importance is injected as a ``feature_weights`` map (feature name → weight in (0, 1]); the
 node builds it from ``ontology.concept_importance``. Keeping the ontology out of the
@@ -22,33 +23,42 @@ from typing import Any, Optional, Sequence
 from .base import Calibrator
 
 
-def _weighted_mean(ys: list[float], weights: list[float]) -> float:
-    total = sum(weights)
-    return sum(y * w for y, w in zip(ys, weights)) / total if total > 0 else 0.0
-
-
-def _variance(ys: list[float], weights: Optional[list[float]] = None) -> float:
+def _weighted_median(ys: list[float], weights: list[float]) -> float:
     if not ys:
         return 0.0
-    ws = weights or [1.0] * len(ys)
-    total = sum(ws)
+    ordered = sorted(zip(ys, weights), key=lambda pair: pair[0])
+    midpoint = sum(weights) / 2
+    cumulative = 0.0
+    for value, weight in ordered:
+        cumulative += weight
+        if cumulative >= midpoint:
+            return value
+    return ordered[-1][0]
+
+
+def _absolute_error(ys: list[float], weights: list[float]) -> float:
+    total = sum(weights)
     if total <= 0:
         return 0.0
-    m = _weighted_mean(ys, ws)
-    return sum(w * (y - m) ** 2 for y, w in zip(ys, ws)) / total
+    center = _weighted_median(ys, weights)
+    return sum(weight * abs(value - center) for value, weight in zip(ys, weights)) / total
 
 
 class SemanticDecisionTreeCalibrator(Calibrator):
-    version = "semantic-tree-v2-weighted"
+    version = "semantic-tree-v3-graded-mae"
 
     def __init__(
         self,
         *,
         feature_weights: Optional[dict[str, float]] = None,
-        max_depth: int = 2,
-        min_samples_leaf: int = 2,
+        allowed_feature_names: Optional[Sequence[str]] = None,
+        max_depth: int = 3,
+        min_samples_leaf: int = 1,
     ) -> None:
         self.feature_weights = dict(feature_weights or {})
+        self.allowed_feature_names = (
+            set(allowed_feature_names) if allowed_feature_names is not None else None
+        )
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self._feature_names: Optional[list[str]] = None
@@ -90,16 +100,21 @@ class SemanticDecisionTreeCalibrator(Calibrator):
             "leaf": True,
             "samples": len(idxs),
             "weighted_samples": round(sum(node_weights), 3),
-            "value": round(_weighted_mean(node_ys, node_weights), 3) if node_ys else 0.0,
+            "value": round(_weighted_median(node_ys, node_weights), 3) if node_ys else 0.0,
         }
         # A split needs enough rows to leave min_samples_leaf on each side, and depth budget.
         if depth >= self.max_depth or sum(node_weights) < 2 * self.min_samples_leaf:
             return node
 
         best: Optional[tuple[float, int, float, list[int], list[int]]] = None
-        parent_var = _variance(node_ys, node_weights)
+        parent_loss = _absolute_error(node_ys, node_weights)
         total_weight = sum(node_weights)
         for j in range(len(self._feature_names or [])):
+            if (
+                self.allowed_feature_names is not None
+                and self._feature_names[j] not in self.allowed_feature_names
+            ):
+                continue
             w = self._weight(self._feature_names[j])
             values = sorted({rows[i][j] for i in idxs})
             for a, b in zip(values, values[1:]):
@@ -113,13 +128,13 @@ class SemanticDecisionTreeCalibrator(Calibrator):
                     continue
                 left_weight = sum(weights[i] for i in left)
                 right_weight = sum(weights[i] for i in right)
-                child_var = (
+                child_loss = (
                     left_weight / total_weight
-                    * _variance([ys[i] for i in left], [weights[i] for i in left])
+                    * _absolute_error([ys[i] for i in left], [weights[i] for i in left])
                     + right_weight / total_weight
-                    * _variance([ys[i] for i in right], [weights[i] for i in right])
+                    * _absolute_error([ys[i] for i in right], [weights[i] for i in right])
                 )
-                weighted_gain = w * (parent_var - child_var)
+                weighted_gain = w * (parent_loss - child_loss)
                 # Strictly-better wins; ties keep the earlier (lower-index) feature for
                 # determinism. The ontology weight is what breaks a variance tie between two
                 # equally-predictive features.
@@ -134,7 +149,7 @@ class SemanticDecisionTreeCalibrator(Calibrator):
             "leaf": False,
             "samples": len(idxs),
             "weighted_samples": round(sum(node_weights), 3),
-            "value": round(_weighted_mean(node_ys, node_weights), 3),
+            "value": round(_weighted_median(node_ys, node_weights), 3),
             "feature": self._feature_names[j],
             "threshold": round(thr, 3),
             "left": self._build(left, rows, ys, weights, depth=depth + 1),
@@ -170,6 +185,10 @@ class SemanticDecisionTreeCalibrator(Calibrator):
             "version": self.version,
             "max_depth": self.max_depth,
             "min_samples_leaf": self.min_samples_leaf,
+            "allowed_feature_names": (
+                sorted(self.allowed_feature_names)
+                if self.allowed_feature_names is not None else None
+            ),
         }
         if self._tree is not None:
             meta["tree"] = self._tree

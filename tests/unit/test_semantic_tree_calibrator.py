@@ -7,7 +7,7 @@ from vejudge.core.calibration.base import Calibrator
 def test_is_a_calibrator():
     c = SemanticDecisionTreeCalibrator()
     assert isinstance(c, Calibrator)
-    assert c.version == "semantic-tree-v2-weighted"
+    assert c.version == "semantic-tree-v3-graded-mae"
 
 
 def test_predict_before_fit_raises():
@@ -40,7 +40,9 @@ def test_degenerate_fit_is_a_lone_leaf():
 def test_export_matches_the_decision_tree_view_contract():
     X = [[2, 1], [2, 1], [2, 0], [2, 0]]
     y = [4, 4, 2, 2]
-    c = SemanticDecisionTreeCalibrator().fit(X, y, feature_names=["base_score", "rule:audio_neglect"])
+    c = SemanticDecisionTreeCalibrator(min_samples_leaf=2).fit(
+        X, y, feature_names=["base_score", "rule:audio_neglect"],
+    )
     tree = c.metadata()["tree"]
     # Same keys the SVG DecisionTreeView reads.
     assert set(tree) >= {"leaf", "samples", "value", "feature", "threshold", "left", "right"}
@@ -49,7 +51,26 @@ def test_export_matches_the_decision_tree_view_contract():
     assert c.metadata()["feature_importances"] == [1.0, 1.0]
 
 
+def test_leaf_prediction_is_weighted_median_for_primary_mae_objective():
+    c = SemanticDecisionTreeCalibrator(max_depth=1, min_samples_leaf=3).fit(
+        [[2], [2], [2], [2]], [1, 4, 4, 5],
+        feature_names=["base_score"], sample_weight=[1, 1, 1, 1],
+    )
+    assert c.predict([[2]]) == [4.0]
+
+
 def test_unlisted_feature_weights_default_to_full():
     c = SemanticDecisionTreeCalibrator(feature_weights={"rule:x": 0.3})
     assert c._weight("base_score") == 1.0
     assert c._weight("rule:x") == 0.3
+
+
+def test_allowed_features_can_prune_unstable_semantic_branches():
+    c = SemanticDecisionTreeCalibrator(
+        allowed_feature_names=["base_score"], max_depth=3, min_samples_leaf=1,
+    ).fit(
+        [[1, 0], [1, 1], [2, 0], [2, 1]], [2, 2, 4, 4],
+        feature_names=["base_score", "rubric:flow:q1"],
+    )
+    assert c.metadata()["tree"]["feature"] == "base_score"
+    assert c.metadata()["allowed_feature_names"] == ["base_score"]

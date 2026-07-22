@@ -456,15 +456,23 @@ new calibration node genuinely needs a different I/O shape, that is the signal i
   bank from a deterministic training partition and evaluate it on a frozen holdout;
   legacy nodes without the mode remain explicitly exploratory grouped LOO.
 - **Semantic Tree Calibration** (`cl_semantic_tree`) — an ontology-grounded variant. Its
-  deployable features are question-level `rule:<concept>:qN` critic booleans. Grounded
+  deployable features combine fixed target-blind rubric facets with training-debate rules.
+  A video-grounded independent critic records signed evidence strength in `[-1, 1]` for
+  each decision, rather than collapsing all evidence into sparse booleans. Grounded
   transcript failure counts are excluded because they require held-out labels. It fits an
-  **ontology-weighted** decision tree (`SemanticDecisionTreeCalibrator`): split gain is
-  `variance_reduction × concept_importance`, where importance comes from the calibration
+  **ontology-weighted MAE decision tree** (`SemanticDecisionTreeCalibrator`) with robust
+  median leaves. Depth and minimum leaf mass are selected by item-grouped LOO entirely
+  inside the training partition (up to the configured depth cap); validation labels never
+  choose tree capacity. Rubric features receive direct dimension relevance and debate-rule
+  importance comes from the calibration
   **knowledge base** (`vejudge/core/calibration/ontology.py`, built from
   `FAILURE_MODE_TAXONOMY` + `_TENDENCY` + the `ALIGNMENT` dimension crosswalk). Its
   `judge_rule` report adds a `semantic` comparator so the Rule Comparison node shows it
   head-to-head with the CART baseline on the same features. Same fitter I/O contract as
-  `cl_rule_tree`; shares its secondary tab.
+  `cl_rule_tree`; shares its secondary tab. A semantic feature set must improve training-only
+  grouped-LOO MAE by at least `0.01` over the best base-only tree, otherwise capacity selection
+  visibly falls back to the simpler tree; this prevents a larger rule bank from winning on a
+  negligible search fluctuation.
 
 #### Adversarial Calibration Node
 

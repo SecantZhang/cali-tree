@@ -52,6 +52,33 @@ describe('calibration diagnostics', () => {
     expect(screen.getByText(/Only 2 validation videos/)).toBeInTheDocument()
   })
 
+  it('shows graded semantic evidence and training-only tree selection', () => {
+    const n = node('cl_semantic_tree')
+    activeRunStore().getState().setLastNodeResults({
+      [n.id]: { status: 'done', error: null, meta: {}, outputs: { judge_rule: {
+        n_items: 8, n_observations: 40, evaluation_mode: 'frozen_holdout',
+        n_train_items: 6, n_validation_items: 2,
+        bank: [{
+          question: 'Does the opening establish context?', raises_score_when: 'yes',
+          scope: 'item_quality',
+        }],
+        insample_mae: { semantic: 0.6 }, loo_mae: { semantic: 0.8 },
+        semantic_tree_selection: {
+          selected: { feature_set: 'rubric', max_depth: 3, min_samples_leaf: 2 },
+          training_grouped_loo: [], validation_labels_used: false,
+        },
+        per_item: {
+          item: { base: 2, human: [3, 4], booleans: [1], semantic_values: [0.667], missing: [] },
+        },
+      } } },
+    })
+    render(<ClRuleTreeSecondaryTab node={n} />)
+    expect(screen.getByText(/training-only grouped LOO/)).toHaveTextContent('depth 3')
+    expect(screen.getByText(/validation labels used for tuning/)).toHaveTextContent('no')
+    expect(screen.getByText(/graded semantics and debate rules/)).toBeInTheDocument()
+    expect(screen.getByText('[0.667]')).toBeInTheDocument()
+  })
+
   it('shows the immutable polarized disagreement profile', () => {
     const n = node('cl_adversarial')
     activeRunStore().getState().setLastNodeResults({
