@@ -1,3 +1,10 @@
+## 260722-14:07:00 — Add exploratory deeper semantic-tree selection
+- Type: feature
+- Scope: semantic capacity selection, node parameter/UI, offline rerender, tests and derived run
+- What: Added an opt-in strategy that selects the richest semantic tree inside the training-CV tolerance and registered a five-node, zero-score-split deep rerender.
+- Why: Let users inspect deeper semantic distinctions without changing the safer default or permitting score shortcuts.
+- Details: logs/updates/details/260722-14:07:00-updates.md
+
 ## 260722-13:50:14 — Register offline semantic rerenders as interface runs
 - Type: fix
 - Scope: offline semantic rerender utility and interface-run persistence
