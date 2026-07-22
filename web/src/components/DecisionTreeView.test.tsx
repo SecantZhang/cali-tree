@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { DecisionTreeView, type DecisionTreeNode } from './DecisionTreeView'
+import { compactFeatureLabel, DecisionTreeView, type DecisionTreeNode } from './DecisionTreeView'
 
 const SPLIT: DecisionTreeNode = {
   leaf: false,
@@ -14,10 +14,10 @@ const SPLIT: DecisionTreeNode = {
 
 describe('DecisionTreeView', () => {
   it('draws a split condition, both leaf values, and true/false branch labels', () => {
-    const { container, getByText } = render(<DecisionTreeView tree={SPLIT} />)
+    const { container, getAllByText, getByText } = render(<DecisionTreeView tree={SPLIT} />)
     expect(container.querySelector('svg')).not.toBeNull()
     // Split node shows the feature + threshold.
-    expect(getByText('q2')).toBeInTheDocument()
+    expect(getAllByText('q2')).toHaveLength(2) // visible label plus its native SVG tooltip
     expect(getByText('≤ 0.5')).toBeInTheDocument()
     // Both leaves render their calibrated score.
     expect(getByText('→ 2.00')).toBeInTheDocument()
@@ -35,6 +35,20 @@ describe('DecisionTreeView', () => {
       />,
     )
     expect(container.querySelector('title')?.textContent).toContain('over-penalizes')
+  })
+
+  it('compacts a long semantic feature so it stays inside the split box', () => {
+    const longSplit: DecisionTreeNode = {
+      ...SPLIT,
+      feature: 'rubric:section_placement_closing:M5:q13',
+    }
+    const { container, getByText } = render(<DecisionTreeView tree={longSplit} />)
+    expect(getByText('section placement…')).toBeInTheDocument()
+    expect(getByText('M5 · q13 · ≤ 0.5')).toBeInTheDocument()
+    expect(Array.from(container.querySelectorAll('text')).map((node) => node.textContent))
+      .not.toContain(longSplit.feature)
+    expect(container.querySelector('title')?.textContent).toBe(longSplit.feature)
+    expect(compactFeatureLabel(longSplit.feature!).title.length).toBeLessThanOrEqual(18)
   })
 
   it('renders a lone leaf when the tree never split (degenerate fit)', () => {
