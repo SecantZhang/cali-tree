@@ -128,9 +128,9 @@ def test_full_run_mines_bank_and_reports_mae(make_ctx):
     assert jr["n_items"] == 3
     assert len(jr["bank"]) == 2  # canonicalized from the mined candidates
     assert jr["feature_names"] == ["base_score", "q1", "q2"]
-    # All four comparators computed, in-sample + LOO.
+    # Score-only and rule-feature comparators computed, in-sample + LOO.
     for split in ("insample_mae", "loo_mae"):
-        assert set(jr[split]) == {"base", "bias", "linear", "tree"}
+        assert set(jr[split]) == {"base", "bias", "score_linear", "linear", "tree"}
         assert jr[split]["base"] is not None
     # Baseline MAE = mean|base - human| — judge under-scores here, so it's clearly > 0.
     assert jr["insample_mae"]["base"] > 0.5

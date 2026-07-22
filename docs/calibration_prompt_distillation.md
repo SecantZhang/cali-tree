@@ -360,3 +360,35 @@ per-rater), so no inter-rater ceiling; a single overall 1–10 score (VE-Bench Q
 richer multi-branch model). Closing the last gap to 0.742 would mean training/calibrating a
 metric, not a zero-shot prompt — which is where the adversarial-calibration + semantic-tree
 work would come in as the next step on this dataset.
+
+# Leakage-safe frozen-holdout M5 calibration (live)
+
+Ran the corrected all-model M5 workflow over the full labeled pool with raw ratings,
+equal-video weights, a stable SHA-256 80/20 split, video-grounded independent-critic
+answers, and rule candidates mined only from validated training summaries. The completed
+run is `logs/exps/260721-21:32:54-exps`: 33 usable videos (26 train, 7 validation), 410
+raw ratings, and 7 videos skipped because they lacked metric-aligned labels.
+
+Held-out item-macro MAE (lower is better):
+
+| comparator | validation MAE |
+|---|---:|
+| raw judge | 1.868 |
+| global bias | 1.176 |
+| score-only linear calibration | **1.114** |
+| linear score + semantic rules | **1.107** |
+| CART score + semantic rules | 1.133 |
+| ontology-weighted semantic tree | 1.114 |
+
+**Score calibration clears the predeclared meaningful-improvement threshold:** the
+score-only linear model improves on global bias by 0.062 MAE, with a deterministic
+item-grouped bootstrap 95% CI of `[0.004, 0.150]`. The semantic rules add only 0.006 MAE
+beyond score-only calibration and their CI crosses zero (`[-0.031, 0.042]`), so this run
+does not support claiming incremental semantic-rule value. This separates the supported
+result—learning a held-out calibration slope beats a constant bias—from the still-open
+research question of making distilled semantic rules generalize beyond that slope.
+
+Negotiation is now bounded at six rounds, stops after semantic stability, detects repeated
+multi-state score cycles, and retains the original score for unresolved oscillations. The
+critic receives the edited video when its engine supports media. Resume reused compatible
+judge/debate checkpoints, so only missing or version-stale work was recomputed.

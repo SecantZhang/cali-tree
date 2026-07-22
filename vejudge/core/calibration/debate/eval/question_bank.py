@@ -20,14 +20,17 @@ from typing import Any
 from .....lm_engine.lm_template import LMEngine
 from ....judge.parse import parse_json_object
 
-_BANK_VERSION = "ab-bank-v1"
+_BANK_VERSION = "ab-bank-v2-distinct-evidence"
 
 _SYSTEM = """\
 You consolidate a list of candidate evaluation questions (mined from separate debates) \
-into a SMALL canonical set. Merge questions that express the same underlying rule, drop \
-near-duplicates and one-offs, and keep only general, reusable yes/no questions a fresh \
-judge could answer about any item. Prefer 3-5 questions total. Preserve, for each kept \
-question, which answer should raise the score."""
+into a compact canonical set. Merge true paraphrases, but preserve questions that inspect \
+different observable evidence, severity, instruction constraints, audio, visual continuity, \
+pacing, or genre appropriateness. Drop item-specific one-offs and keep only general, reusable \
+yes/no questions an independent critic could answer about any item. When the candidates \
+support them, retain 6-10 distinct questions rather than collapsing all under-scoring causes \
+into a few broad abstractions. Preserve, for each kept question, which answer should raise \
+the score."""
 
 
 def _user(candidates: list[dict[str, Any]], max_questions: int) -> str:
@@ -45,7 +48,8 @@ Respond with JSON only (no markdown fences):
     {{"question": "canonical general yes/no question", "raises_score_when": "yes" | "no"}}
   ]
 }}
-- Keep at most {max_questions} questions; merge duplicates; drop item-specific one-offs.
+- Keep at most {max_questions} questions; merge only semantic duplicates; drop item-specific one-offs.
+- Preserve separately answerable observable conditions instead of replacing them with one vague question.
 - Order from most to least broadly applicable."""
 
 

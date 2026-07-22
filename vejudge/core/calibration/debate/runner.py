@@ -70,6 +70,21 @@ def _same_semantic_finding(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
     return len(sa & sb) / max(1, len(sa | sb)) >= 0.9
 
 
+def _repeating_score_cycle(scores: list[float]) -> bool:
+    """Detect any immediately repeated score cycle, not only A-B-A-B.
+
+    A three-position cycle (A-B-C-A-B-C) appeared in a live grounded debate and
+    previously ran until the hard round cap because the old check only recognized a
+    period of two.  Requiring two complete adjacent periods avoids treating ordinary
+    one-off score revisions as oscillation.
+    """
+    for period in range(2, len(scores) // 2 + 1):
+        cycle = scores[-period:]
+        if len(set(cycle)) > 1 and scores[-2 * period:-period] == cycle:
+            return True
+    return False
+
+
 class DebateTurnRunner:
     """Runs one turn: build prompt (given transcript so far) -> engine.generate ->
     parse -> validate. Mirrors ``Judge.run``'s shape exactly, including never letting
@@ -258,12 +273,7 @@ class DebateRunner:
             if current_semantic:
                 previous_semantic = current_semantic
 
-            if (
-                len(score_history) >= 4
-                and score_history[-4] == score_history[-2]
-                and score_history[-3] == score_history[-1]
-                and score_history[-4] != score_history[-3]
-            ):
+            if _repeating_score_cycle(score_history):
                 convergence_reason = "oscillation_detected"
                 converged = False
                 prev_score = initial_score

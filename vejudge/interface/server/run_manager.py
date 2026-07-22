@@ -9,6 +9,7 @@ CLI runs. The saved ``workflow_graph.json`` makes the run fully reproducible.
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -195,7 +196,15 @@ def start_run(
     resume_from: Optional[Path] = None,
     workflow_name: Optional[str] = None,
 ) -> tuple[ExperimentRun, CheckpointStore]:
-    run = make_exp_run(run_dir=Path(resume_from)) if resume_from else make_exp_run()
+    if resume_from:
+        # A resumed attempt reuses the original directory/checkpoints but still needs a
+        # distinct public identity.  Timestamp-only IDs collide when a hard Stop and
+        # Resume happen within one second; the browser then keeps the stopped attempt's
+        # websocket and never observes the resumed worker completing.
+        attempt_id = f"{Path(resume_from).name.removesuffix('-exps')}-resume-{uuid.uuid4().hex[:8]}"
+        run = make_exp_run(run_dir=Path(resume_from), run_id=attempt_id)
+    else:
+        run = make_exp_run()
 
     cfg: dict[str, Any] = {
         "benchmark": "interface_graph",

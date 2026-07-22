@@ -163,18 +163,40 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             it: semantic_summary_text(anchored[it]["cr"]) for it in training_ids
         }
         missing_summary_items = [it for it, text in training_summaries.items() if not text]
+        concurrency = max(1, int(critic_config.get("concurrency") or 1))
 
         bank_key = f"{ctx.node_id}::rule_bank::{cache_suffix}"
         if ctx.checkpoint.has(bank_key):
             bank = ctx.checkpoint.get(bank_key)
         else:
             candidates: list[dict[str, Any]] = []
+            extraction_tasks: list[str] = []
             for it in training_ids:
                 summary_text = training_summaries[it]
                 if not summary_text:
                     continue
-                candidates.extend(extract_candidate_questions(
-                    transcript_text=summary_text, metric_id=metric_id, engine=critic_engine))
+                candidate_key = f"{ctx.node_id}::{it}::rule_candidates::{cache_suffix}"
+                if ctx.checkpoint.has(candidate_key):
+                    candidates.extend(ctx.checkpoint.get(candidate_key))
+                else:
+                    extraction_tasks.append(it)
+            with ThreadPoolExecutor(max_workers=concurrency) as ex:
+                futures = {
+                    ex.submit(
+                        extract_candidate_questions,
+                        transcript_text=training_summaries[it], metric_id=metric_id,
+                        engine=critic_engine,
+                    ): it
+                    for it in extraction_tasks
+                }
+                for future in as_completed(futures):
+                    it = futures[future]
+                    item_candidates = future.result()
+                    ctx.checkpoint.put(
+                        f"{ctx.node_id}::{it}::rule_candidates::{cache_suffix}",
+                        item_candidates,
+                    )
+                    candidates.extend(item_candidates)
             bank = build_question_bank(candidates=candidates, engine=critic_engine,
                                        max_questions=max_questions)
             ctx.checkpoint.put(bank_key, bank)
@@ -188,7 +210,6 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             ctx.checkpoint.put(tags_key, tags)
 
         # --- independent critic answers the bank per item (concurrent, checkpointed) ---
-        concurrency = max(1, int(critic_config.get("concurrency") or 1))
         item_ids = all_item_ids
         booleans: dict[str, list[int]] = {}
         missing: dict[str, list[str]] = {}

@@ -6,9 +6,10 @@ critic** — a different LM given the item and the judge's own rationale, explic
 is auditing, not re-scoring — answers each rule boolean. The critic being distinct from the
 judge is the whole point; a judge won't self-incriminate, an auditor will.
 
-Text-only in v1: the critic audits the judge's *reasoning* against the task + assembly
-(most rule questions are of the form "does the judge penalize X?"), which needs the
-rationale + plan, not the rendered video. A video critic is a follow-up.
+In v2, a video-capable critic also receives the rendered edit. This is essential for
+questions about whether an asserted audio/visual flaw is real, localized, or severe;
+assembly metadata and the judge's prose alone cannot establish those facts. Text-only
+engines retain the previous target-blind fallback.
 """
 
 from __future__ import annotations
@@ -19,13 +20,16 @@ from .....lm_engine.lm_template import LMEngine
 from ....judge.parse import parse_json_object
 from .feature_extraction import _as_bool
 
-_CRITIC_VERSION = "rule-critic-v1"
+_CRITIC_VERSION = "rule-critic-v2-video-grounded"
 
 _SYSTEM = """\
 You are an independent reviewer auditing an AI judge's evaluation of a video edit. You are
 NOT re-scoring the edit. For each yes/no question, decide whether the judge exhibited the
 described reasoning error, based on the user's request, the assembled edit, and the judge's
-own stated rationale. Answer strictly true/false; be willing to say the judge erred."""
+own stated rationale. When the rendered video is attached, inspect it directly and treat it
+as the authority for observable audio/visual claims. Do not accept or reject a claim merely
+because the judge stated it confidently. Answer strictly true/false; be willing to say the
+judge erred."""
 
 
 def build_critic_prompt(
@@ -68,8 +72,12 @@ def extract_critic_features(
         return {"booleans": [], "raw_answers": {}, "missing": []}
     prompt = build_critic_prompt(sample, judge_rationale, questions)
     answers: dict[str, Any] = {}
+    video_path = (sample.get("output") or {}).get("output_video_path")
+    media_inputs = None
+    if video_path and bool(getattr(critic_engine, "supports_video", False)):
+        media_inputs = [{"type": "video", "path": str(video_path)}]
     try:
-        out = critic_engine.generate(prompt, system=_SYSTEM)
+        out = critic_engine.generate(prompt, media_inputs=media_inputs, system=_SYSTEM)
         parsed = parse_json_object(out.get("content") or "")
         if isinstance(parsed, dict) and isinstance(parsed.get("decision_answers"), dict):
             answers = parsed["decision_answers"]
@@ -89,4 +97,10 @@ def extract_critic_features(
         else:
             raises_when_yes = q.get("raises_score_when", "yes") == "yes"
             booleans.append(1 if (b == raises_when_yes) else 0)
-    return {"booleans": booleans, "raw_answers": raw_answers, "missing": missing}
+    return {
+        "booleans": booleans,
+        "raw_answers": raw_answers,
+        "missing": missing,
+        "media_grounded": bool(media_inputs),
+        "critic_version": _CRITIC_VERSION,
+    }

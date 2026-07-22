@@ -81,7 +81,7 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
         </p>
       )}
 
-      <p className="schema-heading">Item-macro MAE vs human — does the rule tree beat a plain bias shift?</p>
+      <p className="schema-heading">Item-macro MAE vs human — calibration and incremental rule signal</p>
       <table className="schema-table">
         <tbody>
           <tr>
@@ -101,6 +101,7 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
       <p className="empty-hint">
         A positive claim requires frozen holdout, at least five validation videos, an MAE
         improvement of at least 0.05, and a paired 95% bootstrap interval above zero.
+        Rule value is tested separately against score-only linear calibration.
       </p>
 
       {bank.length > 0 && (

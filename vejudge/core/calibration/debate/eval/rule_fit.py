@@ -58,7 +58,7 @@ def fit_and_evaluate(
     while their weights sum to one per source video.
     """
     extra = extra_calibrators or {}
-    comparators = ["base", "bias", "linear", "tree", *extra.keys()]
+    comparators = ["base", "bias", "score_linear", "linear", "tree", *extra.keys()]
     groups = loo_groups or {i: i for i in item_ids}
     weights = observation_weights or {i: 1.0 for i in item_ids}
     group_order = list(dict.fromkeys(groups[i] for i in item_ids))
@@ -70,6 +70,11 @@ def fit_and_evaluate(
         can_fit = len({groups[i] for i in fit_ids}) >= 2
         lin = (
             LinearCalibrator().fit(X_fit, y_fit, sample_weight=w_fit) if can_fit else None
+        )
+        score_lin = (
+            LinearCalibrator().fit(
+                [[bases[i]] for i in fit_ids], y_fit, sample_weight=w_fit,
+            ) if can_fit else None
         )
         tree = (
             DecisionTreeCalibrator().fit(
@@ -88,6 +93,10 @@ def fit_and_evaluate(
             predictions["base"].append(bases[query_id])
             predictions["bias"].append(
                 _predict_bias(fit_bases, y_fit, w_fit, bases[query_id])
+            )
+            predictions["score_linear"].append(
+                score_lin.predict([[bases[query_id]]])[0]
+                if score_lin else bases[query_id]
             )
             predictions["linear"].append(
                 lin.predict([feats_full[query_id]])[0] if lin else bases[query_id]
