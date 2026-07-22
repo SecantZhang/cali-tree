@@ -1,5 +1,4 @@
-"""fit_and_evaluate: the four-comparator default, and the extra_calibrators hook the
-Semantic Tree node uses to report a fifth `semantic` column on the same features."""
+"""fit_and_evaluate comparator coverage and the semantic-calibrator extension hook."""
 
 from vejudge.core.calibration import SemanticDecisionTreeCalibrator
 from vejudge.core.calibration.debate.eval.rule_fit import fit_and_evaluate
@@ -18,10 +17,11 @@ def _report(extra=None):
     )
 
 
-def test_default_reports_the_four_comparators():
+def test_default_reports_score_only_and_rule_comparators():
     rep = _report()
-    assert set(rep["insample_mae"]) == {"base", "bias", "linear", "tree"}
-    assert set(rep["loo_mae"]) == {"base", "bias", "linear", "tree"}
+    expected = {"base", "bias", "score_linear", "linear", "tree"}
+    assert set(rep["insample_mae"]) == expected
+    assert set(rep["loo_mae"]) == expected
 
 
 def test_extra_calibrator_adds_a_named_column_in_and_out_of_sample():

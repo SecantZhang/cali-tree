@@ -13,6 +13,7 @@ class _ScriptedEngine:
         self.payload = payload
 
     def generate(self, prompt, media_inputs=None, schema=None, *, system=None, model=None):
+        self.media_inputs = media_inputs
         return {"content": json.dumps(self.payload)}
 
 
@@ -42,6 +43,22 @@ def test_independent_critic_can_flag_the_judge_unlike_a_cold_self_answer():
     )
     assert feats["booleans"] == [1, 0]
     assert feats["missing"] == ["q2"]
+    assert feats["media_grounded"] is False
+
+
+def test_video_capable_critic_is_grounded_in_rendered_edit():
+    sample = {
+        **_SAMPLE,
+        "output": {**_SAMPLE["output"], "output_video_path": "/tmp/rendered.mp4"},
+    }
+    eng = _ScriptedEngine({"decision_answers": {"q1": False, "q2": True}})
+    eng.supports_video = True
+    feats = extract_critic_features(
+        sample=sample, judge_rationale="...", questions=_QUESTIONS, critic_engine=eng,
+    )
+    assert eng.media_inputs == [{"type": "video", "path": "/tmp/rendered.mp4"}]
+    assert feats["media_grounded"] is True
+    assert feats["critic_version"] == "rule-critic-v2-video-grounded"
 
 
 def test_critic_call_failure_yields_all_zero_not_a_crash():

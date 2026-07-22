@@ -12,9 +12,11 @@ def _judge_rule(*, insample=_UNSET, loo=_UNSET, **extra):
     jr = {
         "n_items": 13,
         "metric": "M5",
-        "insample_mae": {"base": 1.83, "bias": 0.46, "linear": 0.27, "tree": 0.27}
+        "insample_mae": {"base": 1.83, "bias": 0.46, "score_linear": 0.35,
+                         "linear": 0.27, "tree": 0.27}
         if insample is _UNSET else insample,
-        "loo_mae": {"base": 1.83, "bias": 0.50, "linear": 0.47, "tree": 0.41}
+        "loo_mae": {"base": 1.83, "bias": 0.50, "score_linear": 0.40,
+                     "linear": 0.37, "tree": 0.31}
         if loo is _UNSET else loo,
         "tree_rule": "|--- q2 <= 0.5\n|   |--- value: [2.0]",
         "tree": {"leaf": False, "feature": "q2", "threshold": 0.5, "samples": 13, "value": 3.0,
@@ -24,7 +26,8 @@ def _judge_rule(*, insample=_UNSET, loo=_UNSET, **extra):
         "evaluation_mode": "frozen_holdout",
         "n_validation_items": 6,
         "per_item_errors": {
-            f"item-{i}": {"bias": 0.50, "linear": 0.47, "tree": 0.40}
+            f"item-{i}": {"bias": 0.50, "score_linear": 0.40,
+                           "linear": 0.37, "tree": 0.30}
             for i in range(6)
         },
     }
@@ -38,15 +41,15 @@ def test_missing_judge_rule_is_a_node_error(make_ctx):
     assert "judge_rule" in result.error
 
 
-def test_comparison_rows_mirror_the_four_comparators(make_ctx):
+def test_comparison_rows_include_score_only_and_rule_comparators(make_ctx):
     ctx = make_ctx(inputs={"judge_rule": _judge_rule()})
     result = ClRuleEvalNodeExecutor().run(ctx)
     assert result.status == "done"
     rows = result.outputs["comparison"]["rows"]
-    assert [r["key"] for r in rows] == ["base", "bias", "linear", "tree"]
+    assert [r["key"] for r in rows] == ["base", "bias", "score_linear", "linear", "tree"]
     tree_row = next(r for r in rows if r["key"] == "tree")
     assert tree_row["insample"] == 0.27
-    assert tree_row["loo"] == 0.41  # held-out column carried through verbatim
+    assert tree_row["loo"] == 0.31  # held-out column carried through verbatim
     # The structured tree (for the UI diagram) passes through untouched.
     comp = result.outputs["comparison"]
     assert comp["tree"]["feature"] == "q2"
@@ -60,8 +63,9 @@ def test_verdict_says_rules_help_when_a_rule_model_beats_bias_held_out(make_ctx)
     comp = result.outputs["comparison"]
     assert comp["beats_bias"] is True
     assert result.meta["beats_bias"] is True
-    assert "beats a plain bias" in comp["verdict"]
-    assert "tree" in comp["verdict"]
+    assert "score-only linear beats a plain bias" in comp["verdict"]
+    assert comp["score_calibration_beats_bias"] is True
+    assert comp["rules_beat_score_linear"] is True
 
 
 def test_verdict_says_rules_do_not_help_when_bias_wins_held_out(make_ctx):

@@ -1,3 +1,10 @@
+## 260721-22:22:11 — Establish meaningful held-out calibration gain
+- Type: fix
+- Scope: negotiation stability, video-grounded critic, calibration comparators, resume identity, workflow, evaluation UI and tests
+- What: Stabilized cyclic debates, preserved richer semantic rules, separated score-only calibration from rule increments, and verified a 0.062 held-out MAE gain over global bias with a positive bootstrap interval.
+- Why: Obtain a statistically defensible calibration improvement while avoiding unsupported claims that semantic rules caused the gain.
+- Details: logs/updates/details/260721-22:22:11-updates.md
+
 ## 260721-15:57:14 — Stabilize semantic calibration and held-out evaluation
 - Type: fix
 - Scope: weighted calibrators, adversarial negotiation, rule/semantic tree evaluation, calibration UI and tests

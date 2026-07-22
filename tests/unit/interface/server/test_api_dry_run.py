@@ -266,10 +266,8 @@ def test_resume_reconstructs_graph_from_saved_run_and_tags_same_workflow(client)
     original_run_id = resp.json()["run_id"]
     _wait_for_run(client, original_run_id)
 
-    # run_id has only second-level resolution (matches CLAUDE.md's <YYMMDD-HH:MM:SS> log-dir
-    # convention) — sleep past the second boundary so the resumed run gets a genuinely
-    # distinct id, same as a real user would by the time they click Resume.
-    time.sleep(1.1)
+    # A resume reuses the original directory but always gets a distinct attempt id, even
+    # when an immediate hard Stop/Resume happens within the same wall-clock second.
     resp = client.post("/api/runs", json={"resume_from": original_run_id})
     assert resp.status_code == 200
     resumed_run_id = resp.json()["run_id"]
@@ -322,9 +320,9 @@ def test_workflow_runs_listing_reflects_a_resumes_final_status_not_the_original(
         assert stopped.json()["status"] == "stopped"
         assert _wait_for_terminal(client, run_id)["status"] == "stopped"
 
-        time.sleep(1.1)  # cross the second boundary for a genuinely distinct resumed id
         resp = client.post("/api/runs", json={"resume_from": run_id})
         resumed_id = resp.json()["run_id"]
+        assert resumed_id != run_id
         assert _wait_for_terminal(client, resumed_id)["status"] == "done"
 
         resp = client.get("/api/workflows/wf_resume_status/runs")
