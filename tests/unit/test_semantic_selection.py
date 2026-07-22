@@ -34,7 +34,7 @@ def test_selection_is_grouped_and_never_reads_validation_rows():
         max_depth=3,
         min_leaf_floor=1,
     )
-    assert selected["feature_set"] == "rubric"
+    assert selected["feature_set"] == "rubric_semantics"
     assert selected["meaningful_decision_tree"] is True
     assert selected["tree_depth"] == 2
     assert scores
@@ -68,11 +68,14 @@ def test_selection_is_grouped_and_never_reads_validation_rows():
         min_leaf_floor=1,
         semantic_gain_threshold=10.0,
     )
-    assert guarded["feature_set"] == "base_only"
-    assert guarded["selection_reason"] == "semantic_gain_below_threshold"
+    # A high materiality threshold now changes the evidence label, not the architecture:
+    # score controls remain in leaves and the supported semantic decisions stay visible.
+    assert guarded["feature_set"] == "rubric_semantics"
+    assert guarded["selection_reason"] == "best_supported_semantic_structure"
+    assert guarded["semantic_gain_is_material"] is False
 
 
-def test_shallow_semantic_rule_does_not_count_as_a_deep_decision_tree():
+def test_supported_shallow_semantic_rule_remains_a_semantic_decision():
     items = [f"item-{index}" for index in range(6)]
     observation_ids = [f"{item}::human::0" for item in items]
     observation_item = dict(zip(observation_ids, items))
@@ -94,5 +97,50 @@ def test_shallow_semantic_rule_does_not_count_as_a_deep_decision_tree():
         min_leaf_floor=1,
         semantic_gain_threshold=10.0,
     )
-    assert selected["feature_set"] == "base_only"
-    assert selected["selection_reason"] == "no_supported_deep_semantic_tree"
+    assert selected["feature_set"] == "rubric_semantics"
+    assert selected["selection_reason"] == "best_supported_semantic_structure"
+    assert selected["semantic_split_count"] == 1
+    assert selected["raw_score_split_count"] == 0
+
+
+def test_prompt_routing_selects_semantic_coverage_without_score_splits():
+    items = [f"item-{index}" for index in range(8)]
+    observation_ids = []
+    observation_item = {}
+    humans = {}
+    features = {}
+    weights = {}
+    for index, item in enumerate(items):
+        for metric_index, metric in enumerate(("M3", "M5")):
+            obs = f"{item}::{metric}"
+            decision = float((index + metric_index) % 2)
+            observation_ids.append(obs)
+            observation_item[obs] = item
+            humans[obs] = 2.0 + 2.0 * decision
+            features[obs] = [
+                3.0, 1.0 if metric == "M3" else 0.0,
+                1.0 if metric == "M5" else 0.0,
+                decision if metric == "M3" else 0.0,
+                decision if metric == "M5" else 0.0,
+            ]
+            weights[obs] = 0.5
+    selected, _ = select_semantic_tree_config(
+        observation_ids=observation_ids,
+        observation_item=observation_item,
+        humans=humans,
+        features=features,
+        weights=weights,
+        feature_names=[
+            "base_score", "prompt:M3", "prompt:M5",
+            "rubric:M3:q1", "rubric:M5:q2",
+        ],
+        feature_weights={"rubric:M3:q1": 1.0, "rubric:M5:q2": 1.0},
+        training_items=items,
+        max_depth=2,
+        min_leaf_floor=1,
+        prompt_feature_names=["prompt:M3", "prompt:M5"],
+        leaf_feature_names=["base_score"],
+    )
+    assert selected["semantic_prompt_coverage"] == 2
+    assert set(selected["semantic_split_features"]) == {"rubric:M3:q1", "rubric:M5:q2"}
+    assert selected["raw_score_split_count"] == 0

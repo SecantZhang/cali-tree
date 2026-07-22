@@ -3,14 +3,16 @@
 Same Model Calibration fitter contract (an upstream Adversarial Calibration node's
 ``calibration_results`` + labels + a critic engine → ``judge_rule``), but instead of a plain
 CART over opaque ``qN`` booleans it fits an **ontology-weighted** semantic decision tree
-whose deployment-safe features are concept-labeled independent-critic answers:
+whose deployment-safe decisions are concept-labeled independent-critic answers:
 
-  ``[base_score] + rule:<concept>:qN``
+  ``prompt context → rule:<concept>:qN → score-aware calibrated leaf``
 
 Grounded debate failure-mode counts are deliberately excluded from fitted features because
 they depend on human-label access that is unavailable for a fresh deployment item.
 
-Split selection is biased by ``ontology.concept_importance`` for the metric being
+Prompt routing is fixed, learned splits are semantic-only, and raw score statistics are
+restricted to regularized leaf models. Split selection is biased by
+``ontology.concept_importance`` for the metric being
 calibrated, and the report carries a ``semantic`` comparator alongside base/bias/linear/tree
 so the Rule Comparison node shows the semantic tree head-to-head with the CART baseline on
 the same frozen training/validation split.
@@ -24,7 +26,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from ...core.calibration import SemanticDecisionTreeCalibrator
+from ...core.calibration import PromptRoutedSemanticTreeCalibrator, SemanticDecisionTreeCalibrator
 from ...core.calibration import ontology as onto
 from ...core.calibration.debate.eval.concept_tagging import tag_questions_to_concepts
 from ...core.calibration.debate.eval.critic_extraction import extract_critic_features
@@ -324,7 +326,11 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         tree_max_depth = max(1, min(6, int(p.get("tree_max_depth") or 3)))
         tree_min_leaf = max(1, int(p.get("tree_min_items_leaf") or 1))
         selection_scores: list[dict[str, Any]] = []
-        allowed_feature_names: list[str] | None = None
+        semantic_feature_names = [
+            name for name in feature_names if name.startswith(("rubric:", "rule:"))
+        ]
+        leaf_feature_names = [name for name in feature_names if name == "base_score"]
+        allowed_feature_names: list[str] = semantic_feature_names
         selected_feature_set = "all"
         selection_metadata: dict[str, Any] = {}
         if bool(p.get("auto_tune_tree", True)) and len(training_ids) >= 5:
@@ -339,6 +345,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                 training_items=training_ids,
                 max_depth=tree_max_depth,
                 min_leaf_floor=tree_min_leaf,
+                leaf_feature_names=leaf_feature_names,
             )
             tree_max_depth = selected["max_depth"]
             tree_min_leaf = selected["min_samples_leaf"]
@@ -352,6 +359,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         semantic_factory = lambda: SemanticDecisionTreeCalibrator(
             feature_weights=feature_weights,
             allowed_feature_names=allowed_feature_names,
+            leaf_feature_names=leaf_feature_names,
             max_depth=tree_max_depth,
             min_samples_leaf=tree_min_leaf,
         )
@@ -382,6 +390,21 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             report["tree"] = sem_meta.get("tree")
             report["tree_rule"] = sem_meta.get("rule_text", "")
             report["feature_importances"] = sem_meta.get("feature_importances", [])
+            def collect_split_features(node: dict[str, Any] | None) -> list[str]:
+                if not node or node.get("leaf"):
+                    return []
+                return [
+                    str(node.get("feature")),
+                    *collect_split_features(node.get("left")),
+                    *collect_split_features(node.get("right")),
+                ]
+
+            split_features = collect_split_features(sem_meta.get("tree"))
+            report["semantic_split_features"] = split_features
+            report["semantic_split_count"] = len(split_features)
+            report["raw_score_split_count"] = 0
+            report["leaf_feature_names"] = leaf_feature_names
+            report["tree_architecture"] = "semantic_splits_score_aware_leaves"
 
         report["metric"] = metric_id
         report["bank"] = filtered_bank
@@ -750,16 +773,27 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
 
         tree_max_depth = max(2, min(6, int(p.get("tree_max_depth") or 3)))
         tree_min_leaf = max(1, int(p.get("tree_min_items_leaf") or 1))
+        prompt_feature_names = [
+            name for name in base_feature_names if name.startswith("prompt:")
+        ]
+        leaf_feature_names = [
+            name for name in base_feature_names
+            if name in {"base_score", "score_std", "score_range"}
+        ]
         selected, selection_scores = select_semantic_tree_config(
             observation_ids=observation_ids, observation_item=observation_item,
             humans=humans, features=features, weights=weights,
             feature_names=feature_names, feature_weights=feature_weights,
             training_items=training_ids, max_depth=tree_max_depth,
             min_leaf_floor=tree_min_leaf,
+            prompt_feature_names=prompt_feature_names,
+            leaf_feature_names=leaf_feature_names,
         )
-        semantic_factory = lambda: SemanticDecisionTreeCalibrator(
+        semantic_factory = lambda: PromptRoutedSemanticTreeCalibrator(
             feature_weights=feature_weights,
-            allowed_feature_names=selected["allowed_feature_names"],
+            semantic_feature_names=selected["semantic_feature_names"],
+            prompt_feature_names=prompt_feature_names,
+            leaf_feature_names=leaf_feature_names,
             max_depth=selected["max_depth"],
             min_samples_leaf=selected["min_samples_leaf"],
         )
@@ -788,6 +822,18 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         report["tree"] = semantic_meta.get("tree")
         report["tree_rule"] = semantic_meta.get("rule_text", "")
         report["feature_importances"] = semantic_meta.get("feature_importances", [])
+        report["semantic_prompt_trees"] = semantic_meta.get("prompt_trees", {})
+        report["semantic_split_features"] = semantic_meta.get("semantic_split_features", [])
+        report["semantic_split_count"] = semantic_meta.get("semantic_split_count", 0)
+        report["raw_score_split_count"] = semantic_meta.get("raw_score_split_count", 0)
+        report["leaf_feature_names"] = semantic_meta.get("leaf_feature_names", [])
+        report["tree_architecture"] = "fixed_prompt_router_semantic_splits_score_aware_leaves"
+        report["semantic_model_method"] = {
+            "split_candidates": "ontology-backed semantic questions only",
+            "split_objective": "ontology-weighted MAE reduction",
+            "context_router": "fixed prompt identity",
+            "leaf_model": "ridge over raw judge score distribution",
+        }
         report["metric"] = "joint:" + "+".join(metric_ids)
         report["metrics"] = metric_ids
         report["n_prompt_tasks"] = len(tasks)
@@ -857,7 +903,11 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         if dropped:
             warnings.append(f"Dropped {len(dropped)} constant question(s) within their applicable training prompt.")
         if not selected.get("meaningful_decision_tree"):
-            warnings.append("No supported depth-two prompt/semantic tree cleared training-only selection.")
+            warnings.append("No supported semantic split was found; score controls remain confined to an unsplit leaf model.")
+        if selected.get("best_semantic_gain_over_base") is not None and not selected.get("semantic_gain_is_material"):
+            warnings.append(
+                "Semantic structure is shown for interpretation, but did not materially improve training-only grouped LOO over score-aware leaves."
+            )
         report["warnings"] = warnings
         report["diagnostics"] = {
             "metric_ids": metric_ids,
