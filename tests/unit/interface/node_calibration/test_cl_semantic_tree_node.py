@@ -208,6 +208,9 @@ def test_joint_prompt_and_temperature_inputs_share_one_video_split(make_ctx):
     )
     assert set(report["train_item_ids"]).isdisjoint(report["validation_item_ids"])
     assert report["semantic_tree_selection"]["validation_labels_used"] is False
+    assert report["tree_architecture"] == "fixed_prompt_router_semantic_splits_score_aware_leaves"
+    assert report["raw_score_split_count"] == 0
+    assert report["leaf_feature_names"] == ["base_score", "score_std", "score_range"]
     m5_task = report["per_item"][f"{item_ids[0]}::metric::M5"]
     assert m5_task["variant_count"] == 2
     assert m5_task["temperatures"] == [0.0, 0.8]
