@@ -38,6 +38,7 @@ def select_semantic_tree_config(
     prompt_feature_names: Optional[list[str]] = None,
     leaf_feature_names: Optional[list[str]] = None,
     semantic_coverage_tolerance: float = 0.01,
+    prefer_deeper_within_tolerance: bool = False,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Select semantic capacity with item-grouped LOO inside training only.
 
@@ -135,6 +136,7 @@ def select_semantic_tree_config(
             "split_features": split_features,
             "semantic_split_features": semantic_splits,
             "semantic_split_count": len(semantic_splits),
+            "semantic_unique_split_count": len(set(semantic_splits)),
             "semantic_prompt_coverage": len({
                 prompt.split(":", 1)[1]
                 for prompt in prompts
@@ -183,17 +185,31 @@ def select_semantic_tree_config(
             entry for entry in eligible
             if entry["grouped_loo_mae"] <= best_error + semantic_coverage_tolerance
         ]
-        selected = min(
-            competitive,
-            key=lambda entry: (
-                -entry["semantic_prompt_coverage"],
-                entry["max_depth"],
-                -entry["min_samples_leaf"],
-                feature_set_order[entry["feature_set"]],
-                entry["grouped_loo_mae"],
-            ),
-        )
+        if prefer_deeper_within_tolerance:
+            selected = min(
+                competitive,
+                key=lambda entry: (
+                    -entry["semantic_prompt_coverage"],
+                    -entry["semantic_unique_split_count"],
+                    -entry["semantic_split_count"],
+                    entry["grouped_loo_mae"],
+                    feature_set_order[entry["feature_set"]],
+                ),
+            )
+        else:
+            selected = min(
+                competitive,
+                key=lambda entry: (
+                    -entry["semantic_prompt_coverage"],
+                    entry["max_depth"],
+                    -entry["min_samples_leaf"],
+                    feature_set_order[entry["feature_set"]],
+                    entry["grouped_loo_mae"],
+                ),
+            )
         reason = (
+            "deeper_semantics_within_cv_tolerance"
+            if prefer_deeper_within_tolerance else
             "semantic_coverage_within_cv_tolerance"
             if selected["grouped_loo_mae"] > best_error
             else "best_supported_semantic_structure"
@@ -219,11 +235,13 @@ def select_semantic_tree_config(
         "semantic_or_prompt_splits": selected["semantic_split_features"],
         "semantic_split_features": selected["semantic_split_features"],
         "semantic_split_count": selected["semantic_split_count"],
+        "semantic_unique_split_count": selected["semantic_unique_split_count"],
         "semantic_prompt_coverage": selected["semantic_prompt_coverage"],
         "raw_score_split_count": selected["raw_score_split_count"],
         "meaningful_decision_tree": selected["meaningful_decision_tree"],
         "controls_only_grouped_loo_mae": controls_loo,
         "semantic_coverage_tolerance": semantic_coverage_tolerance,
+        "prefer_deeper_within_tolerance": prefer_deeper_within_tolerance,
         "selected_cv_penalty_for_coverage": (
             selected["grouped_loo_mae"]
             - min(entry["grouped_loo_mae"] for entry in eligible)

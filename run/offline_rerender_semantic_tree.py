@@ -43,6 +43,10 @@ def main() -> None:
         "--register-interface-run", action="store_true",
         help="create a separate derived interface run beside the source run",
     )
+    parser.add_argument(
+        "--prefer-deeper", action="store_true",
+        help="select the richest semantic tree within the training-CV tolerance",
+    )
     args = parser.parse_args()
 
     run_dir = args.run_dir.resolve()
@@ -50,6 +54,9 @@ def main() -> None:
     graph = json.loads((run_dir / "workflow_graph.json").read_text())
     results = completed["node_results"]
     node = next(entry for entry in graph["nodes"] if entry["id"] == args.node_id)
+    node_params = dict(node.get("params") or {})
+    if args.prefer_deeper:
+        node_params["prefer_deeper_semantic_tree"] = True
     incoming = [edge for edge in graph["edges"] if edge["target"] == args.node_id]
     inputs: dict[str, object] = {}
     for edge in incoming:
@@ -85,7 +92,7 @@ def main() -> None:
         run = make_exp_run(run_dir=Path(temp_dir))
         context = NodeRunContext(
             node_id=args.node_id,
-            params=node.get("params") or {},
+            params=node_params,
             inputs=inputs,
             run=run,
             checkpoint=CheckpointStore(run_dir / "judge_results.jsonl"),
@@ -115,19 +122,27 @@ def main() -> None:
     )
     if args.register_interface_run:
         now = datetime.now().astimezone()
-        derived_run_id = now.strftime("%y%m%d-%H:%M:%S-semantic-first")
+        suffix = "semantic-deep" if args.prefer_deeper else "semantic-first"
+        derived_run_id = now.strftime(f"%y%m%d-%H:%M:%S-{suffix}")
         derived_dir = run_dir.parent / f"{derived_run_id}-exps"
         derived_dir.mkdir(parents=False, exist_ok=False)
 
         source_config = json.loads((run_dir / "run_config.json").read_text())
         workflow_name = source_config.get("workflow_name") or "unnamed"
+        label = "semantic-deep" if args.prefer_deeper else "semantic-first"
         derived_config = {
             **source_config,
-            "workflow_name": f"{workflow_name} [semantic-first rerender]",
+            "workflow_name": f"{workflow_name} [{label} rerender]",
             "offline_rerender": True,
             "derived_from_run": run_dir.name.removesuffix("-exps"),
+            "prefer_deeper_semantic_tree": args.prefer_deeper,
             "allow_live": False,
         }
+        derived_graph = json.loads(json.dumps(graph))
+        derived_node = next(
+            entry for entry in derived_graph["nodes"] if entry["id"] == args.node_id
+        )
+        derived_node["params"] = node_params
         derived_results = json.loads(json.dumps(completed))
         derived_results["node_results"][args.node_id] = {
             "status": result.status,
@@ -150,7 +165,7 @@ def main() -> None:
         }
         files = {
             "run_config.json": derived_config,
-            "workflow_graph.json": graph,
+            "workflow_graph.json": derived_graph,
             "run_results.json": derived_results,
             "run_status.json": status,
             "rule_eval_rule_eval.json": eval_result.outputs["comparison"],

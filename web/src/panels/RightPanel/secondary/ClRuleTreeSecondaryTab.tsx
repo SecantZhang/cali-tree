@@ -46,10 +46,12 @@ interface JudgeRule {
       meaningful_decision_tree?: boolean
       semantic_or_prompt_splits?: string[]
       semantic_split_count?: number
+      semantic_unique_split_count?: number
       semantic_prompt_coverage?: number
       raw_score_split_count?: number
       semantic_coverage_tolerance?: number
       selected_cv_penalty_for_coverage?: number | null
+      prefer_deeper_within_tolerance?: boolean
     }
     training_grouped_loo?: Array<{ max_depth: number; min_samples_leaf: number; grouped_loo_mae: number | null }>
     validation_labels_used?: boolean
@@ -174,6 +176,13 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
             {jr.raw_score_split_count ?? jr.semantic_tree_selection.selected.raw_score_split_count ?? 0} raw-score split(s).
             Score controls ({jr.leaf_feature_names?.join(', ') || 'none'}) are used only inside leaf calibration models.
           </p>
+          {jr.semantic_tree_selection.selected.prefer_deeper_within_tolerance && (
+            <p className="meta-warning">
+              Exploratory depth preference is enabled: this view favors more distinct semantic
+              decisions among candidates inside the training-CV tolerance, even when a shallower
+              candidate has slightly lower estimated error.
+            </p>
+          )}
           {(jr.semantic_tree_selection.selected.selected_cv_penalty_for_coverage ?? 0) > 0 && (
             <p className="empty-hint">
               Broader semantic coverage cost{' '}
