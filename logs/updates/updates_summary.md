@@ -1,3 +1,10 @@
+## 260722-14:30:04 — Draft weekly mentor project update
+- Type: docs
+- Scope: mentor-facing project status and experiment summary
+- What: Added a slide-ready July 15–22 summary covering system architecture, calibration/evaluation fixes, experiments, interface improvements, limitations, and next steps.
+- Why: Provide a concise but complete draft for reporting the week's progress to project mentors.
+- Details: logs/updates/details/260722-14:30:04-updates.md
+
 ## 260722-14:24:24 — Align calibration metrics and contain tree labels
 - Type: fix
 - Scope: semantic/rule calibration secondary tabs, decision-tree SVG, frontend tests
