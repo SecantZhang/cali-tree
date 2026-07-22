@@ -209,14 +209,25 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
       )}
 
       <p className="schema-heading">Item-macro MAE vs human — does the rule tree beat a plain bias shift?</p>
-      <table className="schema-table">
+      <table className="schema-table calibration-mae-table">
+        <colgroup>
+          <col />
+          <col className="calibration-mae-number-column" />
+          <col className="calibration-mae-number-column" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">comparator</th>
+            <th scope="col" className="calibration-mae-number">training</th>
+            <th scope="col" className="calibration-mae-number">held-out</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td className="schema-field">comparator</td><td className="schema-type">training</td><td className="schema-type">held-out</td></tr>
           {comparatorKeys(jr).map((key) => (
             <tr key={key}>
               <td className="schema-desc">{COMPARATOR_LABELS[key] ?? key}</td>
-              <td className="label-score">{fmt(jr.insample_mae?.[key])}</td>
-              <td className="label-score">{fmt(jr.loo_mae?.[key])}</td>
+              <td className="calibration-mae-number">{fmt(jr.insample_mae?.[key])}</td>
+              <td className="calibration-mae-number">{fmt(jr.loo_mae?.[key])}</td>
             </tr>
           ))}
         </tbody>
