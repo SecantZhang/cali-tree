@@ -47,6 +47,8 @@ def run_concurrent_judging(
     should_skip: Optional[Callable[[dict[str, Any]], bool]] = None,
     calibration: Optional[dict[str, dict[str, Any]]] = None,
     general_calibration: Optional[str] = None,
+    judge_provenance: Optional[dict[str, Any]] = None,
+    checkpoint_variant: Optional[str] = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     """Run ``spec`` over every item, checkpointing + streaming as it goes.
 
@@ -72,7 +74,7 @@ def run_concurrent_judging(
     # wired to compare against) — a shared run-wide CheckpointStore keyed only by
     # item_id+metric would let the second node silently reuse the first's cached
     # (uncalibrated) result and never actually apply its own extra_context.
-    ckpt_prefix = f"{ctx.node_id}::"
+    ckpt_prefix = f"{ctx.node_id}::{checkpoint_variant}::" if checkpoint_variant else f"{ctx.node_id}::"
     per_item: dict[str, dict[str, Any]] = {iid: {} for iid in dataset}
     tasks: list[str] = []
     for item_id, sample in dataset.items():
@@ -101,6 +103,7 @@ def run_concurrent_judging(
         extra_context = "\n\n".join(parts) if parts else None
         t0 = time.perf_counter()
         result = _judge_one(spec, engine, dataset[item_id], extra_context=extra_context)
+        result["judge_provenance"] = dict(judge_provenance or {})
         return item_id, result, round((time.perf_counter() - t0) * 1000, 1)
 
     stopped = False

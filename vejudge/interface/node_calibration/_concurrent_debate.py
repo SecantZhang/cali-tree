@@ -30,7 +30,7 @@ from ..server.registry import NodeRunContext
 
 
 DEBATE_CHECKPOINT_VERSION = (
-    f"d1-{d1_judge_debate.VERSION}-d2-{d2_human_proxy_debate.VERSION}-profile-v1"
+    f"d1-{d1_judge_debate.VERSION}-d2-{d2_human_proxy_debate.VERSION}-profile-v1-output-v2"
 )
 
 
@@ -62,8 +62,13 @@ def _calibrate_one(
         "parsed_field": score_field,
         "raw_value": ((original_output.get("parsed") or {}).get(score_field)),
         "model": original_output.get("model"),
-        "aggregation": "none",
+        "aggregation": (
+            "mean_temperature_variants" if original_output.get("judge_variants") else "none"
+        ),
+        "judge_provenance": dict(original_output.get("judge_provenance") or {}),
     }
+    result["judge_provenance"] = dict(original_output.get("judge_provenance") or {})
+    result["judge_variants"] = list(original_output.get("judge_variants") or [])
 
     # Merged in HERE, before the caller's checkpoint.put() — not in a post-loop after
     # run_concurrent_debates returns, which is what caused the checkpoint-ordering bug:
@@ -155,7 +160,8 @@ def run_concurrent_debates(
                 "summary_error": "debate_has_no_valid_turns",
             }
         summary_key = (
-            f"{item_id}::calibration::{anchors[item_id]['metric_id']}::summary::"
+            f"{ctx.node_id}::{item_id}::calibration::{anchors[item_id]['metric_id']}::"
+            f"{anchors[item_id].get('anchor_fingerprint', 'single')}::summary::"
             f"{DEBATE_CHECKPOINT_VERSION}::{SUMMARY_VERSION}::{summarizer_config_hash}"
         )
         if ctx.checkpoint.has(summary_key):
@@ -188,7 +194,8 @@ def run_concurrent_debates(
             ctx.progress_cb("calibration_item_start", {"item_id": item_id})
         t0 = time.perf_counter()
         ckpt_key = (
-            f"{item_id}::calibration::{anchors[item_id]['metric_id']}::debate::"
+            f"{ctx.node_id}::{item_id}::calibration::{anchors[item_id]['metric_id']}::"
+            f"{anchors[item_id].get('anchor_fingerprint', 'single')}::debate::"
             f"{DEBATE_CHECKPOINT_VERSION}"
         )
         if ctx.checkpoint.has(ckpt_key):
@@ -211,8 +218,16 @@ def run_concurrent_debates(
                     "parsed_field": score_field,
                     "raw_value": ((anchors[item_id].get("parsed") or {}).get(score_field)),
                     "model": anchors[item_id].get("model"),
-                    "aggregation": "none",
+                    "aggregation": (
+                        "mean_temperature_variants"
+                        if anchors[item_id].get("judge_variants") else "none"
+                    ),
+                    "judge_provenance": dict(
+                        anchors[item_id].get("judge_provenance") or {}
+                    ),
                 },
+                "judge_provenance": dict(anchors[item_id].get("judge_provenance") or {}),
+                "judge_variants": list(anchors[item_id].get("judge_variants") or []),
             }
         result = _apply_requested_summary(item_id, result)
         return item_id, result, round((time.perf_counter() - t0) * 1000, 1)

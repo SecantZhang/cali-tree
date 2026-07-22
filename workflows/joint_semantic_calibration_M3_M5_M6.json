@@ -1,0 +1,93 @@
+{
+  "name": "joint_semantic_calibration_M3_M5_M6",
+  "graph": {
+    "nodes": [
+      {"id":"peanut","type":"peanut_source","params":{"projects":null}},
+      {"id":"coconut","type":"coconut_source","params":{"projects":null}},
+      {"id":"grapenut","type":"grapenut_source","params":{"projects":null}},
+      {"id":"dataset","type":"dataset","params":{"sampling_ratio":1,"sampling_mode":"unified","require_labels":true,"aggregation_method":"none"}},
+
+      {"id":"prompt_m3","type":"judge_prompt","params":{"preset":"M3"}},
+      {"id":"prompt_m5","type":"judge_prompt","params":{"preset":"M5"}},
+      {"id":"prompt_m6","type":"judge_prompt","params":{"preset":"M6"}},
+
+      {"id":"judge_temp_0","type":"lm_engine","params":{"engine_kind":"gemini","model":"gemini-2.5-pro","temperature":0,"max_tokens":4096,"concurrency":6}},
+      {"id":"judge_temp_10","type":"lm_engine","params":{"engine_kind":"gemini","model":"gemini-2.5-pro","temperature":1,"max_tokens":4096,"concurrency":6}},
+
+      {"id":"judge_m3_t0","type":"judge","params":{"batch_size":1}},
+      {"id":"judge_m3_t10","type":"judge","params":{"batch_size":1}},
+      {"id":"judge_m5_t0","type":"judge","params":{"batch_size":1}},
+      {"id":"judge_m5_t10","type":"judge","params":{"batch_size":1}},
+      {"id":"judge_m6_t0","type":"judge","params":{"batch_size":1}},
+      {"id":"judge_m6_t10","type":"judge","params":{"batch_size":1}},
+
+      {"id":"debate_judge","type":"lm_engine","params":{"engine_kind":"gemini","model":"gemini-2.5-pro","temperature":0.3,"max_tokens":8192,"concurrency":6}},
+      {"id":"human_proxy","type":"lm_engine","params":{"engine_kind":"gemini","model":"gemini-2.5-pro","temperature":0.3,"max_tokens":8192,"concurrency":6}},
+      {"id":"critic","type":"lm_engine","params":{"engine_kind":"gemini","model":"gemini-2.5-pro","temperature":0,"max_tokens":4096,"concurrency":6}},
+
+      {"id":"debate_m3","type":"cl_adversarial","params":{"epsilon":0.25,"max_rounds":4,"retrieval_enabled":true,"ground_in_human_labels":true,"use_llm_summarization":false,"batch_size":1}},
+      {"id":"debate_m5","type":"cl_adversarial","params":{"epsilon":0.25,"max_rounds":4,"retrieval_enabled":true,"ground_in_human_labels":true,"use_llm_summarization":false,"batch_size":1}},
+      {"id":"debate_m6","type":"cl_adversarial","params":{"epsilon":0.25,"max_rounds":4,"retrieval_enabled":true,"ground_in_human_labels":true,"use_llm_summarization":false,"batch_size":1}},
+
+      {"id":"joint_tree","type":"cl_semantic_tree","params":{"max_questions":8,"tree_max_depth":4,"tree_min_items_leaf":2,"auto_tune_tree":true,"evaluation_mode":"frozen_holdout","validation_fraction":0.2,"split_seed":0,"batch_size":1}},
+      {"id":"rule_eval","type":"cl_rule_eval","params":{}}
+    ],
+    "edges": [
+      {"source":"peanut","source_socket":"raw_dataset","target":"dataset","target_socket":"raw_dataset"},
+      {"source":"coconut","source_socket":"raw_dataset","target":"dataset","target_socket":"raw_dataset"},
+      {"source":"grapenut","source_socket":"raw_dataset","target":"dataset","target_socket":"raw_dataset"},
+
+      {"source":"dataset","source_socket":"samples","target":"judge_m3_t0","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"judge_m3_t10","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"judge_m5_t0","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"judge_m5_t10","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"judge_m6_t0","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"judge_m6_t10","target_socket":"samples"},
+
+      {"source":"prompt_m3","source_socket":"judge_spec","target":"judge_m3_t0","target_socket":"judge_spec"},
+      {"source":"prompt_m3","source_socket":"judge_spec","target":"judge_m3_t10","target_socket":"judge_spec"},
+      {"source":"prompt_m5","source_socket":"judge_spec","target":"judge_m5_t0","target_socket":"judge_spec"},
+      {"source":"prompt_m5","source_socket":"judge_spec","target":"judge_m5_t10","target_socket":"judge_spec"},
+      {"source":"prompt_m6","source_socket":"judge_spec","target":"judge_m6_t0","target_socket":"judge_spec"},
+      {"source":"prompt_m6","source_socket":"judge_spec","target":"judge_m6_t10","target_socket":"judge_spec"},
+
+      {"source":"judge_temp_0","source_socket":"engine_config","target":"judge_m3_t0","target_socket":"engine_config"},
+      {"source":"judge_temp_10","source_socket":"engine_config","target":"judge_m3_t10","target_socket":"engine_config"},
+      {"source":"judge_temp_0","source_socket":"engine_config","target":"judge_m5_t0","target_socket":"engine_config"},
+      {"source":"judge_temp_10","source_socket":"engine_config","target":"judge_m5_t10","target_socket":"engine_config"},
+      {"source":"judge_temp_0","source_socket":"engine_config","target":"judge_m6_t0","target_socket":"engine_config"},
+      {"source":"judge_temp_10","source_socket":"engine_config","target":"judge_m6_t10","target_socket":"engine_config"},
+
+      {"source":"judge_m3_t0","source_socket":"judge_result","target":"debate_m3","target_socket":"judge_result"},
+      {"source":"judge_m3_t10","source_socket":"judge_result","target":"debate_m3","target_socket":"judge_result"},
+      {"source":"judge_m5_t0","source_socket":"judge_result","target":"debate_m5","target_socket":"judge_result"},
+      {"source":"judge_m5_t10","source_socket":"judge_result","target":"debate_m5","target_socket":"judge_result"},
+      {"source":"judge_m6_t0","source_socket":"judge_result","target":"debate_m6","target_socket":"judge_result"},
+      {"source":"judge_m6_t10","source_socket":"judge_result","target":"debate_m6","target_socket":"judge_result"},
+
+      {"source":"dataset","source_socket":"samples","target":"debate_m3","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"debate_m5","target_socket":"samples"},
+      {"source":"dataset","source_socket":"samples","target":"debate_m6","target_socket":"samples"},
+      {"source":"dataset","source_socket":"labels","target":"debate_m3","target_socket":"labels"},
+      {"source":"dataset","source_socket":"labels","target":"debate_m5","target_socket":"labels"},
+      {"source":"dataset","source_socket":"labels","target":"debate_m6","target_socket":"labels"},
+
+      {"source":"debate_judge","source_socket":"engine_config","target":"debate_m3","target_socket":"judge_engine"},
+      {"source":"debate_judge","source_socket":"engine_config","target":"debate_m5","target_socket":"judge_engine"},
+      {"source":"debate_judge","source_socket":"engine_config","target":"debate_m6","target_socket":"judge_engine"},
+      {"source":"human_proxy","source_socket":"engine_config","target":"debate_m3","target_socket":"human_engine"},
+      {"source":"human_proxy","source_socket":"engine_config","target":"debate_m5","target_socket":"human_engine"},
+      {"source":"human_proxy","source_socket":"engine_config","target":"debate_m6","target_socket":"human_engine"},
+
+      {"source":"dataset","source_socket":"samples","target":"joint_tree","target_socket":"samples"},
+      {"source":"dataset","source_socket":"labels","target":"joint_tree","target_socket":"labels"},
+      {"source":"critic","source_socket":"engine_config","target":"joint_tree","target_socket":"critic_engine"},
+      {"source":"debate_m3","source_socket":"calibration_results","target":"joint_tree","target_socket":"calibration_results"},
+      {"source":"debate_m5","source_socket":"calibration_results","target":"joint_tree","target_socket":"calibration_results"},
+      {"source":"debate_m6","source_socket":"calibration_results","target":"joint_tree","target_socket":"calibration_results"},
+      {"source":"joint_tree","source_socket":"judge_rule","target":"rule_eval","target_socket":"judge_rule"}
+    ]
+  },
+  "created_at": "2026-07-22T00:00:00Z",
+  "updated_at": "2026-07-22T00:00:00Z"
+}

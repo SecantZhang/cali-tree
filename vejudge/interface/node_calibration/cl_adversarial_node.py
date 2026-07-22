@@ -11,6 +11,8 @@ debate's own feedback in view. The anchor score comes from an upstream Judge Nod
 
 from __future__ import annotations
 
+import hashlib
+import json
 from statistics import mean
 from typing import Any, Optional
 
@@ -148,6 +150,7 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
     # labels + judge/human engines -> calibration_results + general_calibration) from
     # CalibrationProducerNode; see node_calibration._templates.
     node_type = "cl_adversarial"
+    multi_input_sockets = frozenset({"judge_result"})
     param_schema = {
         "epsilon": {"type": "number", "default": 0.25},
         "max_rounds": {"type": "number", "default": 4, "min": 1, "max": 6},
@@ -189,14 +192,15 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
                 error="Calibration Node requires a 'samples' input (wire a Dataset Node's "
                 "`samples` output)",
             )
-        judge_result = ctx.inputs.get("judge_result")
-        if judge_result is None:
+        judge_input = ctx.inputs.get("judge_result")
+        if judge_input is None:
             return NodeRunResult(
                 status="error",
                 error="Calibration Node requires a 'judge_result' input (wire a Judge "
                 "Node's `judge_result` output — this node calibrates an existing judge "
                 "score, it doesn't compute its own)",
             )
+        judge_sources = judge_input if isinstance(judge_input, list) else [judge_input]
         judge_engine_config = ctx.inputs.get("judge_engine")
         if judge_engine_config is None:
             return NodeRunResult(
@@ -258,7 +262,9 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
 
         # Reconcile samples against the upstream judge_result (mirrors eval_node.py's
         # `set(judge_result) & set(labels)` pattern).
-        overlap = sorted(set(dataset) & set(judge_result))
+        overlap = sorted(set(dataset) & set().union(*(
+            set(source) for source in judge_sources if isinstance(source, dict)
+        )))
 
         # The metric being calibrated is a property of the *wired judge_spec*, not of any
         # one item — checked against the first entry we can find regardless of that
@@ -268,9 +274,12 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
         # below for the same underlying reason.
         metric_id = None
         for item_id in overlap:
-            entry_dict = judge_result[item_id]
-            if entry_dict:
-                metric_id = next(iter(entry_dict.values())).get("metric_id")
+            for source in judge_sources:
+                entry_dict = source.get(item_id) if isinstance(source, dict) else None
+                if entry_dict:
+                    metric_id = next(iter(entry_dict.values())).get("metric_id")
+                    break
+            if metric_id is not None:
                 break
         if metric_id is not None and metric_id not in JUDGE_METRICS:
             return NodeRunResult(
@@ -294,13 +303,62 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
         # above, so anything excluded here is a genuine per-item anomaly.
         anchors: dict[str, dict[str, Any]] = {}
         for item_id in overlap:
-            entry_dict = judge_result[item_id]
-            if not entry_dict:
+            variants: list[dict[str, Any]] = []
+            for source in judge_sources:
+                entry_dict = source.get(item_id) if isinstance(source, dict) else None
+                if not entry_dict:
+                    continue
+                entry = next(iter(entry_dict.values()))
+                if _usable_anchor(entry):
+                    variants.append(entry)
+            if not variants:
                 continue
-            # Fan-in is disallowed on this socket, so exactly one metric-key per item.
-            entry = next(iter(entry_dict.values()))
-            if _usable_anchor(entry):
-                anchors[item_id] = entry
+            variant_metrics = {entry.get("metric_id") for entry in variants}
+            if len(variant_metrics) != 1:
+                return NodeRunResult(
+                    status="error",
+                    error="One Adversarial Calibration node can aggregate temperature "
+                    "variants of one prompt, but received different metrics for the same item.",
+                )
+            entry = {**variants[0], "parsed": dict(variants[0]["parsed"])}
+            score_key = "overall_av_sync_score" if entry["metric_id"] == "M6" else "score_1_to_5"
+            raw_variants = [
+                {
+                    "score": float(variant["parsed"][score_key]),
+                    "judge_provenance": dict(variant.get("judge_provenance") or {}),
+                    "reasoning_lines": list((variant.get("parsed") or {}).get("reasoning_lines") or []),
+                }
+                for variant in variants
+            ]
+            entry["parsed"][score_key] = mean(variant["score"] for variant in raw_variants)
+            if len(raw_variants) > 1:
+                entry["parsed"]["reasoning_lines"] = [
+                    (
+                        f"Temperature {variant['judge_provenance'].get('temperature', 'unknown')} "
+                        f"gave {variant['score']:.1f}: " + " ".join(variant["reasoning_lines"])
+                    ).strip()
+                    for variant in raw_variants
+                ]
+            entry["judge_variants"] = raw_variants if len(raw_variants) > 1 else []
+            if len(raw_variants) > 1:
+                entry["judge_provenance"] = {
+                    "metric_id": entry["metric_id"],
+                    "temperatures": sorted({
+                        provenance["temperature"]
+                        for variant in raw_variants
+                        for provenance in [variant["judge_provenance"]]
+                        if isinstance(provenance.get("temperature"), (int, float))
+                    }),
+                    "variant_count": len(raw_variants),
+                    "aggregation": "mean_for_debate_anchor",
+                }
+            entry["anchor_fingerprint"] = (
+                hashlib.sha256(
+                    json.dumps(raw_variants, sort_keys=True, default=str).encode()
+                ).hexdigest()[:12]
+                if len(raw_variants) > 1 else "single"
+            )
+            anchors[item_id] = entry
 
         n_no_judge_result = len(dataset) - len(overlap)
         n_unusable_anchor = len(overlap) - len(anchors)

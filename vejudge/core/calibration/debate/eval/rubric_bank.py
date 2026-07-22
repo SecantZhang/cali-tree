@@ -41,6 +41,7 @@ def rubric_questions(metric_id: str) -> list[dict[str, Any]]:
             "raises_score_when": "yes",
             "scope": "item_quality",
             "semantic_key": f"rubric:{dimension}",
+            "metric_ids": [metric_id],
         }
         for dimension, question in _QUESTIONS.get(metric_id, [])
     ]
@@ -61,4 +62,32 @@ def combine_with_debate_bank(
         seen.add(text.lower())
         if len(out) >= max_questions:
             break
+    return out
+
+
+def combine_joint_banks(
+    *, metric_ids: list[str], debate_banks: dict[str, list[dict[str, Any]]],
+    max_questions_per_metric: int,
+) -> list[dict[str, Any]]:
+    """Build one stable prompt-aware bank while preserving metric applicability.
+
+    A critic only answers questions belonging to the task's judge prompt. The explicit
+    ``metric_ids`` field lets the joint feature builder represent non-applicable questions
+    as structural zeros rather than asking an M3 completeness critic about M6 AV sync.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for metric_id in sorted(set(metric_ids)):
+        combined = combine_with_debate_bank(
+            metric_id=metric_id,
+            debate_bank=debate_banks.get(metric_id, []),
+            max_questions=max_questions_per_metric,
+        )
+        for entry in combined:
+            text = str(entry.get("question") or "").strip()
+            key = (metric_id, text.lower())
+            if not text or key in seen:
+                continue
+            out.append({**entry, "metric_ids": [metric_id]})
+            seen.add(key)
     return out

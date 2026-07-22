@@ -24,8 +24,11 @@ _CANNED = {
 }
 
 
-def _debate_key(item_id: str, metric_id: str) -> str:
-    return f"{item_id}::calibration::{metric_id}::debate::{DEBATE_CHECKPOINT_VERSION}"
+def _debate_key(item_id: str, metric_id: str, node_id: str = "n1") -> str:
+    return (
+        f"{node_id}::{item_id}::calibration::{metric_id}::single::debate::"
+        f"{DEBATE_CHECKPOINT_VERSION}"
+    )
 
 
 def _sample(item_id):
@@ -342,8 +345,39 @@ def test_unaggregated_labels_are_accepted_and_preserved(monkeypatch, make_ctx):
     assert calibrated["human_disagreement_profile"]["rating_count"] == 2
     assert calibrated["score_provenance"] == {
         "metric_id": "M3", "parsed_field": "score_1_to_5", "raw_value": 3.0,
-        "model": None, "aggregation": "none",
+        "model": None, "aggregation": "none", "judge_provenance": {},
     }
+
+
+def test_temperature_fanin_runs_one_debate_over_score_distribution(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+    item = "prj-x::0::peanut"
+    low = _judge_result(
+        item, metric_id="M3", score=2.0,
+        judge_provenance={"temperature": 0.0},
+    )
+    high = _judge_result(
+        item, metric_id="M3", score=4.0,
+        judge_provenance={"temperature": 0.8},
+    )
+    inputs = _inputs({item: _sample(item)}, low)
+    inputs["judge_result"] = [low, high]
+    result = ClAdversarialNodeExecutor().run(make_ctx(
+        inputs=inputs,
+        params={"max_rounds": 1, "retrieval_enabled": False},
+        dry_run=False, allow_live=True,
+    ))
+    assert result.status == "done"
+    calibrated = result.outputs["calibration_results"][item]
+    assert calibrated["original_score"] == 3.0
+    assert [variant["score"] for variant in calibrated["judge_variants"]] == [2.0, 4.0]
+    assert calibrated["judge_provenance"] == {
+        "metric_id": "M3", "temperatures": [0.0, 0.8], "variant_count": 2,
+        "aggregation": "mean_for_debate_anchor",
+    }
+    initial_lines = calibrated["transcript"]["initial_judge_result"]["parsed"]["reasoning_lines"]
+    assert initial_lines[0].startswith("Temperature 0.0 gave 2.0")
+    assert initial_lines[1].startswith("Temperature 0.8 gave 4.0")
 
 
 def test_builtin_only_guard_rejects_custom_judge_result(monkeypatch, make_ctx):
