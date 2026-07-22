@@ -284,6 +284,33 @@ def test_alternating_scores_stop_as_oscillation_and_keep_original_score():
     assert "oscillation_detected" in verdict.flags
 
 
+def test_three_position_score_cycle_stops_and_keeps_original_score():
+    judge = [
+        _out({
+            "score_1_to_5": score, "revised": True,
+            "reasoning_lines": [f"view {score}"], "evidence": ["e"],
+            "semantic_summary": {
+                "principle": f"principle {score}", "applies_when": "condition",
+                "evidence_to_check": [f"evidence {score}"], "scoring_guidance": "weigh it",
+            },
+        })
+        for score in (5, 2, 3, 5, 2, 3)
+    ]
+    proxy = [_out({
+        "score_1_to_5": 2, "agrees_with_judge": False,
+        "reasoning_lines": ["stable disagreement"], "cited_failure_modes": [],
+    }) for _ in range(6)]
+    verdict = _runner(
+        judge, proxy, epsilon=0.25, max_rounds=6,
+        ground_in_human_labels=True, human_raw_scores=[2.0, 5.0],
+    ).run(_sample(), _original_output(score=2.0))
+    assert verdict.converged is False
+    assert verdict.rounds_run == 6
+    assert verdict.final_score == 2.0
+    assert verdict.score_delta == 0.0
+    assert "oscillation_detected" in verdict.flags
+
+
 def test_repeated_semantics_stop_after_two_stale_rounds():
     semantic = {
         "principle": "Use observable evidence.", "applies_when": "The edit is ambiguous.",

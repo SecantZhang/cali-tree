@@ -10,7 +10,7 @@ from typing import Any
 from ...core.calibration.debate.semantic_summary import validate_summary
 
 
-EVALUATION_VERSION = "calibration-eval-v2"
+EVALUATION_VERSION = "calibration-eval-v3-video-critic"
 
 
 def stable_holdout_split(
