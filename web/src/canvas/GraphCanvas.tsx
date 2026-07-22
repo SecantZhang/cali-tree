@@ -11,7 +11,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ClAdversarialNode } from '../nodes/ClAdversarialNode'
 import { AlignmentReportNode } from '../nodes/AlignmentReportNode'
 import { ClRuleEvalNode } from '../nodes/ClRuleEvalNode'
@@ -83,10 +83,19 @@ export function GraphCanvas() {
   const addGroup = useActiveGraphStore((s) => s.addGroup)
   const updateGroup = useActiveGraphStore((s) => s.updateGroup)
   const removeGroup = useActiveGraphStore((s) => s.removeGroup)
+  const layoutRevision = useActiveGraphStore((s) => s.layoutRevision)
 
   const rfRef = useRef<ReactFlowInstance<Node, Edge> | null>(null)
   const groupDrag = useRef<GroupDrag | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
+
+  useEffect(() => {
+    if (!layoutRevision) return
+    const frame = requestAnimationFrame(() => {
+      void rfRef.current?.fitView({ padding: 0.12, duration: 350 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [layoutRevision])
 
   const groupIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups])
 

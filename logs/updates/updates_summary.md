@@ -1,3 +1,10 @@
+## 260722-14:16:11 — Add topological auto-layout for workflow nodes
+- Type: feature
+- Scope: graph layout/store, canvas viewport, top-bar action, groups and frontend tests
+- What: Added a one-click Layout action that arranges nodes by topological depth, separates parallel branches, preserves group membership, and refits the canvas.
+- Why: Make large workflows readable without manually dragging apart nodes that are squeezed together.
+- Details: logs/updates/details/260722-14:16:11-updates.md
+
 ## 260722-14:07:00 — Add exploratory deeper semantic-tree selection
 - Type: feature
 - Scope: semantic capacity selection, node parameter/UI, offline rerender, tests and derived run
