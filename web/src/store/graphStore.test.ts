@@ -217,6 +217,23 @@ describe('graphStore', () => {
     expect(dirtyCount).toBe(countAfterAdd)
   })
 
+  it('autoLayoutNodes marks the graph dirty and increments the fit-view revision', () => {
+    const s = store.getState()
+    s.addNode('dataset', { x: 0, y: 0 })
+    s.addNode('judge', { x: 0, y: 0 })
+    const [dataset, judge] = store.getState().nodes
+    s.onConnect({
+      source: dataset.id, sourceHandle: 'samples', target: judge.id, targetHandle: 'samples',
+    })
+    const beforeDirty = dirtyCount
+    s.autoLayoutNodes()
+    const state = store.getState()
+    expect(state.layoutRevision).toBe(1)
+    expect(dirtyCount).toBe(beforeDirty + 1)
+    expect(state.nodes.find((n) => n.id === judge.id)!.position.x)
+      .toBeGreaterThan(state.nodes.find((n) => n.id === dataset.id)!.position.x)
+  })
+
   it('lockNode locks the node and all its predecessors; unlockNode cascades to descendants', () => {
     const s = store.getState()
     s.addNode('dataset', { x: 0, y: 0 })
