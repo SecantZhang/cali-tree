@@ -72,6 +72,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         "tree_max_depth": {"type": "number", "default": 3, "min": 1, "max": 6},
         "tree_min_items_leaf": {"type": "number", "default": 1, "min": 1},
         "auto_tune_tree": {"type": "boolean", "default": True},
+        "prefer_deeper_semantic_tree": {"type": "boolean", "default": False},
         "batch_size": {"type": "number", "default": 1, "min": 1},
         "human_dimension_override": {
             "type": "enum", "options": ["", *HUMAN_DIMENSIONS], "default": "",
@@ -346,6 +347,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                 max_depth=tree_max_depth,
                 min_leaf_floor=tree_min_leaf,
                 leaf_feature_names=leaf_feature_names,
+                prefer_deeper_within_tolerance=bool(
+                    p.get("prefer_deeper_semantic_tree", False)
+                ),
             )
             tree_max_depth = selected["max_depth"]
             tree_min_leaf = selected["min_samples_leaf"]
@@ -788,6 +792,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             min_leaf_floor=tree_min_leaf,
             prompt_feature_names=prompt_feature_names,
             leaf_feature_names=leaf_feature_names,
+            prefer_deeper_within_tolerance=bool(
+                p.get("prefer_deeper_semantic_tree", False)
+            ),
         )
         semantic_factory = lambda: PromptRoutedSemanticTreeCalibrator(
             feature_weights=feature_weights,
