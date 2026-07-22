@@ -1,3 +1,10 @@
+## 260722-13:50:14 — Register offline semantic rerenders as interface runs
+- Type: fix
+- Scope: offline semantic rerender utility and interface-run persistence
+- What: Added a no-call registration mode and created a discoverable derived run for the latest semantic-first tree and Rule Comparison outputs.
+- Why: Supplemental JSON inside an old run directory cannot appear in the VEJudge Runs column.
+- Details: logs/updates/details/260722-13:50:14-updates.md
+
 ## 260722-13:44:00 — Make semantic evidence define tree decisions
 - Type: fix
 - Scope: semantic model tree, training-only selection, calibration diagnostics/UI, offline rerender and tests
