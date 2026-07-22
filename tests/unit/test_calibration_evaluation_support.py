@@ -4,6 +4,7 @@ from vejudge.core.calibration.debate.eval.rule_fit import fit_and_evaluate
 from vejudge.interface.node_calibration.evaluation_support import (
     build_observations,
     filter_constant_questions,
+    impute_missing_semantic_values,
     semantic_summary_text,
     stable_holdout_split,
 )
@@ -52,6 +53,21 @@ def test_constant_questions_are_dropped_using_training_items_only():
     assert filtered["held"] == [1]
     assert prevalence[0]["positive_rate"] == 0
     assert dropped[0]["reason"] == "constant_on_training"
+
+
+def test_missing_semantics_use_training_medians_not_validation_or_zero():
+    values = {
+        "train-a": [-1.0, 0.5],
+        "train-b": [1.0, 1.0],
+        "held": [0.0, 99.0],
+    }
+    missing = {"train-a": [], "train-b": [], "held": ["q1", "q2"]}
+    imputed, diagnostics = impute_missing_semantic_values(
+        values, missing, ["train-a", "train-b"],
+    )
+    # The held-out 99 never participates in either training-derived fill value.
+    assert imputed["held"] == [0.0, 0.75]
+    assert diagnostics[1]["n_training_observed"] == 2
 
 
 def test_rule_mining_rejects_unsafe_stored_semantics_instead_of_using_transcript():

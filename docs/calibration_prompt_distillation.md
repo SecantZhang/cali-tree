@@ -392,3 +392,33 @@ Negotiation is now bounded at six rounds, stops after semantic stability, detect
 multi-state score cycles, and retains the original score for unresolved oscillations. The
 critic receives the edited video when its engine supports media. Resume reused compatible
 judge/debate checkpoints, so only missing or version-stale work was recomputed.
+
+# Graded semantic capacity with guarded model selection (live rerender)
+
+Rerendered the same frozen M5 split after expanding the semantic representation from sparse
+booleans to graded signed evidence, adding eight fixed target-blind rubric questions, and
+allowing ontology-weighted MAE trees up to depth three. Missing critic answers are imputed
+with per-question medians learned from the training partition only. Candidate feature sets,
+depth, and minimum leaf mass are selected by item-grouped LOO inside the 26 training videos;
+the seven validation labels are never consulted during selection.
+
+The unconstrained all-feature fit exposed the failure mode this guard is meant to prevent:
+training MAE improved to 0.959, but validation MAE regressed to 1.226. The best semantic
+feature set beat the base-only tree by only 0.0046 in training CV, below the predeclared 0.01
+capacity threshold, so the deployed fit correctly selected the robust base-score tree:
+
+| comparator | training MAE | frozen validation MAE |
+|---|---:|---:|
+| global bias | 1.012 | 1.176 |
+| score-only linear | 0.980 | 1.114 |
+| linear + all graded rules | 0.959 | 1.226 |
+| CART + all graded rules | 0.982 | 1.132 |
+| **guarded semantic tree** | **0.921** | **1.062** |
+
+The guarded semantic-tree path improves over the prior semantic result by 0.053 training MAE
+and 0.052 validation MAE. Against global bias, its frozen improvement is 0.114 with a
+deterministic item-grouped bootstrap 95% CI of `[0.003, 0.206]`. Its additional 0.052 gain
+over score-only linear is promising but not conclusive on seven validation videos (CI
+`[-0.040, 0.136]`). The final one-split tree is simple because the evidence rejected extra
+semantic complexity, not because the implementation lacks capacity; a larger, more diverse
+labeled set is still required to establish which semantic branches generalize.

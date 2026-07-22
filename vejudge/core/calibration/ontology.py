@@ -116,6 +116,8 @@ def concept_importance(key: Optional[str], metric_id: str, *, floor: float = _IM
     if key is None:
         return 1.0
     dims = _DIMENSIONS_FOR_METRIC.get(metric_id, [])
+    if key.startswith("rubric:"):
+        return 1.0 if key.removeprefix("rubric:") in dims else floor
     concept = CONCEPTS.get(key)
     if not dims or concept is None:
         return floor
@@ -126,6 +128,9 @@ def concept_importance(key: Optional[str], metric_id: str, *, floor: float = _IM
 def concept_for_feature(name: str) -> Optional[str]:
     """Recover the concept key from a feature name (``fm:<key>`` / ``rule:<key>``).
     ``base_score`` and any un-prefixed name → None (no concept; importance 1.0)."""
+    if name.startswith("rubric:"):
+        key = ":".join(name.split(":", 2)[:2])
+        return key
     if name.startswith("fm:"):
         key = name[3:].split(":", 1)[0]
     elif name.startswith("rule:"):
