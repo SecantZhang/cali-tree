@@ -45,7 +45,7 @@ def _absolute_error(ys: list[float], weights: list[float]) -> float:
 
 
 class SemanticDecisionTreeCalibrator(Calibrator):
-    version = "semantic-tree-v3-graded-mae"
+    version = "semantic-tree-v4-lookahead-mae"
 
     def __init__(
         self,
@@ -54,6 +54,7 @@ class SemanticDecisionTreeCalibrator(Calibrator):
         allowed_feature_names: Optional[Sequence[str]] = None,
         max_depth: int = 3,
         min_samples_leaf: int = 1,
+        split_lookahead: int = 1,
     ) -> None:
         self.feature_weights = dict(feature_weights or {})
         self.allowed_feature_names = (
@@ -61,6 +62,7 @@ class SemanticDecisionTreeCalibrator(Calibrator):
         )
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
+        self.split_lookahead = max(0, min(1, split_lookahead))
         self._feature_names: Optional[list[str]] = None
         self._tree: Optional[dict[str, Any]] = None
 
@@ -106,7 +108,7 @@ class SemanticDecisionTreeCalibrator(Calibrator):
         if depth >= self.max_depth or sum(node_weights) < 2 * self.min_samples_leaf:
             return node
 
-        best: Optional[tuple[float, int, float, list[int], list[int]]] = None
+        best: Optional[tuple[float, float, float, int, float, list[int], list[int]]] = None
         parent_loss = _absolute_error(node_ys, node_weights)
         total_weight = sum(node_weights)
         for j in range(len(self._feature_names or [])):
@@ -134,17 +136,28 @@ class SemanticDecisionTreeCalibrator(Calibrator):
                     + right_weight / total_weight
                     * _absolute_error([ys[i] for i in right], [weights[i] for i in right])
                 )
-                weighted_gain = w * (parent_loss - child_loss)
+                immediate_gain = w * (parent_loss - child_loss)
+                lookahead_gain = 0.0
+                if self.split_lookahead and depth + 1 < self.max_depth:
+                    lookahead_gain = (
+                        left_weight / total_weight
+                        * self._best_one_split_gain(left, rows, ys, weights)
+                        + right_weight / total_weight
+                        * self._best_one_split_gain(right, rows, ys, weights)
+                    )
+                weighted_gain = immediate_gain + lookahead_gain
                 # Strictly-better wins; ties keep the earlier (lower-index) feature for
                 # determinism. The ontology weight is what breaks a variance tie between two
                 # equally-predictive features.
                 if weighted_gain > 0 and (best is None or weighted_gain > best[0]):
-                    best = (weighted_gain, j, thr, left, right)
+                    best = (
+                        weighted_gain, immediate_gain, lookahead_gain, j, thr, left, right,
+                    )
 
         if best is None:
             return node
 
-        _gain, j, thr, left, right = best
+        gain, immediate_gain, lookahead_gain, j, thr, left, right = best
         return {
             "leaf": False,
             "samples": len(idxs),
@@ -152,9 +165,52 @@ class SemanticDecisionTreeCalibrator(Calibrator):
             "value": round(_weighted_median(node_ys, node_weights), 3),
             "feature": self._feature_names[j],
             "threshold": round(thr, 3),
+            "weighted_gain": round(gain, 6),
+            "immediate_gain": round(immediate_gain, 6),
+            "lookahead_gain": round(lookahead_gain, 6),
             "left": self._build(left, rows, ys, weights, depth=depth + 1),
             "right": self._build(right, rows, ys, weights, depth=depth + 1),
         }
+
+    def _best_one_split_gain(
+        self, idxs: list[int], rows: list[list[float]], ys: list[float],
+        weights: list[float],
+    ) -> float:
+        """Return the best ontology-weighted gain available one level below a split."""
+        total_weight = sum(weights[i] for i in idxs)
+        if total_weight < 2 * self.min_samples_leaf:
+            return 0.0
+        parent_loss = _absolute_error(
+            [ys[i] for i in idxs], [weights[i] for i in idxs],
+        )
+        best_gain = 0.0
+        for j in range(len(self._feature_names or [])):
+            if (
+                self.allowed_feature_names is not None
+                and self._feature_names[j] not in self.allowed_feature_names
+            ):
+                continue
+            values = sorted({rows[i][j] for i in idxs})
+            for a, b in zip(values, values[1:]):
+                threshold = (a + b) / 2
+                left = [i for i in idxs if rows[i][j] <= threshold]
+                right = [i for i in idxs if rows[i][j] > threshold]
+                left_weight = sum(weights[i] for i in left)
+                right_weight = sum(weights[i] for i in right)
+                if (
+                    left_weight < self.min_samples_leaf
+                    or right_weight < self.min_samples_leaf
+                ):
+                    continue
+                child_loss = (
+                    left_weight / total_weight
+                    * _absolute_error([ys[i] for i in left], [weights[i] for i in left])
+                    + right_weight / total_weight
+                    * _absolute_error([ys[i] for i in right], [weights[i] for i in right])
+                )
+                gain = self._weight(self._feature_names[j]) * (parent_loss - child_loss)
+                best_gain = max(best_gain, gain)
+        return best_gain
 
     def predict(self, X: Sequence[Sequence[float]]) -> list[float]:
         if self._tree is None:
@@ -185,6 +241,7 @@ class SemanticDecisionTreeCalibrator(Calibrator):
             "version": self.version,
             "max_depth": self.max_depth,
             "min_samples_leaf": self.min_samples_leaf,
+            "split_lookahead": self.split_lookahead,
             "allowed_feature_names": (
                 sorted(self.allowed_feature_names)
                 if self.allowed_feature_names is not None else None

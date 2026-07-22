@@ -1,3 +1,10 @@
+## 260722-13:00:30 — Add joint prompt and temperature calibration
+- Type: feature
+- Scope: judge/debate provenance, joint semantic features and trees, critic reliability, evaluation UI, workflow and tests
+- What: Added M3/M5/M6 and temperature-aware calibration with training-only meaningful-tree selection; the live frozen run improved held-out MAE by 0.22 while honestly rejecting unsupported debate-rule splits.
+- Why: Improve calibration and tree depth without confusing prompt effects, temperature instability, or overfit semantic rules with generalization.
+- Details: logs/updates/details/260722-13:00:30-updates.md
+
 ## 260721-23:55:28 — Add guarded graded semantic-tree calibration
 - Type: fix
 - Scope: graded critic extraction, semantic MAE tree, training-only capacity selection, calibration reports/UI, workflow, tests and research notes

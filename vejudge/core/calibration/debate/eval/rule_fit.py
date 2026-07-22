@@ -49,6 +49,8 @@ def fit_and_evaluate(
     train_groups: Optional[list[str]] = None,
     validation_groups: Optional[list[str]] = None,
     extra_calibrators: Optional[dict[str, Callable[[], Calibrator]]] = None,
+    strata: Optional[dict[str, str]] = None,
+    reference_feature_names: Optional[list[str]] = None,
 ) -> dict:
     """Fit weighted comparators and report item-macro error.
 
@@ -58,7 +60,11 @@ def fit_and_evaluate(
     while their weights sum to one per source video.
     """
     extra = extra_calibrators or {}
-    comparators = ["base", "bias", "score_linear", "linear", "tree", *extra.keys()]
+    prompt_aware = bool(strata and reference_feature_names)
+    comparators = ["base", "bias", "score_linear"]
+    if prompt_aware:
+        comparators.extend(["prompt_bias", "prompt_linear"])
+    comparators.extend(["linear", "tree", *extra.keys()])
     groups = loo_groups or {i: i for i in item_ids}
     weights = observation_weights or {i: 1.0 for i in item_ids}
     group_order = list(dict.fromkeys(groups[i] for i in item_ids))
@@ -76,6 +82,25 @@ def fit_and_evaluate(
                 [[bases[i]] for i in fit_ids], y_fit, sample_weight=w_fit,
             ) if can_fit else None
         )
+        reference_indices = [
+            feature_names.index(name)
+            for name in (reference_feature_names or [])
+            if name in feature_names
+        ]
+        prompt_lin = (
+            LinearCalibrator().fit(
+                [[feats_full[item][index] for index in reference_indices] for item in fit_ids],
+                y_fit, sample_weight=w_fit,
+            ) if can_fit and prompt_aware and reference_indices else None
+        )
+        residuals_by_stratum: dict[str, tuple[list[float], list[float]]] = {}
+        if prompt_aware and strata:
+            for item in fit_ids:
+                values, value_weights = residuals_by_stratum.setdefault(
+                    strata[item], ([], []),
+                )
+                values.append(humans[item] - bases[item])
+                value_weights.append(weights[item])
         tree = (
             DecisionTreeCalibrator().fit(
                 X_fit, y_fit, feature_names=feature_names, sample_weight=w_fit,
@@ -98,6 +123,23 @@ def fit_and_evaluate(
                 score_lin.predict([[bases[query_id]]])[0]
                 if score_lin else bases[query_id]
             )
+            if prompt_aware and strata:
+                stratum_values, stratum_weights = residuals_by_stratum.get(
+                    strata[query_id], ([], []),
+                )
+                predictions["prompt_bias"].append(
+                    bases[query_id] + (
+                        _weighted_mean(stratum_values, stratum_weights)
+                        if stratum_values else _weighted_mean(
+                            [h - b for b, h in zip(fit_bases, y_fit)], w_fit,
+                        )
+                    )
+                )
+                predictions["prompt_linear"].append(
+                    prompt_lin.predict([[
+                        feats_full[query_id][index] for index in reference_indices
+                    ]])[0] if prompt_lin else bases[query_id]
+                )
             predictions["linear"].append(
                 lin.predict([feats_full[query_id]])[0] if lin else bases[query_id]
             )
@@ -135,6 +177,8 @@ def fit_and_evaluate(
     validation_weighted_mae: dict[str, Optional[float]] = {}
     validation_errors: dict[str, dict[str, float]] = {}
     validation_predictions: dict[str, list[float]] = {}
+    validation_prediction_ids: list[str] = []
+    train_prediction_rows: dict[str, dict[str, float]] = {}
     effective_train = group_order
     effective_validation = group_order
 
@@ -144,10 +188,15 @@ def fit_and_evaluate(
         train_ids = [i for i in item_ids if groups[i] in train_set]
         validation_ids = [i for i in item_ids if groups[i] in validation_set]
         train_predictions = eval_split(train_ids, train_ids)
+        train_prediction_rows = {
+            obs: {key: values[index] for key, values in train_predictions.items()}
+            for index, obs in enumerate(train_ids)
+        }
         insample_mae, insample_errors, insample_weighted_mae = summarize(
             train_ids, train_predictions,
         )
         validation_predictions = eval_split(train_ids, validation_ids)
+        validation_prediction_ids = validation_ids
         validation_mae, validation_errors, validation_weighted_mae = summarize(
             validation_ids, validation_predictions,
         )
@@ -168,6 +217,7 @@ def fit_and_evaluate(
             for key in comparators:
                 loo_predictions[key].extend(fold[key])
         validation_predictions = loo_predictions
+        validation_prediction_ids = loo_ids
         validation_mae, validation_errors, validation_weighted_mae = summarize(
             loo_ids, loo_predictions,
         )
@@ -200,6 +250,11 @@ def fit_and_evaluate(
         "validation_mae": validation_mae,
         "validation_weighted_mae": validation_weighted_mae,
         "per_item_errors": validation_errors,
+        "train_predictions_by_observation": train_prediction_rows,
+        "validation_predictions_by_observation": {
+            obs: {key: values[index] for key, values in validation_predictions.items()}
+            for index, obs in enumerate(validation_prediction_ids)
+        },
         "tree_rule": meta.get("rule_text", ""),
         "tree": meta.get("tree"),
         "feature_importances": meta.get("feature_importances", []),

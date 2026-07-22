@@ -16,6 +16,9 @@ interface JudgeRule {
   evaluation_mode?: string
   n_train_items?: number
   n_validation_items?: number
+  n_prompt_tasks?: number
+  n_judge_variants?: number
+  metrics?: string[]
   warnings?: string[]
   dropped_features?: Array<{ question?: string; reason?: string }>
   diagnostics?: {
@@ -40,6 +43,8 @@ interface JudgeRule {
       selection_reason?: string
       best_semantic_gain_over_base?: number | null
       semantic_gain_threshold?: number
+      meaningful_decision_tree?: boolean
+      semantic_or_prompt_splits?: string[]
     }
     training_grouped_loo?: Array<{ max_depth: number; min_samples_leaf: number; grouped_loo_mae: number | null }>
     validation_labels_used?: boolean
@@ -60,11 +65,15 @@ const COMPARATOR_LABELS: Record<string, string> = {
   base: '(a) base only',
   bias: '(b) base + global bias',
   score_linear: '(c) linear[base score only]',
-  linear: '(d) linear[base+rules]',
-  tree: '(e) tree[base+rules]',
-  semantic: '(f) semantic tree[ontology]',
+  prompt_bias: '(d) base + prompt-specific bias',
+  prompt_linear: '(e) linear[score distribution+prompt]',
+  linear: '(f) linear[base+rules]',
+  tree: '(g) tree[base+rules]',
+  semantic: '(h) semantic tree[ontology]',
 }
-const COMPARATOR_ORDER = ['base', 'bias', 'score_linear', 'linear', 'tree', 'semantic']
+const COMPARATOR_ORDER = [
+  'base', 'bias', 'score_linear', 'prompt_bias', 'prompt_linear', 'linear', 'tree', 'semantic',
+]
 
 function comparatorKeys(jr: JudgeRule): string[] {
   const present = new Set([...Object.keys(jr.insample_mae ?? {}), ...Object.keys(jr.loo_mae ?? {})])
@@ -106,6 +115,9 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
       <div className="secondary-summary">
         <div><strong>Videos:</strong> {jr.n_items ?? perItem.length}</div>
         <div><strong>Raw ratings:</strong> {jr.n_observations ?? jr.diagnostics?.n_raw_ratings ?? '—'}</div>
+        {jr.n_prompt_tasks !== undefined && <div><strong>Prompt tasks:</strong> {jr.n_prompt_tasks}</div>}
+        {jr.n_judge_variants !== undefined && <div><strong>Judge variants:</strong> {jr.n_judge_variants}</div>}
+        {(jr.metrics?.length ?? 0) > 0 && <div><strong>Prompts:</strong> {jr.metrics?.join(', ')}</div>}
         <div><strong>Rules:</strong> {bank.length}</div>
         <div><strong>Evaluation:</strong> {jr.evaluation_mode?.replaceAll('_', ' ') ?? 'legacy'}</div>
       </div>
@@ -133,6 +145,12 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
               Semantic capacity was rejected: its training-CV gain{' '}
               {fmt(jr.semantic_tree_selection.selected.best_semantic_gain_over_base)} was below the{' '}
               {fmt(jr.semantic_tree_selection.selected.semantic_gain_threshold)} threshold.
+            </p>
+          )}
+          {jr.semantic_tree_selection.selected.meaningful_decision_tree && (
+            <p className="empty-hint">
+              Supported deeper decision tree: prompt/semantic splits{' '}
+              {jr.semantic_tree_selection.selected.semantic_or_prompt_splits?.join(', ') || '—'}.
             </p>
           )}
         </>

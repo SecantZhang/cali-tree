@@ -34,7 +34,9 @@ def test_selection_is_grouped_and_never_reads_validation_rows():
         max_depth=3,
         min_leaf_floor=1,
     )
-    assert selected["feature_set"] in {"base_only", "rubric", "all"}
+    assert selected["feature_set"] == "rubric"
+    assert selected["meaningful_decision_tree"] is True
+    assert selected["tree_depth"] == 2
     assert scores
 
     humans["held::human::0"] = -1000.0
@@ -53,8 +55,24 @@ def test_selection_is_grouped_and_never_reads_validation_rows():
     assert selected_again == selected
     assert scores_again == scores
 
+    guarded, _ = select_semantic_tree_config(
+        observation_ids=observation_ids,
+        observation_item=observation_item,
+        humans=humans,
+        features=features,
+        weights=weights,
+        feature_names=["base_score", "rubric:a:q1", "rubric:b:q2"],
+        feature_weights={"rubric:a:q1": 1.0, "rubric:b:q2": 1.0},
+        training_items=items,
+        max_depth=3,
+        min_leaf_floor=1,
+        semantic_gain_threshold=10.0,
+    )
+    assert guarded["feature_set"] == "base_only"
+    assert guarded["selection_reason"] == "semantic_gain_below_threshold"
 
-def test_negligible_semantic_cv_gain_falls_back_to_base_only():
+
+def test_shallow_semantic_rule_does_not_count_as_a_deep_decision_tree():
     items = [f"item-{index}" for index in range(6)]
     observation_ids = [f"{item}::human::0" for item in items]
     observation_item = dict(zip(observation_ids, items))
@@ -77,4 +95,4 @@ def test_negligible_semantic_cv_gain_falls_back_to_base_only():
         semantic_gain_threshold=10.0,
     )
     assert selected["feature_set"] == "base_only"
-    assert selected["selection_reason"] == "semantic_gain_below_threshold"
+    assert selected["selection_reason"] == "no_supported_deep_semantic_tree"
