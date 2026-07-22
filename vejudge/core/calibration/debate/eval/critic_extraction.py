@@ -20,7 +20,8 @@ from .....lm_engine.lm_template import LMEngine
 from ....judge.parse import parse_json_object
 from .feature_extraction import _as_bool
 
-_CRITIC_VERSION = "rule-critic-v3-graded-semantic"
+_CRITIC_VERSION = "rule-critic-v4-retry-complete"
+_MAX_ATTEMPTS = 3
 
 _SYSTEM = """\
 You are an independent semantic reviewer of a video edit and its AI-judge evaluation.
@@ -75,17 +76,37 @@ def extract_critic_features(
         return {"booleans": [], "raw_answers": {}, "missing": []}
     prompt = build_critic_prompt(sample, judge_rationale, questions)
     answers: dict[str, Any] = {}
+    errors: list[str] = []
     video_path = (sample.get("output") or {}).get("output_video_path")
     media_inputs = None
     if video_path and bool(getattr(critic_engine, "supports_video", False)):
         media_inputs = [{"type": "video", "path": str(video_path)}]
-    try:
-        out = critic_engine.generate(prompt, media_inputs=media_inputs, system=_SYSTEM)
-        parsed = parse_json_object(out.get("content") or "")
-        if isinstance(parsed, dict) and isinstance(parsed.get("decision_answers"), dict):
-            answers = parsed["decision_answers"]
-    except Exception:  # noqa: BLE001 - a failed/unparseable critic call yields all-missing (zeros)
-        answers = {}
+    attempts = 0
+    expected_ids = {f"q{i + 1}" for i in range(len(questions))}
+    for attempts in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            out = critic_engine.generate(prompt, media_inputs=media_inputs, system=_SYSTEM)
+            parsed = parse_json_object(out.get("content") or "")
+            candidate = parsed.get("decision_answers") if isinstance(parsed, dict) else None
+            if not isinstance(candidate, dict):
+                errors.append("missing decision_answers object")
+                continue
+            usable_ids = {
+                qid for qid in expected_ids
+                if _as_bool(
+                    candidate.get(qid, {}).get("answer")
+                    if isinstance(candidate.get(qid), dict)
+                    else candidate.get(qid)
+                ) is not None
+            }
+            answers = candidate
+            if usable_ids == expected_ids:
+                break
+            errors.append(
+                f"incomplete decision_answers ({len(usable_ids)}/{len(expected_ids)})"
+            )
+        except Exception as exc:  # noqa: BLE001 - retry transient gateway/parser failures
+            errors.append(f"{type(exc).__name__}: {exc}")
 
     booleans: list[int] = []
     semantic_values: list[float] = []
@@ -117,4 +138,6 @@ def extract_critic_features(
         "missing": missing,
         "media_grounded": bool(media_inputs),
         "critic_version": _CRITIC_VERSION,
+        "critic_attempts": attempts,
+        "critic_errors": errors,
     }

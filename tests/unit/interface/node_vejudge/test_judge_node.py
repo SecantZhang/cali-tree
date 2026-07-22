@@ -126,11 +126,33 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
     assert result1.status == "done"
     assert calls["n"] == 1  # one call per item for the single spec
     assert set(result1.outputs["judge_result"]["prj-x::0::peanut"]) == {"M1"}
-    assert ctx.checkpoint.has("n1::prj-x::0::peanut::M1")
+    assert any(key.endswith("::prj-x::0::peanut::M1") for key in ctx.checkpoint.keys())
 
     result2 = JudgeNodeExecutor().run(ctx)
     assert result2.status == "done"
     assert calls["n"] == 1  # unchanged — served from checkpoint
+
+
+def test_changing_temperature_invalidates_judge_checkpoint(monkeypatch, make_ctx):
+    calls = {"n": 0}
+
+    def fake_chat(**kwargs):
+        calls["n"] += 1
+        return _fake_chat_result()
+
+    monkeypatch.setattr(openai_compat, "chat_completion", fake_chat)
+    item = "prj-x::0::peanut"
+    ctx = make_ctx(
+        inputs=_inputs({item: _sample(item)}, temperature=0.0),
+        dry_run=False, allow_live=True,
+    )
+    first = JudgeNodeExecutor().run(ctx)
+    assert first.outputs["judge_result"][item]["M1"]["judge_provenance"]["temperature"] == 0.0
+    ctx.inputs["engine_config"]["temperature"] = 0.8
+    second = JudgeNodeExecutor().run(ctx)
+    assert calls["n"] == 2
+    assert second.outputs["judge_result"][item]["M1"]["judge_provenance"]["temperature"] == 0.8
+    assert len([key for key in ctx.checkpoint.keys() if key.endswith(f"::{item}::M1")]) == 2
 
 
 def test_progress_events_report_one_per_item(monkeypatch, make_ctx):
@@ -162,7 +184,7 @@ def test_concurrency_produces_the_same_results_as_sequential(monkeypatch, make_c
     for item_id in dataset:
         assert set(per_item[item_id]) == {"M1"}
         assert per_item[item_id]["M1"]["parsed"]["score_1_to_5"] == 4
-        assert ctx.checkpoint.has(f"n1::{item_id}::M1")
+        assert any(key.endswith(f"::{item_id}::M1") for key in ctx.checkpoint.keys())
 
 
 def test_judge_item_start_fires_once_per_item(monkeypatch, make_ctx):
@@ -263,7 +285,7 @@ def test_custom_spec_fills_template_and_carries_alignment(monkeypatch, make_ctx)
     # The result carries its alignment binding for the Eval node.
     assert entry["align"] == {"dimension": "story_flow_visuals", "score_path": "score_1_to_5"}
     assert entry["score"] == 4.0
-    assert ctx.checkpoint.has("n1::prj-x::0::peanut::cust")
+    assert any(key.endswith("::prj-x::0::peanut::cust") for key in ctx.checkpoint.keys())
 
 
 def test_calibration_input_injects_per_item_optimized_prompt(monkeypatch, make_ctx):

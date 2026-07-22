@@ -7,7 +7,7 @@ from vejudge.core.calibration.base import Calibrator
 def test_is_a_calibrator():
     c = SemanticDecisionTreeCalibrator()
     assert isinstance(c, Calibrator)
-    assert c.version == "semantic-tree-v3-graded-mae"
+    assert c.version == "semantic-tree-v4-lookahead-mae"
 
 
 def test_predict_before_fit_raises():
@@ -74,3 +74,24 @@ def test_allowed_features_can_prune_unstable_semantic_branches():
     )
     assert c.metadata()["tree"]["feature"] == "base_score"
     assert c.metadata()["allowed_feature_names"] == ["base_score"]
+
+
+def test_one_level_lookahead_learns_a_two_rule_interaction():
+    X = []
+    y = []
+    for _repeat in range(3):
+        for a, b in ((0, 0), (0, 1), (1, 0), (1, 1)):
+            X.append([2.0, float(a), float(b)])
+            y.append(5.0 if a and b else 2.0)
+    greedy = SemanticDecisionTreeCalibrator(
+        max_depth=2, min_samples_leaf=1, split_lookahead=0,
+    ).fit(X, y, feature_names=["base_score", "rubric:a", "rubric:b"])
+    assert greedy.metadata()["tree"]["leaf"] is True
+
+    model = SemanticDecisionTreeCalibrator(
+        max_depth=2, min_samples_leaf=1, split_lookahead=1,
+    ).fit(X, y, feature_names=["base_score", "rubric:a", "rubric:b"])
+    tree = model.metadata()["tree"]
+    assert tree["leaf"] is False
+    assert tree["lookahead_gain"] > 0
+    assert set(model.predict(X)) == {2.0, 5.0}
