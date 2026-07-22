@@ -29,6 +29,8 @@ from ...core.calibration.debate.eval.critic_extraction import extract_critic_fea
 from ...core.calibration.debate.eval.question_bank import build_question_bank
 from ...core.calibration.debate.eval.rule_extraction import extract_candidate_questions
 from ...core.calibration.debate.eval.rule_fit import fit_and_evaluate
+from ...core.calibration.debate.eval.rubric_bank import combine_with_debate_bank
+from ...core.calibration.debate.eval.semantic_selection import select_semantic_tree_config
 from ...core.rubric.definitions import JUDGE_METRICS
 from ...database.dl_human_annotations import HUMAN_DIMENSIONS
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
@@ -40,6 +42,7 @@ from .evaluation_support import (
     build_observations,
     evaluation_cache_suffix,
     filter_constant_questions,
+    impute_missing_semantic_values,
     preflight_diagnostics,
     semantic_summary_text,
     stable_holdout_split,
@@ -51,7 +54,10 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
     # calibration_results + labels + critic_engine -> judge_rule) from CalibrationFitterNode.
     node_type = "cl_semantic_tree"
     param_schema = {
-        "max_questions": {"type": "number", "default": 5, "min": 1},
+        "max_questions": {"type": "number", "default": 12, "min": 1},
+        "tree_max_depth": {"type": "number", "default": 3, "min": 1, "max": 6},
+        "tree_min_items_leaf": {"type": "number", "default": 1, "min": 1},
+        "auto_tune_tree": {"type": "boolean", "default": True},
         "batch_size": {"type": "number", "default": 1, "min": 1},
         "human_dimension_override": {
             "type": "enum", "options": ["", *HUMAN_DIMENSIONS], "default": "",
@@ -154,7 +160,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             )
         else:
             training_ids, validation_ids = all_item_ids, all_item_ids
-        max_questions = max(1, int(p.get("max_questions") or 5))
+        max_questions = max(1, int(p.get("max_questions") or 12))
         cache_suffix = evaluation_cache_suffix(
             metric_id=metric_id, training_ids=training_ids,
             max_questions=max_questions, critic_config=critic_config,
@@ -197,8 +203,11 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                         item_candidates,
                     )
                     candidates.extend(item_candidates)
-            bank = build_question_bank(candidates=candidates, engine=critic_engine,
-                                       max_questions=max_questions)
+            debate_bank = build_question_bank(candidates=candidates, engine=critic_engine,
+                                              max_questions=max_questions)
+            bank = combine_with_debate_bank(
+                metric_id=metric_id, debate_bank=debate_bank, max_questions=max_questions,
+            )
             ctx.checkpoint.put(bank_key, bank)
 
         # --- tag each mined rule to a taxonomy concept (checkpointed) ---
@@ -212,6 +221,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         # --- independent critic answers the bank per item (concurrent, checkpointed) ---
         item_ids = all_item_ids
         booleans: dict[str, list[int]] = {}
+        semantic_values: dict[str, list[float]] = {}
         missing: dict[str, list[str]] = {}
         tasks: list[str] = []
         for it in item_ids:
@@ -219,6 +229,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             if ctx.checkpoint.has(fkey):
                 cached = ctx.checkpoint.get(fkey)
                 booleans[it] = cached["booleans"]
+                semantic_values[it] = cached.get(
+                    "semantic_values", [float(value) for value in cached["booleans"]],
+                )
                 missing[it] = cached["missing"]
             else:
                 tasks.append(it)
@@ -245,6 +258,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
                     continue
                 it, feats, ms = fut.result()
                 booleans[it] = feats["booleans"]
+                semantic_values[it] = feats.get("semantic_values", feats["booleans"])
                 missing[it] = feats["missing"]
                 item_timings.append({"item_id": it, "ms": ms})
                 ctx.checkpoint.put(f"{ctx.node_id}::{it}::rule_features::{cache_suffix}", feats)
@@ -257,19 +271,27 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
 
         # Keep question-level deployment features. Grounded transcript failure-mode counts
         # are deliberately excluded because they require held-out human labels.
-        filtered_bank, filtered_booleans, prevalence, dropped = filter_constant_questions(
-            bank, booleans, training_ids,
+        imputed_values, imputation = impute_missing_semantic_values(
+            semantic_values, missing, training_ids,
+        )
+        filtered_bank, filtered_values, prevalence, dropped = filter_constant_questions(
+            bank, imputed_values, training_ids,
         )
         dropped_indices = {entry["question_index"] for entry in dropped}
         kept_indices = [entry["question_index"] for entry in prevalence
                         if entry["question_index"] not in dropped_indices]
+        filtered_booleans = {
+            item: [values[index] for index in kept_indices if index < len(values)]
+            for item, values in booleans.items()
+        }
         filtered_tags = [tags[index] if index < len(tags) else None for index in kept_indices]
-        feature_names = ["base_score"] + [
-            f"rule:{(filtered_tags[index] or 'untagged')}:q{index + 1}"
-            for index in range(len(filtered_bank))
-        ]
+        feature_names = ["base_score"]
+        for index in range(len(filtered_bank)):
+            tag = filtered_tags[index] or "untagged"
+            prefix = tag if tag.startswith("rubric:") else f"rule:{tag}"
+            feature_names.append(f"{prefix}:q{index + 1}")
         observation_ids, observation_item, bases, humans, feats_full, weights = build_observations(
-            anchored, filtered_booleans,
+            anchored, filtered_values,
         )
         feature_weights = {
             n: onto.concept_importance(onto.concept_for_feature(n), metric_id)
@@ -277,6 +299,40 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         }
 
         # --- fit + evaluate (base/bias/linear/tree(CART) + semantic), in-sample + LOO ---
+        tree_max_depth = max(1, min(6, int(p.get("tree_max_depth") or 3)))
+        tree_min_leaf = max(1, int(p.get("tree_min_items_leaf") or 1))
+        selection_scores: list[dict[str, Any]] = []
+        allowed_feature_names: list[str] | None = None
+        selected_feature_set = "all"
+        selection_metadata: dict[str, Any] = {}
+        if bool(p.get("auto_tune_tree", True)) and len(training_ids) >= 5:
+            selected, selection_scores = select_semantic_tree_config(
+                observation_ids=observation_ids,
+                observation_item=observation_item,
+                humans=humans,
+                features=feats_full,
+                weights=weights,
+                feature_names=feature_names,
+                feature_weights=feature_weights,
+                training_items=training_ids,
+                max_depth=tree_max_depth,
+                min_leaf_floor=tree_min_leaf,
+            )
+            tree_max_depth = selected["max_depth"]
+            tree_min_leaf = selected["min_samples_leaf"]
+            allowed_feature_names = selected["allowed_feature_names"]
+            selected_feature_set = selected["feature_set"]
+            selection_metadata = {
+                key: value for key, value in selected.items()
+                if key not in {"feature_set", "allowed_feature_names", "max_depth",
+                               "min_samples_leaf"}
+            }
+        semantic_factory = lambda: SemanticDecisionTreeCalibrator(
+            feature_weights=feature_weights,
+            allowed_feature_names=allowed_feature_names,
+            max_depth=tree_max_depth,
+            min_samples_leaf=tree_min_leaf,
+        )
         report = fit_and_evaluate(
             item_ids=observation_ids, bases=bases, humans=humans,
             feats_full=feats_full, feature_names=feature_names,
@@ -285,7 +341,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             train_groups=training_ids if evaluation_mode == "frozen_holdout" else None,
             validation_groups=validation_ids if evaluation_mode == "frozen_holdout" else None,
             extra_calibrators={
-                "semantic": lambda: SemanticDecisionTreeCalibrator(feature_weights=feature_weights)
+                "semantic": semantic_factory,
             },
         )
 
@@ -294,7 +350,7 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         display_ids = [obs for obs in observation_ids
                        if observation_item[obs] in set(training_ids)]
         if len(set(observation_item[obs] for obs in display_ids)) >= 2:
-            semantic = SemanticDecisionTreeCalibrator(feature_weights=feature_weights).fit(
+            semantic = semantic_factory().fit(
                 [feats_full[i] for i in display_ids],
                 [humans[i] for i in display_ids],
                 feature_names=feature_names,
@@ -312,6 +368,18 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         report["feature_prevalence"] = prevalence
         report["dropped_features"] = dropped
         report["feature_weights"] = feature_weights
+        report["semantic_imputation"] = imputation
+        report["semantic_tree_selection"] = {
+            "selected": {
+                "feature_set": selected_feature_set,
+                "allowed_feature_names": allowed_feature_names or feature_names,
+                "max_depth": tree_max_depth,
+                "min_samples_leaf": tree_min_leaf,
+                **selection_metadata,
+            },
+            "training_grouped_loo": selection_scores,
+            "validation_labels_used": False,
+        }
         # Self-contained labels for the UI tree tooltip: concept features -> concept label,
         # base_score -> a plain gloss.
         labels_map = {
@@ -324,7 +392,9 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
             it: {"base": anchored[it]["base"],
                  "human": [round(v, 2) for v in anchored[it]["humans"]]
                  if len(anchored[it]["humans"]) > 1 else round(anchored[it]["humans"][0], 2),
-                 "booleans": filtered_booleans.get(it, []), "missing": missing.get(it, [])}
+                 "booleans": filtered_booleans.get(it, []),
+                 "semantic_values": filtered_values.get(it, []),
+                 "missing": missing.get(it, [])}
             for it in item_ids
         }
         diagnostics, warnings = preflight_diagnostics(
@@ -336,6 +406,12 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         if missing_summary_items:
             warnings.append(
                 f"Ignored {len(missing_summary_items)} training item(s) without a validated semantic summary."
+            )
+        n_imputed_items = sum(bool(entries) for entries in missing.values())
+        if n_imputed_items:
+            warnings.append(
+                f"Imputed missing critic evidence for {n_imputed_items} item(s) using "
+                "training-only per-question medians."
             )
         report["diagnostics"] = diagnostics
         report["warnings"] = warnings

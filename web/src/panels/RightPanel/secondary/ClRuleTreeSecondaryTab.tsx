@@ -7,6 +7,7 @@ import { treeFeatureTooltip } from './treeFeatureTooltip'
 interface BankEntry {
   question: string
   raises_score_when: string
+  scope?: string
 }
 
 interface JudgeRule {
@@ -31,7 +32,25 @@ interface JudgeRule {
   tree_rule?: string
   tree?: DecisionTreeNode | null
   feature_labels?: Record<string, string>
-  per_item?: Record<string, { base: number; human: number | number[]; booleans: number[]; missing: string[] }>
+  semantic_tree_selection?: {
+    selected?: {
+      feature_set?: string
+      max_depth?: number
+      min_samples_leaf?: number
+      selection_reason?: string
+      best_semantic_gain_over_base?: number | null
+      semantic_gain_threshold?: number
+    }
+    training_grouped_loo?: Array<{ max_depth: number; min_samples_leaf: number; grouped_loo_mae: number | null }>
+    validation_labels_used?: boolean
+  }
+  per_item?: Record<string, {
+    base: number
+    human: number | number[]
+    booleans: number[]
+    semantic_values?: number[]
+    missing: string[]
+  }>
 }
 
 // Label + order for known comparators. The table renders whichever keys are actually
@@ -40,11 +59,12 @@ interface JudgeRule {
 const COMPARATOR_LABELS: Record<string, string> = {
   base: '(a) base only',
   bias: '(b) base + global bias',
-  linear: '(c) linear[base+rules]',
-  tree: '(d) tree[base+rules]',
-  semantic: '(e) semantic tree[ontology]',
+  score_linear: '(c) linear[base score only]',
+  linear: '(d) linear[base+rules]',
+  tree: '(e) tree[base+rules]',
+  semantic: '(f) semantic tree[ontology]',
 }
-const COMPARATOR_ORDER = ['base', 'bias', 'linear', 'tree', 'semantic']
+const COMPARATOR_ORDER = ['base', 'bias', 'score_linear', 'linear', 'tree', 'semantic']
 
 function comparatorKeys(jr: JudgeRule): string[] {
   const present = new Set([...Object.keys(jr.insample_mae ?? {}), ...Object.keys(jr.loo_mae ?? {})])
@@ -99,12 +119,33 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
         {jr.diagnostics?.n_unique_base_scores ?? '—'}
       </p>
 
-      <p className="schema-heading">Mined decision rules (semantic booleans)</p>
+      {jr.semantic_tree_selection?.selected && (
+        <>
+          <p className="empty-hint">
+            Semantic-tree capacity selected using training-only grouped LOO: depth{' '}
+            {jr.semantic_tree_selection.selected.max_depth ?? '—'} · minimum leaf mass{' '}
+            {jr.semantic_tree_selection.selected.min_samples_leaf ?? '—'} · feature set{' '}
+            {jr.semantic_tree_selection.selected.feature_set?.replaceAll('_', ' ') ?? 'all'} · validation labels used for tuning:{' '}
+            {jr.semantic_tree_selection.validation_labels_used ? 'yes' : 'no'}
+          </p>
+          {jr.semantic_tree_selection.selected.selection_reason === 'semantic_gain_below_threshold' && (
+            <p className="empty-hint">
+              Semantic capacity was rejected: its training-CV gain{' '}
+              {fmt(jr.semantic_tree_selection.selected.best_semantic_gain_over_base)} was below the{' '}
+              {fmt(jr.semantic_tree_selection.selected.semantic_gain_threshold)} threshold.
+            </p>
+          )}
+        </>
+      )}
+
+      <p className="schema-heading">Decision features (graded semantics and debate rules)</p>
       {bank.length > 0 ? (
         <ol className="engine-feeds-list">
           {bank.map((q, i) => (
             <li key={i}>
-              q{i + 1}: {q.question} <span className="tag">raises when {q.raises_score_when}</span>
+              q{i + 1}: {q.question}{' '}
+              {q.scope && <span className="tag">{q.scope.replaceAll('_', ' ')}</span>}{' '}
+              <span className="tag">raises when {q.raises_score_when}</span>
             </li>
           ))}
         </ol>
@@ -164,12 +205,12 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
       )}
 
       <details>
-        <summary>Per-item (base / human / rule answers)</summary>
+        <summary>Per-item (base / human / semantic evidence)</summary>
         <table className="schema-table">
           <tbody>
             <tr>
               <td className="schema-field">item</td><td className="schema-type">base</td>
-              <td className="schema-type">human</td><td className="schema-type">booleans</td>
+              <td className="schema-type">human</td><td className="schema-type">semantic evidence</td>
             </tr>
             {perItem.map(([iid, r]) => (
               <tr key={iid}>
@@ -179,7 +220,8 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
                   {Array.isArray(r.human) ? `[${r.human.join(', ')}]` : r.human}
                 </td>
                 <td className="label-score">
-                  [{r.booleans.join(', ')}]{r.missing.length > 0 && <span className="tag tag-error">missing {r.missing.length}</span>}
+                  [{(r.semantic_values ?? r.booleans).join(', ')}]
+                  {r.missing.length > 0 && <span className="tag tag-error">missing {r.missing.length}</span>}
                 </td>
               </tr>
             ))}

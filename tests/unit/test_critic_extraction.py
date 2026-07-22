@@ -58,7 +58,19 @@ def test_video_capable_critic_is_grounded_in_rendered_edit():
     )
     assert eng.media_inputs == [{"type": "video", "path": "/tmp/rendered.mp4"}]
     assert feats["media_grounded"] is True
-    assert feats["critic_version"] == "rule-critic-v2-video-grounded"
+    assert feats["critic_version"] == "rule-critic-v3-graded-semantic"
+
+
+def test_graded_answers_become_signed_semantic_evidence():
+    eng = _ScriptedEngine({"decision_answers": {
+        "q1": {"answer": False, "strength": 2, "evidence": "requested repetition"},
+        "q2": {"answer": True, "strength": 3, "evidence": "unstated constraint"},
+    }})
+    feats = extract_critic_features(
+        sample=_SAMPLE, judge_rationale="...", questions=_QUESTIONS, critic_engine=eng,
+    )
+    assert feats["booleans"] == [1, 0]
+    assert feats["semantic_values"] == [0.6667, -1.0]
 
 
 def test_critic_call_failure_yields_all_zero_not_a_crash():

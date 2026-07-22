@@ -21,7 +21,7 @@ class _ScriptedCritic:
             payload = {"questions": [
                 {"question": "Does the judge penalize user-requested repetition?", "raises_score_when": "no"},
                 {"question": "Does the judge penalize an unstated constraint?", "raises_score_when": "no"}]}
-        elif "auditing an AI judge" in s:
+        elif "independent semantic reviewer" in s:
             payload = {"decision_answers": {
                 "q1": "a::0::peanut" not in prompt,
                 "q2": "c::0::peanut" not in prompt,

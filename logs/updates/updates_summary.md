@@ -1,3 +1,10 @@
+## 260721-23:55:28 — Add guarded graded semantic-tree calibration
+- Type: fix
+- Scope: graded critic extraction, semantic MAE tree, training-only capacity selection, calibration reports/UI, workflow, tests and research notes
+- What: Added target-blind graded rubric evidence and deeper semantic-tree capacity, then guarded deployment with training-only grouped selection; the live frozen rerender improved semantic MAE by >0.05 in sample and held out while rejecting an overfit all-rule model.
+- Why: Increase semantic calibration capacity without using validation labels or mistaking tree complexity for generalization.
+- Details: logs/updates/details/260721-23:55:28-updates.md
+
 ## 260721-22:22:11 — Establish meaningful held-out calibration gain
 - Type: fix
 - Scope: negotiation stability, video-grounded critic, calibration comparators, resume identity, workflow, evaluation UI and tests

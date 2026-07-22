@@ -145,6 +145,13 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             and rule_increment >= 0.05
             and rule_ci_low > 0
         )
+        best_calibration_passes = bool(
+            evaluation_mode == "frozen_holdout"
+            and n_validation >= 5
+            and improvement is not None
+            and improvement >= 0.05
+            and ci_low > 0
+        )
 
         if best_rule_loo is None or not isinstance(bias_loo, (int, float)):
             verdict = "Not enough data to compare held-out MAE."
@@ -161,18 +168,18 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
                 "5 are required before claiming improvement over global bias."
             )
             beats_bias = False
-        elif score_calibration_passes:
+        elif best_calibration_passes:
             verdict = (
-                f"Calibration helps: score-only linear beats a plain bias correction "
-                f"held-out ({float(score_linear_loo):.2f} vs {float(bias_loo):.2f} MAE, "
-                f"Δ {float(score_improvement):.2f}, 95% bootstrap CI "
-                f"[{score_ci_low:.2f}, {score_ci_high:.2f}]). "
+                f"Calibration helps: {best_rule_key} beats a plain bias correction "
+                f"held-out ({float(best_rule_loo):.2f} vs {float(bias_loo):.2f} MAE, "
+                f"Δ {float(improvement):.2f}, 95% bootstrap CI "
+                f"[{ci_low:.2f}, {ci_high:.2f}]). "
                 + (
                     f"Rules add further signal: {best_rule_key} improves another "
                     f"{float(rule_increment):.2f} MAE (95% CI "
                     f"[{rule_ci_low:.2f}, {rule_ci_high:.2f}])."
                     if rules_incrementally_help else
-                    f"Semantic rules are indistinguishable from score-only calibration "
+                    f"Its incremental gain over score-only calibration is not conclusive "
                     f"(best incremental Δ {float(rule_increment or 0):.2f}, 95% CI "
                     f"[{rule_ci_low:.2f}, {rule_ci_high:.2f}])."
                 )
@@ -201,6 +208,7 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             "n_validation_items": n_validation,
             "improvement_over_bias": improvement,
             "improvement_ci_95": [ci_low, ci_high],
+            "best_calibration_beats_bias": best_calibration_passes,
             "score_calibration_beats_bias": score_calibration_passes,
             "score_calibration_improvement": score_improvement,
             "score_calibration_ci_95": [score_ci_low, score_ci_high],

@@ -24,7 +24,7 @@ class _ScriptedCritic:
         elif "map each evaluation question to the ONE" in s:  # concept tagging
             payload = {"concepts": [
                 {"index": 1, "key": "category_imbalance"}, {"index": 2, "key": None}]}
-        elif "auditing an AI judge" in s:
+        elif "independent semantic reviewer" in s:
             payload = {"decision_answers": {
                 "q1": "a::0::peanut" not in prompt,
                 "q2": "c::0::peanut" not in prompt,
@@ -126,15 +126,17 @@ def test_full_run_builds_concept_features_and_a_semantic_comparator(make_ctx):
     # Only target-blind independent-critic answers are deployable features. Grounded
     # transcript failure-mode counts are intentionally excluded.
     assert not any(name.startswith("fm:") for name in names)
-    assert "rule:category_imbalance:q1" in names
-    assert "rule:untagged:q2" in names
+    assert "rubric:story_flow_voiceover:q1" in names
+    assert "rubric:story_flow_visuals:q2" in names
     # The report carries the semantic comparator alongside base/bias/linear/tree.
     for split in ("insample_mae", "loo_mae"):
         assert "semantic" in jr[split] and "tree" in jr[split]
     # The exported tree + labels are self-contained for the UI.
     assert jr["tree"] is not None
     assert jr["feature_labels"]["base_score"]
-    assert jr["concept_tags"] == ["category_imbalance", None]
+    assert jr["concept_tags"][:2] == [
+        "rubric:story_flow_voiceover", "rubric:story_flow_visuals",
+    ]
 
 
 def test_no_human_anchor_is_an_error(make_ctx):

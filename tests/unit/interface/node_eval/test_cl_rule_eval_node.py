@@ -63,9 +63,23 @@ def test_verdict_says_rules_help_when_a_rule_model_beats_bias_held_out(make_ctx)
     comp = result.outputs["comparison"]
     assert comp["beats_bias"] is True
     assert result.meta["beats_bias"] is True
-    assert "score-only linear beats a plain bias" in comp["verdict"]
+    assert "tree beats a plain bias" in comp["verdict"]
     assert comp["score_calibration_beats_bias"] is True
     assert comp["rules_beat_score_linear"] is True
+
+
+def test_semantic_tree_can_earn_verdict_when_score_linear_alone_does_not(make_ctx):
+    loo = {"base": 1.8, "bias": 1.18, "score_linear": 1.11, "semantic": 1.06}
+    errors = {
+        f"item-{i}": {"bias": 1.18, "score_linear": 1.11, "semantic": 1.06}
+        for i in range(7)
+    }
+    comp = ClRuleEvalNodeExecutor().run(make_ctx(inputs={
+        "judge_rule": _judge_rule(loo=loo, per_item_errors=errors, n_validation_items=7),
+    })).outputs["comparison"]
+    assert comp["beats_bias"] is True
+    assert comp["best_calibration_beats_bias"] is True
+    assert "semantic beats a plain bias" in comp["verdict"]
 
 
 def test_verdict_says_rules_do_not_help_when_bias_wins_held_out(make_ctx):
