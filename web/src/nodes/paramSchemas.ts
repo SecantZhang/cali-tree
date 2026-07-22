@@ -156,6 +156,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   cl_semantic_tree: {
     max_questions: { type: 'number', default: 5, min: 1 },
     batch_size: { type: 'number', default: 1, min: 1 },
+    prefer_deeper_semantic_tree: { type: 'bool', default: false },
     // "" (default) = auto-detect the human dimension(s) via the ALIGNMENT crosswalk.
     human_dimension_override: { type: 'enum', options: ['', ...HUMAN_DIMENSIONS], default: '' },
     evaluation_mode: {

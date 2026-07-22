@@ -68,6 +68,7 @@ describe('calibration diagnostics', () => {
             feature_set: 'rubric', max_depth: 3, min_samples_leaf: 2,
             semantic_split_count: 3, semantic_prompt_coverage: 3, raw_score_split_count: 0,
             semantic_coverage_tolerance: 0.01, selected_cv_penalty_for_coverage: 0.003,
+            prefer_deeper_within_tolerance: true,
           },
           training_grouped_loo: [], validation_labels_used: false,
         },
@@ -85,6 +86,7 @@ describe('calibration diagnostics', () => {
     expect(screen.getByText(/Semantic-first structure/)).toHaveTextContent('3 learned semantic split(s)')
     expect(screen.getByText(/Semantic-first structure/)).toHaveTextContent('0 raw-score split(s)')
     expect(screen.getByText(/Broader semantic coverage cost/)).toBeInTheDocument()
+    expect(screen.getByText(/Exploratory depth preference is enabled/)).toBeInTheDocument()
     expect(screen.getByText('[0.667]')).toBeInTheDocument()
   })
 
