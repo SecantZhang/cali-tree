@@ -29,7 +29,11 @@ describe('calibration diagnostics', () => {
         per_item: {},
       } } },
     })
-    render(<ClRuleTreeSecondaryTab node={n} />)
+    const { container } = render(<ClRuleTreeSecondaryTab node={n} />)
+    const metricTable = container.querySelector('.calibration-mae-table')
+    expect(metricTable).toHaveClass('calibration-mae-table')
+    expect(screen.getByRole('columnheader', { name: 'training' })).toHaveClass('calibration-mae-number')
+    expect(screen.getByRole('columnheader', { name: 'held-out' })).toHaveClass('calibration-mae-number')
     expect(screen.getByText(/Videos:/).parentElement).toHaveTextContent('9')
     expect(screen.getByText(/Raw ratings:/).parentElement).toHaveTextContent('126')
     expect(screen.getByText(/frozen holdout/)).toBeInTheDocument()

@@ -1,3 +1,10 @@
+## 260722-14:24:24 — Align calibration metrics and contain tree labels
+- Type: fix
+- Scope: semantic/rule calibration secondary tabs, decision-tree SVG, frontend tests
+- What: Aligned training and held-out MAE headers with their numeric columns and compacted long semantic feature keys inside decision-tree split boxes while preserving full hover details.
+- Why: Make calibration results easier to scan and prevent semantic split titles from overflowing their node borders.
+- Details: logs/updates/details/260722-14:24:24-updates.md
+
 ## 260722-14:16:11 — Add topological auto-layout for workflow nodes
 - Type: feature
 - Scope: graph layout/store, canvas viewport, top-bar action, groups and frontend tests

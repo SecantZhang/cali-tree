@@ -34,6 +34,29 @@ const ROW_H = 96
 const NODE_W = 124
 const NODE_H = 52
 
+const MAX_FEATURE_LABEL_LENGTH = 18
+
+function truncateFeatureLabel(label: string): string {
+  if (label.length <= MAX_FEATURE_LABEL_LENGTH) return label
+  return `${label.slice(0, MAX_FEATURE_LABEL_LENGTH - 1).trimEnd()}…`
+}
+
+export function compactFeatureLabel(feature: string): {
+  title: string
+  qualifier?: string
+} {
+  const semantic = feature.match(/^(?:rubric|rule):(.+):([^:]+):(q\d+)$/)
+  if (semantic) {
+    return {
+      title: truncateFeatureLabel(semantic[1].replaceAll('_', ' ')),
+      qualifier: `${semantic[2]} · ${semantic[3]}`,
+    }
+  }
+  const prompt = feature.match(/^prompt:([^:]+)$/)
+  if (prompt) return { title: `prompt ${prompt[1]}` }
+  return { title: truncateFeatureLabel(feature.replaceAll('_', ' ').replaceAll(':', ' ')) }
+}
+
 // Map a 1–5 calibrated score to a hue (red→green) so leaf value reads at a glance.
 function leafColors(value: number): { fill: string; stroke: string } {
   const t = Math.max(0, Math.min(1, (value - 1) / 4))
@@ -175,10 +198,12 @@ export function DecisionTreeView({
             </g>
           )
         }
-        const tip = n.feature ? featureTooltip?.(n.feature) : undefined
+        const feature = n.feature ?? 'unknown feature'
+        const compactFeature = compactFeatureLabel(feature)
+        const tip = featureTooltip?.(feature)
         return (
           <g key={p.id}>
-            {tip && <title>{tip}</title>}
+            <title>{tip ?? feature}</title>
             <rect
               x={x}
               y={y}
@@ -198,7 +223,7 @@ export function DecisionTreeView({
               fontWeight={600}
               fill="var(--text)"
             >
-              {n.feature}
+              {compactFeature.title}
             </text>
             <text
               x={cx(p)}
@@ -208,7 +233,7 @@ export function DecisionTreeView({
               fontSize={12}
               fill="var(--text-muted)"
             >
-              ≤ {n.threshold}
+              {compactFeature.qualifier ? `${compactFeature.qualifier} · ` : ''}≤ {n.threshold}
             </text>
           </g>
         )
