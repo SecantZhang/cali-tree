@@ -45,10 +45,20 @@ interface JudgeRule {
       semantic_gain_threshold?: number
       meaningful_decision_tree?: boolean
       semantic_or_prompt_splits?: string[]
+      semantic_split_count?: number
+      semantic_prompt_coverage?: number
+      raw_score_split_count?: number
+      semantic_coverage_tolerance?: number
+      selected_cv_penalty_for_coverage?: number | null
     }
     training_grouped_loo?: Array<{ max_depth: number; min_samples_leaf: number; grouped_loo_mae: number | null }>
     validation_labels_used?: boolean
   }
+  tree_architecture?: string
+  semantic_split_count?: number
+  raw_score_split_count?: number
+  semantic_split_features?: string[]
+  leaf_feature_names?: string[]
   per_item?: Record<string, {
     base: number
     human: number | number[]
@@ -69,7 +79,7 @@ const COMPARATOR_LABELS: Record<string, string> = {
   prompt_linear: '(e) linear[score distribution+prompt]',
   linear: '(f) linear[base+rules]',
   tree: '(g) tree[base+rules]',
-  semantic: '(h) semantic tree[ontology]',
+  semantic: '(h) semantic model tree[semantic branches]',
 }
 const COMPARATOR_ORDER = [
   'base', 'bias', 'score_linear', 'prompt_bias', 'prompt_linear', 'linear', 'tree', 'semantic',
@@ -84,6 +94,10 @@ function comparatorKeys(jr: JudgeRule): string[] {
 
 function fmt(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : v.toFixed(2)
+}
+
+function fmt3(v: number | null | undefined): string {
+  return v === null || v === undefined ? '—' : v.toFixed(3)
 }
 
 export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
@@ -149,8 +163,22 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
           )}
           {jr.semantic_tree_selection.selected.meaningful_decision_tree && (
             <p className="empty-hint">
-              Supported deeper decision tree: prompt/semantic splits{' '}
+              Learned semantic decisions{' '}
               {jr.semantic_tree_selection.selected.semantic_or_prompt_splits?.join(', ') || '—'}.
+            </p>
+          )}
+          <p className="empty-hint">
+            Semantic-first structure: {jr.semantic_split_count ?? jr.semantic_tree_selection.selected.semantic_split_count ?? 0}{' '}
+            learned semantic split(s) across{' '}
+            {jr.semantic_tree_selection.selected.semantic_prompt_coverage ?? '—'} prompt context(s) ·{' '}
+            {jr.raw_score_split_count ?? jr.semantic_tree_selection.selected.raw_score_split_count ?? 0} raw-score split(s).
+            Score controls ({jr.leaf_feature_names?.join(', ') || 'none'}) are used only inside leaf calibration models.
+          </p>
+          {(jr.semantic_tree_selection.selected.selected_cv_penalty_for_coverage ?? 0) > 0 && (
+            <p className="empty-hint">
+              Broader semantic coverage cost{' '}
+              {fmt3(jr.semantic_tree_selection.selected.selected_cv_penalty_for_coverage)} training-CV MAE,
+              within the {fmt3(jr.semantic_tree_selection.selected.semantic_coverage_tolerance)} selection tolerance.
             </p>
           )}
         </>
@@ -203,8 +231,10 @@ export function ClRuleTreeSecondaryTab({ node }: { node: VeNode }) {
           <p className="schema-heading">Fitted decision tree</p>
           <DecisionTreeView tree={jr.tree} featureTooltip={treeFeatureTooltip(bank, jr.feature_labels)} />
           <p className="empty-hint">
-            Splits read top-down; each leaf is the calibrated score (colored low→high) for
-            items reaching it. Hover a split to see the mined rule behind it.
+            Prompt nodes are fixed context routers. Every learned node below them is a semantic
+            question; score values never create branches. A “model μ” leaf shows its mean fitted
+            score, while its score-aware leaf model produces the actual prediction. Hover a split
+            to see the mined rule behind it.
           </p>
           {jr.tree_rule && (
             <details>

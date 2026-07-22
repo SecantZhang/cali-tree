@@ -12,6 +12,9 @@ export interface DecisionTreeNode {
   threshold?: number
   left?: DecisionTreeNode
   right?: DecisionTreeNode
+  context_router?: boolean
+  semantic_decision?: boolean
+  leaf_model?: { feature_names?: string[] }
 }
 
 interface Placed {
@@ -157,7 +160,7 @@ export function DecisionTreeView({
                 fontWeight={700}
                 fill="var(--text)"
               >
-                → {n.value.toFixed(2)}
+                {n.leaf_model ? `model μ ${n.value.toFixed(2)}` : `→ ${n.value.toFixed(2)}`}
               </text>
               <text
                 x={cx(p)}
