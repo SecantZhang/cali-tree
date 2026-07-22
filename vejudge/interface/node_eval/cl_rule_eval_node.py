@@ -25,11 +25,16 @@ _COMPARATOR_LABELS: dict[str, str] = {
     "base": "(a) base only",
     "bias": "(b) base + global bias",
     "score_linear": "(c) linear[base score only]",
-    "linear": "(d) linear[base+rules]",
-    "tree": "(e) tree[base+rules]",
-    "semantic": "(f) semantic tree[ontology]",
+    "prompt_bias": "(d) base + prompt-specific bias",
+    "prompt_linear": "(e) linear[score distribution+prompt]",
+    "linear": "(f) linear[base+rules]",
+    "tree": "(g) tree[base+rules]",
+    "semantic": "(h) semantic tree[ontology]",
 }
-_COMPARATOR_ORDER = ["base", "bias", "score_linear", "linear", "tree", "semantic"]
+_COMPARATOR_ORDER = [
+    "base", "bias", "score_linear", "prompt_bias", "prompt_linear",
+    "linear", "tree", "semantic",
+]
 # The rule-based models (vs. the plain base / bias-shift baselines) — a report "helps" only
 # if one of these beats the bias correction held-out.
 _RULE_MODELS = ("semantic", "tree", "linear")
@@ -80,6 +85,8 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
         # prevents a learned raw-score slope from being misattributed to the rule features.
         bias_loo = loo.get("bias")
         score_linear_loo = loo.get("score_linear")
+        reference_key = "prompt_linear" if isinstance(loo.get("prompt_linear"), (int, float)) else "score_linear"
+        reference_loo = loo.get(reference_key)
         best_rule_key: str | None = None
         best_rule_loo: float | None = None
         for k in _RULE_MODELS:
@@ -117,17 +124,17 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             if best_rule_loo is not None and isinstance(bias_loo, (int, float)) else None
         )
         rule_vs_score_improvements = [
-            float(errors["score_linear"]) - float(errors[best_rule_key])
+            float(errors[reference_key]) - float(errors[best_rule_key])
             for errors in per_item_errors.values()
             if best_rule_key is not None
             and isinstance(errors, dict)
-            and isinstance(errors.get("score_linear"), (int, float))
+            and isinstance(errors.get(reference_key), (int, float))
             and isinstance(errors.get(best_rule_key), (int, float))
         ]
         rule_ci_low, rule_ci_high = _bootstrap_interval(rule_vs_score_improvements)
         rule_increment = (
-            float(score_linear_loo) - best_rule_loo
-            if best_rule_loo is not None and isinstance(score_linear_loo, (int, float))
+            float(reference_loo) - best_rule_loo
+            if best_rule_loo is not None and isinstance(reference_loo, (int, float))
             else None
         )
 
@@ -179,7 +186,7 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
                     f"{float(rule_increment):.2f} MAE (95% CI "
                     f"[{rule_ci_low:.2f}, {rule_ci_high:.2f}])."
                     if rules_incrementally_help else
-                    f"Its incremental gain over score-only calibration is not conclusive "
+                    f"Its incremental gain over {reference_key.replace('_', ' ')} calibration is not conclusive "
                     f"(best incremental Δ {float(rule_increment or 0):.2f}, 95% CI "
                     f"[{rule_ci_low:.2f}, {rule_ci_high:.2f}])."
                 )
@@ -215,6 +222,7 @@ class ClRuleEvalNodeExecutor(NodeExecutor):
             "rules_beat_score_linear": rules_incrementally_help,
             "rule_increment_over_score_linear": rule_increment,
             "rule_increment_ci_95": [rule_ci_low, rule_ci_high],
+            "semantic_reference_key": reference_key,
             "diagnostics": judge_rule.get("diagnostics"),
             "warnings": judge_rule.get("warnings") or [],
         }

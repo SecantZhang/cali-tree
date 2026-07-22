@@ -82,6 +82,26 @@ def test_semantic_tree_can_earn_verdict_when_score_linear_alone_does_not(make_ct
     assert "semantic beats a plain bias" in comp["verdict"]
 
 
+def test_joint_verdict_uses_prompt_aware_linear_as_semantic_reference(make_ctx):
+    loo = {
+        "base": 1.8, "bias": 1.2, "score_linear": 1.1,
+        "prompt_bias": 1.0, "prompt_linear": 0.9, "semantic": 0.8,
+    }
+    errors = {
+        f"item-{i}": {
+            "bias": 1.2, "score_linear": 1.1, "prompt_bias": 1.0,
+            "prompt_linear": 0.9, "semantic": 0.8,
+        }
+        for i in range(7)
+    }
+    comp = ClRuleEvalNodeExecutor().run(make_ctx(inputs={
+        "judge_rule": _judge_rule(loo=loo, per_item_errors=errors, n_validation_items=7),
+    })).outputs["comparison"]
+    assert comp["semantic_reference_key"] == "prompt_linear"
+    assert comp["rules_beat_score_linear"] is True
+    assert "Rules add further signal" in comp["verdict"]
+
+
 def test_verdict_says_rules_do_not_help_when_bias_wins_held_out(make_ctx):
     # Both rule models are worse held-out than the bias term → the bias captures it all.
     loo = {"base": 1.83, "bias": 0.40, "linear": 0.55, "tree": 0.52}

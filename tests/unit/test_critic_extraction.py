@@ -58,7 +58,7 @@ def test_video_capable_critic_is_grounded_in_rendered_edit():
     )
     assert eng.media_inputs == [{"type": "video", "path": "/tmp/rendered.mp4"}]
     assert feats["media_grounded"] is True
-    assert feats["critic_version"] == "rule-critic-v3-graded-semantic"
+    assert feats["critic_version"] == "rule-critic-v4-retry-complete"
 
 
 def test_graded_answers_become_signed_semantic_evidence():
@@ -83,6 +83,30 @@ def test_critic_call_failure_yields_all_zero_not_a_crash():
     )
     assert feats["booleans"] == [0, 0]
     assert feats["missing"] == ["q1", "q2"]
+    assert feats["critic_attempts"] == 3
+    assert len(feats["critic_errors"]) == 3
+
+
+def test_incomplete_critic_response_is_retried_until_complete():
+    class EventuallyComplete:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, *a, **k):
+            self.calls += 1
+            answers = {"q1": {"answer": False, "strength": 2}}
+            if self.calls >= 2:
+                answers["q2"] = {"answer": True, "strength": 3}
+            return {"content": json.dumps({"decision_answers": answers})}
+
+    eng = EventuallyComplete()
+    feats = extract_critic_features(
+        sample=_SAMPLE, judge_rationale="...", questions=_QUESTIONS, critic_engine=eng,
+    )
+    assert eng.calls == 2
+    assert feats["missing"] == []
+    assert feats["booleans"] == [1, 0]
+    assert feats["critic_attempts"] == 2
 
 
 def test_no_questions_is_empty():

@@ -30,3 +30,20 @@ def test_extra_calibrator_adds_a_named_column_in_and_out_of_sample():
     assert "semantic" in rep["insample_mae"] and "semantic" in rep["loo_mae"]
     # The rule cleanly separates y, so the semantic tree nails it here.
     assert rep["loo_mae"]["semantic"] == 0.0
+
+
+def test_joint_evaluation_adds_prompt_specific_control_models():
+    strata = {item: "M3" if index < 3 else "M5" for index, item in enumerate(_IDS)}
+    names = ["base_score", "score_std", "prompt:M3", "prompt:M5", "rule:x"]
+    features = {
+        item: [2.0, 0.0, 1.0 if strata[item] == "M3" else 0.0,
+               1.0 if strata[item] == "M5" else 0.0, _FEATS[item][1]]
+        for item in _IDS
+    }
+    report = fit_and_evaluate(
+        item_ids=_IDS, bases=_BASES, humans=_HUMANS, feats_full=features,
+        feature_names=names, strata=strata,
+        reference_feature_names=names[:4],
+    )
+    assert "prompt_bias" in report["loo_mae"]
+    assert "prompt_linear" in report["loo_mae"]

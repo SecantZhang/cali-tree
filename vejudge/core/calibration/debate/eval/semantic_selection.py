@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from statistics import mean
-from typing import Any
+from typing import Any, Optional
 
 from ...semantic_tree import SemanticDecisionTreeCalibrator
+
+
+def _tree_shape(tree: Optional[dict[str, Any]]) -> tuple[int, list[str]]:
+    if not tree or tree.get("leaf"):
+        return 0, []
+    left_depth, left_features = _tree_shape(tree.get("left"))
+    right_depth, right_features = _tree_shape(tree.get("right"))
+    return 1 + max(left_depth, right_depth), [str(tree.get("feature")), *left_features, *right_features]
 
 
 def select_semantic_tree_config(
@@ -30,15 +38,22 @@ def select_semantic_tree_config(
     train_set = set(training_items)
     train_obs = [obs for obs in observation_ids if observation_item[obs] in train_set]
     max_leaf = max(min_leaf_floor, min(5, max(2, len(training_items) // 4)))
+    score_features = [
+        name for name in feature_names
+        if name == "base_score" or name in {"score_std", "score_range"}
+    ]
+    prompt_features = [name for name in feature_names if name.startswith("prompt:")]
     feature_sets = {
         "base_only": [name for name in feature_names if name == "base_score"],
+        "score_distribution": score_features,
+        "prompt_score": [*score_features, *prompt_features],
         "rubric": [
             name for name in feature_names
-            if name == "base_score" or name.startswith("rubric:")
+            if name in score_features or name in prompt_features or name.startswith("rubric:")
         ],
         "debate": [
             name for name in feature_names
-            if name == "base_score" or name.startswith("rule:")
+            if name in score_features or name in prompt_features or name.startswith("rule:")
         ],
         "all": list(feature_names),
     }
@@ -80,12 +95,32 @@ def select_semantic_tree_config(
                     for obs, prediction in zip(query_ids, predictions)
                 ) / total_weight
             )
+        full_model = SemanticDecisionTreeCalibrator(
+            feature_weights=feature_weights,
+            allowed_feature_names=config["allowed_feature_names"],
+            max_depth=config["max_depth"],
+            min_samples_leaf=config["min_samples_leaf"],
+        ).fit(
+            [features[obs] for obs in train_obs],
+            [humans[obs] for obs in train_obs],
+            feature_names=feature_names,
+            sample_weight=[weights[obs] for obs in train_obs],
+        )
+        tree_depth, split_features = _tree_shape(full_model.metadata().get("tree"))
+        decision_splits = [
+            name for name in split_features
+            if name.startswith(("prompt:", "rubric:", "rule:"))
+        ]
         scores.append({
             "feature_set": config["feature_set"],
             "allowed_feature_names": config["allowed_feature_names"],
             "max_depth": config["max_depth"],
             "min_samples_leaf": config["min_samples_leaf"],
             "grouped_loo_mae": mean(held_errors) if held_errors else None,
+            "tree_depth": tree_depth,
+            "split_features": split_features,
+            "semantic_or_prompt_splits": decision_splits,
+            "meaningful_decision_tree": tree_depth >= 2 and bool(decision_splits),
         })
 
     eligible = [entry for entry in scores if entry["grouped_loo_mae"] is not None]
@@ -96,9 +131,14 @@ def select_semantic_tree_config(
             "max_depth": 1,
             "min_samples_leaf": max(1, min_leaf_floor),
         }, scores
-    feature_set_order = {"base_only": 0, "rubric": 1, "debate": 2, "all": 3}
-    best = min(
-        eligible,
+    feature_set_order = {
+        "base_only": 0, "score_distribution": 1, "prompt_score": 2,
+        "rubric": 3, "debate": 4, "all": 5,
+    }
+    reference = min(
+        (entry for entry in eligible if entry["feature_set"] in {
+            "base_only", "score_distribution", "prompt_score",
+        }),
         key=lambda entry: (
             entry["grouped_loo_mae"],
             feature_set_order[entry["feature_set"]],
@@ -106,10 +146,16 @@ def select_semantic_tree_config(
             -entry["min_samples_leaf"],
         ),
     )
-    best_base = min(
-        (entry for entry in eligible if entry["feature_set"] == "base_only"),
+    semantic_candidates = [
+        entry for entry in eligible
+        if entry["feature_set"] in {"rubric", "debate", "all"}
+        and entry["meaningful_decision_tree"]
+    ]
+    best_semantic = min(
+        semantic_candidates,
         key=lambda entry: (
-            entry["grouped_loo_mae"], entry["max_depth"],
+            entry["grouped_loo_mae"], feature_set_order[entry["feature_set"]],
+            entry["max_depth"],
             -entry["min_samples_leaf"],
         ),
         default=None,
@@ -117,14 +163,18 @@ def select_semantic_tree_config(
     # Do not spend semantic capacity for a negligible training-CV fluctuation. This guard
     # is determined entirely inside the training partition and prevents a larger bank from
     # winning by a few thousandths merely because more split candidates were available.
-    selected = best
-    selection_reason = "lowest_training_grouped_loo_mae"
+    selected = reference
+    selection_reason = "best_nonsemantic_reference"
     semantic_gain = None
-    if best_base is not None and best["feature_set"] != "base_only":
-        semantic_gain = best_base["grouped_loo_mae"] - best["grouped_loo_mae"]
-        if semantic_gain < semantic_gain_threshold:
-            selected = best_base
+    if best_semantic is not None:
+        semantic_gain = reference["grouped_loo_mae"] - best_semantic["grouped_loo_mae"]
+        if semantic_gain >= semantic_gain_threshold:
+            selected = best_semantic
+            selection_reason = "meaningful_semantic_gain"
+        else:
             selection_reason = "semantic_gain_below_threshold"
+    else:
+        selection_reason = "no_supported_deep_semantic_tree"
     return {
         "feature_set": selected["feature_set"],
         "allowed_feature_names": selected["allowed_feature_names"],
@@ -133,4 +183,8 @@ def select_semantic_tree_config(
         "selection_reason": selection_reason,
         "semantic_gain_threshold": semantic_gain_threshold,
         "best_semantic_gain_over_base": semantic_gain,
+        "reference_feature_set": reference["feature_set"],
+        "tree_depth": selected["tree_depth"],
+        "semantic_or_prompt_splits": selected["semantic_or_prompt_splits"],
+        "meaningful_decision_tree": selected["meaningful_decision_tree"],
     }, scores

@@ -74,6 +74,8 @@ def test_node_types_expose_calibration_subcategories(client):
     assert by_type["cl_adversarial"]["subcategory"] == "agent"
     assert by_type["cl_rule_tree"]["subcategory"] == "model"
     assert by_type["cl_semantic_tree"]["subcategory"] == "model"
+    assert by_type["cl_adversarial"]["multi_input_sockets"] == ["judge_result"]
+    assert by_type["cl_semantic_tree"]["multi_input_sockets"] == ["calibration_results"]
     # Nodes outside a sub-folder report null, so the palette renders them flat.
     assert by_type["judge"]["subcategory"] is None
 

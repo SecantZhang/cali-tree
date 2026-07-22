@@ -57,6 +57,14 @@ def _calib(item_id, *, base, fms):
     }
 
 
+def _calib_metric(item_id, metric_id, base, temperature):
+    result = _calib(item_id, base=base, fms={})
+    result["metric_id"] = metric_id
+    result["judge_provenance"] = {"temperature": temperature, "metric_id": metric_id}
+    result["transcript"]["metric_id"] = metric_id
+    return result
+
+
 def _m5_label(item_id, score):
     return AggregatedHumanRecord(
         item_id=item_id, project="prj-x", prompt_idx=0, model="peanut",
@@ -147,3 +155,59 @@ def test_no_human_anchor_is_an_error(make_ctx):
     ctx = make_ctx(inputs=inp, dry_run=False, allow_live=True)
     result = ClSemanticTreeNodeExecutor().run(ctx)
     assert result.status == "error" and "human targets" in result.error
+
+
+def test_joint_prompt_and_temperature_inputs_share_one_video_split(make_ctx):
+    item_ids = [f"joint-{index}::0::peanut" for index in range(8)]
+    samples = {item: _sample(item) for item in item_ids}
+    m3 = {
+        item: _calib_metric(item, "M3", 1 + index % 4, 0.0)
+        for index, item in enumerate(item_ids)
+    }
+    m5_low = {
+        item: _calib_metric(item, "M5", 2 + index % 3, 0.0)
+        for index, item in enumerate(item_ids)
+    }
+    m5_high = {
+        item: _calib_metric(item, "M5", 3 + index % 2, 0.8)
+        for index, item in enumerate(item_ids)
+    }
+    labels = {
+        item: AggregatedHumanRecord(
+            item_id=item, project="prj-x", prompt_idx=0, model="peanut",
+            scores={
+                "video_addresses_prompt": float(2 + index % 3),
+                "story_flow_visuals": float(3 + index % 2),
+                "story_flow_voiceover": float(3 + index % 2),
+            },
+            score_counts={
+                "video_addresses_prompt": 2,
+                "story_flow_visuals": 2,
+                "story_flow_voiceover": 2,
+            },
+        )
+        for index, item in enumerate(item_ids)
+    }
+    result = ClSemanticTreeNodeExecutor().run(make_ctx(
+        inputs={
+            "samples": samples,
+            "calibration_results": [m3, m5_low, m5_high],
+            "labels": labels,
+            "critic_engine": {"engine_kind": "gpt", "temperature": 0},
+        },
+        params={"evaluation_mode": "frozen_holdout", "tree_max_depth": 3},
+        dry_run=False, allow_live=True,
+    ))
+    assert result.status == "done"
+    report = result.outputs["judge_rule"]
+    assert report["metrics"] == ["M3", "M5"]
+    assert report["n_prompt_tasks"] == 16
+    assert report["n_judge_variants"] == 24
+    assert {"prompt:M3", "prompt:M5", "score_std", "score_range"} <= set(
+        report["feature_names"]
+    )
+    assert set(report["train_item_ids"]).isdisjoint(report["validation_item_ids"])
+    assert report["semantic_tree_selection"]["validation_labels_used"] is False
+    m5_task = report["per_item"][f"{item_ids[0]}::metric::M5"]
+    assert m5_task["variant_count"] == 2
+    assert m5_task["temperatures"] == [0.0, 0.8]

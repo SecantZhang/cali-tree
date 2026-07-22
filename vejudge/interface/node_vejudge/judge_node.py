@@ -11,6 +11,8 @@ parallelization pool); cross-metric parallelism is across sibling Judge nodes.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from ...lm_engine import LiveCallNotAllowed, get_engine, load_creds, require_live
@@ -71,6 +73,17 @@ class JudgeNodeExecutor(NodeExecutor):
 
         modality = spec_modality(spec)
         label = spec.get("label") or spec_key(spec)
+        judge_provenance = {
+            "metric_id": spec_key(spec),
+            "prompt_kind": spec.get("kind", "builtin"),
+            "prompt_version": spec.get("version", "builtin"),
+            "engine_kind": engine_config.get("engine_kind"),
+            "model": engine_config.get("model"),
+            "temperature": engine_config.get("temperature"),
+        }
+        checkpoint_variant = hashlib.sha256(
+            json.dumps({"spec": spec, "engine": judge_provenance}, sort_keys=True, default=str).encode()
+        ).hexdigest()[:12]
 
         if ctx.dry_run:
             return NodeRunResult(
@@ -114,6 +127,8 @@ class JudgeNodeExecutor(NodeExecutor):
             should_skip=_should_skip if modality == "video" else None,
             calibration=calibration,
             general_calibration=general_calibration,
+            judge_provenance=judge_provenance,
+            checkpoint_variant=checkpoint_variant,
         )
         meta["spec"] = label
         return NodeRunResult(outputs={"judge_result": per_item}, meta=meta)
