@@ -1,13 +1,16 @@
 import pytest
 
-from vejudge.core.calibration import SemanticDecisionTreeCalibrator
+from vejudge.core.calibration import (
+    PromptRoutedSemanticTreeCalibrator,
+    SemanticDecisionTreeCalibrator,
+)
 from vejudge.core.calibration.base import Calibrator
 
 
 def test_is_a_calibrator():
     c = SemanticDecisionTreeCalibrator()
     assert isinstance(c, Calibrator)
-    assert c.version == "semantic-tree-v4-lookahead-mae"
+    assert c.version == "semantic-tree-v5-semantic-model-leaves"
 
 
 def test_predict_before_fit_raises():
@@ -95,3 +98,29 @@ def test_one_level_lookahead_learns_a_two_rule_interaction():
     assert tree["leaf"] is False
     assert tree["lookahead_gain"] > 0
     assert set(model.predict(X)) == {2.0, 5.0}
+
+
+def test_prompt_routed_tree_never_uses_score_controls_as_decisions():
+    names = ["base_score", "score_std", "prompt:M3", "prompt:M5", "rubric:M3:q1", "rule:x:M5:q2"]
+    X = [
+        [1, 0.1, 1, 0, 0, 0], [2, 0.2, 1, 0, 0, 0],
+        [4, 0.1, 1, 0, 1, 0], [5, 0.2, 1, 0, 1, 0],
+        [1, 0.1, 0, 1, 0, 0], [2, 0.2, 0, 1, 0, 0],
+        [4, 0.1, 0, 1, 0, 1], [5, 0.2, 0, 1, 0, 1],
+    ]
+    y = [1, 2, 5, 5, 1, 2, 5, 5]
+    model = PromptRoutedSemanticTreeCalibrator(
+        semantic_feature_names=["rubric:M3:q1", "rule:x:M5:q2"],
+        prompt_feature_names=["prompt:M3", "prompt:M5"],
+        leaf_feature_names=["base_score", "score_std"],
+        max_depth=2,
+        min_samples_leaf=1,
+    ).fit(X, y, feature_names=names)
+    meta = model.metadata()
+    assert set(meta["semantic_split_features"]) == {"rubric:M3:q1", "rule:x:M5:q2"}
+    assert meta["raw_score_split_count"] == 0
+    assert meta["semantic_split_count"] == 2
+    assert all(
+        subtree["feature"] not in {"base_score", "score_std"}
+        for subtree in meta["prompt_trees"].values()
+    )

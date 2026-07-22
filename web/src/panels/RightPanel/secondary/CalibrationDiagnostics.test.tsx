@@ -64,9 +64,15 @@ describe('calibration diagnostics', () => {
         }],
         insample_mae: { semantic: 0.6 }, loo_mae: { semantic: 0.8 },
         semantic_tree_selection: {
-          selected: { feature_set: 'rubric', max_depth: 3, min_samples_leaf: 2 },
+          selected: {
+            feature_set: 'rubric', max_depth: 3, min_samples_leaf: 2,
+            semantic_split_count: 3, semantic_prompt_coverage: 3, raw_score_split_count: 0,
+            semantic_coverage_tolerance: 0.01, selected_cv_penalty_for_coverage: 0.003,
+          },
           training_grouped_loo: [], validation_labels_used: false,
         },
+        semantic_split_count: 3, raw_score_split_count: 0,
+        leaf_feature_names: ['base_score', 'score_std'],
         per_item: {
           item: { base: 2, human: [3, 4], booleans: [1], semantic_values: [0.667], missing: [] },
         },
@@ -76,6 +82,9 @@ describe('calibration diagnostics', () => {
     expect(screen.getByText(/training-only grouped LOO/)).toHaveTextContent('depth 3')
     expect(screen.getByText(/validation labels used for tuning/)).toHaveTextContent('no')
     expect(screen.getByText(/graded semantics and debate rules/)).toBeInTheDocument()
+    expect(screen.getByText(/Semantic-first structure/)).toHaveTextContent('3 learned semantic split(s)')
+    expect(screen.getByText(/Semantic-first structure/)).toHaveTextContent('0 raw-score split(s)')
+    expect(screen.getByText(/Broader semantic coverage cost/)).toBeInTheDocument()
     expect(screen.getByText('[0.667]')).toBeInTheDocument()
   })
 

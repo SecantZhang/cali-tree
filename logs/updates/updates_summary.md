@@ -1,3 +1,10 @@
+## 260722-13:44:00 — Make semantic evidence define tree decisions
+- Type: fix
+- Scope: semantic model tree, training-only selection, calibration diagnostics/UI, offline rerender and tests
+- What: Confined score features to leaf calibration, made learned branches semantic-only under fixed prompt routing, and selected three M3/M5/M6 semantic decisions with zero score splits.
+- Why: Prevent raw-score shortcuts from displacing the ontology-backed meaning the semantic tree is intended to express.
+- Details: logs/updates/details/260722-13:44:00-updates.md
+
 ## 260722-13:00:30 — Add joint prompt and temperature calibration
 - Type: feature
 - Scope: judge/debate provenance, joint semantic features and trees, critic reliability, evaluation UI, workflow and tests
