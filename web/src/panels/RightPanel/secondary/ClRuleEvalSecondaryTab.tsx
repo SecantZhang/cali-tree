@@ -82,18 +82,25 @@ export function ClRuleEvalSecondaryTab({ node }: { node: VeNode }) {
       )}
 
       <p className="schema-heading">Item-macro MAE vs human — calibration and incremental rule signal</p>
-      <table className="schema-table">
-        <tbody>
+      <table className="schema-table calibration-mae-table">
+        <colgroup>
+          <col />
+          <col className="calibration-mae-number-column" />
+          <col className="calibration-mae-number-column" />
+        </colgroup>
+        <thead>
           <tr>
-            <td className="schema-field">comparator</td>
-            <td className="schema-type">training</td>
-            <td className="schema-type">held-out</td>
+            <th scope="col">comparator</th>
+            <th scope="col" className="calibration-mae-number">training</th>
+            <th scope="col" className="calibration-mae-number">held-out</th>
           </tr>
+        </thead>
+        <tbody>
           {rows.map((r) => (
             <tr key={r.key}>
               <td className="schema-desc">{r.label}</td>
-              <td className="label-score">{fmt(r.insample)}</td>
-              <td className="label-score">{fmt(r.loo)}</td>
+              <td className="calibration-mae-number">{fmt(r.insample)}</td>
+              <td className="calibration-mae-number">{fmt(r.loo)}</td>
             </tr>
           ))}
         </tbody>
