@@ -1,3 +1,10 @@
+## 260722-14:36:42 — Compress mentor update into five slides
+- Type: docs
+- Scope: mentor-facing weekly project update
+- What: Reorganized the detailed weekly report into five presentation-length slides covering the project overview, framework, algorithms, pipeline/interface, and results/next steps.
+- Why: Make the draft concise enough for a short mentor presentation while preserving the main evidence and limitations.
+- Details: logs/updates/details/260722-14:36:42-updates.md
+
 ## 260722-14:30:04 — Draft weekly mentor project update
 - Type: docs
 - Scope: mentor-facing project status and experiment summary
