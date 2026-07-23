@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { activeGraphStore, activeRunStore } from '../../../store/activeTab'
 import { useTabsStore } from '../../../store/tabsStore'
@@ -114,5 +114,89 @@ describe('calibration diagnostics', () => {
     render(<ClAdversarialSecondaryTab node={n} />)
     expect(screen.getByText(/Fixed human disagreement profile — polarized/)).toBeInTheDocument()
     expect(screen.getByText('oscillation_detected')).toBeInTheDocument()
+  })
+
+  it('renders cumulative live debate turns and preserves the selected concurrent item', () => {
+    const n = node('cl_adversarial')
+    activeGraphStore().getState().setNodeStatus(n.id, 'running')
+    const run = activeRunStore().getState()
+    act(() => {
+      run.setLiveDebate(n.id, {
+        item_id: 'item-a', metric_id: 'M3', revision: 1, state: 'running',
+        initial_judge_result: {
+          metric_id: 'M3', parsed: { score_1_to_5: 3, reasoning_lines: ['anchor a'] },
+        },
+        turns: [{
+          round: 1, role: 'human_proxy', valid: true,
+          parsed: { score_1_to_5: 2, reasoning_lines: ['proxy a'] },
+        }],
+      })
+      run.setLiveDebate(n.id, {
+        item_id: 'item-b', metric_id: 'M3', revision: 0, state: 'running',
+        initial_judge_result: {
+          metric_id: 'M3', parsed: { score_1_to_5: 4, reasoning_lines: ['anchor b'] },
+        },
+        turns: [],
+      })
+    })
+
+    const { container } = render(<ClAdversarialSecondaryTab node={n} />)
+    expect(screen.getByText('proxy a')).toBeInTheDocument()
+    expect(screen.getByText('Judge responding…')).toBeInTheDocument()
+
+    const itemB = screen.getByText('item-b', { exact: false }).closest('li')!
+    fireEvent.click(itemB)
+    expect(itemB).toHaveClass('active')
+    expect(screen.getByText('anchor b')).toBeInTheDocument()
+    expect(screen.getByText('Human proxy responding…')).toBeInTheDocument()
+
+    act(() => {
+      run.setLiveDebate(n.id, {
+        item_id: 'item-a', metric_id: 'M3', revision: 2, state: 'running',
+        initial_judge_result: {
+          metric_id: 'M3', parsed: { score_1_to_5: 3, reasoning_lines: ['anchor a'] },
+        },
+        turns: [
+          {
+            round: 1, role: 'human_proxy', valid: true,
+            parsed: { score_1_to_5: 2, reasoning_lines: ['proxy a'] },
+          },
+          {
+            round: 1, role: 'judge', valid: true,
+            parsed: { score_1_to_5: 3, reasoning_lines: ['judge a'] },
+          },
+        ],
+      })
+    })
+    expect(itemB).toHaveClass('active')
+    expect(container).toHaveTextContent('anchor b')
+    expect(container).not.toHaveTextContent('judge a')
+  })
+
+  it('keeps a completed calibration partial visible while a downstream node runs', () => {
+    const n = node('cl_adversarial')
+    activeGraphStore().getState().setNodeStatus(n.id, 'done')
+    activeRunStore().getState().setPartialResult(n.id, {
+      calibration_results: {
+        item: {
+          item_id: 'item', metric_id: 'M5', original_score: 2, final_score: 3,
+          score_delta: 1, converged: true, rounds_run: 1, flags: [],
+          optimized_prompt: 'persisted semantic prompt', reasoning: 'finished debate',
+          transcript: {
+            turns: [{
+              round: 1, role: 'judge', valid: true,
+              parsed: { score_1_to_5: 3, reasoning_lines: ['still visible'] },
+            }],
+            converged: true,
+          },
+          human_scores: {}, human_gap: {}, grounded: false,
+        },
+      },
+    }, {})
+
+    render(<ClAdversarialSecondaryTab node={n} />)
+
+    expect(screen.getByText('still visible')).toBeInTheDocument()
+    expect(screen.getByText(/Calibrated:/).parentElement).toHaveTextContent('3')
   })
 })

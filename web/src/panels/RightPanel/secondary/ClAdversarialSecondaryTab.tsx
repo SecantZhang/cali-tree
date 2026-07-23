@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ProgressBar } from '../../../components/ProgressBar'
 import type { VeNode } from '../../../store/graphStore'
 import { useActiveRunStore } from '../../../store/activeTab'
+import type { LiveDebate } from '../../../store/runStore'
+
+const EMPTY_LIVE_DEBATES: Record<string, LiveDebate> = {}
 
 interface DebateTurn {
   round: number
   role: 'judge' | 'human_proxy'
   parsed?: Record<string, unknown> | null
   valid?: boolean
-  error?: string
+  error?: string | null
   model?: string | null
   retrieval_used?: boolean
 }
@@ -165,17 +168,85 @@ function AnchorBubble({ result }: { result: InitialJudgeResult | undefined }) {
 export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
   const lastResult = useActiveRunStore((s) => s.lastNodeResults[node.id])
   const partial = useActiveRunStore((s) => s.partialResults[node.id])
+  const liveDebates = useActiveRunStore((s) => s.liveDebates[node.id] ?? EMPTY_LIVE_DEBATES)
   const nodeProgress = useActiveRunStore((s) => s.nodeProgress[node.id])
   const logs = useActiveRunStore((s) => s.logs)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  const chatRef = useRef<HTMLDivElement | null>(null)
+  const followChatBottom = useRef(true)
 
   const isRunning = node.data.status === 'running'
-  const active = isRunning && partial ? partial : lastResult
+  const liveItemIds = Object.keys(liveDebates)
+  // A current-run partial remains the best available snapshot after this node becomes
+  // done and a downstream node starts. Authoritative results replace it atomically when
+  // the whole run is hydrated; a new live chat hides stale prior-run results meanwhile.
+  const active = partial ?? (liveItemIds.length > 0 ? undefined : lastResult)
 
   const calibrationResults = (active?.outputs?.calibration_results ?? {}) as Record<
     string, CalibrationItem
   >
-  const itemIds = Object.keys(calibrationResults)
+  const itemIds = Array.from(new Set([...liveItemIds, ...Object.keys(calibrationResults)]))
+
+  useEffect(() => {
+    if (itemIds.length === 0) {
+      if (selectedItem !== null) setSelectedItem(null)
+      return
+    }
+    if (selectedItem === null || !itemIds.includes(selectedItem)) {
+      setSelectedItem(itemIds[0])
+    }
+  }, [itemIds.join('\u0000'), selectedItem])
+
+  const results = Object.values(calibrationResults)
+  const convergedCount = results.filter((r) => r.converged).length
+  const deltas = results
+    .map((r) => r.score_delta)
+    .filter((d): d is number => typeof d === 'number')
+  const avgAbsDelta = deltas.length
+    ? deltas.reduce((a, b) => a + Math.abs(b), 0) / deltas.length
+    : null
+
+  const activeItem = selectedItem && itemIds.includes(selectedItem)
+    ? selectedItem
+    : (itemIds[0] ?? '')
+  const item = calibrationResults[activeItem]
+  const liveItem = liveDebates[activeItem]
+  const transcript: DebateTranscript = item?.transcript ?? {
+    turns: (liveItem?.turns ?? []) as DebateTurn[],
+    converged: false,
+    initial_judge_result: liveItem?.initial_judge_result as InitialJudgeResult | undefined,
+  }
+  const humanDims = Object.entries(item?.human_scores ?? {})
+  const liveRunning = Object.values(liveDebates).some((debate) => debate.state === 'running')
+  const nextRole = transcript.turns.at(-1)?.role === 'human_proxy' ? 'Judge' : 'Human proxy'
+  const originalParsed = transcript.initial_judge_result?.parsed
+  const liveOriginalScore = typeof originalParsed?.score_1_to_5 === 'number'
+    ? originalParsed.score_1_to_5
+    : typeof originalParsed?.overall_av_sync_score === 'number'
+      ? originalParsed.overall_av_sync_score
+      : null
+
+  useEffect(() => {
+    followChatBottom.current = true
+  }, [activeItem])
+
+  useEffect(() => {
+    const chat = chatRef.current
+    if (chat && followChatBottom.current) chat.scrollTop = chat.scrollHeight
+  }, [activeItem, transcript.turns.length])
+
+  const handleChatScroll = () => {
+    const chat = chatRef.current
+    if (!chat) return
+    followChatBottom.current =
+      chat.scrollHeight - chat.scrollTop - chat.clientHeight < 48
+  }
+  // One item-independent calibration note distilled across all items (node meta) — the
+  // generalizing artifact, meant to be applied to unseen items.
+  const generalPrompt =
+    typeof active?.meta?.general_optimized_prompt === 'string'
+      ? (active.meta.general_optimized_prompt as string)
+      : ''
 
   if (itemIds.length === 0) {
     if (isRunning) {
@@ -199,29 +270,10 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
     )
   }
 
-  const results = itemIds.map((iid) => calibrationResults[iid])
-  const convergedCount = results.filter((r) => r.converged).length
-  const deltas = results
-    .map((r) => r.score_delta)
-    .filter((d): d is number => typeof d === 'number')
-  const avgAbsDelta = deltas.length
-    ? deltas.reduce((a, b) => a + Math.abs(b), 0) / deltas.length
-    : null
-
-  const activeItem = selectedItem ?? itemIds[0]
-  const item = calibrationResults[activeItem]
-  const humanDims = Object.entries(item.human_scores ?? {})
-  // One item-independent calibration note distilled across all items (node meta) — the
-  // generalizing artifact, meant to be applied to unseen items.
-  const generalPrompt =
-    typeof active?.meta?.general_optimized_prompt === 'string'
-      ? (active.meta.general_optimized_prompt as string)
-      : ''
-
   return (
     <div>
-      {isRunning && partial && (
-        <p className="empty-hint">Live preview — updates as this node completes batches.</p>
+      {(liveRunning || (isRunning && partial)) && (
+        <p className="empty-hint">Live debate — updates after every completed agent turn.</p>
       )}
       <div className="secondary-summary">
         <div><strong>Items:</strong> {itemIds.length}</div>
@@ -238,38 +290,40 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
         <ul className="dataset-item-list secondary-item-list">
           {itemIds.map((iid) => {
             const r = calibrationResults[iid]
+            const live = liveDebates[iid]
             return (
               <li
                 key={iid} className={iid === activeItem ? 'active' : ''}
                 onClick={() => setSelectedItem(iid)}
               >
-                {iid} <DeltaBadge delta={r.score_delta} />{' '}
-                {r.converged ? '✓' : '✕'}
+                {iid}{' '}
+                {r ? <DeltaBadge delta={r.score_delta} /> : <span className="tag">live</span>}{' '}
+                {live?.state === 'running' ? '●' : r ? (r.converged ? '✓' : '✕') : '✓'}
               </li>
             )
           })}
         </ul>
         <div className="rationale-view">
           <div className="debate-score-strip">
-            <div><strong>Original:</strong> {item.original_score ?? '—'}</div>
-            {item.score_provenance && (
+            <div><strong>Original:</strong> {item?.original_score ?? liveOriginalScore ?? '—'}</div>
+            {item?.score_provenance && (
               <div>
                 <strong>Raw source:</strong> {item.score_provenance.parsed_field ?? '—'}
                 {' = '}{item.score_provenance.raw_value ?? '—'}
               </div>
             )}
-            <div><strong>Calibrated:</strong> {item.final_score ?? '—'}</div>
-            <div><strong>Δ:</strong> <DeltaBadge delta={item.score_delta} /></div>
+            <div><strong>Calibrated:</strong> {item?.final_score ?? 'debating…'}</div>
+            {item && <div><strong>Δ:</strong> <DeltaBadge delta={item.score_delta} /></div>}
             {humanDims.length > 0 ? (
               humanDims.map(([dim, info]) => (
                 <div key={dim}>
                   <strong>Human ({dim}):</strong>{' '}
                   {info.scores?.length ? info.scores.join(', ') : (info.score ?? '—')}{' '}
                   {info.n > 0 && <span className="tag">n={info.n}</span>}{' '}
-                  {typeof item.human_gap?.[dim] === 'number' && (
+                  {typeof item?.human_gap?.[dim] === 'number' && (
                     <span className="tag">gap {item.human_gap[dim].toFixed(2)}</span>
                   )}
-                  {Array.isArray(item.human_gap?.[dim]) && (
+                  {Array.isArray(item?.human_gap?.[dim]) && (
                     <span className="tag">
                       gaps {(item.human_gap[dim] as number[]).map((v) => v.toFixed(2)).join(', ')}
                     </span>
@@ -277,31 +331,43 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
                 </div>
               ))
             ) : (
-              <div className="empty-hint">no human dimension for this metric</div>
+              item ? <div className="empty-hint">no human dimension for this metric</div> : null
             )}
             <div>
-              <span className="tag">{item.converged ? 'converged' : 'not converged'}</span>{' '}
-              <span className="tag">{item.rounds_run} round(s)</span>{' '}
-              {item.grounded && <span className="tag">grounded</span>}
-              {item.summary_mode_used && (
+              {item ? (
+                <>
+                  <span className="tag">{item.converged ? 'converged' : 'not converged'}</span>{' '}
+                  <span className="tag">{item.rounds_run} round(s)</span>{' '}
+                </>
+              ) : (
+                <span className="tag">conversation in progress</span>
+              )}{' '}
+              {item?.grounded && <span className="tag">grounded</span>}
+              {item?.summary_mode_used && (
                 <span className={item.summary_mode_used === 'rule_based_fallback' ? 'tag tag-error' : 'tag'}>
                   summary: {item.summary_mode_used.replaceAll('_', ' ')}
                 </span>
               )}
-              {item.flags.map((f) => (
+              {(item?.flags ?? []).map((f) => (
                 <span key={f} className="tag">{f}</span>
               ))}
             </div>
           </div>
 
-          <div className="debate-chat">
-            <AnchorBubble result={item.transcript.initial_judge_result} />
-            {item.transcript.turns.map((turn, i) => (
+          <div className="debate-chat" ref={chatRef} onScroll={handleChatScroll}>
+            <AnchorBubble result={transcript.initial_judge_result} />
+            {transcript.turns.map((turn, i) => (
               <TurnBubble key={i} turn={turn} />
             ))}
+            {liveItem?.state === 'running' && (
+              <div className="debate-responding" aria-live="polite">
+                <span className="debate-responding-dot" />
+                {nextRole} responding…
+              </div>
+            )}
           </div>
 
-          {item.human_disagreement_profile?.rating_count && (
+          {item?.human_disagreement_profile?.rating_count && (
             <details open={item.human_disagreement_profile.polarized}>
               <summary>
                 Fixed human disagreement profile
@@ -313,20 +379,24 @@ export function ClAdversarialSecondaryTab({ node }: { node: VeNode }) {
             </details>
           )}
 
-          <details>
-            <summary>Calibrated reasoning</summary>
-            <p className="reasoning">{item.reasoning}</p>
-          </details>
-          <details>
-            <summary>
-              Optimized prompt
-              {item.summary_version ? ` (${item.summary_version})` : ''}
-            </summary>
-            {item.summary_error && (
-              <p className="rationale-error">LLM summary fallback: {item.summary_error}</p>
-            )}
-            <pre className="json-preview">{item.optimized_prompt}</pre>
-          </details>
+          {item && (
+            <>
+              <details>
+                <summary>Calibrated reasoning</summary>
+                <p className="reasoning">{item.reasoning}</p>
+              </details>
+              <details>
+                <summary>
+                  Optimized prompt
+                  {item.summary_version ? ` (${item.summary_version})` : ''}
+                </summary>
+                {item.summary_error && (
+                  <p className="rationale-error">LLM summary fallback: {item.summary_error}</p>
+                )}
+                <pre className="json-preview">{item.optimized_prompt}</pre>
+              </details>
+            </>
+          )}
         </div>
       </div>
     </div>

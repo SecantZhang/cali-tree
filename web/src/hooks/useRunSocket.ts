@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { getRun, type RunStatusOut } from '../api/runs'
 import { wsUrl } from '../api/client'
 import type { GraphStoreApi } from '../store/graphStore'
-import type { RunStatus, RunStoreApi } from '../store/runStore'
+import type { LiveDebate, RunStatus, RunStoreApi } from '../store/runStore'
 import type { NodeStatus } from '../nodes/types'
 
 interface RunEvent {
@@ -17,6 +17,10 @@ interface RunEvent {
   outputs?: Record<string, unknown>
   meta?: Record<string, unknown>
   order?: string[]
+  revision?: number
+  initial_judge_result?: Record<string, unknown>
+  turns?: LiveDebate['turns']
+  state?: LiveDebate['state']
 }
 
 // New hard-stop runs transition directly to "stopped". "stopping" remains tolerated in
@@ -85,7 +89,7 @@ export function useRunSocket(
       const final = await getRun(id).catch(() => null)
       if (!cancelled && final) {
         applyFinalNodeStatuses(final.node_results)
-        runStore.getState().setLastNodeResults(final.node_results)
+        runStore.getState().promoteFinalNodeResults(final.node_results)
         // Exactly this run's coverage (replaced, not merged) — gates lock-eligibility.
         runStore.getState().setLastRunNodeIds(Object.keys(final.node_results))
         appendWarningLogs(runStore, final.node_results)
@@ -124,6 +128,15 @@ export function useRunSocket(
         })
       } else if (event.type === 'run_order') {
         runStore.getState().setRunOrder(event.order ?? [])
+      } else if (event.type === 'calibration_chat' && event.node_id && event.item_id) {
+        runStore.getState().setLiveDebate(event.node_id, {
+          item_id: event.item_id,
+          metric_id: event.metric_id ?? '',
+          revision: event.revision ?? 0,
+          initial_judge_result: event.initial_judge_result,
+          turns: event.turns ?? [],
+          state: event.state ?? 'running',
+        })
       } else if (
         (event.type === 'judge_progress_init' || event.type === 'calibration_progress_init') &&
         event.node_id && event.total != null
@@ -138,6 +151,12 @@ export function useRunSocket(
           event.node_id
         ) {
           incrementNodeProgress(event.node_id)
+        }
+        if (
+          event.type === 'calibration_item_done' &&
+          event.node_id && event.item_id
+        ) {
+          runStore.getState().markLiveDebateComplete(event.node_id, event.item_id)
         }
         appendLog({
           ts: Date.now(),
@@ -175,7 +194,7 @@ export function useRunSocket(
           for (const nodeId of current.order) runStore.getState().clearStale(nodeId)
         }
         runStore.getState().setStatus(current.status as RunStatus, current.error)
-        runStore.getState().setLastNodeResults(current.node_results)
+        runStore.getState().promoteFinalNodeResults(current.node_results)
         runStore.getState().setLastRunNodeIds(Object.keys(current.node_results ?? {}))
         appendWarningLogs(runStore, current.node_results ?? {})
         return
