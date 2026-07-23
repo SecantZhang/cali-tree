@@ -545,16 +545,41 @@ def test_checkpoint_resume_skips_completed_items(monkeypatch, make_ctx):
         params={"max_rounds": 1, "retrieval_enabled": False},
         inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
     )
+    events: list[tuple[str, dict]] = []
+    ctx.progress_cb = lambda event, payload: events.append((event, payload))
 
     result1 = ClAdversarialNodeExecutor().run(ctx)
     assert result1.status == "done"
     n_first = calls["n"]
     assert n_first > 0
     assert ctx.checkpoint.has(_debate_key("prj-x::0::peanut", "M3"))
+    assert any(event == "calibration_chat" for event, _ in events)
 
+    events.clear()
     result2 = ClAdversarialNodeExecutor().run(ctx)
     assert result2.status == "done"
     assert calls["n"] == n_first  # unchanged — served from checkpoint
+    assert not any(event == "calibration_chat" for event, _ in events)
+
+
+def test_final_partial_flush_includes_batch_remainder(monkeypatch, make_ctx):
+    monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
+    item = "prj-x::0::peanut"
+    dataset = {item: _sample(item)}
+    judge_result = _judge_result(item, metric_id="M3", score=3.0)
+    ctx = make_ctx(
+        params={"max_rounds": 1, "retrieval_enabled": False, "batch_size": 2},
+        inputs=_inputs(dataset, judge_result), dry_run=False, allow_live=True,
+    )
+    batches: list[tuple[str, dict]] = []
+    ctx.on_batch = lambda socket, value: batches.append((socket, value))
+
+    result = ClAdversarialNodeExecutor().run(ctx)
+
+    assert result.status == "done"
+    assert len(batches) == 1
+    assert batches[0][0] == "calibration_results"
+    assert set(batches[0][1]) == {item}
 
 
 def test_legacy_debate_checkpoint_is_invalidated_by_prompt_and_profile_version(monkeypatch, make_ctx):
@@ -811,6 +836,10 @@ def test_progress_events_are_calibration_specific(monkeypatch, make_ctx):
     assert "calibration_progress_init" in names
     assert "calibration_item_start" in names
     assert "calibration_item_done" in names
+    chat = [payload for event, payload in events if event == "calibration_chat"]
+    assert [payload["revision"] for payload in chat] == [0, 1, 2]
+    assert [turn["role"] for turn in chat[-1]["turns"]] == ["human_proxy", "judge"]
+    assert chat[0]["initial_judge_result"]["parsed"]["score_1_to_5"] == 3.0
 
 
 def test_all_turns_failed_item_is_not_checkpointed(monkeypatch, make_ctx):

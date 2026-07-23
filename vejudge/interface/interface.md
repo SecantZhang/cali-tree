@@ -589,6 +589,16 @@ reasoning/whether it was grounded in a retrieved note), a score-comparison strip
 whether the requested summary used the LLM, deterministic rules, or a visible fallback;
 the prompt section shows the summary version and fallback error when present.
 
+During a live run, the worker emits one cumulative `calibration_chat` websocket event
+when an item's conversation starts and after each complete human-proxy or judge model
+turn. The selected chat updates immediately, shows which role is responding next, and
+auto-scrolls only while the viewer remains near the bottom. Concurrent item updates never
+change a manual selection. These events contain display-safe chat fields and are temporary;
+the persisted `calibration_results.transcript` remains authoritative. The latest partial
+calibration result stays visible after this node finishes while downstream nodes run, then
+is atomically replaced by the final REST-hydrated result when the workflow terminates.
+Stopped nodes retain any browser-side partial conversation until Resume starts a new run.
+
 #### Judge Node
 
 *Category: `node_vejudge`*

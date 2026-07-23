@@ -22,6 +22,26 @@ export interface PartialResult {
   meta: Record<string, unknown>
 }
 
+export interface LiveDebateTurn {
+  round: number
+  role: 'judge' | 'human_proxy'
+  parsed?: Record<string, unknown> | null
+  valid?: boolean
+  error?: string | null
+  model?: string | null
+  retrieval_used?: boolean
+  validation_flags?: string[]
+}
+
+export interface LiveDebate {
+  item_id: string
+  metric_id: string
+  revision: number
+  initial_judge_result?: Record<string, unknown>
+  turns: LiveDebateTurn[]
+  state: 'running' | 'complete'
+}
+
 export interface RunState {
   runId: string | null
   status: RunStatus
@@ -42,9 +62,13 @@ export interface RunState {
   // so you can't lock a node that has no real result in the run that would be reused.
   lastRunNodeIds: Set<string>
   // Live batch-eval previews, keyed by node id — populated from `partial_result` WS
-  // events while a run is in flight. Cleared at the start of each run; superseded by
-  // `lastNodeResults` once the node's own authoritative run finishes.
+  // events while a run is in flight. Cleared at the start of each run; superseded
+  // atomically when authoritative workflow results are hydrated.
   partialResults: Record<string, PartialResult>
+  // Cumulative, display-safe adversarial transcripts, keyed node -> item. Each incoming
+  // revision replaces the prior item snapshot, so reconnects/newer turns cannot duplicate
+  // chat bubbles. Final persisted node results remain authoritative.
+  liveDebates: Record<string, Record<string, LiveDebate>>
   // Live progress, driving the 3 progress bars (see interface.md's Run controls).
   nodeProgress: Record<string, NodeProgress>
   currentRunningNodeId: string | null
@@ -72,6 +96,9 @@ export interface RunState {
   setLastNodeResults: (results: Record<string, NodeResultOut>) => void
   setLastRunNodeIds: (ids: Iterable<string>) => void
   setPartialResult: (nodeId: string, outputs: Record<string, unknown>, meta: Record<string, unknown>) => void
+  setLiveDebate: (nodeId: string, debate: LiveDebate) => void
+  markLiveDebateComplete: (nodeId: string, itemId: string) => void
+  promoteFinalNodeResults: (results: Record<string, NodeResultOut>) => void
   setCurrentRunningNode: (nodeId: string | null) => void
   setNodeProgressTotal: (nodeId: string, total: number) => void
   incrementNodeProgress: (nodeId: string) => void
@@ -96,6 +123,7 @@ export function createRunStore(): RunStoreApi {
     lastNodeResults: {},
     lastRunNodeIds: new Set(),
     partialResults: {},
+    liveDebates: {},
     nodeProgress: {},
     currentRunningNodeId: null,
     totalNodes: 0,
@@ -107,12 +135,13 @@ export function createRunStore(): RunStoreApi {
 
     beginRun: (runId, totalNodes, isLive = false) => set({
       runId, status: 'running', error: null, logs: [], isLive, partialResults: {},
+      liveDebates: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes, completedNodeIds: new Set(),
       runOrder: [],
     }),
 
     attachRun: (runId) => set({
-      runId, status: 'idle', error: null, logs: [], partialResults: {},
+      runId, status: 'idle', error: null, logs: [], partialResults: {}, liveDebates: {},
       nodeProgress: {}, currentRunningNodeId: null,
     }),
 
@@ -131,6 +160,63 @@ export function createRunStore(): RunStoreApi {
 
     setPartialResult: (nodeId, outputs, meta) => {
       set((s) => ({ partialResults: { ...s.partialResults, [nodeId]: { outputs, meta } } }))
+    },
+
+    setLiveDebate: (nodeId, debate) => {
+      set((s) => {
+        const nodeDebates = s.liveDebates[nodeId] ?? {}
+        const previous = nodeDebates[debate.item_id]
+        if (previous && previous.revision >= debate.revision) return s
+        return {
+          liveDebates: {
+            ...s.liveDebates,
+            [nodeId]: {
+              ...nodeDebates,
+              [debate.item_id]: {
+                ...debate,
+                state: previous?.state === 'complete' ? 'complete' : debate.state,
+              },
+            },
+          },
+        }
+      })
+    },
+
+    markLiveDebateComplete: (nodeId, itemId) => {
+      set((s) => {
+        const nodeDebates = s.liveDebates[nodeId]
+        const debate = nodeDebates?.[itemId]
+        if (!debate || debate.state === 'complete') return s
+        return {
+          liveDebates: {
+            ...s.liveDebates,
+            [nodeId]: {
+              ...nodeDebates,
+              [itemId]: { ...debate, state: 'complete' },
+            },
+          },
+        }
+      })
+    },
+
+    promoteFinalNodeResults: (results) => {
+      set((s) => {
+        const partialResults = { ...s.partialResults }
+        const liveDebates = { ...s.liveDebates }
+        for (const [nodeId, result] of Object.entries(results)) {
+          // A stopped/interrupted node often has no authoritative output. Keep its
+          // browser-side partial conversation available until Resume starts a new run.
+          if (Object.keys(result.outputs ?? {}).length > 0) {
+            delete partialResults[nodeId]
+            delete liveDebates[nodeId]
+          }
+        }
+        return {
+          lastNodeResults: { ...s.lastNodeResults, ...results },
+          partialResults,
+          liveDebates,
+        }
+      })
     },
 
     setCurrentRunningNode: (nodeId) => {
@@ -194,6 +280,7 @@ export function createRunStore(): RunStoreApi {
 
     reset: () => set({
       runId: null, status: 'idle', error: null, logs: [], isLive: false, partialResults: {},
+      liveDebates: {},
       nodeProgress: {}, currentRunningNodeId: null, totalNodes: 0, completedNodeIds: new Set(),
       runOrder: [], staleNodeIds: new Set(), lastRunNodeIds: new Set(),
     }),

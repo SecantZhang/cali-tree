@@ -13,7 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from threading import Semaphore
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from ...core.calibration.debate import DebateConfig, DebateRunner, to_calibrated_result
 from ...core.calibration.debate.calibrated_result import _TENDENCY
@@ -41,6 +41,7 @@ def _calibrate_one(
     config: DebateConfig,
     sample: dict[str, Any],
     human_ctx: Optional[dict[str, Any]] = None,
+    on_transcript: Optional[Callable[[DebateTranscript], None]] = None,
 ) -> dict[str, Any]:
     metric_id = original_output["metric_id"]
     # Per-item anchor score (mirrors how metric_id is already resolved per item, not
@@ -54,7 +55,7 @@ def _calibrate_one(
     debater = DebateRunner(
         metric_id=metric_id, judge_engine=judge_engine, proxy_engine=human_engine, config=item_config,
     )
-    verdict = debater.run(sample, original_output)
+    verdict = debater.run(sample, original_output, on_transcript=on_transcript)
     result = to_calibrated_result(verdict).to_dict()
     score_field = "overall_av_sync_score" if metric_id == "M6" else "score_1_to_5"
     result["score_provenance"] = {
@@ -93,6 +94,30 @@ def _calibrate_one(
         else:
             result["human_gap"][dim] = None
     return result
+
+
+def _display_transcript(transcript: DebateTranscript) -> dict[str, Any]:
+    """Small cumulative websocket payload; persisted transcripts remain authoritative."""
+    return {
+        "item_id": transcript.item_id,
+        "metric_id": transcript.metric_id,
+        "revision": len(transcript.turns),
+        "initial_judge_result": transcript.initial_judge_result,
+        "turns": [
+            {
+                "round": turn.round,
+                "role": turn.role,
+                "parsed": turn.parsed,
+                "valid": turn.valid,
+                "error": turn.error,
+                "model": turn.model,
+                "retrieval_used": turn.retrieval_used,
+                "validation_flags": list(turn.validation_flags),
+            }
+            for turn in transcript.turns
+        ],
+        "state": "running",
+    }
 
 
 def run_concurrent_debates(
@@ -201,9 +226,14 @@ def run_concurrent_debates(
         if ctx.checkpoint.has(ckpt_key):
             result = ctx.checkpoint.get(ckpt_key)
         else:
+            def _publish_transcript(transcript: DebateTranscript) -> None:
+                if ctx.progress_cb:
+                    ctx.progress_cb("calibration_chat", _display_transcript(transcript))
+
             result = _calibrate_one(
                 anchors[item_id], judge_engine, human_engine, config, dataset[item_id],
                 human_ctx=(human_context or {}).get(item_id),
+                on_transcript=_publish_transcript,
             )
             if "all_turns_failed" not in (result.get("flags") or []):
                 # Base debate checkpoint is independent from the selected summary mode.
@@ -254,6 +284,16 @@ def run_concurrent_debates(
                 for f in futs:
                     if not f.done():
                         f.cancel()
+
+    # Preserve every completed item in the node's own live snapshot. Without this final
+    # flush, batch_size > 1 could leave the last remainder invisible until the full graph
+    # finished and its authoritative results were fetched.
+    if (
+        ctx.on_batch
+        and newly_complete_count
+        and newly_complete_count % batch_size != 0
+    ):
+        ctx.on_batch("calibration_results", dict(per_item))
 
     meta: dict[str, Any] = {
         "n_items": len(anchors),

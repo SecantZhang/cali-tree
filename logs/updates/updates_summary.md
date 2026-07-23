@@ -1,3 +1,10 @@
+## 260723-12:09:15 — Stream adversarial debates live and preserve completed content
+- Type: feature
+- Scope: debate progress events, run websocket/store, adversarial secondary tab, tests and interface docs
+- What: Streams each completed proxy/judge turn into a cumulative live chat and keeps completed calibration content visible while downstream nodes execute.
+- Why: Let users watch agents negotiate in action without the secondary tab going blank between node and workflow completion.
+- Details: logs/updates/details/260723-12:09:15-updates.md
+
 ## 260722-14:36:42 — Compress mentor update into five slides
 - Type: docs
 - Scope: mentor-facing weekly project update
