@@ -20,6 +20,7 @@ from typing import Optional
 # rest of the suite.
 RESPONSE_DELAY_S = 0.2
 HARD_STOP_DELAY_S = 3.0
+CALIBRATED_JUDGE_DELAY_S = 1.5
 
 # A single combined response body whose keys are the union of every M1-M6 schema PLUS the
 # D1 (judge-agent debate turn)/D2 (human-proxy debate turn) schemas, so it validates cleanly
@@ -87,7 +88,16 @@ class Handler(BaseHTTPRequestHandler):
         # The stop/resume spec selects this otherwise-unusual temperature to hold a real
         # HTTP request open long enough to prove Stop kills the run worker rather than
         # waiting for the response. Other E2E calls retain the fast default.
-        delay = HARD_STOP_DELAY_S if request.get("temperature") == 9.9 else RESPONSE_DELAY_S
+        all_messages = json.dumps(messages)
+        if request.get("temperature") == 9.9:
+            delay = HARD_STOP_DELAY_S
+        elif "Evaluate audiovisual coherence across the complete edit." in all_messages:
+            # Keeps the downstream calibrated Judge visibly running after the
+            # Adversarial Calibration node completes, so the browser suite can prove
+            # the finished node's secondary transcript does not disappear in between.
+            delay = CALIBRATED_JUDGE_DELAY_S
+        else:
+            delay = RESPONSE_DELAY_S
         time.sleep(delay)
 
         body = json.dumps({

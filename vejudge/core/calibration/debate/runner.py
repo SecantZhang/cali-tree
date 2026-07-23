@@ -177,7 +177,26 @@ class DebateRunner:
         self._judge_runner = DebateTurnRunner(judge_engine, model=judge_model)
         self._proxy_runner = DebateTurnRunner(proxy_engine, model=proxy_model)
 
-    def run(self, sample: dict[str, Any], original_output: dict[str, Any]) -> DebateVerdict:
+    @staticmethod
+    def _notify_transcript(
+        callback: Optional[Callable[[DebateTranscript], None]],
+        transcript: DebateTranscript,
+    ) -> None:
+        """Publish observational progress without letting UI plumbing affect debate."""
+        if callback is None:
+            return
+        try:
+            callback(transcript)
+        except Exception:  # noqa: BLE001 - live presentation must never fail calibration
+            pass
+
+    def run(
+        self,
+        sample: dict[str, Any],
+        original_output: dict[str, Any],
+        *,
+        on_transcript: Optional[Callable[[DebateTranscript], None]] = None,
+    ) -> DebateVerdict:
         item_id = sample.get("item_id") or (
             f"{sample.get('project', '')}::{sample.get('prompt_idx', '')}::{sample.get('model', '')}"
         )
@@ -208,6 +227,7 @@ class DebateRunner:
             created_at=datetime.now(timezone.utc).isoformat(),
             human_disagreement_profile=disagreement_profile,
         )
+        self._notify_transcript(on_transcript, transcript)
 
         prev_score = initial_score
         converged = False
@@ -239,6 +259,7 @@ class DebateRunner:
                 proxy_turn.retrieval_used = True
                 proxy_turn.retrieved_note = note
             transcript.turns.append(proxy_turn)
+            self._notify_transcript(on_transcript, transcript)
 
             judge_turn = self._judge_runner.run_turn(
                 role="judge",
@@ -253,6 +274,7 @@ class DebateRunner:
                 round_no=round_no,
             )
             transcript.turns.append(judge_turn)
+            self._notify_transcript(on_transcript, transcript)
 
             if not judge_turn.valid or judge_turn.parsed is None:
                 convergence_reason = "invalid_turn"

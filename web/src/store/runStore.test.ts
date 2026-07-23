@@ -108,6 +108,61 @@ describe('runStore progress tracking', () => {
     expect(store.getState().partialResults).toEqual({})
   })
 
+  it('stores cumulative live debates by revision and marks an item complete', () => {
+    const first = {
+      item_id: 'item-a', metric_id: 'M3', revision: 1,
+      turns: [{ round: 1, role: 'human_proxy' as const }],
+      state: 'running' as const,
+    }
+    store.getState().setLiveDebate('cal-1', first)
+    store.getState().setLiveDebate('cal-1', { ...first, revision: 0, turns: [] })
+    expect(store.getState().liveDebates['cal-1']['item-a'].turns).toHaveLength(1)
+
+    store.getState().setLiveDebate('cal-1', {
+      ...first, revision: 2,
+      turns: [...first.turns, { round: 1, role: 'judge' as const }],
+    })
+    store.getState().markLiveDebateComplete('cal-1', 'item-a')
+    expect(store.getState().liveDebates['cal-1']['item-a']).toMatchObject({
+      revision: 2, state: 'complete',
+    })
+  })
+
+  it('promotes authoritative results atomically but preserves stopped partial chats', () => {
+    const fake = (status: 'done' | 'stopped', outputs: Record<string, unknown>) => ({
+      status, error: null, meta: {}, outputs,
+    })
+    store.getState().setPartialResult('done-node', { calibration_results: { a: {} } }, {})
+    store.getState().setPartialResult('stopped-node', { calibration_results: { b: {} } }, {})
+    store.getState().setLiveDebate('done-node', {
+      item_id: 'a', metric_id: 'M3', revision: 0, turns: [], state: 'running',
+    })
+    store.getState().setLiveDebate('stopped-node', {
+      item_id: 'b', metric_id: 'M3', revision: 0, turns: [], state: 'running',
+    })
+
+    store.getState().promoteFinalNodeResults({
+      'done-node': fake('done', { calibration_results: { a: { final: true } } }),
+      'stopped-node': fake('stopped', {}),
+    })
+
+    expect(store.getState().partialResults['done-node']).toBeUndefined()
+    expect(store.getState().liveDebates['done-node']).toBeUndefined()
+    expect(store.getState().partialResults['stopped-node']).toBeDefined()
+    expect(store.getState().liveDebates['stopped-node']).toBeDefined()
+    expect(store.getState().lastNodeResults['done-node'].outputs).toEqual({
+      calibration_results: { a: { final: true } },
+    })
+  })
+
+  it('beginRun clears live debates from the prior run', () => {
+    store.getState().setLiveDebate('cal-1', {
+      item_id: 'a', metric_id: 'M3', revision: 0, turns: [], state: 'running',
+    })
+    store.getState().beginRun('run-2', 2)
+    expect(store.getState().liveDebates).toEqual({})
+  })
+
   it('setLastNodeResults merges into the existing map rather than replacing it', () => {
     const fake = (v: number) => ({ status: 'done', error: null, meta: {}, outputs: { v } })
     store.getState().setLastNodeResults({ a: fake(1), b: fake(2) })
