@@ -76,6 +76,52 @@ def test_converges_within_epsilon_on_round_one():
     assert verdict.transcript.turns[0].validation_flags == []
 
 
+def test_transcript_callback_publishes_start_proxy_and_judge_cumulatively():
+    runner = _runner(
+        judge_responses=[_out({
+            "score_1_to_5": 3.1, "revised": True,
+            "reasoning_lines": ["judge reply"], "evidence": ["e"],
+        })],
+        proxy_responses=[_out({
+            "score_1_to_5": 2, "agrees_with_judge": False,
+            "reasoning_lines": ["proxy reply"], "cited_failure_modes": [],
+        })],
+        epsilon=0.25, max_rounds=1,
+    )
+    snapshots = []
+
+    runner.run(
+        _sample(), _original_output(score=3.0),
+        on_transcript=lambda transcript: snapshots.append([
+            turn.role for turn in transcript.turns
+        ]),
+    )
+
+    assert snapshots == [[], ["human_proxy"], ["human_proxy", "judge"]]
+
+
+def test_transcript_callback_failure_never_changes_debate_result():
+    runner = _runner(
+        judge_responses=[_out({
+            "score_1_to_5": 3.1, "revised": True,
+            "reasoning_lines": ["judge reply"], "evidence": ["e"],
+        })],
+        proxy_responses=[_out({
+            "score_1_to_5": 2, "agrees_with_judge": False,
+            "reasoning_lines": ["proxy reply"], "cited_failure_modes": [],
+        })],
+        epsilon=0.25, max_rounds=1,
+    )
+
+    verdict = runner.run(
+        _sample(), _original_output(score=3.0),
+        on_transcript=lambda _transcript: (_ for _ in ()).throw(RuntimeError("ui down")),
+    )
+
+    assert verdict.converged is True
+    assert [turn.role for turn in verdict.transcript.turns] == ["human_proxy", "judge"]
+
+
 def test_hits_max_rounds_without_converging():
     # Each round the judge moves the score by 0.5 -- always above epsilon=0.25.
     judge_scores = [3.5, 4.0, 4.5, 5.0]

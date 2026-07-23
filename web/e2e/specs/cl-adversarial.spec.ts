@@ -30,6 +30,16 @@ async function dragNodeIntoEmptySpace(page: Page, node: Locator) {
   await page.mouse.up()
 }
 
+async function dragNodeBy(page: Page, node: Locator, dx: number, dy: number) {
+  const box = await node.boundingBox()
+  if (!box) throw new Error('dragNodeBy: missing node bounding box')
+  const from = { x: box.x + 40, y: box.y + 12 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(from.x + dx, from.y + dy, { steps: 12 })
+  await page.mouse.up()
+}
+
 // This graph fans two source handles out to multiple targets (lm_engine-3 -> 3 different
 // nodes, judge_prompt-5 -> 2) — every existing pipeline spec only ever connects a source
 // once. Reusing the same output handle for a second/third drag in quick succession
@@ -81,6 +91,7 @@ test.describe('adversarial calibration node', () => {
   test('calibrates an upstream Judge node\'s result and the optimized prompt reaches a second Judge node', async ({
     page,
   }) => {
+    test.setTimeout(60000)
     await page.goto('/')
     await waitForPaletteLoaded(page)
     await page.locator('.node-palette-item').filter({ hasText: /^cl_adversarial$/ }).waitFor({ state: 'visible' })
@@ -119,11 +130,6 @@ test.describe('adversarial calibration node', () => {
     await datasetNode.locator('.param-row', { hasText: 'aggregation_method' })
       .locator('select').selectOption('mean')
 
-    // Judge Prompt lands in row 0's last column (see the module-level comment on
-    // dragNodeIntoEmptySpace) — move it into genuinely empty canvas space so the final
-    // layout's bounding box stays reachable.
-    await dragNodeIntoEmptySpace(page, promptNode)
-
     // M3 is text-modality and the only metric with a human-annotation crosswalk in
     // ALIGNMENT (postprocessing/align.py) — matches mocked-live-pipeline.spec.ts's choice,
     // and lets this spec also assert a real human-score comparison in the secondary tab.
@@ -132,6 +138,19 @@ test.describe('adversarial calibration node', () => {
     // corpus (this spec doesn't need retrieval grounding to prove the wiring works).
     await calibrationNode.locator('.param-row', { hasText: 'retrieval_enabled' })
       .locator('input[type="checkbox"]').uncheck()
+
+    // Configure before moving: the calibration node's eventual location overlaps the
+    // minimap, which intentionally intercepts ordinary form clicks.
+    await dragNodeIntoEmptySpace(page, promptNode)
+    await dragNodeBy(page, promptNode, -30, 0)
+    // Keep the calibration node's five densely-spaced input handles clear of the
+    // baseline Judge. At some persisted viewport sizes their auto-grid boxes nearly
+    // touch, causing real pointer drags to land on the Judge instead of human_engine.
+    await dragNodeBy(page, calibrationNode, 170, 0)
+    // The second engine initially occupies the last auto-grid column, where its right
+    // output handle can sit underneath the fixed inspector panel. Move it fully inside
+    // the canvas before reusing that handle for the human and summarizer connections.
+    await dragNodeBy(page, humanEngineNode, -330, 190)
 
     await connectSocketsVerified(page, PEANUT_SOURCE, 'raw_dataset', DATASET, 'raw_dataset')
 
@@ -158,30 +177,45 @@ test.describe('adversarial calibration node', () => {
       page.getByTestId(`rf__edge-${CALIBRATION}:calibration_results->${JUDGE_CALIBRATED}:calibration`),
     ).toHaveCount(1)
 
-    // Collapse nodes with many params for visual tidiness, now that every socket handle
-    // has already been used — collapsing shrinks a node's rendered height while its
-    // socket handles are positioned assuming the full uncollapsed height (SocketHandle's
-    // `top` prop), so a later-indexed handle (e.g. cl_adversarial's judge_engine/
-    // human_engine, positions 3-4 of 5) ends up outside the collapsed node's actual
-    // interactable area — collapsing before wiring made exactly those handles
-    // undraggable, which is what broke this spec originally.
-    await judgeBaselineNode.getByRole('button', { name: 'Collapse node' }).click()
-    await calibrationNode.getByRole('button', { name: 'Collapse node' }).click()
+    // Once every edge exists, use the product's own topological layout to remove the
+    // temporary setup positions and keep every node/modal gesture unobstructed.
+    await page.getByRole('button', { name: 'Auto layout' }).click()
+    await page.waitForTimeout(450)
 
     await page.locator('.dry-run-toggle input[type="checkbox"]').uncheck()
     page.once('dialog', (dialog) => dialog.accept())
     const runButton = page.getByRole('button', { name: /^Run(ning…)?$/ })
 
     await runButton.click()
+    await expect(calibrationNode.locator('.status-dot.status-running')).toBeVisible({ timeout: 15000 })
+
+    // --- Calibration node's own secondary tab, opened while the debate is live ---
+    await calibrationNode.dblclick()
+    const calibModal = page.locator('.modal-panel')
+    await expect(calibModal).toBeVisible()
+    await expect(calibModal).toContainText('Live debate')
+    // The original judge appears before either debate agent returns.
+    await expect(calibModal.locator('.debate-turn-anchor').first()).toBeVisible()
+    await expect(calibModal.locator('.debate-responding')).toBeVisible()
+    // Each complete model turn is delivered immediately, before the node itself ends.
+    await expect(calibModal.locator('.debate-turn-human-proxy').first()).toBeVisible()
+    await expect(calibrationNode.locator('.status-dot.status-running')).toBeVisible()
+    await expect(calibModal.locator('.debate-turn-judge').first()).toBeVisible()
+
+    // The downstream calibrated judge is deliberately delayed by the local mock. The
+    // calibration transcript must remain mounted throughout this intermediate state,
+    // rather than disappearing until the overall run completes.
+    await expect(calibrationNode.locator('.status-dot.status-done')).toBeVisible({ timeout: 15000 })
+    await expect(judgeCalibratedNode.locator('.status-dot.status-running')).toBeVisible()
+    await expect(calibModal.locator('.debate-turn-human-proxy').first()).toBeVisible()
+    await expect(calibModal.locator('.debate-turn-judge').first()).toBeVisible()
+
     await expect(runButton).toHaveText('Run', { timeout: 30000 })
     for (const node of [peanutSourceNode, datasetNode, judgeBaselineNode, calibrationNode, judgeCalibratedNode]) {
       await expect(node.locator('.status-dot.status-done')).toBeVisible()
     }
 
-    // --- Calibration node's own secondary tab ---
-    await calibrationNode.dblclick()
-    const calibModal = page.locator('.modal-panel')
-    await expect(calibModal).toBeVisible()
+    // The final REST-hydrated result replaces the live snapshot without a blank state.
     const calibSummary = calibModal.locator('.secondary-summary')
     await expect(calibSummary).toContainText('Items: 2')
     await expect(calibSummary).toContainText('Converged: 2 / 2')
