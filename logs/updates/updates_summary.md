@@ -1,3 +1,10 @@
+## 260724-16:33:20 — Add recursive workflow folders
+- Type: feature
+- Scope: workflow storage/API, interface folder tree, compatibility and browser tests
+- What: Recursively exposes nested workflow JSON as a collapsible folder tree and supports safe `folder/name` save, load, run lookup, and delete operations.
+- Why: Make bundled examples and organized experiment workflows visible without flattening the repository structure.
+- Details: logs/updates/details/260724-16:33:20-updates.md
+
 ## 260724-11:20:28 — Add edit-aware evidence judging and calibration
 - Type: feature
 - Scope: evidence storage, video decomposition, area judging, calibration, workflow interface, tests and docs

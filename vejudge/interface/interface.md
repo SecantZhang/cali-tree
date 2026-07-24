@@ -791,6 +791,13 @@ A workflow is a saved node graph (JSON, stored under the left panel's *Workflows
 workflow must round-trip to an equivalent CLI invocation — the interface is a visual layer over
 `run/*.sh`, not a second implementation of the pipeline.
 
+The workflow browser mirrors recursive folders under `workflows/`. For example,
+`workflows/examples/edit_aware_calibration.json` appears as
+**examples → edit_aware_calibration**. Saving as `research/ablation_v1` creates
+`workflows/research/ablation_v1.json`; existing flat workflow names remain valid. Each path
+component is restricted to letters, digits, `_`, and `-`, and traversal outside the workflow
+root is rejected.
+
 ### Workflows list
 
 * **Base Benchmark** — `Peanut Source` → `Dataset`, fanned out to a per-metric path for each

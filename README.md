@@ -66,7 +66,9 @@ cd web && npm install && npm run dev   # frontend: http://127.0.0.1:5173 (see we
 Graph runs land in `logs/exps/<ts>-exps/` exactly like a CLI run (tagged
 `"benchmark": "interface_graph"`), and saved workflows live under `workflows/`. See
 `workflows/examples/quick_eval.json` for the whole-video path and
-`workflows/examples/edit_aware_calibration.json` for the decomposed path.
+`workflows/examples/edit_aware_calibration.json` for the decomposed path. The interface
+recursively mirrors these folders; save a graph as `folder/name` to organize it under
+`workflows/folder/name.json`.
 
 ## What it does
 

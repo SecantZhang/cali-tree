@@ -100,6 +100,46 @@ def test_workflow_save_load_round_trip(client):
     assert client.get("/api/workflows").json() == []
 
 
+def test_workflow_folders_are_recursive_safe_and_backward_compatible(client):
+    body = {
+        "name": "examples/edit_aware/calibration_v1",
+        "graph": _graph_body()["graph"],
+    }
+    response = client.post("/api/workflows", json=body)
+    assert response.status_code == 200
+    assert response.json()["name"] == "examples/edit_aware/calibration_v1"
+
+    # Flat names and nested names share the original string-list response contract.
+    flat = dict(body, name="flat")
+    assert client.post("/api/workflows", json=flat).status_code == 200
+    assert client.get("/api/workflows").json() == [
+        "examples/edit_aware/calibration_v1",
+        "flat",
+    ]
+
+    response = client.get("/api/workflows/examples/edit_aware/calibration_v1")
+    assert response.status_code == 200
+    assert response.json()["name"] == "examples/edit_aware/calibration_v1"
+    assert client.get(
+        "/api/workflows/examples/edit_aware/calibration_v1/runs"
+    ).json() == []
+
+    response = client.delete("/api/workflows/examples/edit_aware/calibration_v1")
+    assert response.status_code == 200
+    assert response.json() == {"deleted": "examples/edit_aware/calibration_v1"}
+    assert client.get("/api/workflows").json() == ["flat"]
+
+    for invalid in (
+        "../escape", "folder/../escape", "/absolute", "double//slash",
+        "trailing/", r"windows\path",
+    ):
+        response = client.post(
+            "/api/workflows",
+            json={"name": invalid, "graph": _graph_body()["graph"]},
+        )
+        assert response.status_code == 400
+
+
 def test_workflow_save_load_round_trips_position_and_size(client):
     graph = _graph_body()["graph"]
     graph["nodes"][0]["position"] = {"x": 12.5, "y": 34.0}
