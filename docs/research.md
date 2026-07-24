@@ -109,6 +109,17 @@ rubric interpretability.
 
 ## Future directions
 
+### Edit-aware evidence store — implemented; retrieval remains parked
+
+The preprocessing path now stores shots, edit boundaries, sequences, and audio events as
+stable, versioned evidence units. Area judges score transition smoothness, shot
+quality/stability, sequence pacing/coherence, and audio continuity/sync. Aggregated unit
+statistics are deployment-safe calibration features. Optional unit-label JSONL can calibrate
+an individual rubric without treating a video's many boundaries as independent video labels.
+
+The local implementation is content-addressed files plus SQLite metadata. This is a
+cross-run evidence cache, distinct from the run-scoped judge checkpoint.
+
 ### Video reference database (retrieval-augmented judging) — parked
 
 **Idea:** index every item's videos (source assets + final edit) so we can look up

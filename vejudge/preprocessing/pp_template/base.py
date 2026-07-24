@@ -11,5 +11,5 @@ from typing import Any
 
 class Preprocessor(ABC):
     @abstractmethod
-    def run(self, sample: dict[str, Any]) -> list[dict[str, Any]]:
-        """Produce media_inputs (frame/clip paths or text refs) for a sample."""
+    def run(self, sample: dict[str, Any]) -> Any:
+        """Produce a JSON-safe preprocessing artifact for a sample."""

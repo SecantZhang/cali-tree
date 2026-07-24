@@ -4,6 +4,8 @@
 export type SocketType =
   | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
   | 'metrics_report' | 'calibration_results' | 'general_calibration' | 'judge_rule'
+  | 'evidence_bundle' | 'area_rubric_spec' | 'area_judge_result'
+  | 'decomposition_features' | 'unit_labels' | 'active_labeling_report'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
@@ -16,6 +18,12 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   calibration_results: 'var(--node-calibration)',
   general_calibration: 'var(--node-calibration)',
   judge_rule: 'var(--node-calibration)',
+  evidence_bundle: 'var(--node-preprocessing)',
+  area_rubric_spec: 'var(--node-vejudge)',
+  area_judge_result: 'var(--node-vejudge)',
+  decomposition_features: 'var(--node-calibration)',
+  unit_labels: 'var(--node-db)',
+  active_labeling_report: 'var(--node-calibration)',
 }
 
 // A representative example payload per socket type, shown (collapsed, expandable) in the
@@ -70,6 +78,56 @@ export const SOCKET_EXAMPLES: Partial<Record<SocketType, unknown>> = {
       score_counts: { story_flow_visuals: 3, video_addresses_prompt: 3 },
       raw_scores: { story_flow_visuals: [3, 4, 4], video_addresses_prompt: [4, 4, 4] },
     },
+  },
+  unit_labels: [{
+    item_id: 'travel_vlog::0::modelX',
+    unit_id: 'edit_boundary-0004-abcd1234',
+    rubric_id: 'transition_smoothness',
+    rating: 2,
+    severity: 'major',
+    comment: 'The voiceover is cut mid-word.',
+  }],
+  evidence_bundle: {
+    schema_version: 'evidence-bundle-v1',
+    preprocessing_config_hash: 'abc123',
+    manifests: {
+      'travel_vlog::0::modelX': {
+        evidence_hash: 'evidence-sha256',
+        video_metadata: { duration_seconds: 30, fps: 30, has_audio: true },
+        units: [{
+          unit_id: 'edit_boundary-0004-abcd1234',
+          unit_type: 'edit_boundary',
+          start_seconds: 10,
+          end_seconds: 14,
+          applicable_rubrics: ['transition_smoothness'],
+        }],
+      },
+    },
+  },
+  area_rubric_spec: {
+    kind: 'area',
+    rubric_id: 'transition_smoothness',
+    unit_types: ['edit_boundary'],
+    version: 'area-transition-v1',
+  },
+  area_judge_result: {
+    'travel_vlog::0::modelX': {
+      rubric_id: 'transition_smoothness',
+      selection: { selected: 8, total: 8, coverage: 1 },
+      units: [{ unit_id: 'edit_boundary-0004-abcd1234', score: 2, severity: 'major' }],
+    },
+  },
+  decomposition_features: {
+    'travel_vlog::0::modelX': {
+      features: { 'area:transition_smoothness:p20': 2.4 },
+    },
+  },
+  active_labeling_report: {
+    items: [{
+      item_id: 'travel_vlog::0::modelX',
+      priority: 0.92,
+      reasons: ['wide_calibration_interval'],
+    }],
   },
   // An LM Engine node's config.
   engine_config: {
@@ -160,11 +218,30 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     output: { samples: 'samples', labels: 'labels' },
   },
   preprocessing: { input: { samples: 'samples' }, output: { samples: 'samples' } },
+  unit_labels: { input: {}, output: { unit_labels: 'unit_labels' } },
+  edit_decomposition: {
+    input: { samples: 'samples' },
+    output: { evidence_bundle: 'evidence_bundle' },
+  },
   lm_engine: { input: {}, output: { engine_config: 'engine_config' } },
   // A metric is now a wired artifact, not a dropdown: the Judge Prompt node emits a
   // `judge_spec` (a builtin M1-M6 preset, or a custom free-text judge) that the generic
   // Judge node consumes alongside samples + engine.
   judge_prompt: { input: {}, output: { judge_spec: 'judge_spec' } },
+  area_rubric: { input: {}, output: { area_rubric_spec: 'area_rubric_spec' } },
+  area_judge: {
+    input: {
+      samples: 'samples', evidence_bundle: 'evidence_bundle',
+      engine_config: 'engine_config', area_rubric_spec: 'area_rubric_spec',
+    },
+    output: { area_judge_result: 'area_judge_result' },
+  },
+  area_aggregation: {
+    input: { area_judge_result: 'area_judge_result', unit_labels: 'unit_labels' },
+    output: {
+      judge_result: 'judge_result', decomposition_features: 'decomposition_features',
+    },
+  },
   judge: {
     input: {
       samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec',
@@ -232,6 +309,16 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     },
     output: { judge_rule: 'judge_rule' },
   },
+  edit_aware_calibration: {
+    input: {
+      samples: 'samples', judge_result: 'judge_result', labels: 'labels',
+      decomposition_features: 'decomposition_features', unit_labels: 'unit_labels',
+    },
+    output: {
+      judge_result: 'judge_result', judge_rule: 'judge_rule',
+      active_labeling_report: 'active_labeling_report',
+    },
+  },
 }
 
 // Static mirror of the backend's NodeExecutor.multi_input_sockets: input sockets that
@@ -239,6 +326,8 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
 // several source nodes this way. Everything else stays one-edge-only.
 export const MULTI_INPUT_SOCKETS: Record<string, string[]> = {
   dataset: ['raw_dataset'],
+  area_aggregation: ['area_judge_result'],
+  edit_aware_calibration: ['judge_result'],
 }
 
 export function isMultiInputSocket(

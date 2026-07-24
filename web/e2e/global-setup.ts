@@ -97,6 +97,7 @@ export default async function globalSetup(): Promise<void> {
         // Scratch areas — never the real repo's logs/, workflows/, or credentials file.
         VEJUDGE_WORKFLOWS_ROOT: path.join(tmpDir, 'workflows'),
         VEJUDGE_LOGS_ROOT: path.join(tmpDir, 'logs'),
+        VEJUDGE_EVIDENCE_ROOT: path.join(tmpDir, 'evidence'),
         VEJUDGE_CREDENTIALS_FILE: path.join(tmpDir, 'interface_credentials.json'),
         OPENAI_COMPAT_BASE_URL: `http://127.0.0.1:${gateway.port}`,
         CHAT_GPT_API_KEY: 'sk-e2e-fake',

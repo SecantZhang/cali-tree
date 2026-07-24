@@ -28,6 +28,12 @@ import { GrapenutSourceNode } from '../nodes/GrapenutSourceNode'
 import { PeanutSourceNode } from '../nodes/PeanutSourceNode'
 import { VeBenchSourceNode } from '../nodes/VeBenchSourceNode'
 import { PreprocessingNode } from '../nodes/PreprocessingNode'
+import { UnitLabelsNode } from '../nodes/UnitLabelsNode'
+import { EditDecompositionNode } from '../nodes/EditDecompositionNode'
+import { AreaRubricNode } from '../nodes/AreaRubricNode'
+import { AreaJudgeNode } from '../nodes/AreaJudgeNode'
+import { AreaAggregationNode } from '../nodes/AreaAggregationNode'
+import { EditAwareCalibrationNode } from '../nodes/EditAwareCalibrationNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { isValidSocketConnection } from '../nodes/socketTypes'
@@ -43,15 +49,21 @@ const NODE_TYPES = {
   vebench_source: VeBenchSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
+  unit_labels: UnitLabelsNode,
+  edit_decomposition: EditDecompositionNode,
   lm_engine: LMEngineNode,
   judge_prompt: JudgePromptNode,
   judge: JudgeNode,
+  area_rubric: AreaRubricNode,
+  area_judge: AreaJudgeNode,
+  area_aggregation: AreaAggregationNode,
   eval: EvalNode,
   cl_rule_eval: ClRuleEvalNode,
   alignment_report: AlignmentReportNode,
   cl_adversarial: ClAdversarialNode,
   cl_rule_tree: ClRuleTreeNode,
   cl_semantic_tree: ClSemanticTreeNode,
+  edit_aware_calibration: EditAwareCalibrationNode,
   group: GroupNode,
 }
 

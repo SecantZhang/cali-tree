@@ -345,6 +345,22 @@ Node parameters:
 
 Secondary tab: per-item artifact viewer — a frame filmstrip, the ASR transcript with timestamps, detected shot boundaries overlaid on a scrub bar, and cache hit/miss counters for the current run.
 
+The legacy `Preprocessing` node above stays pass-through compatible. The implemented
+edit-aware path uses explicit nodes:
+
+* **Edit Decomposition**: `samples → evidence_bundle`; reconciles OTIO and rendered
+  boundaries and caches shot/boundary/sequence/audio-event artifacts.
+* **Area Rubric Spec**: produces one of the four fixed versioned local rubrics.
+* **Area Judge**: `samples + evidence_bundle + engine_config + area_rubric_spec →
+  area_judge_result`; one checkpointed call per selected unit.
+* **Area Aggregation**: fan-in `area_judge_result` plus optional `unit_labels` →
+  Eval-compatible `judge_result` and `decomposition_features`.
+* **Edit-Aware Calibration**: grouped held-out ridge calibration over the aggregate features;
+  emits validation-only calibrated `judge_result`, an immutable `judge_rule`, and an
+  active-labeling report.
+
+See `workflows/examples/edit_aware_calibration.json` for the complete graph.
+
 #### LM Engine Node
 
 *Category: `node_lm_engine`* (lives in the `node_vejudge/` Python package, but tagged with

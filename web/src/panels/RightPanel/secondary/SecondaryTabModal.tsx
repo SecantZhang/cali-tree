@@ -15,8 +15,10 @@ import { NodeInputsTab } from './NodeInputsTab'
 import { NodeOutputsTab } from './NodeOutputsTab'
 import { NodeTimingTab } from './NodeTimingTab'
 import { SourceSecondaryTab } from './SourceSecondaryTab'
+import { EditDecompositionSecondaryTab } from './EditDecompositionSecondaryTab'
+import { AreaJudgeSecondaryTab } from './AreaJudgeSecondaryTab'
 
-const JUDGE_TYPES = new Set(['judge'])
+const JUDGE_TYPES = new Set(['judge', 'area_aggregation', 'edit_aware_calibration'])
 const EVAL_TYPES = new Set(['eval'])
 
 // The node-type-specific ("Details") view. Every node ALSO gets the generic Inputs/Outputs/
@@ -25,6 +27,8 @@ function DetailsTab({ node }: { node: VeNode }) {
   const type = node.type ?? ''
   if (type.endsWith('_source')) return <SourceSecondaryTab node={node} />
   if (type === 'dataset') return <DatasetSecondaryTab node={node} />
+  if (type === 'edit_decomposition') return <EditDecompositionSecondaryTab node={node} />
+  if (type === 'area_judge') return <AreaJudgeSecondaryTab node={node} />
   if (JUDGE_TYPES.has(type)) return <JudgeSecondaryTab node={node} />
   if (EVAL_TYPES.has(type)) return <EvalSecondaryTab node={node} />
   if (type === 'alignment_report') return <AlignmentReportSecondaryTab node={node} />

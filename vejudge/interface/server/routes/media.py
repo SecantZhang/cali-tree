@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/media", tags=["media"])
 # `asset_filepaths`, etc. — see dl_peanut_eval/curate.py) ever reach this route from the
 # frontend, but the check below doesn't rely on that — it independently confines every
 # request to these roots regardless of where the path claims to have come from.
-ALLOWED_ROOTS = (config.RENDERED_ROOT, config.DATA_ROOT)
+ALLOWED_ROOTS = (config.RENDERED_ROOT, config.DATA_ROOT, config.EVIDENCE_ROOT)
 
 
 @router.get("")

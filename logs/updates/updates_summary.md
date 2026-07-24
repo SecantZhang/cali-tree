@@ -1,3 +1,10 @@
+## 260724-11:20:28 — Add edit-aware evidence judging and calibration
+- Type: feature
+- Scope: evidence storage, video decomposition, area judging, calibration, workflow interface, tests and docs
+- What: Added an additive four-area evidence pipeline with content-addressed storage, scoped judging, severe-aware aggregation, optional unit feedback, held-out calibration, uncertainty, active labeling, and a complete mocked interface workflow.
+- Why: Calibrate video-editing scores from localized, traceable evidence while preserving the existing whole-video baseline and preventing held-out leakage.
+- Details: logs/updates/details/260724-11:20:28-updates.md
+
 ## 260723-12:09:15 — Stream adversarial debates live and preserve completed content
 - Type: feature
 - Scope: debate progress events, run websocket/store, adversarial secondary tab, tests and interface docs
