@@ -77,6 +77,21 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
       type: 'enum', options: ['reuse_if_present', 'force_recompute'], default: 'reuse_if_present',
     },
   },
+  unit_labels: {
+    path: { type: 'string', default: '' },
+  },
+  edit_decomposition: {
+    boundary_context_seconds: { type: 'number', default: 2.0, min: 0.1 },
+    reconcile_tolerance_seconds: { type: 'number', default: 0.1, min: 0 },
+    max_sequence_seconds: { type: 'number', default: 30, min: 3 },
+    scene_threshold: { type: 'number', default: 27, min: 1 },
+    silence_threshold_db: { type: 'number', default: -40 },
+    minimum_silence_seconds: { type: 'number', default: 0.5, min: 0.1 },
+    extract_artifacts: { type: 'bool', default: true },
+    cache_policy: {
+      type: 'enum', options: ['reuse_if_present', 'force_recompute'], default: 'reuse_if_present',
+    },
+  },
   // model/temperature default to the actual value LMEngine falls back to when unset
   // (config.DEFAULT_TEXT_MODEL, LMEngine.__init__'s own temperature=0.3/max_tokens=4096) —
   // shown explicitly rather than as a blank field so editing the node shows what will
@@ -110,6 +125,23 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     score_path: { type: 'string', default: 'score_1_to_5' },
     target_dimension: { type: 'enum', options: HUMAN_DIMENSIONS, default: HUMAN_DIMENSIONS[0] },
   },
+  area_rubric: {
+    rubric: {
+      type: 'enum',
+      options: [
+        'transition_smoothness', 'visual_quality_temporal_stability',
+        'pacing_narrative_coherence', 'audio_continuity_av_sync',
+      ],
+      default: 'transition_smoothness',
+    },
+  },
+  area_judge: {
+    boundary_cap: { type: 'number', default: 32, min: 0 },
+    shot_cap: { type: 'number', default: 24, min: 0 },
+    sequence_cap: { type: 'number', default: 12, min: 0 },
+    audio_event_cap: { type: 'number', default: 24, min: 0 },
+  },
+  area_aggregation: {},
   // engine_kind/model/temperature/concurrency come from a required upstream LM Engine Node's
   // `engine_config` input; the metric comes from a required `judge_spec` input.
   judge: {
@@ -164,6 +196,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     validation_fraction: { type: 'number', default: 0.2, min: 0.1, max: 0.5, step: 0.05 },
     split_seed: { type: 'number', default: 0, min: 0 },
+  },
+  edit_aware_calibration: {
+    validation_fraction: { type: 'number', default: 0.2, min: 0.1, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 0, min: 0 },
+    bootstrap_repeats: { type: 'number', default: 1000, min: 0 },
   },
 }
 

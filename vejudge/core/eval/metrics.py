@@ -84,6 +84,13 @@ def mae(x: Sequence[float], y: Sequence[float]) -> Optional[float]:
     return sum(abs(a - b) for a, b in zip(xs, ys)) / len(xs)
 
 
+def rmse(x: Sequence[float], y: Sequence[float]) -> Optional[float]:
+    xs, ys = _clean_pairs(x, y)
+    if not xs:
+        return None
+    return math.sqrt(sum((a - b) ** 2 for a, b in zip(xs, ys)) / len(xs))
+
+
 def quadratic_weighted_kappa(
     x: Sequence[float], y: Sequence[float], *, lo: int = 1, hi: int = 5
 ) -> Optional[float]:

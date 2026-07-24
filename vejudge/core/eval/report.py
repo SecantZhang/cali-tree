@@ -35,6 +35,7 @@ def per_dimension_agreement(
             "pearson": M.pearson(h, j),
             "kendall": M.kendall(h, j),
             "mae": M.mae(h, j),
+            "rmse": M.rmse(h, j),
             "qwk": M.quadratic_weighted_kappa(h, j),
             "by_category": {
                 "use_case": M.by_category(
