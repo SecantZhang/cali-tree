@@ -18,17 +18,6 @@ def list_workflows() -> list[str]:
     return workflows_store.list_workflows()
 
 
-@router.get("/{name}", response_model=WorkflowOut)
-def get_workflow(name: str) -> WorkflowOut:
-    try:
-        wf = workflows_store.load_workflow(name)
-    except InvalidWorkflowName as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    if wf is None:
-        raise HTTPException(status_code=404, detail=f"No workflow named '{name}'")
-    return wf
-
-
 @router.post("", response_model=WorkflowOut)
 def save_workflow(body: WorkflowIn) -> WorkflowOut:
     try:
@@ -37,7 +26,7 @@ def save_workflow(body: WorkflowIn) -> WorkflowOut:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/{name}/runs", response_model=list[WorkflowRunSummary])
+@router.get("/{name:path}/runs", response_model=list[WorkflowRunSummary])
 def list_workflow_runs(name: str) -> list[WorkflowRunSummary]:
     """Prior runs of this saved workflow, newest first — lets the UI auto-offer Resume.
 
@@ -81,7 +70,18 @@ def list_workflow_runs(name: str) -> list[WorkflowRunSummary]:
     return summaries
 
 
-@router.delete("/{name}")
+@router.get("/{name:path}", response_model=WorkflowOut)
+def get_workflow(name: str) -> WorkflowOut:
+    try:
+        wf = workflows_store.load_workflow(name)
+    except InvalidWorkflowName as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if wf is None:
+        raise HTTPException(status_code=404, detail=f"No workflow named '{name}'")
+    return wf
+
+
+@router.delete("/{name:path}")
 def delete_workflow(name: str) -> dict:
     try:
         deleted = workflows_store.delete_workflow(name)
