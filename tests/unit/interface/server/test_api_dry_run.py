@@ -66,6 +66,8 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
         "dataset", "preprocessing", "lm_engine",
         "judge_prompt", "judge", "eval", "alignment_report", "cl_rule_eval",
         "cl_adversarial", "cl_rule_tree", "cl_semantic_tree",
+        "unit_labels", "edit_decomposition", "area_rubric", "area_judge",
+        "area_aggregation", "edit_aware_calibration",
     }
 
 
@@ -96,6 +98,46 @@ def test_workflow_save_load_round_trip(client):
     resp = client.delete("/api/workflows/quick_eval")
     assert resp.status_code == 200
     assert client.get("/api/workflows").json() == []
+
+
+def test_workflow_folders_are_recursive_safe_and_backward_compatible(client):
+    body = {
+        "name": "examples/edit_aware/calibration_v1",
+        "graph": _graph_body()["graph"],
+    }
+    response = client.post("/api/workflows", json=body)
+    assert response.status_code == 200
+    assert response.json()["name"] == "examples/edit_aware/calibration_v1"
+
+    # Flat names and nested names share the original string-list response contract.
+    flat = dict(body, name="flat")
+    assert client.post("/api/workflows", json=flat).status_code == 200
+    assert client.get("/api/workflows").json() == [
+        "examples/edit_aware/calibration_v1",
+        "flat",
+    ]
+
+    response = client.get("/api/workflows/examples/edit_aware/calibration_v1")
+    assert response.status_code == 200
+    assert response.json()["name"] == "examples/edit_aware/calibration_v1"
+    assert client.get(
+        "/api/workflows/examples/edit_aware/calibration_v1/runs"
+    ).json() == []
+
+    response = client.delete("/api/workflows/examples/edit_aware/calibration_v1")
+    assert response.status_code == 200
+    assert response.json() == {"deleted": "examples/edit_aware/calibration_v1"}
+    assert client.get("/api/workflows").json() == ["flat"]
+
+    for invalid in (
+        "../escape", "folder/../escape", "/absolute", "double//slash",
+        "trailing/", r"windows\path",
+    ):
+        response = client.post(
+            "/api/workflows",
+            json={"name": invalid, "graph": _graph_body()["graph"]},
+        )
+        assert response.status_code == 400
 
 
 def test_workflow_save_load_round_trips_position_and_size(client):

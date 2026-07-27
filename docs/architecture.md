@@ -40,7 +40,8 @@ root/
     │   ├── lm_gemini/
     │   ├── lm_gpt/
     │   └── lm_qwen/
-    ├── preprocessing/             # Media preprocessing and sampling
+    ├── evidence/                  # JSON-safe manifests + local object/SQLite evidence store
+    ├── preprocessing/             # Media preprocessing and edit-aware decomposition
     │   ├── pp_template/           # Abstract base for all preprocessors
     │   ├── sampling/
     │   │   ├── unified_sampling/
@@ -74,12 +75,11 @@ root/
         └── node_types.py          # import-side-effect module registering the 8 above
 ```
 
-`node_postprocessing/` (and the other 3 node types from `interface.md` — Ensemble,
-Calibration, Aggregation) are **not implemented**. `node_preprocessing/` exists but is a
-pass-through stub (no real artifact extraction) — the `interface` branch deliberately proves
-the architecture with a minimal node set before widening to the rest of the spec. LM Engine
-*is* implemented (`node_vejudge/lm_engine_node.py`) — Judge nodes take its `engine_config`
-output as a required input rather than embedding engine params themselves.
+The legacy `Preprocessing` node remains a compatibility pass-through. The concrete
+`Edit Decomposition` node emits a versioned `evidence_bundle`; fixed Area Rubric nodes feed
+unit-scoped Area Judges, whose fan-in Area Aggregation output remains compatible with Eval.
+`Edit-Aware Calibration` fits held-out regularized models over those aggregate features.
+The example graph is `workflows/examples/edit_aware_calibration.json`.
 
 ---
 
@@ -93,6 +93,10 @@ output as a required input rather than embedding engine params themselves.
 | Feature cache | Captions, OCR, ASR, shot boundaries, quality metrics |
 | Calibration registry | Calibration model version, training set, metrics |
 | Audit log | Who/what produced each score and when |
+
+The v1 evidence implementation combines the object store and feature-cache roles locally:
+content-addressed media under `VEJUDGE_EVIDENCE_ROOT/objects/` plus normalized SQLite
+metadata. Large media bytes are never stored in SQLite.
 
 ---
 

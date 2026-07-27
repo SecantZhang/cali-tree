@@ -27,9 +27,14 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-echo "Upgrading pip and installing vejudge (editable) + dev deps ..."
+echo "Upgrading pip and installing vejudge (editable) + dev/interface/video deps ..."
 python -m pip install --quiet --upgrade pip
-python -m pip install --quiet -e ".[dev]"
+python -m pip install --quiet -e ".[dev,interface,video]"
+
+if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+  echo "Warning: edit decomposition needs ffmpeg + ffprobe on PATH."
+  echo "Run ./run/check_video_deps.sh for an actionable preflight."
+fi
 
 echo "Done. Activate later with:  source .venv/bin/activate"
 echo "Verify with:               ./run/run_tests.sh"

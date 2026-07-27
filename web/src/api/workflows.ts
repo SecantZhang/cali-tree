@@ -12,8 +12,12 @@ export function listWorkflows(): Promise<string[]> {
   return api.get('/api/workflows')
 }
 
+function workflowPath(name: string): string {
+  return name.split('/').map(encodeURIComponent).join('/')
+}
+
 export function getWorkflow(name: string): Promise<WorkflowOut> {
-  return api.get(`/api/workflows/${encodeURIComponent(name)}`)
+  return api.get(`/api/workflows/${workflowPath(name)}`)
 }
 
 export function saveWorkflow(name: string, graph: GraphSpecJSON): Promise<WorkflowOut> {
@@ -21,7 +25,7 @@ export function saveWorkflow(name: string, graph: GraphSpecJSON): Promise<Workfl
 }
 
 export function deleteWorkflow(name: string): Promise<{ deleted: string }> {
-  return api.delete(`/api/workflows/${encodeURIComponent(name)}`)
+  return api.delete(`/api/workflows/${workflowPath(name)}`)
 }
 
 export interface WorkflowRunSummary {
@@ -33,5 +37,5 @@ export interface WorkflowRunSummary {
 }
 
 export function listWorkflowRuns(name: string): Promise<WorkflowRunSummary[]> {
-  return api.get(`/api/workflows/${encodeURIComponent(name)}/runs`)
+  return api.get(`/api/workflows/${workflowPath(name)}/runs`)
 }

@@ -21,7 +21,8 @@ for you; the free ones never do. When unsure what a run will cost, use
 
 | Script | Calls gateway? | Use case |
 |---|---|---|
-| `setup_env.sh` | no | **Run once.** Create `.venv` and install the package + dev deps. |
+| `setup_env.sh` | no | **Run once.** Create `.venv` and install dev/interface/video Python deps. |
+| `check_video_deps.sh` | no | Verify the external `ffmpeg`/`ffprobe` binaries required by Edit Decomposition. |
 | `run_tests.sh` | no | Fast correctness check (mocked engines). Run after setup and after code changes. |
 | `estimate_cost.sh` | no (`--dry-run`) | See which items match and how many video/text calls a run would make. **Run before any real benchmark.** |
 | `smoke_test_gateway.sh` | yes (1 tiny call) | Validate creds / endpoint / failover / logging with a single cheap text call. |
