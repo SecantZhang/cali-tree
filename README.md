@@ -10,7 +10,8 @@ See `CLAUDE.md` for conventions and `docs/` for architecture, rubric, and resear
 ```bash
 cd projects/vejudge
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,interface,video]"
+./run/check_video_deps.sh
 ```
 
 ## Credentials
@@ -49,22 +50,25 @@ Outputs land in `logs/exps/<YYMMDD-HH:MM:SS>-exps/`: `run.log`, `llm-histories.l
 
 ## Running the visual interface
 
-A ComfyUI-style node-graph interface (`vejudge/interface/`, spec in `interface.md`) is
-available with 3 of its 8 planned node types wired to real data: **Dataset**, **Judge**,
-**Eval**. It's a visual front-end over the same CLI — dry-run by default, and a real Judge
-Node run still needs `--live` (a confirm dialog in the UI authorizes it).
+A ComfyUI-style node-graph interface (`vejudge/interface/`, spec in `interface.md`) includes
+the whole-video path plus an edit-aware path: **Edit Decomposition → Area Judge → Area
+Aggregation → Eval/Edit-Aware Calibration**. It is dry-run by default; every real Judge or
+Area Judge call still needs `--live`.
 
 ```bash
-pip install -e ".[interface]"   # fastapi/uvicorn/pydantic/websockets — not a base dependency
+pip install -e ".[interface,video]"
+./run/check_video_deps.sh
 ./run/run_interface.sh          # backend: http://127.0.0.1:8000
 
 cd web && npm install && npm run dev   # frontend: http://127.0.0.1:5173 (see web/README.md)
 ```
 
 Graph runs land in `logs/exps/<ts>-exps/` exactly like a CLI run (tagged
-`"benchmark": "interface_graph"`), and saved workflows live under `workflows/` — see
-`workflows/examples/quick_eval.json` for the `Dataset(peanut) + Dataset(human_annotations) →
-Judge → Eval` example.
+`"benchmark": "interface_graph"`), and saved workflows live under `workflows/`. See
+`workflows/examples/quick_eval.json` for the whole-video path and
+`workflows/examples/edit_aware_calibration.json` for the decomposed path. The interface
+recursively mirrors these folders; save a graph as `folder/name` to organize it under
+`workflows/folder/name.json`.
 
 ## What it does
 
@@ -77,4 +81,5 @@ Judge → Eval` example.
 4. **benchmark** (`vejudge/benchmark/`) — aligns judge signals to human dimensions and
    reports per-dimension / per-category Spearman, Kendall, MAE, and QWK.
 
-v1 scope: the `peanut` model; calibration is scaffolded but deferred (raw gap first).
+The edit-aware path stores immutable clips/frames under `VEJUDGE_EVIDENCE_ROOT` and
+queryable manifest metadata in SQLite. Similarity retrieval remains deferred.

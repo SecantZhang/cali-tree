@@ -9,15 +9,21 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   vebench_source: 'VE-Bench Source',
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
+  unit_labels: 'Human Unit Labels',
+  edit_decomposition: 'Edit Decomposition',
   lm_engine: 'LM Engine',
   judge_prompt: 'Judge Prompt',
   judge: 'Judge',
+  area_rubric: 'Area Rubric Spec',
+  area_judge: 'Area Judge',
+  area_aggregation: 'Area Aggregation',
   eval: 'Eval',
   cl_rule_eval: 'Rule Comparison',
   alignment_report: 'Alignment Report',
   cl_adversarial: 'Adversarial Calibration',
   cl_rule_tree: 'Rule/Tree Calibration',
   cl_semantic_tree: 'Semantic Tree Calibration',
+  edit_aware_calibration: 'Edit-Aware Calibration',
 }
 
 export function nodeTitle(type: string | undefined): string {

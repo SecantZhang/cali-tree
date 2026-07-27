@@ -45,6 +45,9 @@ CREDENTIALS_FILE: Path = _env_path(
     "VEJUDGE_CREDENTIALS_FILE", PROJECT_ROOT / ".interface_credentials.json"
 )
 LOGS_ROOT: Path = _env_path("VEJUDGE_LOGS_ROOT", PROJECT_ROOT / "logs")
+EVIDENCE_ROOT: Path = _env_path(
+    "VEJUDGE_EVIDENCE_ROOT", PROJECT_ROOT / ".cache" / "evidence"
+)
 USE_CASES_CONFIG: Path = _env_path(
     "VEJUDGE_USE_CASES_CONFIG", DATA_ROOT / "use_cases_config.json"
 )

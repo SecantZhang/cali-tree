@@ -121,6 +121,8 @@ def curate_sample(
         "algorithm": model,
         "output": {
             "output_video_path": output_video_path,
+            "otio_path": otio_path,
+            "plan_path": plan_path,
             "assembly_json": assembly_json,
         },
     }
