@@ -1,3 +1,10 @@
+## 260729-16:01:41 — Add explicit human-review decisions
+- Type: feature
+- Scope: CaliTree judge/eval, selective metrics, frontend workbench, workflow example, docs and tests
+- What: Added an optional `needs_human` deployment outcome while preserving honest three-class labels, with coverage, error-capture, partial-review, and auto-decision reporting.
+- Why: Turn ambiguity into an auditable human-review lane instead of forcing confused cases into `yes`, `no`, or `partial`.
+- Details: logs/updates/details/260729-16:01:41-updates.md
+
 ## 260729-15:40:21 — Stop the v6 evidence ledger after stage 1
 - Type: feature
 - Scope: v6 prompt/parser/artifact/workflow, frontend registration, live result, CaliTree report and tests

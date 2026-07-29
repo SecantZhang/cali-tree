@@ -267,6 +267,44 @@ The selective result is optimized for high-confidence accuracy, not macro recall
 particular, it accepts only 37 human-`partial` cases, so its low partial recall must be shown
 alongside the 92.87% headline.
 
+### Explicit `needs_human` deployment outcome
+
+Selective abstention is now available as an explicit fourth **deployment outcome** without
+changing the three-class calibration target. Set `human_review_mode=selective_policy` on
+`calitree_judge`. Every result then contains:
+
+- `label`: the underlying `no`, `partial`, or `yes` prediction used for full-coverage
+  evaluation;
+- `decision_label`: the prediction when accepted, otherwise `needs_human`;
+- `needs_human`: the machine-readable review flag;
+- `review_reason` and `selective_policy_version`: policy provenance.
+
+This separation is important. `needs_human` is not a fourth human annotation and is never
+counted as a correct class prediction. `calitree_eval` continues to report the original
+three-class confusion matrix, then separately reports auto-decision coverage and accuracy,
+review rate, error capture, the fraction of true partial cases sent to review, per-target
+coverage, and a perfect-human-review system ceiling. The ceiling assumes every referred case
+will be resolved correctly and must not be reported as model accuracy.
+
+The existing frozen, target-blind policies imply the following operating points:
+
+| System and evaluation | Auto accuracy | Auto coverage | Needs human | Error capture | Partial sent to human | Perfect-review ceiling |
+|---|---:|---:|---:|---:|---:|---:|
+| Cali-Tree v2, 1,200 ImagenHub held-out | 92.87% | 64.25% | 429 / 1,200 | 73.30% | 72.59% | 95.42% |
+| Rubric-Lite v4, 312 EditInspector confirmation | 97.62% | 53.85% | 144 / 312 | 96.90% | 94.74% | 98.72% |
+
+For v2, 716 of 771 auto-decided cases are correct; review captures 151 of the 206
+full-coverage errors. For external Rubric-Lite v4, 164 of 168 auto-decided cases are
+correct; review captures 125 of 129 errors. The second policy is especially useful for the
+known partial ambiguity because it refers 18 of 19 human-`partial` cases. Its limitation is
+equally important: it auto-decides almost exclusively high-confidence `yes`, so it is a
+high-precision automation lane rather than balanced three-class automation.
+
+Review mode fails before any judge call if the prompt tree has no persisted selective
+policy. The example `rubric_lite_editinspector_zero_shot.json` enables it; its judge engine
+model remains intentionally unset. With review mode off, `decision_label` remains identical
+to `label`, preserving existing workflows.
+
 | v2 report slice | N | Accuracy | Balanced accuracy |
 |---|---:|---:|---:|
 | Cali-Tree, unanimous human ratings | 940 | 90.53% | 61.89% |

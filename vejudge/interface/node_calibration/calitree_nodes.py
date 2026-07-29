@@ -771,6 +771,46 @@ def _selective_metrics(
         for item_id in ids
         if accepted(item_id)
     ]
+    accepted_set = set(accepted_ids)
+    review_ids = [item_id for item_id in ids if item_id not in accepted_set]
+    error_ids = [
+        item_id
+        for item_id in ids
+        if predictions[item_id] != targets[item_id]
+    ]
+    reviewed_error_ids = [
+        item_id for item_id in error_ids if item_id not in accepted_set
+    ]
+    partial_ids = [
+        item_id for item_id in ids if targets[item_id] == "partial"
+    ]
+    reviewed_partial_ids = [
+        item_id for item_id in partial_ids if item_id not in accepted_set
+    ]
+    target_coverage: dict[str, dict[str, Any]] = {}
+    for target in ("no", "partial", "yes"):
+        target_ids = [item_id for item_id in ids if targets[item_id] == target]
+        target_accepted = [
+            item_id for item_id in target_ids if item_id in accepted_set
+        ]
+        target_coverage[target] = {
+            "n": len(target_ids),
+            "n_accepted": len(target_accepted),
+            "n_needs_human": len(target_ids) - len(target_accepted),
+            "coverage": (
+                len(target_accepted) / len(target_ids)
+                if target_ids else None
+            ),
+        }
+    decision_distribution = {
+        label: sum(
+            1
+            for item_id in accepted_ids
+            if predictions[item_id] == label
+        )
+        for label in ("no", "partial", "yes")
+    }
+    decision_distribution["needs_human"] = len(review_ids)
     has_persisted_decision = any(
         "selective_accepted" in result_rows[item_id] for item_id in ids
     )
@@ -789,8 +829,46 @@ def _selective_metrics(
         "n_total": len(ids),
         "n_accepted": len(accepted_ids),
         "n_abstained": len(ids) - len(accepted_ids),
+        "n_needs_human": len(review_ids),
+        "needs_human_outcome_enabled": any(
+            result_rows[item_id].get("human_review_mode")
+            == "selective_policy"
+            for item_id in ids
+        ),
         "coverage": (
             len(accepted_ids) / len(ids) if ids else 0.0
+        ),
+        "review_rate": (
+            len(review_ids) / len(ids) if ids else 0.0
+        ),
+        "error_capture_rate": (
+            len(reviewed_error_ids) / len(error_ids)
+            if error_ids else None
+        ),
+        "partial_review_rate": (
+            len(reviewed_partial_ids) / len(partial_ids)
+            if partial_ids else None
+        ),
+        "target_coverage": target_coverage,
+        "decision_distribution": decision_distribution,
+        "reviewed_target_distribution": {
+            label: sum(
+                1
+                for item_id in review_ids
+                if targets[item_id] == label
+            )
+            for label in ("no", "partial", "yes")
+        },
+        "system_accuracy_with_perfect_human_review": (
+            (
+                sum(
+                    predictions[item_id] == targets[item_id]
+                    for item_id in accepted_ids
+                )
+                + len(review_ids)
+            )
+            / len(ids)
+            if ids else 0.0
         ),
         "accepted": _metrics_with_human_agreement(
             {item_id: targets[item_id] for item_id in accepted_ids},
@@ -802,6 +880,40 @@ def _selective_metrics(
             labels,
         ),
     }
+
+
+def _selective_acceptance(
+    result: dict[str, Any],
+    sample: dict[str, Any],
+    policy: dict[str, Any],
+) -> Optional[bool]:
+    """Apply a target-blind persisted policy to one prediction."""
+    if not policy:
+        return None
+    if (
+        result.get("selective_policy_version") == policy.get("version")
+        and result.get("selective_accepted") is not None
+    ):
+        return bool(result["selective_accepted"])
+    if (
+        policy.get("signal") == "ordinal_score"
+        and isinstance(result.get("ordinal_score"), (int, float))
+    ):
+        allowed_labels = set(policy.get("allowed_labels") or [])
+        return (
+            float(result["ordinal_score"])
+            >= float(policy.get("minimum_ordinal_score", 100))
+            and (
+                not allowed_labels
+                or str(result.get("label") or "") in allowed_labels
+            )
+        )
+    editor = str(sample.get("editor") or "unknown")
+    branch = (policy.get("editors") or {}).get(editor) or {}
+    support_ok = int(result.get("consensus_support") or 0) >= int(
+        policy.get("minimum_consensus_support", 3)
+    )
+    return support_ok and bool(branch.get("active"))
 
 
 def _fit_selective_policy(
@@ -2092,7 +2204,13 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
         "judge_engine": "engine_config",
     }
     output_sockets = {"judge_result": "judge_result"}
-    param_schema: dict[str, Any] = {}
+    param_schema: dict[str, Any] = {
+        "human_review_mode": {
+            "type": "enum",
+            "default": "off",
+            "options": ["off", "selective_policy"],
+        },
+    }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
         samples = ctx.inputs.get("samples")
@@ -2103,10 +2221,30 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                 status="error",
                 error="Cali-Tree Judge requires samples, prompt_tree, and judge_engine",
             )
+        human_review_mode = str(ctx.params.get("human_review_mode") or "off")
+        if human_review_mode not in {"off", "selective_policy"}:
+            return NodeRunResult(
+                status="error",
+                error=f"Unsupported human_review_mode: {human_review_mode}",
+            )
+        if human_review_mode == "selective_policy" and not tree.get(
+            "selective_policy"
+        ):
+            return NodeRunResult(
+                status="error",
+                error=(
+                    "human_review_mode=selective_policy requires a "
+                    "prompt_tree with a persisted selective_policy"
+                ),
+            )
         if ctx.dry_run:
             return NodeRunResult(
                 outputs={"judge_result": {}},
-                meta={"dry_run": True, "estimated_calls": len(samples)},
+                meta={
+                    "dry_run": True,
+                    "estimated_calls": len(samples),
+                    "human_review_mode": human_review_mode,
+                },
             )
         try:
             require_live(ctx.allow_live, context="Cali-Tree routed judging")
@@ -2300,52 +2438,32 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
             else:
                 judged[item_id]["prior_action"] = "base"
                 judged[item_id]["prior_rule"] = prior_rule
-            if selective_policy:
-                if (
-                    selective_policy.get("signal") == "ordinal_score"
-                    and isinstance(
-                        judged[item_id].get("ordinal_score"), (int, float)
-                    )
-                ):
-                    allowed_labels = set(
-                        selective_policy.get("allowed_labels") or []
-                    )
-                    judged[item_id]["selective_accepted"] = (
-                        float(judged[item_id]["ordinal_score"])
-                        >= float(
-                            selective_policy.get(
-                                "minimum_ordinal_score", 100
-                            )
-                        )
-                        and (
-                            not allowed_labels
-                            or str(judged[item_id].get("label") or "")
-                            in allowed_labels
-                        )
-                    )
-                else:
-                    editor = str(
-                        samples[item_id].get("editor") or "unknown"
-                    )
-                    branch = (
-                        selective_policy.get("editors") or {}
-                    ).get(editor) or {}
-                    support_ok = int(
-                        judged[item_id].get("consensus_support") or 0
-                    ) >= int(
-                        selective_policy.get(
-                            "minimum_consensus_support", 3
-                        )
-                    )
-                    judged[item_id]["selective_accepted"] = (
-                        support_ok and bool(branch.get("active"))
-                    )
-                judged[item_id]["selective_policy_version"] = (
-                    selective_policy.get("version")
-                )
         for item_id in item_ids:
             routed = routed_by_item[item_id]
-            result = judged[item_id]
+            result = dict(judged[item_id])
+            selective_accepted = _selective_acceptance(
+                result, samples[item_id], selective_policy
+            )
+            if selective_accepted is not None:
+                result["selective_accepted"] = selective_accepted
+                result["selective_policy_version"] = selective_policy.get(
+                    "version"
+                )
+            needs_human = (
+                human_review_mode == "selective_policy"
+                and selective_accepted is False
+            )
+            result["decision_label"] = (
+                "needs_human" if needs_human else result["label"]
+            )
+            result["needs_human"] = needs_human
+            result["human_review_mode"] = human_review_mode
+            if human_review_mode == "off":
+                result["review_reason"] = "human_review_disabled"
+            elif selective_accepted:
+                result["review_reason"] = "selective_policy_accepted"
+            else:
+                result["review_reason"] = "selective_policy_rejected"
             parsed_output = dict(result.get("parsed") or {})
             parsed_output.update({
                 "label": result["label"],
@@ -2365,6 +2483,13 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                 "cache_hits": len(cached_results),
                 "base_judge_calls": len(item_ids) - len(cached_results),
                 "judge_calls": runtime.usage["judge_calls"],
+                "human_review_mode": human_review_mode,
+                "n_needs_human": sum(
+                    bool(
+                        (row.get("calitree") or {}).get("needs_human")
+                    )
+                    for row in output.values()
+                ),
             },
         )
 

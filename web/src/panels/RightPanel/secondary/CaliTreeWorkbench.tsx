@@ -59,7 +59,13 @@ interface SelectiveMetric {
   n_total?: number
   n_accepted?: number
   n_abstained?: number
+  n_needs_human?: number
   coverage?: number
+  review_rate?: number
+  error_capture_rate?: number | null
+  partial_review_rate?: number | null
+  system_accuracy_with_perfect_human_review?: number
+  decision_distribution?: Record<string, number>
   minimum_support?: number
   accepted?: MetricBlock
   policy?: {
@@ -230,6 +236,7 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
     ?? report.conflict_policy?.consensus_calibrator
     ?? {}) as ConsensusCalibrator
   const selectiveTest = (report.selective?.test ?? {}) as SelectiveMetric
+  const hasSelectiveTest = (selectiveTest.n_total ?? 0) > 0
   const ordinalCalibration = (report.ordinal_calibration ?? {}) as {
     feature?: string
     uses_editor_identity?: boolean
@@ -275,28 +282,46 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
         {!isRubricLite && <AccuracyCard title="TextGrad · test" value={report.textgrad?.test} />}
         <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · train`} value={calibrated?.train} />
         <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · test`} value={calibrated?.test} />
-        {!isRubricLite && <AccuracyCard title="Selective · test" value={selectiveTest.accepted} />}
+        {hasSelectiveTest && <AccuracyCard title="Auto-decided · test" value={selectiveTest.accepted} />}
       </div>
-      {!isRubricLite && <div className="calitree-node-detail" aria-label="Selective calibration summary">
-        <strong>Training-calibrated selective operating point</strong>
+      {hasSelectiveTest && <div className="calitree-node-detail" aria-label="Selective calibration summary">
+        <strong>Human-review operating point</strong>
         <div>
           coverage {
             selectiveTest.coverage == null
               ? '—'
               : `${(selectiveTest.coverage * 100).toFixed(1)}%`
           } · accepted {selectiveTest.n_accepted ?? 0}/{selectiveTest.n_total ?? 0}
-          {' · '}review/abstain {selectiveTest.n_abstained ?? 0}
-          {' · '}minimum consensus support {selectiveTest.minimum_support ?? 3}
+          {' · '}needs human {
+            selectiveTest.n_needs_human ?? selectiveTest.n_abstained ?? 0
+          }
         </div>
         <div>
-          active editors {
-            selectiveTest.policy?.active_editors?.join(', ') || '—'
-          } · training accuracy threshold {
-            selectiveTest.policy?.editor_accuracy_threshold == null
+          error capture {
+            selectiveTest.error_capture_rate == null
               ? '—'
-              : `${(selectiveTest.policy.editor_accuracy_threshold * 100).toFixed(0)}%`
-          } · editor support ≥ {selectiveTest.policy?.editor_min_support ?? '—'}
+              : `${(selectiveTest.error_capture_rate * 100).toFixed(1)}%`
+          } · partial cases sent to human {
+            selectiveTest.partial_review_rate == null
+              ? '—'
+              : `${(selectiveTest.partial_review_rate * 100).toFixed(1)}%`
+          } · perfect-review system ceiling {
+            selectiveTest.system_accuracy_with_perfect_human_review == null
+              ? '—'
+              : `${(selectiveTest.system_accuracy_with_perfect_human_review * 100).toFixed(1)}%`
+          }
         </div>
+        {selectiveTest.policy?.active_editors && (
+          <div>
+            active editors {selectiveTest.policy.active_editors.join(', ') || '—'}
+            {' · '}training accuracy threshold {
+              selectiveTest.policy.editor_accuracy_threshold == null
+                ? '—'
+                : `${(selectiveTest.policy.editor_accuracy_threshold * 100).toFixed(0)}%`
+            } · editor support ≥ {selectiveTest.policy.editor_min_support ?? '—'}
+            {' · '}minimum consensus support {selectiveTest.minimum_support ?? 3}
+          </div>
+        )}
       </div>}
       <section className="calitree-two-column">
         <div>
@@ -461,7 +486,9 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
           <ul className="dataset-item-list secondary-item-list">
             {caseIds.map((id) => (
               <li key={id} className={id === caseId ? 'active' : ''} onClick={() => setSelectedCase(id)}>
-                {id} · {String(cases[id].target_label)} → {String(predictions[id]?.label ?? '—')}
+                {id} · {String(cases[id].target_label)} → {
+                  String(predictions[id]?.decision_label ?? predictions[id]?.label ?? '—')
+                }
               </li>
             ))}
           </ul>
@@ -482,6 +509,15 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
               </div>
               <div><strong>Human:</strong> {String(cases[caseId].target_label)}</div>
               <div><strong>{isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'}:</strong> {String(predictions[caseId]?.label ?? '—')}</div>
+              {Boolean(predictions[caseId]?.decision_label) && (
+                <div>
+                  <strong>Deployment decision:</strong>{' '}
+                  {String(predictions[caseId].decision_label)}
+                  {predictions[caseId]?.review_reason
+                    ? ` · ${String(predictions[caseId].review_reason)}`
+                    : ''}
+                </div>
+              )}
               <div><strong>Route:</strong> {String(predictions[caseId]?.routed_node ?? '—')}</div>
               <p>{String(predictions[caseId]?.rationale ?? '')}</p>
             </div>

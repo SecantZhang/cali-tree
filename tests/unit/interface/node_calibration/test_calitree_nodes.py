@@ -1340,6 +1340,7 @@ def test_rubric_lite_judge_persists_perfect_evidence_selection(
     result = CaliTreeJudgeNodeExecutor().run(make_ctx(
         dry_run=False,
         allow_live=True,
+        params={"human_review_mode": "selective_policy"},
         inputs={
             "samples": {
                 "perfect": _sample("perfect"),
@@ -1356,9 +1357,58 @@ def test_rubric_lite_judge_persists_perfect_evidence_selection(
     }
     assert rows["perfect"]["selective_accepted"] is True
     assert rows["near"]["selective_accepted"] is False
+    assert rows["perfect"]["label"] == "yes"
+    assert rows["perfect"]["decision_label"] == "yes"
+    assert rows["perfect"]["needs_human"] is False
+    assert rows["near"]["label"] == "partial"
+    assert rows["near"]["decision_label"] == "needs_human"
+    assert rows["near"]["needs_human"] is True
+    assert rows["near"]["review_reason"] == "selective_policy_rejected"
     assert rows["perfect"]["selective_policy_version"] == (
         "rubric-lite-perfect-evidence-v1"
     )
+
+
+def test_human_review_mode_requires_a_persisted_policy_before_calls(
+    make_ctx, monkeypatch
+):
+    tree = {
+        "architecture": "rubric_lite",
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global",
+                "prompt": "rubric",
+                "embedding": [],
+                "children": [],
+            },
+        },
+    }
+    engine_calls = 0
+
+    def engine_from(_config, _ctx):
+        nonlocal engine_calls
+        engine_calls += 1
+        return object()
+
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        engine_from,
+    )
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={"human_review_mode": "selective_policy"},
+        inputs={
+            "samples": {"case": _sample("case")},
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "error"
+    assert "persisted selective_policy" in str(result.error)
+    assert engine_calls == 0
 
 
 def test_rubric_lite_boundary_overrides_only_partial_verifier_label(
@@ -1519,12 +1569,14 @@ def test_eval_reports_overall_splits_editors_and_confusion(make_ctx):
                 "calitree": {
                     "label": "yes", "consensus_support": 2,
                     "selective_accepted": True,
+                    "human_review_mode": "selective_policy",
                 }
             },
             "test": {
                 "calitree": {
                     "label": "no", "consensus_support": 3,
                     "selective_accepted": False,
+                    "human_review_mode": "selective_policy",
                 }
             },
         },
@@ -1536,6 +1588,29 @@ def test_eval_reports_overall_splits_editors_and_confusion(make_ctx):
     assert report["overall"]["per_editor"]["SDEdit"]["n"] == 2
     assert report["selective"]["overall"]["coverage"] == 0.5
     assert report["selective"]["overall"]["n_accepted"] == 1
+    assert report["selective"]["overall"]["n_needs_human"] == 1
+    assert report["selective"]["overall"]["needs_human_outcome_enabled"] is True
+    assert report["selective"]["overall"]["review_rate"] == 0.5
+    assert report["selective"]["overall"]["error_capture_rate"] == 1
+    assert report["selective"]["overall"]["partial_review_rate"] == 1
+    assert (
+        report["selective"]["overall"][
+            "system_accuracy_with_perfect_human_review"
+        ]
+        == 1
+    )
+    assert report["selective"]["overall"]["decision_distribution"] == {
+        "no": 0,
+        "partial": 0,
+        "yes": 1,
+        "needs_human": 1,
+    }
+    assert report["selective"]["overall"]["target_coverage"]["partial"] == {
+        "n": 1,
+        "n_accepted": 0,
+        "n_needs_human": 1,
+        "coverage": 0,
+    }
     assert report["selective"]["overall"]["accepted"]["accuracy"] == 1
     assert report["selective"]["overall"]["confidence_signal"] == (
         "persisted_training_selective_policy"
