@@ -1,3 +1,10 @@
+## 260729-15:23:02 — Preregister the progress/completion partial gate
+- Type: docs
+- Scope: Rubric-Lite partial-boundary experiment protocol
+- What: Froze a two-threshold, three-candidate test of partial as visible edit progress without complete fulfillment, with task-grouped cross-dataset advancement gates.
+- Why: Test a semantically grounded one-call alternative before inspecting results, without adding another classifier, router, or verifier.
+- Details: logs/updates/details/260729-15:23:02-updates.md
+
 ## 260729-15:06:41 — Correct task-grouped Rubric-Lite validation
 - Type: fix
 - Scope: Rubric-Lite grouped cutpoint CV, monotone-feature audit, workflow, frontend, docs and tests
