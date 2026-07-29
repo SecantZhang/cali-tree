@@ -1,3 +1,10 @@
+## 260729-15:31:09 — Diagnose Rubric-Lite score information loss
+- Type: docs
+- Scope: partial progress gate, cross-dataset score-collision audit, v6 evidence-ledger protocol, CaliTree report
+- What: Rejected the two-threshold progress/completion rule and showed that over 94% of partial cases collide with outer classes in the complete three-score representation; preregistered a one-call evidence-ledger prompt.
+- Why: Stop trying downstream calibrators that cannot reconstruct discarded evidence and move rubric learning to the representation while preserving the simple architecture.
+- Details: logs/updates/details/260729-15:31:09-updates.md
+
 ## 260729-15:23:02 — Preregister the progress/completion partial gate
 - Type: docs
 - Scope: Rubric-Lite partial-boundary experiment protocol
