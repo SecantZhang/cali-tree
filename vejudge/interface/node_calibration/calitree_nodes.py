@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ...core.calibration.calitree import CaliTreeBuilder, classification_metrics, route_prompt
+from ...core.calibration.rubric_lite import (
+    DEFAULT_ORDINAL_THRESHOLDS,
+    apply_ordinal_thresholds,
+    ordinal_label,
+)
 from ...core.calibration.textgrad_adapter import textgrad_update
 from ...core.judge.parse import parse_json_object
 from ...lm_engine import get_engine, load_creds, require_live
@@ -932,12 +937,50 @@ def _parse_judgment(content: str) -> dict[str, Any]:
     if fulfillment in {"none", "partial", "full"}:
         label = {"none": "no", "partial": "partial", "full": "yes"}[fulfillment]
         conflict_reason = f"fulfillment={fulfillment} deterministically maps to {label}"
+    ordinal_score: Optional[float] = None
+    ordinal_scores = parsed.get("ordinal_scores")
+    required_ordinal_fields = (
+        "change_evidence",
+        "specification_fidelity",
+        "source_preservation",
+    )
+    if (
+        parsed.get("rubric_version")
+        in {"rubric-lite-ordinal-v3", "rubric-lite-ordinal-v4"}
+        and isinstance(ordinal_scores, dict)
+        and all(
+            isinstance(ordinal_scores.get(field), (int, float))
+            and not isinstance(ordinal_scores.get(field), bool)
+            and 0 <= float(ordinal_scores[field]) <= 100
+            for field in required_ordinal_fields
+        )
+    ):
+        ordinal_score = min(
+            float(ordinal_scores[field])
+            for field in required_ordinal_fields
+        )
+        label = ordinal_label(
+            ordinal_score, DEFAULT_ORDINAL_THRESHOLDS
+        )
+        conflict_reason = (
+            f"minimum visible-evidence score {ordinal_score:g} maps to {label} "
+            "under the uncalibrated default cutpoints"
+        )
     return {
         "label": label if label in {"no", "partial", "yes"} else "",
         "model_label": model_label if model_label in {"no", "partial", "yes"} else "",
         "rationale": str(parsed.get("rationale") or ""),
         "raw_content": content,
         "parsed": parsed,
+        "ordinal_score": ordinal_score,
+        "ordinal_scores": (
+            {
+                field: float(ordinal_scores[field])
+                for field in required_ordinal_fields
+            }
+            if ordinal_score is not None
+            else None
+        ),
         "valid": label in {"no", "partial", "yes"},
         "conflict_resolved": (
             label in {"no", "partial", "yes"}
@@ -1892,6 +1935,17 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
         for prompt, prompt_samples in grouped.items():
             judged.update(runtime.judge_many(prompt, prompt_samples))
         judged.update(cached_results)
+        if single_global_rubric and tree.get("ordinal_thresholds"):
+            try:
+                judged = apply_ordinal_thresholds(
+                    judged,
+                    tree["ordinal_thresholds"],
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                return NodeRunResult(
+                    status="error",
+                    error=f"Invalid Rubric-Lite ordinal thresholds: {exc}",
+                )
         uncached_ids = [item_id for item_id in item_ids if item_id not in cached_results]
         conflict_policy = tree.get("conflict_policy")
         conflict_prompt = str(tree.get("conflict_prompt") or "")

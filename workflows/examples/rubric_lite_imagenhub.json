@@ -62,17 +62,28 @@
         "id": "train",
         "type": "rubric_lite_train",
         "params": {
-          "rubric_version": "rubric_lite_v2",
-          "max_steps": 3,
+          "rubric_version": "rubric_lite_v4",
+          "max_steps": 0,
           "feedback_cases_per_bucket": 8,
           "max_validation_accuracy_drop": 0.01,
+          "ordinal_accuracy_tolerance": 0.01,
+          "ordinal_minimum_class_recall": 0.1,
           "validation_fraction": 0.25,
           "split_seed": 44,
-          "agreement_filter": "unanimous",
+          "agreement_filter": "all",
           "run_initial_baseline": true
         }
       },
       { "id": "judge", "type": "calitree_judge", "params": {} },
+      {
+        "id": "boundary",
+        "type": "rubric_lite_boundary",
+        "params": {
+          "verifier_version": "rubric_lite_v1",
+          "minimum_ordinal_score": 50,
+          "apply_split": "all"
+        }
+      },
       { "id": "evaluate", "type": "calitree_eval", "params": {} }
     ],
     "edges": [
@@ -85,7 +96,10 @@
       { "source": "dataset", "source_socket": "samples", "target": "judge", "target_socket": "samples" },
       { "source": "train", "source_socket": "prompt_tree", "target": "judge", "target_socket": "prompt_tree" },
       { "source": "judge_engine", "source_socket": "engine_config", "target": "judge", "target_socket": "judge_engine" },
-      { "source": "judge", "source_socket": "judge_result", "target": "evaluate", "target_socket": "judge_result" },
+      { "source": "dataset", "source_socket": "samples", "target": "boundary", "target_socket": "samples" },
+      { "source": "judge", "source_socket": "judge_result", "target": "boundary", "target_socket": "judge_result" },
+      { "source": "judge_engine", "source_socket": "engine_config", "target": "boundary", "target_socket": "judge_engine" },
+      { "source": "boundary", "source_socket": "judge_result", "target": "evaluate", "target_socket": "judge_result" },
       { "source": "dataset", "source_socket": "labels", "target": "evaluate", "target_socket": "labels" },
       { "source": "dataset", "source_socket": "samples", "target": "evaluate", "target_socket": "samples" }
     ]

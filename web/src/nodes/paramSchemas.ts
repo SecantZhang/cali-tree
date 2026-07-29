@@ -271,12 +271,22 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   },
   rubric_lite_train: {
     rubric_version: {
-      type: 'enum', default: 'rubric_lite_v1', options: ['rubric_lite_v1', 'rubric_lite_v2'],
+      type: 'enum',
+      default: 'rubric_lite_v1',
+      options: [
+        'rubric_lite_v1', 'rubric_lite_v2', 'rubric_lite_v3', 'rubric_lite_v4',
+      ],
     },
     max_steps: { type: 'number', default: 3, min: 0, max: 10 },
     feedback_cases_per_bucket: { type: 'number', default: 8, min: 1, max: 50 },
     max_validation_accuracy_drop: {
       type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    ordinal_accuracy_tolerance: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    ordinal_minimum_class_recall: {
+      type: 'number', default: 0.1, min: 0, max: 1, step: 0.05,
     },
     validation_fraction: { type: 'number', default: 0.25, min: 0.1, max: 0.5, step: 0.05 },
     split_seed: { type: 'number', default: 44, min: 0 },
@@ -284,6 +294,17 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
       type: 'enum', default: 'unanimous', options: ['all', 'unanimous'],
     },
     run_initial_baseline: { type: 'bool', default: true },
+  },
+  rubric_lite_boundary: {
+    verifier_version: {
+      type: 'enum', default: 'rubric_lite_v1', options: ['rubric_lite_v1'],
+    },
+    minimum_ordinal_score: {
+      type: 'number', default: 50, min: 0, max: 100, step: 5,
+    },
+    apply_split: {
+      type: 'enum', default: 'all', options: ['all', 'train', 'test'],
+    },
   },
   calitree_judge: {},
   calitree_eval: {},

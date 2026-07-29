@@ -189,6 +189,26 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
     ?? report.conflict_policy?.consensus_calibrator
     ?? {}) as ConsensusCalibrator
   const selectiveTest = (report.selective?.test ?? {}) as SelectiveMetric
+  const ordinalCalibration = (report.ordinal_calibration ?? {}) as {
+    feature?: string
+    uses_editor_identity?: boolean
+    uses_instruction_features?: boolean
+    fit?: {
+      n?: number
+      max_accuracy?: number | null
+      minimum_class_recall?: number
+      metrics?: MetricBlock
+      thresholds?: { no_partial?: number; partial_yes?: number }
+    }
+    validation?: MetricBlock
+    deployment?: {
+      n?: number
+      max_accuracy?: number | null
+      minimum_class_recall?: number
+      metrics?: MetricBlock
+      thresholds?: { no_partial?: number; partial_yes?: number }
+    }
+  }
   const calibrationRules = Object.entries(calibrator.rules ?? {})
   const caseIds = useMemo(() => Object.keys(cases).sort(), [cases])
   const runningAccuracy = useMemo(() => {
@@ -325,9 +345,36 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
               } · F1 {
                 report.selection?.selected_validation_partial_f1 == null
                   ? '—'
-                  : `${(Number(report.selection.selected_validation_partial_f1) * 100).toFixed(1)}%`
+                : `${(Number(report.selection.selected_validation_partial_f1) * 100).toFixed(1)}%`
               }
             </div>
+            {ordinalCalibration.deployment?.thresholds && (
+              <>
+                <div>
+                  Global score cutpoints: no &lt; {
+                    Number(ordinalCalibration.deployment.thresholds.no_partial).toFixed(1)
+                  } · partial &lt; {
+                    Number(ordinalCalibration.deployment.thresholds.partial_yes).toFixed(1)
+                  } · yes above
+                </div>
+                <div>
+                  Fit n={ordinalCalibration.fit?.n ?? 0} · internal validation {
+                    ordinalCalibration.validation?.accuracy == null
+                      ? '—'
+                      : `${(ordinalCalibration.validation.accuracy * 100).toFixed(1)}%`
+                  } · refit n={ordinalCalibration.deployment.n ?? 0}
+                </div>
+                <div>
+                  Feature: {ordinalCalibration.feature ?? 'minimum visible-evidence score'}
+                  {' · '}class recall floor {
+                    ordinalCalibration.deployment.minimum_class_recall == null
+                      ? '—'
+                      : `${(ordinalCalibration.deployment.minimum_class_recall * 100).toFixed(0)}%`
+                  }
+                  {' · '}no editor/task/instruction calibration features
+                </div>
+              </>
+            )}
             <div>No leaves · no embeddings · no merges · no editor prior · one judge call per case</div>
           </div>
         </section>

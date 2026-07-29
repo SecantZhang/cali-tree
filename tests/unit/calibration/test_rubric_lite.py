@@ -1,5 +1,8 @@
 from vejudge.core.calibration.rubric_lite import (
     RubricLiteLearner,
+    apply_ordinal_thresholds,
+    fit_ordinal_thresholds,
+    ordinal_label,
     select_boundary_cases,
 )
 
@@ -136,3 +139,83 @@ def test_rubric_lite_rejects_partial_gain_that_breaks_accuracy_guard():
 
     assert result.prompt == "initial"
     assert result.report["selection"]["selected_step"] == 0
+
+
+def test_global_ordinal_cutpoints_fit_ordered_classes_without_metadata():
+    ids = [
+        "no-0", "no-1", "no-2",
+        "partial-0", "partial-1",
+        "yes-0", "yes-1",
+    ]
+    scores = [0, 10, 20, 50, 60, 95, 100]
+    targets = {
+        item_id: item_id.split("-", 1)[0]
+        for item_id in ids
+    }
+    samples = {
+        item_id: {
+            **_sample(item_id),
+            "editor": f"ignored-editor-{index}",
+        }
+        for index, item_id in enumerate(ids)
+    }
+    results = {
+        item_id: {"label": "no", "ordinal_score": score}
+        for item_id, score in zip(ids, scores)
+    }
+
+    fitted = fit_ordinal_thresholds(
+        results=results,
+        targets=targets,
+        samples=samples,
+        ids=ids,
+        accuracy_tolerance=0,
+    )
+    calibrated = apply_ordinal_thresholds(
+        results, fitted["thresholds"]
+    )
+
+    assert fitted["version"] == "global-ordinal-cutpoints-v1"
+    assert fitted["metrics"]["accuracy"] == 1
+    assert fitted["metrics"]["per_label_f1"]["partial"] == 1
+    assert fitted["thresholds"]["no_partial"] < fitted["thresholds"]["partial_yes"]
+    assert {
+        item_id: calibrated[item_id]["label"] for item_id in ids
+    } == targets
+    assert calibrated["yes-0"]["uncalibrated_label"] == "no"
+    assert calibrated["yes-0"]["threshold_calibrated"] is True
+
+
+def test_ordinal_threshold_selection_respects_accuracy_tolerance():
+    ids = [f"case-{index}" for index in range(8)]
+    samples = {item_id: _sample(item_id) for item_id in ids}
+    targets = {
+        **{item_id: "no" for item_id in ids[:6]},
+        ids[6]: "partial",
+        ids[7]: "yes",
+    }
+    results = {
+        item_id: {"label": "no", "ordinal_score": score}
+        for item_id, score in zip(ids, [0, 5, 10, 15, 20, 90, 90, 100])
+    }
+
+    fitted = fit_ordinal_thresholds(
+        results=results,
+        targets=targets,
+        samples=samples,
+        ids=ids,
+        accuracy_tolerance=0.05,
+    )
+
+    assert (
+        fitted["metrics"]["accuracy"] + 0.05 + 1e-12
+        >= fitted["max_accuracy"]
+    )
+    assert fitted["class_preserving_candidate_count"] > 0
+    assert all(
+        (recall or 0) >= 0.1
+        for recall in fitted["metrics"]["per_label_accuracy"].values()
+    )
+    assert ordinal_label(0, fitted["thresholds"]) in {
+        "no", "partial", "yes"
+    }
