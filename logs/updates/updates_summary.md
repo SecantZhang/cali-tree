@@ -1,3 +1,10 @@
+## 260729-14:43:54 — Preregister stronger-judge Rubric-Lite A/B
+- Type: docs
+- Scope: EditInspector experiment protocol and CaliTree research notes
+- What: Frozen the 80-case gpt-4.1-mini versus gpt-4.1 protocol, dataset and prompt hashes, exact call budget, cutpoint fitting, and advancement thresholds before live execution.
+- Why: Test whether better visual signal improves partial without adding architectural complexity or post-hoc model selection.
+- Details: logs/updates/details/260729-14:43:54-updates.md
+
 ## 260729-14:39:17 — Expose partial-label reliability and reject soft calibration
 - Type: feature
 - Scope: CaliTree evaluation metrics, workbench reliability table, nested calibration audit, docs and tests
