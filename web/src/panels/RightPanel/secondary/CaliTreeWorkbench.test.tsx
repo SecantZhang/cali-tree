@@ -41,6 +41,24 @@ describe('CaliTreeWorkbench', () => {
                 prediction_distribution: { yes: 1 },
                 per_editor: { SDEdit: { n: 1, accuracy: 1 } },
                 human_agreement: { unanimous: { n: 1, accuracy: 1 } },
+                human_label_reliability: {
+                  n: 1,
+                  unanimous_fraction: 1,
+                  target_majority_support_fraction: 1,
+                  mean_label_entropy_bits: 0,
+                  modal_rater_agreement_ceiling: 1,
+                  prediction_expected_rater_agreement: 1,
+                  per_target: {
+                    yes: {
+                      n: 1,
+                      unanimous_fraction: 1,
+                      target_majority_support_fraction: 1,
+                      mean_label_entropy_bits: 0,
+                      modal_rater_agreement_ceiling: 1,
+                      prediction_expected_rater_agreement: 1,
+                    },
+                  },
+                },
               },
             },
             selective: {
@@ -99,6 +117,10 @@ describe('CaliTreeWorkbench', () => {
     expect(screen.getByRole('table', { name: 'Cali-Tree confusion matrix' })).toHaveTextContent('1')
     expect(screen.getByRole('table', { name: 'Cali-Tree per-editor accuracy' })).toHaveTextContent('SDEdit')
     expect(screen.getByLabelText('Accuracy by human agreement')).toHaveTextContent('unanimous: 100.0%')
+    expect(screen.getByRole('table', { name: 'Human label reliability' }))
+      .toHaveTextContent('modal ceiling')
+    expect(screen.getByRole('table', { name: 'Human label reliability' }))
+      .toHaveTextContent('yes')
     expect(screen.getByText('hierarchical-consensus-v1')).toBeInTheDocument()
     expect(screen.getByText(/Internal validation:/)).toHaveTextContent('75.0% → 87.5%')
     expect(screen.getByRole('table', { name: 'Consensus calibration rules' }))

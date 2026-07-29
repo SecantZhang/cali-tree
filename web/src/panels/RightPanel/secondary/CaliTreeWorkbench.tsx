@@ -21,6 +21,17 @@ interface MetricBlock {
   per_editor?: Record<string, { n: number; accuracy: number }>
   confusion?: Record<string, Record<string, number>>
   human_agreement?: Record<string, MetricBlock>
+  human_label_reliability?: ReliabilitySummary
+}
+
+interface ReliabilitySummary {
+  n?: number
+  unanimous_fraction?: number
+  target_majority_support_fraction?: number
+  mean_label_entropy_bits?: number
+  modal_rater_agreement_ceiling?: number
+  prediction_expected_rater_agreement?: number
+  per_target?: Record<string, ReliabilitySummary>
 }
 
 interface ConsensusCalibrator {
@@ -90,6 +101,13 @@ function MetricDetails({ metric }: { metric?: MetricBlock }) {
   const distribution = (metric as MetricBlock & {
     prediction_distribution?: Record<string, number>
   }).prediction_distribution ?? {}
+  const reliability = metric.human_label_reliability
+  const reliabilityRows = reliability
+    ? [['overall', reliability] as const, ...Object.entries(reliability.per_target ?? {})]
+    : []
+  const percent = (value?: number) => (
+    value == null ? '—' : `${(value * 100).toFixed(1)}%`
+  )
   return (
     <div className="calitree-metric-details">
       <table className="schema-table" aria-label="Cali-Tree confusion matrix">
@@ -118,6 +136,29 @@ function MetricDetails({ metric }: { metric?: MetricBlock }) {
           </span>
         ))}
       </div>
+      {reliabilityRows.length > 0 && (
+        <table className="schema-table" aria-label="Human label reliability">
+          <thead>
+            <tr>
+              <th>target</th><th>n</th><th>unanimous</th><th>majority</th>
+              <th>entropy</th><th>modal ceiling</th><th>judge↔rater</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reliabilityRows.map(([label, row]) => (
+              <tr key={label}>
+                <td>{label}</td>
+                <td>{row.n ?? 0}</td>
+                <td>{percent(row.unanimous_fraction)}</td>
+                <td>{percent(row.target_majority_support_fraction)}</td>
+                <td>{row.mean_label_entropy_bits?.toFixed(2) ?? '—'}</td>
+                <td>{percent(row.modal_rater_agreement_ceiling)}</td>
+                <td>{percent(row.prediction_expected_rater_agreement)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <table className="schema-table" aria-label="Cali-Tree per-editor accuracy">
         <tbody>
           {Object.entries(metric.per_editor ?? {}).map(([editor, row]) => (

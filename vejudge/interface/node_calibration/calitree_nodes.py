@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 import re
 import threading
@@ -560,6 +561,107 @@ def _human_agreement_bucket(label: Any) -> str:
     return "unanimous" if len(sc_values) == 1 else "disputed"
 
 
+def _rating_target(sc: Any) -> str:
+    try:
+        value = float(sc)
+    except (TypeError, ValueError):
+        return ""
+    if math.isclose(value, 0.0):
+        return "no"
+    if math.isclose(value, 0.5):
+        return "partial"
+    if math.isclose(value, 1.0):
+        return "yes"
+    return ""
+
+
+def _human_label_reliability(
+    targets: dict[str, str],
+    predictions: dict[str, str],
+    labels: dict[str, Any],
+) -> dict[str, Any]:
+    """Describe the reliability ceiling implied by the individual SC ratings.
+
+    ``modal_rater_agreement_ceiling`` is the best expected agreement with a
+    randomly selected annotator if an oracle could emit each item's modal
+    rating. It is not a ceiling on agreement with the released median label.
+    """
+    label_names = ("no", "partial", "yes")
+    rows: list[dict[str, Any]] = []
+    for item_id in sorted(set(targets) & set(predictions)):
+        label = labels.get(item_id)
+        raw_ratings = label.get("ratings") if isinstance(label, dict) else None
+        rating_labels = [
+            mapped
+            for rating in (raw_ratings or [])
+            if isinstance(rating, dict)
+            for mapped in [_rating_target(rating.get("sc"))]
+            if mapped
+        ]
+        if not rating_labels:
+            continue
+        counts = Counter(rating_labels)
+        n_raters = len(rating_labels)
+        probabilities = [count / n_raters for count in counts.values()]
+        entropy = -sum(
+            probability * math.log2(probability)
+            for probability in probabilities
+        )
+        ordered = sorted(
+            ({"no": 0, "partial": 1, "yes": 2}[name] for name in rating_labels)
+        )
+        median_label = (
+            label_names[ordered[len(ordered) // 2]]
+            if len(ordered) % 2 == 1
+            else ""
+        )
+        target = targets[item_id]
+        prediction = predictions[item_id]
+        rows.append({
+            "target": target,
+            "n_raters": n_raters,
+            "unanimous": len(counts) == 1,
+            "target_has_majority_support": counts[target] > n_raters / 2,
+            "target_matches_rating_median": median_label == target,
+            "modal_rater_support": max(counts.values()) / n_raters,
+            "prediction_rater_support": counts[prediction] / n_raters,
+            "entropy_bits": entropy,
+        })
+
+    def summarize(selected: list[dict[str, Any]]) -> dict[str, Any]:
+        n = len(selected)
+        if not n:
+            return {"n": 0}
+
+        def mean(key: str) -> float:
+            return sum(float(row[key]) for row in selected) / n
+
+        return {
+            "n": n,
+            "mean_raters": mean("n_raters"),
+            "unanimous_fraction": mean("unanimous"),
+            "target_majority_support_fraction": mean(
+                "target_has_majority_support"
+            ),
+            "target_matches_rating_median_fraction": mean(
+                "target_matches_rating_median"
+            ),
+            "mean_label_entropy_bits": mean("entropy_bits"),
+            "modal_rater_agreement_ceiling": mean("modal_rater_support"),
+            "prediction_expected_rater_agreement": mean(
+                "prediction_rater_support"
+            ),
+        }
+
+    report = summarize(rows)
+    report["per_target"] = {
+        target: summarize([row for row in rows if row["target"] == target])
+        for target in label_names
+        if any(row["target"] == target for row in rows)
+    }
+    return report
+
+
 def _metrics_with_human_agreement(
     targets: dict[str, str],
     predictions: dict[str, str],
@@ -626,6 +728,11 @@ def _metrics_with_human_agreement(
         for bucket, ids in buckets.items()
         if ids
     }
+    report["human_label_reliability"] = _human_label_reliability(
+        targets,
+        predictions,
+        labels,
+    )
     return report
 
 
