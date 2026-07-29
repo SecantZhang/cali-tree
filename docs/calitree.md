@@ -36,6 +36,39 @@ The source material is:
 Semantic Consistency (SC) is the target. The median of the three raters maps `0`, `0.5`, and
 `1` to `no`, `partial`, and `yes`; Perceptual Quality (PQ) remains attached as provenance.
 
+An independent zero-shot validation track uses the public
+[EditInspector benchmark](https://github.com/editinspector/EditInspector), pinned to commit
+`e18cd6b6b80311d8514787618c2a6cbebff563ef`. Its 783 MagicBrush edits have three human
+ratings and a published four-level instruction-accuracy target. The mapping was frozen
+before inference: `0 → no`, `1 → partial`, and `2/3 → yes`. Level 2 is grouped with `yes`
+because the official benchmark calls it “Accurate But Unexpected” and its published binary
+accuracy field normally treats levels 2 and 3 as accurate.
+
+Materialize a deterministic class-stratified subset with:
+
+```bash
+VEJUDGE_EDITINSPECTOR_ROOT=/path/to/editinspector \
+  ./run/setup_editinspector.sh --ratio 0.1 --seed 44
+```
+
+The 10% slice contains 80 frozen development cases. Expanding the same seed to `--ratio
+0.5` produces a strict nested sample with those same 80 cases plus 312 untouched
+confirmation cases. The setup downloads source/edited images resumably, stores the three
+individual ratings, and hashes the pinned CSV, metadata, and every selected image. Graph
+execution never downloads implicitly. `workflows/examples/rubric_lite_editinspector_zero_shot.json`
+loads the frozen Rubric-Lite artifact with the verifier disabled and its model field blank.
+The reproducible CLI defaults to a no-call dry run:
+
+```bash
+./run/run_editinspector_rubric_lite.sh \
+  --partition confirmation --disable-boundary \
+  --model gpt-4.1-mini
+
+./run/run_editinspector_rubric_lite.sh \
+  --partition confirmation --disable-boundary \
+  --live --model gpt-4.1-mini
+```
+
 ## Workflow
 
 Load `workflows/examples/calitree_imagenhub.json`. Its judge model, optimizer model, and
@@ -414,13 +447,52 @@ hierarchy and replacing three global judgments with one primary call plus an 8.5
 second pass. The selective Cali-Tree result remains appropriate only when abstention is
 acceptable.
 
-### Generalization status and artifacts
+### External generalization: EditInspector
 
-The design is more likely to transfer because all learned state is expressed in general
-visual-evidence terms, but cross-dataset generalization has **not** been demonstrated. The
-confirmation set contains unseen ImagenHub tasks, not a different benchmark or annotation
-distribution. A publication claim requires a locked evaluation on an external image-editing
-dataset with compatible three-way human labels.
+Cross-dataset validation is now complete, and it changes the conclusion. The frozen
+ImagenHub v4 rubric does **not** generalize as a full-coverage three-class classifier, but
+its strict perfect-evidence operating point does generalize as a high-precision selective
+`yes` detector.
+
+The deployed selective rule is target-blind and contains no dataset/editor lookup:
+
+```text
+accept iff calibrated label == yes and
+           min(change_evidence, specification_fidelity, source_preservation) == 100
+otherwise abstain
+```
+
+This rule is stored in `rubric_lite_v4_imagenhub.json`. A score of 100 already means all
+three v4 dimensions are visibly exact; no EditInspector label was used to alter the prompt,
+score, or accepted prediction. The 80-case development slice was used only as the gate for
+advancing the frozen rule to the disjoint confirmation partition.
+
+| External split | N | Full accuracy | Balanced | Partial P / R / F1 | Selective accepted | Coverage | Selective accuracy | 95% accepted-accuracy CI |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10% development | 80 | 60.00% | 65.99% | 10.53 / 40.00 / 16.67% | 40 | 50.00% | 100.00% | 91.24–100% Wilson |
+| Untouched confirmation | 312 | 58.65% | 51.95% | 4.23 / 15.79 / 6.67% | 168 | 53.85% | **97.62%** | **94.04–99.07% Wilson** |
+
+The confirmation task-bootstrap interval for selective accuracy is `95.24–99.40%`. Its
+168 accepted cases contain 164 human-`yes`, three human-`no`, and one human-`partial`
+case. All 153 accepted cases with unanimous human ratings are correct; the 15 disputed
+accepted cases are `73.33%` accurate. This passes the predeclared `>=90%` selective gate,
+but it is not balanced three-class success: the accepted set predicts only `yes`, and
+full-coverage accuracy is far below the external majority baseline.
+
+The partial verifier also failed to transfer. Rejudging the 40 primary-`yes` development
+cases changed three correct `yes` predictions to `partial`, reducing accuracy from `60.00%`
+to `56.25%`. Reusing the primary checkpoints and applying the verifier to the 40 primary
+`no/partial` cases improved ordinary accuracy to `70.00%`, but balanced accuracy fell to
+`59.71%` and partial F1 remained `17.39%`. Neither policy was advanced to confirmation.
+Across both development experiments, exactly 160 paid calls were made: 80 primary calls and
+one verifier call for each of the 80 cases. The untouched confirmation used exactly 312
+primary calls, zero verifier, optimizer, or embedding calls, and 729,567 total tokens.
+
+Therefore the publishable statement is narrow: **a one-call, target-blind perfect-evidence
+abstention rule transfers to a different image-edit dataset at 97.62% accuracy and 53.85%
+coverage.** It does not establish full-coverage 90% accuracy, cross-dataset no/partial
+calibration, or a solution to the partial boundary. The next research target should be a
+separately validated high-confidence no/partial rule, not more tree routing.
 
 Artifacts:
 
@@ -430,6 +502,14 @@ Artifacts:
 - partial-progress development: `logs/exps/260729-12:24:54-exps/`
 - promoted 51-call confirmation: `logs/exps/260729-12:30:24-exps/`
 - paired uncertainty: `logs/exps/260729-12:30:24-exps/paired_task_bootstrap.json`
+- EditInspector zero-shot primary + yes-only verifier:
+  `logs/exps/260729-12:59:08-editinspector-rubric-lite-exps/`
+- EditInspector ambiguous-case verifier:
+  `logs/exps/260729-13:04:22-editinspector-rubric-lite-exps/`
+- EditInspector no-call selective development report:
+  `logs/exps/260729-13:12:30-editinspector-rubric-lite-exps/`
+- EditInspector untouched 312-case confirmation:
+  `logs/exps/260729-13:22:51-editinspector-rubric-lite-exps/`
 
 During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
 calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from

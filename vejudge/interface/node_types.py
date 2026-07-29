@@ -15,9 +15,13 @@ from .node_calibration.calitree_nodes import (
     CaliTreeJudgeNodeExecutor,
     CaliTreeTrainNodeExecutor,
 )
-from .node_calibration.rubric_lite_nodes import RubricLiteTrainNodeExecutor
+from .node_calibration.rubric_lite_nodes import (
+    RubricLiteFrozenNodeExecutor,
+    RubricLiteTrainNodeExecutor,
+)
 from .node_db.coconut_source_node import CoconutSourceNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
+from .node_db.editinspector_source_node import EditInspectorSourceNodeExecutor
 from .node_db.grapenut_source_node import GrapenutSourceNodeExecutor
 from .node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
@@ -41,6 +45,7 @@ __all__ = [
     "GrapenutSourceNodeExecutor",
     "VeBenchSourceNodeExecutor",
     "ImagenHubSourceNodeExecutor",
+    "EditInspectorSourceNodeExecutor",
     "DatasetNodeExecutor",
     "UnitLabelsNodeExecutor",
     "PreprocessingNodeExecutor",
@@ -62,4 +67,5 @@ __all__ = [
     "CaliTreeJudgeNodeExecutor",
     "CaliTreeEvalNodeExecutor",
     "RubricLiteTrainNodeExecutor",
+    "RubricLiteFrozenNodeExecutor",
 ]

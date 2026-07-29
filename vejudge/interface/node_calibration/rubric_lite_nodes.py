@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Optional
 
@@ -9,6 +10,7 @@ from ...core.calibration.rubric_lite import (
     RubricLiteLearner,
     apply_ordinal_thresholds,
     fit_ordinal_thresholds,
+    ordinal_label,
 )
 from ...lm_engine import require_live
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
@@ -67,6 +69,86 @@ def _format_feedback(
         )
         for item_id in ids
     )
+
+
+@register
+class RubricLiteFrozenNodeExecutor(NodeExecutor):
+    """Load a versioned global rubric artifact without training or model calls."""
+
+    node_type = "rubric_lite_frozen"
+    category = "node_calibration"
+    subcategory = "prompt"
+    input_sockets: dict[str, str] = {}
+    output_sockets = {"prompt_tree": "prompt_tree"}
+    param_schema = {
+        "model_version": {
+            "type": "enum",
+            "options": ["rubric_lite_v4_imagenhub"],
+            "default": "rubric_lite_v4_imagenhub",
+        },
+    }
+
+    def run(self, ctx: NodeRunContext) -> NodeRunResult:
+        model_version = str(
+            ctx.params.get("model_version") or "rubric_lite_v4_imagenhub"
+        )
+        if model_version != "rubric_lite_v4_imagenhub":
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown frozen Rubric-Lite model {model_version!r}",
+            )
+        artifact_path = (
+            Path(__file__).resolve().parents[2]
+            / "core"
+            / "calibration"
+            / "artifacts"
+            / f"{model_version}.json"
+        )
+        try:
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            prompt_version = str(artifact["prompt_version"])
+            thresholds = artifact["ordinal_thresholds"]
+            prompt = _prompt("initial_rubric.txt", prompt_version)
+            # Reuse the production validation rather than trusting a hand-edited artifact.
+            ordinal_label(0, thresholds)
+        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            return NodeRunResult(
+                status="error",
+                error=f"Invalid frozen Rubric-Lite artifact {model_version!r}: {exc}",
+            )
+        tree = {
+            "version": f"frozen:{model_version}",
+            "model_version": model_version,
+            "architecture": "rubric_lite",
+            "prompt_version": prompt_version,
+            "ordinal_thresholds": thresholds,
+            "selective_policy": artifact.get("selective_policy") or {},
+            "training_provenance": artifact.get("training_provenance") or {},
+            "roots": ["rubric:global"],
+            "nodes": {
+                "rubric:global": {
+                    "id": "rubric:global",
+                    "prompt": prompt,
+                    "covered_ids": [],
+                    "children": [],
+                    "embedding": [],
+                    "centroid": [],
+                    "validated": True,
+                    "state": "global",
+                },
+            },
+            "prediction_cache": {},
+        }
+        return NodeRunResult(
+            outputs={"prompt_tree": tree},
+            meta={
+                "dry_run": ctx.dry_run,
+                "architecture": "rubric_lite",
+                "model_version": model_version,
+                "model_calls": 0,
+                "ordinal_thresholds": thresholds,
+            },
+        )
 
 
 @register
@@ -495,6 +577,7 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
     }
     output_sockets = {"judge_result": "judge_result"}
     param_schema = {
+        "enabled": {"type": "bool", "default": True},
         "verifier_version": {
             "type": "enum",
             "options": list(VERIFIER_VERSIONS),
@@ -531,6 +614,18 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                     "Rubric-Lite Boundary requires samples, judge_result, "
                     "and judge_engine"
                 ),
+            )
+        if not bool(ctx.params.get("enabled", True)):
+            return NodeRunResult(
+                outputs={"judge_result": judge_result},
+                meta={
+                    "dry_run": ctx.dry_run,
+                    "architecture": "rubric_lite_boundary",
+                    "enabled": False,
+                    "n_items": len(judge_result),
+                    "estimated_calls": 0,
+                    "estimated_calls_max": 0,
+                },
             )
         minimum_score = float(
             ctx.params.get("minimum_ordinal_score", 0)
@@ -581,9 +676,14 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
             row = value.get("calitree") if isinstance(value, dict) else None
             return row if isinstance(row, dict) else {}
 
+        result_ids = (
+            set(samples)
+            if ctx.dry_run and not judge_result
+            else set(samples) & set(judge_result)
+        )
         eligible_split_ids = [
             item_id
-            for item_id in sorted(set(samples) & set(judge_result))
+            for item_id in sorted(result_ids)
             if apply_split == "all"
             or str(samples[item_id].get("split") or "") == apply_split
         ]

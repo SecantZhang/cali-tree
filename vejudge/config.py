@@ -40,6 +40,9 @@ VEBENCH_ROOT: Path = _env_path(
 IMAGENHUB_ROOT: Path = _env_path(
     "VEJUDGE_IMAGENHUB_ROOT", DATA_ROOT / "imagenhub" / "text_guided_ie"
 )
+EDITINSPECTOR_ROOT: Path = _env_path(
+    "VEJUDGE_EDITINSPECTOR_ROOT", DATA_ROOT / "editinspector"
+)
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
 # Credentials entered manually via the interface's Settings modal — takes top precedence
 # over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient

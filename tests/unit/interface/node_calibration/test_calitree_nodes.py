@@ -26,8 +26,12 @@ from vejudge.interface.node_calibration.calitree_nodes import (
     _semantic_edit_type,
 )
 from vejudge.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
+from vejudge.interface.node_db.editinspector_source_node import (
+    EditInspectorSourceNodeExecutor,
+)
 from vejudge.interface.node_calibration.rubric_lite_nodes import (
     RubricLiteBoundaryNodeExecutor,
+    RubricLiteFrozenNodeExecutor,
     RubricLiteTrainNodeExecutor,
 )
 
@@ -83,6 +87,35 @@ def test_imagenhub_source_dry_run_uses_local_records_for_exact_planning(
     assert result.meta["split_counts"] == {"train": 1, "test": 1}
     assert result.meta["downloads"] == 0
     assert result.meta["local_data_available"] is True
+
+
+def test_editinspector_source_filters_frozen_confirmation_partition(
+    make_ctx, monkeypatch
+):
+    samples = {
+        "dev": {**_sample("dev", "test"), "external_partition": "development"},
+        "confirm": {
+            **_sample("confirm", "test"),
+            "external_partition": "confirmation",
+        },
+    }
+    labels = {
+        item_id: {"target_label": "yes"}
+        for item_id in samples
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_db.editinspector_source_node.EditInspectorLoader.load_all",
+        lambda _self: (samples, labels),
+    )
+
+    result = EditInspectorSourceNodeExecutor().run(
+        make_ctx(params={"partition": "confirmation"})
+    )
+
+    assert set(result.outputs["raw_dataset"]) == {"confirm"}
+    assert set(result.outputs["raw_labels"]) == {"confirm"}
+    assert result.meta["partition"] == "confirmation"
+    assert result.meta["n_items"] == 1
 
 
 def test_calitree_train_dry_run_reports_calls_and_equal_token_cap(make_ctx):
@@ -141,6 +174,26 @@ def test_rubric_lite_dry_run_has_no_tree_embedding_or_critic_calls(make_ctx):
     assert result.meta["estimated_calls"]["optimizer_max"] == 3
 
 
+def test_frozen_rubric_lite_loads_versioned_prompt_and_cutpoints(make_ctx):
+    result = RubricLiteFrozenNodeExecutor().run(make_ctx(
+        params={"model_version": "rubric_lite_v4_imagenhub"},
+        inputs={},
+    ))
+
+    assert result.status == "done"
+    tree = result.outputs["prompt_tree"]
+    assert tree["architecture"] == "rubric_lite"
+    assert tree["prediction_cache"] == {}
+    assert tree["ordinal_thresholds"] == {
+        "no_partial": 75.000001,
+        "partial_yes": 89.000001,
+    }
+    assert tree["training_provenance"]["train_tasks"] == 29
+    assert tree["selective_policy"]["minimum_ordinal_score"] == 100
+    assert "change_evidence" in tree["nodes"]["rubric:global"]["prompt"]
+    assert result.meta["model_calls"] == 0
+
+
 def test_rubric_lite_boundary_dry_run_counts_only_score_band(make_ctx):
     samples = {
         "low": _sample("low", "test"),
@@ -173,6 +226,51 @@ def test_rubric_lite_boundary_dry_run_counts_only_score_band(make_ctx):
     assert result.meta["n_score_eligible"] == 1
     assert result.meta["estimated_calls"] == 1
     assert result.outputs["judge_result"] is judge_result
+
+
+def test_rubric_lite_boundary_dry_run_reports_max_when_upstream_is_placeholder(
+    make_ctx,
+):
+    samples = {
+        "test-a": _sample("test-a", "test"),
+        "test-b": _sample("test-b", "test"),
+        "train": _sample("train", "train"),
+    }
+
+    result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
+        params={"apply_split": "test"},
+        inputs={
+            "samples": samples,
+            "judge_result": {},
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    assert result.meta["estimated_calls"] == 0
+    assert result.meta["estimated_calls_max"] == 2
+    assert result.meta["n_split_eligible"] == 2
+
+
+def test_rubric_lite_boundary_can_be_disabled_without_calls(make_ctx):
+    judge_result = {
+        "case": {"calitree": {"label": "yes", "ordinal_score": 100}},
+    }
+    result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={"enabled": False},
+        inputs={
+            "samples": {"case": _sample("case", "test")},
+            "judge_result": judge_result,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    assert result.outputs["judge_result"] is judge_result
+    assert result.meta["enabled"] is False
+    assert result.meta["estimated_calls"] == 0
 
 
 @pytest.mark.parametrize(
@@ -867,6 +965,76 @@ def test_rubric_lite_judge_applies_global_ordinal_cutpoints(
         "no_partial": 35.0,
         "partial_yes": 90.0,
     }
+
+
+def test_rubric_lite_judge_persists_perfect_evidence_selection(
+    make_ctx, monkeypatch
+):
+    prompt = "one scored global rubric"
+    tree = {
+        "architecture": "rubric_lite",
+        "prompt_version": "rubric_lite_v4",
+        "ordinal_thresholds": {
+            "no_partial": 75.000001,
+            "partial_yes": 89.000001,
+        },
+        "selective_policy": {
+            "version": "rubric-lite-perfect-evidence-v1",
+            "signal": "ordinal_score",
+            "minimum_ordinal_score": 100,
+            "allowed_labels": ["yes"],
+        },
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global",
+                "prompt": prompt,
+                "embedding": [],
+                "children": [],
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "judge_many",
+        lambda _runtime, _prompt, _samples: {
+            "perfect": {
+                "label": "yes", "ordinal_score": 100,
+                "rationale": "exact", "valid": True,
+            },
+            "near": {
+                "label": "partial", "ordinal_score": 89,
+                "rationale": "near", "valid": True,
+            },
+        },
+    )
+
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        inputs={
+            "samples": {
+                "perfect": _sample("perfect"),
+                "near": _sample("near"),
+            },
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    rows = {
+        item_id: value["calitree"]
+        for item_id, value in result.outputs["judge_result"].items()
+    }
+    assert rows["perfect"]["selective_accepted"] is True
+    assert rows["near"]["selective_accepted"] is False
+    assert rows["perfect"]["selective_policy_version"] == (
+        "rubric-lite-perfect-evidence-v1"
+    )
 
 
 def test_rubric_lite_boundary_overrides_only_partial_verifier_label(

@@ -214,6 +214,10 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     input: {},
     output: { raw_dataset: 'raw_dataset', raw_labels: 'raw_labels' },
   },
+  editinspector_source: {
+    input: {},
+    output: { raw_dataset: 'raw_dataset', raw_labels: 'raw_labels' },
+  },
   // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
@@ -348,6 +352,10 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       judge_engine: 'engine_config',
     },
     output: { judge_result: 'judge_result' },
+  },
+  rubric_lite_frozen: {
+    input: {},
+    output: { prompt_tree: 'prompt_tree' },
   },
   calitree_judge: {
     input: {

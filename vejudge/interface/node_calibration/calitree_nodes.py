@@ -2122,20 +2122,45 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                 judged[item_id]["prior_action"] = "base"
                 judged[item_id]["prior_rule"] = prior_rule
             if selective_policy:
-                editor = str(samples[item_id].get("editor") or "unknown")
-                branch = (
-                    selective_policy.get("editors") or {}
-                ).get(editor) or {}
-                support_ok = int(
-                    judged[item_id].get("consensus_support") or 0
-                ) >= int(
-                    selective_policy.get(
-                        "minimum_consensus_support", 3
+                if (
+                    selective_policy.get("signal") == "ordinal_score"
+                    and isinstance(
+                        judged[item_id].get("ordinal_score"), (int, float)
                     )
-                )
-                judged[item_id]["selective_accepted"] = (
-                    support_ok and bool(branch.get("active"))
-                )
+                ):
+                    allowed_labels = set(
+                        selective_policy.get("allowed_labels") or []
+                    )
+                    judged[item_id]["selective_accepted"] = (
+                        float(judged[item_id]["ordinal_score"])
+                        >= float(
+                            selective_policy.get(
+                                "minimum_ordinal_score", 100
+                            )
+                        )
+                        and (
+                            not allowed_labels
+                            or str(judged[item_id].get("label") or "")
+                            in allowed_labels
+                        )
+                    )
+                else:
+                    editor = str(
+                        samples[item_id].get("editor") or "unknown"
+                    )
+                    branch = (
+                        selective_policy.get("editors") or {}
+                    ).get(editor) or {}
+                    support_ok = int(
+                        judged[item_id].get("consensus_support") or 0
+                    ) >= int(
+                        selective_policy.get(
+                            "minimum_consensus_support", 3
+                        )
+                    )
+                    judged[item_id]["selective_accepted"] = (
+                        support_ok and bool(branch.get("active"))
+                    )
                 judged[item_id]["selective_policy_version"] = (
                     selective_policy.get("version")
                 )
