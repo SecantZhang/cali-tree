@@ -682,6 +682,66 @@ the corrected audit confirms all five ImagenHub folds contain data. The invalid 
 result was withdrawn before commit. The corrected negative audit is
 `docs/experiments/rubric_lite_monotone_feature_audit.json`.
 
+#### Progress/completion gate and score-information audit
+
+A second two-threshold alternative tested a more direct definition of partial:
+`no` when requested-edit progress is below a lower threshold, `yes` when minimum
+all-dimension completion clears an upper threshold, and `partial` otherwise. The only
+candidate choice was whether progress meant the minimum, mean, or maximum of change
+evidence and specification fidelity. The protocol and gate were committed before scores
+were inspected.
+
+EditInspector selected the requested-dimension minimum, but it was exactly equivalent to
+the existing rule there. On ImagenHub, the fixed definition regressed:
+
+| Task-grouped OOF rule | Dataset | Accuracy | Balanced | Macro F1 | Partial P / R / F1 |
+|---|---|---:|---:|---:|---:|
+| minimum baseline | EditInspector 392 | 81.12% | 68.03% | 58.22% | 25.45 / 58.33 / 35.44% |
+| progress/completion | EditInspector 392 | 81.12% | 68.03% | 58.22% | 25.45 / 58.33 / 35.44% |
+| minimum baseline | ImagenHub 600 | 80.83% | 60.15% | 59.77% | 27.78 / 43.10 / 33.78% |
+| progress/completion | ImagenHub 600 | 75.83% | 58.21% | 55.90% | 19.82 / 37.93 / 26.04% |
+
+The rule failed every partial-improvement gate and was not implemented. More importantly,
+an exact score-tuple audit explains why downstream score engineering keeps failing:
+
+| Score-representation diagnostic | EditInspector | ImagenHub |
+|---|---:|---:|
+| Cases | 392 | 600 |
+| Distinct three-score tuples | 25 | 39 |
+| Partial cases | 24 | 58 |
+| Partial sharing its entire tuple with `no` or `yes` | **23 (95.83%)** | **55 (94.83%)** |
+| Optimistic in-sample modal-tuple accuracy | 90.05% | 85.17% |
+| Partial recall at that accuracy-maximizing lookup | **29.17%** | **17.24%** |
+
+The modal-tuple calculation uses all labels and is not held-out performance. It is an
+optimistic diagnostic of how much information the representation retains: a deterministic
+lookup can maximize ordinary accuracy by assigning each exact tuple its modal class, but
+then loses most partial cases. Of the 23 tuples appearing in both datasets, 16 even have
+different modal labels; for `[0, 0, 100]`, EditInspector counts are
+`no=4 / partial=2 / yes=10`, while ImagenHub counts are
+`no=107 / partial=1 / yes=2`.
+
+This changes the research direction. The next experiment does not add another classifier,
+router, verifier, or score formula. `rubric_lite_v6` remains one judge call and two
+cutpoints, but asks the judge to preserve an at-most-four-condition evidence ledger,
+the strongest achieved evidence, the most important missing evidence, a semantic residual
+type, and one continuous semantic-completion score. Because its categories were learned
+from all 392 calibration cases, those cases are development diagnostics only. The untouched
+391-case final partition remains the clean in-domain confirmation. The preregistered
+stage-1 gate requires at least 78% accuracy, 66% balanced accuracy, 99% valid schemas, and
+a five-point partial-F1 gain over v4 before any final calls.
+
+Artifacts:
+
+- progress/completion protocol:
+  `docs/experiments/rubric_lite_progress_completion_gate.json`
+- progress/completion result:
+  `docs/experiments/rubric_lite_progress_completion_gate_result.json`
+- score collision audit:
+  `docs/experiments/rubric_lite_score_collision_audit.json`
+- v6 evidence-ledger protocol:
+  `docs/experiments/rubric_lite_v6_evidence_ledger_ab.json`
+
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
 calls. Until that happens, this model is a promising calibration-half result, not a
@@ -709,6 +769,11 @@ Artifacts:
   `docs/experiments/rubric_lite_monotone_feature_audit.json`
 - gpt-4.1 stronger-judge negative control:
   `docs/experiments/rubric_lite_gpt41_editinspector_ab_result.json`
+- progress/completion and score-information audits:
+  `docs/experiments/rubric_lite_progress_completion_gate_result.json` and
+  `docs/experiments/rubric_lite_score_collision_audit.json`
+- v6 evidence-ledger preregistration:
+  `docs/experiments/rubric_lite_v6_evidence_ledger_ab.json`
 
 During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
 calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from

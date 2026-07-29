@@ -1,0 +1,75 @@
+{
+  "protocol_version": "rubric-lite-v6-evidence-ledger-ab-v1",
+  "created_at": "2026-07-29T15:31:00-07:00",
+  "status": "preregistered",
+  "hypothesis": "A one-call condition evidence ledger preserves the achieved-versus-missing semantic evidence that the three aggregate v4 scores discard, improving partial F1 without tree routing or a second model call.",
+  "architecture": {
+    "judge_calls_per_case": 1,
+    "additional_model_calls": 0,
+    "tree": false,
+    "optimizer": false,
+    "classifier": false,
+    "editor_or_dataset_features": false,
+    "calibration_parameters": 2,
+    "prompt_version": "rubric_lite_v6",
+    "model": "gpt-4.1-mini",
+    "temperature": 0,
+    "max_tokens": 768
+  },
+  "rubric_change": {
+    "condition_ledger": "List at most four atomic requested semantic conditions and mark each as absent, emerging, mostly, or complete.",
+    "achieved_evidence": "Name the strongest visibly achieved requested condition.",
+    "missing_evidence": "Name the most important absent, wrong, residual, or incomplete requested condition.",
+    "residual_type": [
+      "none",
+      "missing_change",
+      "wrong_subject",
+      "wrong_identity_or_attribute",
+      "incomplete_scope_or_count",
+      "residual_old_content",
+      "wrong_action_or_relation",
+      "scene_replacement",
+      "quality_only"
+    ],
+    "semantic_completion": "One integer 0..100 derived from condition status and requested scope; standalone visual quality cannot lower it.",
+    "scene_validity": "same or replaced",
+    "calibration_feature": "semantic_completion, forced to zero for replaced scenes"
+  },
+  "evidence_basis": {
+    "selection_data": "The prompt categories were derived from v4 errors on all 392 EditInspector calibration cases and aggregate collision statistics on 600 ImagenHub cases.",
+    "consequence": "Neither the 80-case development slice nor the former 312-case confirmation slice is independent for v6. They are prompt-development diagnostics only.",
+    "clean_confirmation": "The untouched 391-case EditInspector final partition remains the only clean in-domain confirmation."
+  },
+  "execution_stages": {
+    "stage_1_prompt_smoke": {
+      "partition": "EditInspector development",
+      "cases": 80,
+      "purpose": "Check schema reliability, score dispersion, and whether the candidate is promising enough to spend on clean confirmation.",
+      "baseline": "Existing gpt-4.1-mini v4 outputs on the exact same 80 cases.",
+      "metrics": "Five-fold task-grouped OOF cutpoint metrics; descriptive because prompt design used these labels.",
+      "continue_if": {
+        "accuracy_minimum": 0.78,
+        "balanced_accuracy_minimum": 0.66,
+        "partial_f1_delta_over_v4_minimum": 0.05,
+        "valid_schema_fraction_minimum": 0.99
+      }
+    },
+    "stage_2_clean_confirmation": {
+      "partition": "EditInspector final",
+      "cases": 391,
+      "execution": "Run paired v4 and v6 judgments without fitting or inspecting final labels until both checkpoints are complete.",
+      "primary_gate": {
+        "v6_partial_f1_delta_minimum": 0.05,
+        "v6_balanced_accuracy_delta_minimum": 0.0,
+        "v6_accuracy_delta_minimum": -0.02
+      }
+    },
+    "stage_3_cross_dataset": {
+      "condition": "Run only if stage 2 passes.",
+      "partition": "A task-disjoint ImagenHub partition not used to design or select v6.",
+      "gate": "The same partial-F1, balanced-accuracy, and accuracy deltas as stage 2."
+    }
+  },
+  "stopping_rule": "Stop immediately after any failed stage. Do not add routing, feature rules, or another verifier to rescue the prompt.",
+  "final_partition_used": false
+}
