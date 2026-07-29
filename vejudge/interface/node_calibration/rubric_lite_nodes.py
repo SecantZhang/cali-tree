@@ -39,6 +39,7 @@ RUBRIC_VERSIONS = (
     "rubric_lite_v3",
     "rubric_lite_v4",
     "rubric_lite_v5",
+    "rubric_lite_v6",
 )
 VERIFIER_VERSIONS = (
     "rubric_lite_v1",
@@ -48,6 +49,7 @@ FROZEN_MODEL_VERSIONS = (
     "rubric_lite_v4_imagenhub",
     "rubric_lite_v4_editinspector_cutpoints_v1",
     "rubric_lite_v5_core_completion_experimental",
+    "rubric_lite_v6_evidence_ledger_experimental",
 )
 
 
@@ -666,6 +668,7 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
         ordinal_calibration: Optional[dict[str, Any]] = None
         if rubric_version in {
             "rubric_lite_v3", "rubric_lite_v4", "rubric_lite_v5",
+            "rubric_lite_v6",
         }:
             accuracy_tolerance = float(
                 ctx.params.get("ordinal_accuracy_tolerance", 0.01)
@@ -733,21 +736,39 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
             root["validation_accuracy"] = float(
                 validation_metrics.get("accuracy") or 0.0
             )
-            root["components"] = {
-                "criteria": [
-                    "change evidence: 0..100",
-                    "specification fidelity: 0..100",
-                    "source preservation: 0..100",
-                ],
-                "priorities": [
-                    "minimum visible-evidence score",
-                    "training-fitted global ordinal cutpoints",
-                ],
-                "constraints": [
-                    "one judge call",
-                    "no editor/task/instruction calibration features",
-                ],
-            }
+            root["components"] = (
+                {
+                    "criteria": [
+                        "atomic requested-condition evidence ledger",
+                        "semantic completion: 0..100",
+                        "scene validity: same or replaced",
+                    ],
+                    "priorities": [
+                        "achieved versus missing requested evidence",
+                        "training-fitted global ordinal cutpoints",
+                    ],
+                    "constraints": [
+                        "one judge call",
+                        "no editor/task/instruction calibration features",
+                    ],
+                }
+                if rubric_version == "rubric_lite_v6"
+                else {
+                    "criteria": [
+                        "change evidence: 0..100",
+                        "specification fidelity: 0..100",
+                        "source preservation: 0..100",
+                    ],
+                    "priorities": [
+                        "minimum visible-evidence score",
+                        "training-fitted global ordinal cutpoints",
+                    ],
+                    "constraints": [
+                        "one judge call",
+                        "no editor/task/instruction calibration features",
+                    ],
+                }
+            )
             tree["config"]["ordinal_accuracy_tolerance"] = (
                 accuracy_tolerance
             )

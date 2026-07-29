@@ -282,7 +282,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
       default: 'rubric_lite_v1',
       options: [
         'rubric_lite_v1', 'rubric_lite_v2', 'rubric_lite_v3', 'rubric_lite_v4',
-        'rubric_lite_v5',
+        'rubric_lite_v5', 'rubric_lite_v6',
       ],
     },
     max_steps: { type: 'number', default: 3, min: 0, max: 10 },
@@ -335,6 +335,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
         'rubric_lite_v4_imagenhub',
         'rubric_lite_v4_editinspector_cutpoints_v1',
         'rubric_lite_v5_core_completion_experimental',
+        'rubric_lite_v6_evidence_ledger_experimental',
       ],
     },
   },

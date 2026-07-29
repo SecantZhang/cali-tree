@@ -1,3 +1,10 @@
+## 260729-15:40:21 — Stop the v6 evidence ledger after stage 1
+- Type: feature
+- Scope: v6 prompt/parser/artifact/workflow, frontend registration, live result, CaliTree report and tests
+- What: Added and exercised the one-call evidence-ledger negative control; 80/80 schemas were valid, but accuracy fell to 71.25% and partial F1 to 10.00%, so the preregistered gate stopped all final calls.
+- Why: Test whether retaining condition-level achieved/missing evidence improves partial without architectural complexity, and reject it cleanly when the judge still collapses nuanced cases into complete.
+- Details: logs/updates/details/260729-15:40:21-updates.md
+
 ## 260729-15:31:09 — Diagnose Rubric-Lite score information loss
 - Type: docs
 - Scope: partial progress gate, cross-dataset score-collision audit, v6 evidence-ledger protocol, CaliTree report

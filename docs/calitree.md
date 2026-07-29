@@ -731,6 +731,24 @@ from all 392 calibration cases, those cases are development diagnostics only. Th
 stage-1 gate requires at least 78% accuracy, 66% balanced accuracy, 99% valid schemas, and
 a five-point partial-F1 gain over v4 before any final calls.
 
+The gate failed. The prompt returned a valid ledger on all 80 cases, but assigned
+`semantic_completion=100` to 55 cases, including three of the five human-`partial` targets.
+Task-grouped out-of-fold metrics were:
+
+| 80-case prompt-development diagnostic | Accuracy | Balanced | Macro F1 | Partial P / R / F1 |
+|---|---:|---:|---:|---:|
+| **v4 + two cutpoints** | **80.00%** | **68.65%** | **59.00%** | **50.00 / 40.00 / 44.44%** |
+| v6 evidence ledger + two cutpoints | 71.25% | 54.01% | 49.89% | 6.67 / 20.00 / 10.00% |
+| v6 delta | -8.75 pp | -14.64 pp | -9.10 pp | -43.33 / -20.00 / **-34.44 pp** |
+
+V6 used exactly 80 `gpt-4.1-mini` calls and 202,702 tokens, with no optimizer,
+verifier, or embedding calls. Its schema gate passed, but all three performance gates
+failed. Per the frozen stopping rule, the final partition received zero calls and the
+runtime default remains v4 plus two cutpoints. V6 is retained only as a reproducible
+negative control. The result strengthens the earlier v5 finding: adding an explicit
+condition ledger makes the model explain its decision more systematically, but does not
+make it recognize the released partial boundary.
+
 Artifacts:
 
 - progress/completion protocol:
@@ -741,6 +759,8 @@ Artifacts:
   `docs/experiments/rubric_lite_score_collision_audit.json`
 - v6 evidence-ledger protocol:
   `docs/experiments/rubric_lite_v6_evidence_ledger_ab.json`
+- v6 evidence-ledger stopped result:
+  `docs/experiments/rubric_lite_v6_evidence_ledger_ab_result.json`
 
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
@@ -774,6 +794,8 @@ Artifacts:
   `docs/experiments/rubric_lite_score_collision_audit.json`
 - v6 evidence-ledger preregistration:
   `docs/experiments/rubric_lite_v6_evidence_ledger_ab.json`
+- v6 evidence-ledger stopped result:
+  `docs/experiments/rubric_lite_v6_evidence_ledger_ab_result.json`
 
 During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
 calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from

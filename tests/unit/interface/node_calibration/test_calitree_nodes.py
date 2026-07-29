@@ -249,6 +249,28 @@ def test_frozen_rubric_lite_loads_core_completion_rubric(make_ctx):
     assert result.meta["model_calls"] == 0
 
 
+def test_frozen_rubric_lite_loads_evidence_ledger_rubric(make_ctx):
+    result = RubricLiteFrozenNodeExecutor().run(make_ctx(
+        params={
+            "model_version":
+                "rubric_lite_v6_evidence_ledger_experimental"
+        },
+        inputs={},
+    ))
+
+    assert result.status == "done"
+    tree = result.outputs["prompt_tree"]
+    assert tree["prompt_version"] == "rubric_lite_v6"
+    assert tree["ordinal_thresholds"] == {
+        "no_partial": 25.0,
+        "partial_yes": 75.0,
+    }
+    prompt = tree["nodes"]["rubric:global"]["prompt"]
+    assert "EVIDENCE LEDGER" in prompt
+    assert "semantic_completion" in prompt
+    assert result.meta["model_calls"] == 0
+
+
 def test_rubric_lite_fit_learns_only_two_cutpoints_with_oof_report(
     make_ctx,
 ):
@@ -955,6 +977,72 @@ def test_rubric_lite_v5_core_completion_uses_fixed_ordinal_score():
     assert result["label"] == "partial"
     assert result["model_label"] == "yes"
     assert result["conflict_resolved"] is True
+
+
+def test_rubric_lite_v6_uses_semantic_completion_score():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-evidence-ledger-v6",
+        "conditions": [
+            {"condition": "replace the television", "status": "mostly"},
+            {"condition": "with a gaming PC", "status": "emerging"},
+        ],
+        "achieved_evidence": "Computer components appear in the screen.",
+        "missing_evidence": "The television itself remains.",
+        "residual_type": "residual_old_content",
+        "semantic_completion": 58,
+        "scene_validity": "same",
+        "label": "yes",
+        "rationale": "The requested identity is only partly achieved.",
+    }))
+
+    assert result["ordinal_score"] == 58
+    assert result["ordinal_scores"] == {
+        "semantic_completion": 58,
+        "scene_validity_score": 100,
+    }
+    assert result["label"] == "partial"
+    assert result["model_label"] == "yes"
+    assert result["conflict_resolved"] is True
+    assert "semantic completion score 58" in result["conflict_reason"]
+
+
+def test_rubric_lite_v6_scene_replacement_forces_zero():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-evidence-ledger-v6",
+        "conditions": [
+            {"condition": "make the door red", "status": "complete"},
+        ],
+        "achieved_evidence": "A red door is visible.",
+        "missing_evidence": "The original scene is gone.",
+        "residual_type": "scene_replacement",
+        "semantic_completion": 90,
+        "scene_validity": "replaced",
+        "label": "yes",
+        "rationale": "The output is a different scene.",
+    }))
+
+    assert result["ordinal_score"] == 0
+    assert result["label"] == "no"
+    assert result["valid"] is True
+
+
+def test_rubric_lite_v6_rejects_invalid_ledger_schema():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-evidence-ledger-v6",
+        "conditions": [],
+        "achieved_evidence": "",
+        "missing_evidence": "",
+        "residual_type": "unknown",
+        "semantic_completion": 50,
+        "scene_validity": "same",
+        "label": "partial",
+        "rationale": "Missing the required evidence ledger.",
+    }))
+
+    assert result["ordinal_score"] is None
+    assert result["ordinal_scores"] is None
+    assert result["label"] == ""
+    assert result["valid"] is False
 
 
 def test_rubric_lite_ordinal_score_rejects_out_of_range_fields():
