@@ -630,6 +630,12 @@ partial further requires a genuinely stronger visual signal or judge model; addi
 score-pattern rules, text classifiers, or another leniency prompt increases complexity
 without transferring.
 
+The stronger-judge test is preregistered in
+`docs/experiments/rubric_lite_gpt41_editinspector_ab.json`. It changes only
+`gpt-4.1-mini` to `gpt-4.1` on the frozen 80-case development partition. Advancement
+requires at least a five-point partial-F1 gain while keeping accuracy at or above 78% and
+balanced accuracy at or above 66.65%; otherwise the candidate stops before confirmation.
+
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
 calls. Until that happens, this model is a promising calibration-half result, not a
