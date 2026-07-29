@@ -305,6 +305,13 @@ policy. The example `rubric_lite_editinspector_zero_shot.json` enables it; its j
 model remains intentionally unset. With review mode off, `decision_label` remains identical
 to `label`, preserving existing workflows.
 
+The next zero-call experiment is preregistered in
+`docs/experiments/rubric_lite_multilane_selective_gate.json`. It tests whether the exact
+`yes` lane can be supplemented by a small, target-blind `no` or `partial` lane using only
+the three existing v4 evidence scores. Candidate definitions and cross-dataset advancement
+gates were frozen before inspecting their case-level results. Dataset/editor/task identity
+and instruction text are forbidden policy inputs.
+
 | v2 report slice | N | Accuracy | Balanced accuracy |
 |---|---:|---:|---:|
 | Cali-Tree, unanimous human ratings | 940 | 90.53% | 61.89% |

@@ -1,0 +1,122 @@
+{
+  "protocol_version": "rubric-lite-multilane-selective-v1",
+  "frozen_at": "2026-07-29T16:38:20-07:00",
+  "objective": "Increase target-blind auto-decision coverage beyond the exact-yes lane without reducing cross-dataset selective accuracy below 90%.",
+  "architecture_constraints": {
+    "primary_judge_calls_per_case": 1,
+    "additional_model_calls": 0,
+    "optimizer_calls": 0,
+    "embedding_calls": 0,
+    "permitted_inputs": [
+      "rubric_lite_v4 ordinal_scores",
+      "rubric_lite_v4 calibrated label"
+    ],
+    "forbidden_inputs": [
+      "dataset identity",
+      "editor identity",
+      "task identity",
+      "instruction text",
+      "human labels at inference"
+    ]
+  },
+  "frozen_inputs": {
+    "imagenhub_development": {
+      "path": "logs/exps/260729-11:14:03-exps/rubric_lite_train.json",
+      "sha256": "f0a79988ed9181dbb99dda2a939c5970df91f53080129fd7978b4b94f58687b4",
+      "partition": "120 held-out test cases from 15 task UIDs; training cases excluded"
+    },
+    "imagenhub_confirmation": {
+      "path": "logs/exps/260729-11:33:04-exps/judge_results.jsonl",
+      "sha256": "345861133b504c5aa9495213db2447a56bad58469a81580f743d5aa4e8ca3dc9",
+      "partition": "600 held-out test cases from the complementary 75 task UIDs; training cases excluded"
+    },
+    "editinspector_development": {
+      "path": "logs/exps/260729-13:12:30-editinspector-rubric-lite-exps/graph_result.json",
+      "sha256": "f2dfbb8e2f4b9f0d986ad9f18d3b267c0a6d0cb94f7f5be01a224e8a085bf8fc",
+      "partition": "80 calibration-partition cases"
+    },
+    "editinspector_confirmation": {
+      "path": "logs/exps/260729-13:22:51-editinspector-rubric-lite-exps/graph_result.json",
+      "sha256": "adfc13f15091122dcfff8f116acdc686177d891a86310767e198b5bb21d9f02d",
+      "partition": "312 disjoint confirmation-partition cases"
+    }
+  },
+  "policy_order": [
+    "yes_exact",
+    "selected_no_lane",
+    "selected_partial_lane",
+    "needs_human"
+  ],
+  "fixed_yes_lane": {
+    "name": "yes_exact",
+    "decision": "yes",
+    "predicate": "calibrated_label == yes and change_evidence == 100 and specification_fidelity == 100 and source_preservation == 100"
+  },
+  "no_lane_candidates": [
+    {
+      "name": "no_catastrophic",
+      "decision": "no",
+      "predicate": "change_evidence == 0 and specification_fidelity == 0 and source_preservation <= 50"
+    },
+    {
+      "name": "no_damaged",
+      "decision": "no",
+      "predicate": "change_evidence == 0 and specification_fidelity == 0 and source_preservation <= 75"
+    },
+    {
+      "name": "no_low_evidence_nonlocal",
+      "decision": "no",
+      "predicate": "change_evidence <= 25 and specification_fidelity <= 25 and source_preservation <= 50"
+    }
+  ],
+  "partial_lane_candidates": [
+    {
+      "name": "partial_mid_strict",
+      "decision": "partial",
+      "predicate": "50 <= change_evidence <= 89 and 50 <= specification_fidelity <= 89 and source_preservation >= 89"
+    },
+    {
+      "name": "partial_near_exact",
+      "decision": "partial",
+      "predicate": "minimum_score == 89 and every score >= 89"
+    },
+    {
+      "name": "partial_visible_incomplete",
+      "decision": "partial",
+      "predicate": "50 <= min(change_evidence, specification_fidelity) <= 75 and source_preservation >= 75"
+    }
+  ],
+  "development_selection": {
+    "evaluate_each_lane_separately": true,
+    "minimum_pooled_support": 5,
+    "minimum_task_support_per_dataset": 2,
+    "minimum_precision_each_dataset": 0.8,
+    "minimum_pooled_wilson_lower_95": 0.65,
+    "tie_break": "largest minimum per-dataset coverage, then largest pooled support, then lexical candidate name",
+    "omit_lane_if_none_pass": true
+  },
+  "combined_development_gate": {
+    "minimum_auto_accuracy_each_dataset": 0.9,
+    "maximum_accuracy_drop_from_yes_exact_each_dataset": 0.02,
+    "minimum_absolute_coverage_gain_each_dataset": 0.05
+  },
+  "confirmation_gate": {
+    "minimum_auto_accuracy_each_dataset": 0.9,
+    "minimum_grouped_task_bootstrap_accuracy_lower_95_each_dataset": 0.85,
+    "minimum_absolute_coverage_gain_each_dataset": 0.05,
+    "partial_lane_if_selected": {
+      "minimum_pooled_support": 10,
+      "minimum_pooled_precision": 0.7
+    }
+  },
+  "stopping_rule": "If the combined development gate fails on either dataset, do not inspect candidate-specific confirmation outcomes and retain yes_exact only. If confirmation fails, retain yes_exact only and record the candidate as a negative control.",
+  "reporting": [
+    "lane support and task support",
+    "lane precision with Wilson interval",
+    "combined auto accuracy and coverage",
+    "coverage delta from yes_exact",
+    "error capture and partial review rate",
+    "task-grouped bootstrap interval",
+    "zero-call accounting"
+  ]
+}
