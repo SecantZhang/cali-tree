@@ -2,13 +2,15 @@
 // NODE_EXECUTORS).
 
 export type SocketType =
-  | 'raw_dataset' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
+  | 'raw_dataset' | 'raw_labels' | 'samples' | 'labels' | 'engine_config' | 'judge_spec' | 'judge_result'
   | 'metrics_report' | 'calibration_results' | 'general_calibration' | 'judge_rule'
   | 'evidence_bundle' | 'area_rubric_spec' | 'area_judge_result'
   | 'decomposition_features' | 'unit_labels' | 'active_labeling_report'
+  | 'prompt_tree' | 'calitree_report'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
+  raw_labels: 'var(--node-db)',
   samples: 'var(--node-db)',
   labels: 'var(--node-db)',
   engine_config: 'var(--node-lm-engine)',
@@ -24,6 +26,8 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   decomposition_features: 'var(--node-calibration)',
   unit_labels: 'var(--node-db)',
   active_labeling_report: 'var(--node-calibration)',
+  prompt_tree: 'var(--node-calibration)',
+  calitree_report: 'var(--node-calibration)',
 }
 
 // A representative example payload per socket type, shown (collapsed, expandable) in the
@@ -206,6 +210,10 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   coconut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   grapenut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   vebench_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
+  imagenhub_source: {
+    input: {},
+    output: { raw_dataset: 'raw_dataset', raw_labels: 'raw_labels' },
+  },
   // `raw_dataset` is a distinct type from `samples` specifically so a source's raw
   // output can never be wired directly into a Judge node — sampling is always explicit.
   // `labels` is looked up by item id against this node's own sampled items (not
@@ -214,7 +222,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   // `dataset` — that name collided with the node's own name and its sibling `labels`
   // output, making the two easy to conflate.
   dataset: {
-    input: { raw_dataset: 'raw_dataset' },
+    input: { raw_dataset: 'raw_dataset', raw_labels: 'raw_labels' },
     output: { samples: 'samples', labels: 'labels' },
   },
   preprocessing: { input: { samples: 'samples' }, output: { samples: 'samples' } },
@@ -319,13 +327,30 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
       active_labeling_report: 'active_labeling_report',
     },
   },
+  calitree_train: {
+    input: {
+      samples: 'samples', labels: 'labels',
+      judge_engine: 'engine_config', optimizer_engine: 'engine_config',
+    },
+    output: { prompt_tree: 'prompt_tree', calitree_report: 'calitree_report' },
+  },
+  calitree_judge: {
+    input: {
+      samples: 'samples', prompt_tree: 'prompt_tree', judge_engine: 'engine_config',
+    },
+    output: { judge_result: 'judge_result' },
+  },
+  calitree_eval: {
+    input: { judge_result: 'judge_result', labels: 'labels', samples: 'samples' },
+    output: { metrics_report: 'metrics_report' },
+  },
 }
 
 // Static mirror of the backend's NodeExecutor.multi_input_sockets: input sockets that
 // accept fan-in (multiple incoming edges), keyed by node type. The Dataset node merges
 // several source nodes this way. Everything else stays one-edge-only.
 export const MULTI_INPUT_SOCKETS: Record<string, string[]> = {
-  dataset: ['raw_dataset'],
+  dataset: ['raw_dataset', 'raw_labels'],
   area_aggregation: ['area_judge_result'],
   edit_aware_calibration: ['judge_result'],
 }

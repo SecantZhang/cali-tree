@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '../..')
-const PYTHON = path.join(REPO_ROOT, '.venv/bin/python3')
+const PYTHON = process.env.VEJUDGE_E2E_PYTHON ?? path.join(REPO_ROOT, '.venv/bin/python3')
 
 // The frontend's API base URL is baked in at build time (Vite inlines
 // import.meta.env.VITE_API_BASE_URL), so the backend MUST run on the exact port that

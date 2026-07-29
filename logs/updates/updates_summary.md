@@ -1,3 +1,52 @@
+## 260728-16:23:59 — Document Cali-Tree v1–v4 metric comparison
+- Type: docs
+- Scope: Cali-Tree prompt versions, archived experiments, full held-out report
+- What: Added v1–v4 design differences plus accuracy, balanced/class/editor metrics, confusion matrices, merge behavior, usage, and the full v2 report.
+- Why: Make version tradeoffs and experiment comparability explicit instead of citing only the selected v2 result.
+- Details: logs/updates/details/260728-16:23:59-updates.md
+
+## 260728-15:13:57 — Add reliability-calibrated Cali-Tree and confirm publishable accuracy
+- Type: feature
+- Scope: task-grouped sampling, semantic Cali-Tree, agreement filtering, selective calibration, workbench, live validation
+- What: Added a training-fitted selective policy and confirmed 93.33% on an untouched 600-case half and 92.87% across all 1,200 held-out cases at 64.25% coverage.
+- Why: Reach a leakage-safe publishable calibration result while reporting full-coverage limits and human-label disagreement transparently.
+- Details: logs/updates/details/260728-15:13:57-updates.md
+
+## 260728-02:14:49 — Add consensus calibration and complete 10% validation
+- Type: feature
+- Scope: Cali-Tree consensus/pruning, agreement metrics, 10% live validation, tests and docs
+- What: Added deterministic three-judge consensus and training-only editor priors; reached 88.33% held-out accuracy and 94.79% on unanimous labels on a 10% development sample.
+- Why: Improve general calibration, bound redundant merge work, and quantify performance under human-label disagreement.
+- Details: logs/updates/details/260728-02:14:49-updates.md
+
+## 260728-00:37:47 — Guard Cali-Tree optimization and validate larger samples
+- Type: feature
+- Scope: Cali-Tree optimization/routing, stratified sampling, workbench metrics, E2E portability, live validation
+- What: Added leakage-safe warm-start/merge/routing guards and prediction reuse; improved train/test accuracy on 1% and 5% billable ImagenHub runs.
+- Why: Improve general prompt calibration while rejecting specializations that fail internal balanced validation.
+- Details: logs/updates/details/260728-00:37:47-updates.md
+
+## 260727-23:11:56 — Add Cali-Tree PyCharm compound launcher
+- Type: chore
+- Scope: local PyCharm project and run configurations
+- What: Added dedicated backend, frontend, and compound launchers with Cali-Tree dataset/credential paths and non-conflicting ports.
+- Why: Run the complete Cali-Tree workbench directly from PyCharm like the existing prompt-calibration worktree.
+- Details: logs/updates/details/260727-23:11:56-updates.md
+
+## 260727-15:26:37 — Reconcile public ImagenMuseum data and validate Cali-Tree live
+- Type: fix
+- Scope: public ImagenHub setup/defaults, prompt templates, live experiment artifacts, tests and docs
+- What: Aligned setup with the eight editor outputs actually published, fixed JSON prompt interpolation, downloaded and hash-verified 1,432 cases, and completed a billable 1% end-to-end run.
+- Why: Make the public dataset reproducible as it exists today and verify Cali-Tree against real image, optimizer, and embedding calls.
+- Details: logs/updates/details/260727-15:26:37-updates.md
+
+## 260727-14:39:41 — Add workflow-native Cali-Tree image calibration
+- Type: feature
+- Scope: ImagenHub data, image judging, hierarchical prompt calibration, interface workbench, tests and docs
+- What: Added a resumable nine-editor image dataset, official-TextGrad Cali-Tree train/route/eval nodes, rich hierarchy diagnostics, and an explicit-model example workflow.
+- Why: Reproduce the paper's image-judge calibration workflow inside VEJudge without changing the existing video annotation path or allowing silent live-model selection.
+- Details: logs/updates/details/260727-14:39:41-updates.md
+
 ## 260724-16:33:20 — Add recursive workflow folders
 - Type: feature
 - Scope: workflow storage/API, interface folder tree, compatibility and browser tests

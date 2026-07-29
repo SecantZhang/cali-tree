@@ -32,6 +32,19 @@ export function JudgeSamplePreview({
           <div><span className="mono-path">{output.output_video_path}</span></div>
         </div>
       )}
+      {typeof input.source_image_path === 'string' && input.source_image_path &&
+       typeof output.edited_image_path === 'string' && output.edited_image_path && (
+        <div className="calitree-image-pair">
+          <figure>
+            <img src={mediaUrl(input.source_image_path)} alt="Source" />
+            <figcaption>Source</figcaption>
+          </figure>
+          <figure>
+            <img src={mediaUrl(output.edited_image_path)} alt="Edited" />
+            <figcaption>Edited</figcaption>
+          </figure>
+        </div>
+      )}
       {label !== undefined && <HumanLabelBlock label={label} />}
       {typeof input.b_roll_captions_excerpt === 'string' && input.b_roll_captions_excerpt && (
         <details>
@@ -60,6 +73,15 @@ export function JudgeSamplePreview({
 }
 
 function HumanLabelBlock({ label }: { label: Record<string, unknown> }) {
+  if (typeof label.target_label === 'string') {
+    const ratings = (label.ratings as Array<{ sc: number; pq: number }> | undefined) ?? []
+    return (
+      <div className="human-label-block">
+        <div><strong>Human target:</strong> {label.target_label} (median SC {String(label.median_sc)})</div>
+        <div>Raters: {ratings.map((rating) => `SC ${rating.sc} / PQ ${rating.pq}`).join(' · ')}</div>
+      </div>
+    )
+  }
   const scores = (label.scores as Record<string, number | null> | undefined) ?? {}
   const rawScores = (label.raw_scores as Record<string, number[]> | undefined) ?? {}
   const nAnnotators = Number(label.n_annotators ?? 0)

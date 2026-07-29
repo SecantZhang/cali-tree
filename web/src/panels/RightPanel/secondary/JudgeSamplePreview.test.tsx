@@ -35,4 +35,30 @@ describe('JudgeSamplePreview', () => {
     // A null-scored dimension renders a dash, not a crash.
     expect(container.querySelectorAll('.label-score-missing').length).toBeGreaterThan(0)
   })
+
+  it('renders ImagenHub image pairs and three-rater SC/PQ provenance', () => {
+    const imageItem = {
+      item_id: 'sample_1_1::SDEdit',
+      use_case: 'text-guided-image-editing',
+      input: {
+        user_prompt: 'make it blue',
+        source_image_path: '/tmp/source.jpg',
+      },
+      output: { edited_image_path: '/tmp/edited.jpg' },
+    }
+    const label = {
+      target_label: 'partial',
+      median_sc: 0.5,
+      ratings: [
+        { sc: 0, pq: 1 },
+        { sc: 0.5, pq: 0.5 },
+        { sc: 1, pq: 1 },
+      ],
+    }
+    render(<JudgeSamplePreview item={imageItem} label={label} />)
+    expect(screen.getByAltText('Source')).toBeInTheDocument()
+    expect(screen.getByAltText('Edited')).toBeInTheDocument()
+    expect(screen.getByText(/Human target:/).parentElement).toHaveTextContent('partial')
+    expect(screen.getByText(/^Raters:/)).toHaveTextContent('SC 0.5 / PQ 0.5')
+  })
 })

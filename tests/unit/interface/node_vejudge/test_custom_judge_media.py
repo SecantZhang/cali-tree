@@ -62,3 +62,17 @@ def test_no_media_when_no_videos():
     eng = _CaptureEngine()
     run_custom_judge(_SPEC, eng, {"input": {"user_prompt": "x"}, "output": {}})
     assert eng.media is None
+
+
+def test_image_source_then_edited_are_attached_deterministically():
+    eng = _CaptureEngine()
+    image_spec = {**_SPEC, "modality": "image", "target_dimension": "satisfaction"}
+    sample = {
+        "input": {"user_prompt": "make it blue", "source_image_path": "/source.jpg"},
+        "output": {"edited_image_path": "/edited.jpg"},
+    }
+    run_custom_judge(image_spec, eng, sample)
+    assert eng.media == [
+        {"type": "image", "path": "/source.jpg"},
+        {"type": "image", "path": "/edited.jpg"},
+    ]

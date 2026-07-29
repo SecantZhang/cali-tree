@@ -67,7 +67,8 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
         "judge_prompt", "judge", "eval", "alignment_report", "cl_rule_eval",
         "cl_adversarial", "cl_rule_tree", "cl_semantic_tree",
         "unit_labels", "edit_decomposition", "area_rubric", "area_judge",
-        "area_aggregation", "edit_aware_calibration",
+        "area_aggregation", "edit_aware_calibration", "imagenhub_source",
+        "calitree_train", "calitree_judge", "calitree_eval",
     }
 
 
@@ -76,6 +77,7 @@ def test_node_types_expose_calibration_subcategories(client):
     assert by_type["cl_adversarial"]["subcategory"] == "agent"
     assert by_type["cl_rule_tree"]["subcategory"] == "model"
     assert by_type["cl_semantic_tree"]["subcategory"] == "model"
+    assert by_type["calitree_train"]["subcategory"] == "prompt"
     assert by_type["cl_adversarial"]["multi_input_sockets"] == ["judge_result"]
     assert by_type["cl_semantic_tree"]["multi_input_sockets"] == ["calibration_results"]
     # Nodes outside a sub-folder report null, so the palette renders them flat.
