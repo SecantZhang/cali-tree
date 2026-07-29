@@ -23,6 +23,8 @@ for you; the free ones never do. When unsure what a run will cost, use
 |---|---|---|
 | `setup_env.sh` | no | **Run once.** Create `.venv` and install dev/interface/video Python deps. |
 | `setup_imagenhub.sh` | no gateway calls (downloads public data) | Materialize and hash the 179-task ImagenHub + eight publicly available editor outputs with resumable downloads. See `docs/calitree.md`. |
+| `setup_editinspector.sh` | no gateway calls (downloads public data) | Materialize a pinned, deterministic EditInspector development/confirmation slice with resumable image downloads and SHA-256 manifest. |
+| `run_editinspector_rubric_lite.sh` | no by default; yes only with explicit `--live` | Dry-run or execute the frozen Rubric-Lite external workflow. Live runs also require an explicit `--model`; supports partition selection, verifier disablement, and checkpoint seeding. |
 | `check_video_deps.sh` | no | Verify the external `ffmpeg`/`ffprobe` binaries required by Edit Decomposition. |
 | `run_tests.sh` | no | Fast correctness check (mocked engines). Run after setup and after code changes. |
 | `estimate_cost.sh` | no (`--dry-run`) | See which items match and how many video/text calls a run would make. **Run before any real benchmark.** |

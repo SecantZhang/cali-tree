@@ -68,7 +68,9 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
         "cl_adversarial", "cl_rule_tree", "cl_semantic_tree",
         "unit_labels", "edit_decomposition", "area_rubric", "area_judge",
         "area_aggregation", "edit_aware_calibration", "imagenhub_source",
+        "editinspector_source",
         "calitree_train", "rubric_lite_train", "rubric_lite_boundary",
+        "rubric_lite_frozen",
         "calitree_judge", "calitree_eval",
     }
 

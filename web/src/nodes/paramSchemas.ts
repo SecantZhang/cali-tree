@@ -77,6 +77,13 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
       type: 'list[enum]', options: IMAGENHUB_EDITORS, default: PUBLIC_IMAGENMUSEUM_EDITORS,
     },
   },
+  editinspector_source: {
+    partition: {
+      type: 'enum',
+      default: 'all',
+      options: ['all', 'development', 'confirmation'],
+    },
+  },
   dataset: {
     ...SAMPLING_FIELDS,
     // How multiple annotators' scores for the same video are combined into `labels`.
@@ -296,6 +303,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     run_initial_baseline: { type: 'bool', default: true },
   },
   rubric_lite_boundary: {
+    enabled: { type: 'bool', default: true },
     verifier_version: {
       type: 'enum',
       default: 'rubric_lite_partial_v2',
@@ -316,6 +324,13 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     apply_split: {
       type: 'enum', default: 'all', options: ['all', 'train', 'test'],
+    },
+  },
+  rubric_lite_frozen: {
+    model_version: {
+      type: 'enum',
+      default: 'rubric_lite_v4_imagenhub',
+      options: ['rubric_lite_v4_imagenhub'],
     },
   },
   calitree_judge: {},

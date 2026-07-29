@@ -35,11 +35,13 @@ import { AreaJudgeNode } from '../nodes/AreaJudgeNode'
 import { AreaAggregationNode } from '../nodes/AreaAggregationNode'
 import { EditAwareCalibrationNode } from '../nodes/EditAwareCalibrationNode'
 import { ImagenHubSourceNode } from '../nodes/ImagenHubSourceNode'
+import { EditInspectorSourceNode } from '../nodes/EditInspectorSourceNode'
 import { CaliTreeTrainNode } from '../nodes/CaliTreeTrainNode'
 import { CaliTreeJudgeNode } from '../nodes/CaliTreeJudgeNode'
 import { CaliTreeEvalNode } from '../nodes/CaliTreeEvalNode'
 import { RubricLiteTrainNode } from '../nodes/RubricLiteTrainNode'
 import { RubricLiteBoundaryNode } from '../nodes/RubricLiteBoundaryNode'
+import { RubricLiteFrozenNode } from '../nodes/RubricLiteFrozenNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { isValidSocketConnection } from '../nodes/socketTypes'
@@ -54,6 +56,7 @@ const NODE_TYPES = {
   grapenut_source: GrapenutSourceNode,
   vebench_source: VeBenchSourceNode,
   imagenhub_source: ImagenHubSourceNode,
+  editinspector_source: EditInspectorSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
   unit_labels: UnitLabelsNode,
@@ -76,6 +79,7 @@ const NODE_TYPES = {
   calitree_eval: CaliTreeEvalNode,
   rubric_lite_train: RubricLiteTrainNode,
   rubric_lite_boundary: RubricLiteBoundaryNode,
+  rubric_lite_frozen: RubricLiteFrozenNode,
   group: GroupNode,
 }
 

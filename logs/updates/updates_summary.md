@@ -1,3 +1,10 @@
+## 260729-13:33:53 — Add external Rubric-Lite validation and selective deployment
+- Type: feature
+- Scope: EditInspector data source, frozen simple model, selective confidence, workflow UI, live validation, docs and tests
+- What: Added a pinned external benchmark pipeline and confirmed 97.62% accuracy at 53.85% coverage on 312 untouched cases; full-coverage and partial-class failures remain explicit.
+- Why: Test whether the simple image-judge calibration transfers beyond ImagenHub and replace broad generalization claims with a reproducible, narrowly supported result.
+- Details: logs/updates/details/260729-13:33:53-updates.md
+
 ## 260729-12:37:30 — Promote simple Rubric-Lite partial-progress verification
 - Type: feature
 - Scope: partial-specific rubric, global fusion policy, workflow defaults, live confirmation, docs and tests
