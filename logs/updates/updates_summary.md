@@ -1,3 +1,10 @@
+## 260729-12:01:39 — Add ordinal Rubric-Lite and boundary verification
+- Type: feature
+- Scope: Rubric-Lite v3/v4, ordinal calibration, partial-boundary verifier, workflow UI, tests
+- What: Added a general three-score ordinal rubric with train-fitted global cutpoints and a score-gated second-pass verifier for ambiguous partial cases.
+- Why: Preserve the simple one-rubric architecture while improving class balance and enabling targeted partial-class recovery without task/editor features.
+- Details: logs/updates/details/260729-12:01:39-updates.md
+
 ## 260729-10:37:37 — Add and validate Rubric-Lite calibration
 - Type: feature
 - Scope: global rubric learning, workflow backend/frontend, live validation, tests and docs

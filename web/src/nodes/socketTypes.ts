@@ -341,6 +341,14 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
     },
     output: { prompt_tree: 'prompt_tree', calitree_report: 'calitree_report' },
   },
+  rubric_lite_boundary: {
+    input: {
+      samples: 'samples',
+      judge_result: 'judge_result',
+      judge_engine: 'engine_config',
+    },
+    output: { judge_result: 'judge_result' },
+  },
   calitree_judge: {
     input: {
       samples: 'samples', prompt_tree: 'prompt_tree', judge_engine: 'engine_config',

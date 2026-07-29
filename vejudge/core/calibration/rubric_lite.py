@@ -14,6 +14,12 @@ from typing import Any, Callable, Optional
 from .calitree import LABELS, classification_metrics
 
 
+DEFAULT_ORDINAL_THRESHOLDS = {
+    "no_partial": 35.0,
+    "partial_yes": 90.0,
+}
+
+
 def _task_uid(item_id: str, sample: dict[str, Any]) -> str:
     return str(sample.get("task_uid") or item_id.rsplit("::", 1)[0])
 
@@ -114,6 +120,184 @@ def _selection_key(
         accuracy,
         -float(len(prompt)),
     )
+
+
+def ordinal_label(
+    score: float,
+    thresholds: dict[str, float],
+) -> str:
+    """Map one visible-evidence score onto the ordered SC labels."""
+    no_partial = float(thresholds["no_partial"])
+    partial_yes = float(thresholds["partial_yes"])
+    if no_partial >= partial_yes:
+        raise ValueError("no_partial threshold must be below partial_yes")
+    if float(score) < no_partial:
+        return "no"
+    if float(score) < partial_yes:
+        return "partial"
+    return "yes"
+
+
+def apply_ordinal_thresholds(
+    results: dict[str, dict[str, Any]],
+    thresholds: dict[str, float],
+) -> dict[str, dict[str, Any]]:
+    """Return calibrated copies while preserving each judge's raw label."""
+    calibrated: dict[str, dict[str, Any]] = {}
+    for item_id, result in results.items():
+        row = dict(result)
+        score = row.get("ordinal_score")
+        if isinstance(score, (int, float)):
+            raw_label = str(
+                row.get("uncalibrated_label") or row.get("label") or ""
+            )
+            row["uncalibrated_label"] = raw_label
+            row["label"] = ordinal_label(float(score), thresholds)
+            row["ordinal_thresholds"] = {
+                "no_partial": float(thresholds["no_partial"]),
+                "partial_yes": float(thresholds["partial_yes"]),
+            }
+            row["threshold_calibrated"] = row["label"] != raw_label
+        calibrated[item_id] = row
+    return calibrated
+
+
+def _threshold_candidates(scores: list[float]) -> list[float]:
+    """Boundaries immediately above observed scores cover every partition."""
+    values = {0.0, 100.000001}
+    values.update(min(100.000001, float(score) + 0.000001) for score in scores)
+    return sorted(values)
+
+
+def fit_ordinal_thresholds(
+    *,
+    results: dict[str, dict[str, Any]],
+    targets: dict[str, str],
+    samples: dict[str, dict[str, Any]],
+    ids: list[str],
+    accuracy_tolerance: float = 0.01,
+    minimum_class_recall: float = 0.10,
+    default_thresholds: Optional[dict[str, float]] = None,
+) -> dict[str, Any]:
+    """Fit two global cutpoints without editor, task, or instruction features.
+
+    First retain pairs that meet ``minimum_class_recall`` for every class represented in
+    calibration data, then find the maximum accuracy among them.  Among pairs within
+    ``accuracy_tolerance`` of that maximum, prefer partial F1, then macro F1, balanced
+    accuracy, and ordinary accuracy.  This makes the partial tradeoff explicit without
+    permitting a predict-partial-everywhere solution or silently erasing the rare yes class.
+    """
+    defaults = dict(default_thresholds or DEFAULT_ORDINAL_THRESHOLDS)
+    usable = [
+        item_id
+        for item_id in sorted(set(ids) & set(results) & set(targets) & set(samples))
+        if isinstance(results[item_id].get("ordinal_score"), (int, float))
+    ]
+    if not usable:
+        return {
+            "version": "global-ordinal-cutpoints-v1",
+            "thresholds": defaults,
+            "n": 0,
+            "max_accuracy": None,
+            "accuracy_tolerance": max(0.0, float(accuracy_tolerance)),
+            "minimum_class_recall": max(
+                0.0, min(1.0, float(minimum_class_recall))
+            ),
+            "metrics": classification_metrics({}, {}, samples),
+            "fallback": "no_valid_ordinal_scores",
+        }
+    candidates = _threshold_candidates([
+        float(results[item_id]["ordinal_score"]) for item_id in usable
+    ])
+    trials: list[dict[str, Any]] = []
+    selected_targets = {item_id: targets[item_id] for item_id in usable}
+    for index, no_partial in enumerate(candidates[:-1]):
+        for partial_yes in candidates[index + 1:]:
+            thresholds = {
+                "no_partial": no_partial,
+                "partial_yes": partial_yes,
+            }
+            calibrated = apply_ordinal_thresholds(
+                {item_id: results[item_id] for item_id in usable},
+                thresholds,
+            )
+            metrics = classification_metrics(
+                selected_targets,
+                {
+                    item_id: str(calibrated[item_id].get("label") or "")
+                    for item_id in usable
+                },
+                samples,
+            )
+            trials.append({"thresholds": thresholds, "metrics": metrics})
+    recall_floor = max(0.0, min(1.0, float(minimum_class_recall)))
+    represented_labels = [
+        label
+        for label in LABELS
+        if any(targets[item_id] == label for item_id in usable)
+    ]
+    class_preserving = [
+        trial
+        for trial in trials
+        if all(
+            float(
+                (trial["metrics"].get("per_label_accuracy") or {}).get(
+                    label
+                )
+                or 0.0
+            )
+            + 1e-12
+            >= recall_floor
+            for label in represented_labels
+        )
+    ]
+    candidate_pool = class_preserving or trials
+    max_accuracy = max(
+        float(trial["metrics"].get("accuracy") or 0.0)
+        for trial in candidate_pool
+    )
+    tolerance = max(0.0, float(accuracy_tolerance))
+    eligible = [
+        trial
+        for trial in candidate_pool
+        if float(trial["metrics"].get("accuracy") or 0.0)
+        + tolerance
+        + 1e-12
+        >= max_accuracy
+    ]
+
+    def selection_key(trial: dict[str, Any]) -> tuple[float, ...]:
+        metrics = trial["metrics"]
+        thresholds = trial["thresholds"]
+        partial_f1 = float(
+            (metrics.get("per_label_f1") or {}).get("partial") or 0.0
+        )
+        return (
+            partial_f1,
+            float(metrics.get("macro_f1") or 0.0),
+            float(metrics.get("balanced_accuracy") or 0.0),
+            float(metrics.get("accuracy") or 0.0),
+            -abs(thresholds["no_partial"] - defaults["no_partial"])
+            - abs(thresholds["partial_yes"] - defaults["partial_yes"]),
+        )
+
+    selected = max(eligible, key=selection_key)
+    return {
+        "version": "global-ordinal-cutpoints-v1",
+        "thresholds": selected["thresholds"],
+        "n": len(usable),
+        "max_accuracy": max_accuracy,
+        "accuracy_tolerance": tolerance,
+        "minimum_class_recall": recall_floor,
+        "class_preserving_candidate_count": len(class_preserving),
+        "metrics": selected["metrics"],
+        "candidate_count": len(trials),
+        "fallback": (
+            None
+            if class_preserving
+            else "no_candidate_met_minimum_class_recall"
+        ),
+    }
 
 
 @dataclass

@@ -25,6 +25,7 @@ from vejudge.interface.node_calibration.calitree_nodes import (
 )
 from vejudge.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
 from vejudge.interface.node_calibration.rubric_lite_nodes import (
+    RubricLiteBoundaryNodeExecutor,
     RubricLiteTrainNodeExecutor,
 )
 
@@ -136,6 +137,34 @@ def test_rubric_lite_dry_run_has_no_tree_embedding_or_critic_calls(make_ctx):
     assert result.meta["estimated_calls"]["embedding"] == 0
     assert result.meta["estimated_calls"]["critic"] == 0
     assert result.meta["estimated_calls"]["optimizer_max"] == 3
+
+
+def test_rubric_lite_boundary_dry_run_counts_only_score_band(make_ctx):
+    samples = {
+        "low": _sample("low", "test"),
+        "high": _sample("high", "test"),
+        "train": _sample("train", "train"),
+    }
+    judge_result = {
+        "low": {"calitree": {"label": "no", "ordinal_score": 25}},
+        "high": {"calitree": {"label": "no", "ordinal_score": 75}},
+        "train": {"calitree": {"label": "partial", "ordinal_score": 75}},
+    }
+
+    result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
+        params={"minimum_ordinal_score": 50, "apply_split": "test"},
+        inputs={
+            "samples": samples,
+            "judge_result": judge_result,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    assert result.meta["n_split_eligible"] == 2
+    assert result.meta["n_score_eligible"] == 1
+    assert result.meta["estimated_calls"] == 1
+    assert result.outputs["judge_result"] is judge_result
 
 
 def test_calitree_dry_run_allows_unset_models_but_live_requires_embedding(
@@ -520,6 +549,43 @@ def test_rubric_lite_three_view_vote_overrides_inconsistent_model_label():
     assert "majority" in result["conflict_reason"]
 
 
+def test_rubric_lite_ordinal_score_uses_weakest_visible_evidence():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-ordinal-v3",
+        "ordinal_scores": {
+            "change_evidence": 95,
+            "specification_fidelity": 68,
+            "source_preservation": 90,
+        },
+        "label": "yes",
+        "rationale": "The requested count is incomplete.",
+    }))
+
+    assert result["ordinal_score"] == 68
+    assert result["ordinal_scores"]["specification_fidelity"] == 68
+    assert result["label"] == "partial"
+    assert result["model_label"] == "yes"
+    assert result["conflict_resolved"] is True
+    assert "minimum visible-evidence score 68" in result["conflict_reason"]
+
+
+def test_rubric_lite_ordinal_score_rejects_out_of_range_fields():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-ordinal-v3",
+        "ordinal_scores": {
+            "change_evidence": 101,
+            "specification_fidelity": 80,
+            "source_preservation": 90,
+        },
+        "label": "yes",
+        "rationale": "Invalid score.",
+    }))
+
+    assert result["ordinal_score"] is None
+    assert result["ordinal_scores"] is None
+    assert result["label"] == "yes"
+
+
 def test_valid_judgments_resume_from_checkpoint_without_a_second_call(make_ctx):
     class Engine:
         model = "judge"
@@ -689,6 +755,129 @@ def test_rubric_lite_judge_routes_single_root_without_embedding(make_ctx, monkey
     assert row["label"] == "partial"
     assert row["routed_node"] == "rubric:global"
     assert result.meta["judge_calls"] == 0
+
+
+def test_rubric_lite_judge_applies_global_ordinal_cutpoints(
+    make_ctx, monkeypatch
+):
+    prompt = "one scored global rubric"
+    tree = {
+        "architecture": "rubric_lite",
+        "prompt_version": "rubric_lite_v3",
+        "ordinal_thresholds": {
+            "no_partial": 35,
+            "partial_yes": 90,
+        },
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global",
+                "prompt": prompt,
+                "embedding": [],
+                "children": [],
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "judge_many",
+        lambda _runtime, _prompt, _samples: {
+            "case": {
+                "label": "yes",
+                "ordinal_score": 70,
+                "rationale": "Recognizable but incomplete.",
+                "valid": True,
+            },
+        },
+    )
+
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        inputs={
+            "samples": {"case": _sample("case")},
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    row = result.outputs["judge_result"]["case"]["calitree"]
+    assert row["label"] == "partial"
+    assert row["uncalibrated_label"] == "yes"
+    assert row["ordinal_thresholds"] == {
+        "no_partial": 35.0,
+        "partial_yes": 90.0,
+    }
+
+
+def test_rubric_lite_boundary_overrides_only_partial_verifier_label(
+    make_ctx, monkeypatch
+):
+    samples = {
+        "partial": _sample("partial", "test"),
+        "yes": _sample("yes", "test"),
+        "low": _sample("low", "test"),
+    }
+    judge_result = {
+        item_id: {
+            "calitree": {
+                "label": "no",
+                "ordinal_score": score,
+                "rationale": "base",
+                "parsed": {"label": "no", "rationale": "base"},
+            },
+        }
+        for item_id, score in (
+            ("partial", 50), ("yes", 75), ("low", 25)
+        )
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.rubric_lite_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "judge_many",
+        lambda _runtime, _prompt, selected: {
+            item_id: {
+                "label": "partial" if item_id == "partial" else "yes",
+                "rationale": f"verifier {item_id}",
+                "valid": True,
+            }
+            for item_id in selected
+        },
+    )
+
+    result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={"minimum_ordinal_score": 50, "apply_split": "test"},
+        inputs={
+            "samples": samples,
+            "judge_result": judge_result,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    rows = {
+        item_id: value["calitree"]
+        for item_id, value in result.outputs["judge_result"].items()
+    }
+    assert rows["partial"]["label"] == "partial"
+    assert rows["partial"]["pre_boundary_label"] == "no"
+    assert rows["partial"]["boundary_action"] == "override_partial"
+    assert rows["yes"]["label"] == "no"
+    assert rows["yes"]["boundary_action"] == "retain_base"
+    assert rows["low"]["label"] == "no"
+    assert rows["low"]["boundary_action"] == "not_score_eligible"
+    assert result.meta["n_score_eligible"] == 2
+    assert result.meta["n_partial_overrides"] == 1
 
 
 def test_eval_reports_overall_splits_editors_and_confusion(make_ctx):

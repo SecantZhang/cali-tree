@@ -8,7 +8,8 @@ test.describe('Cali-Tree image workflow', () => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
     for (const label of [
-      'imagenhub_source', 'calitree_train', 'rubric_lite_train', 'calitree_judge', 'calitree_eval',
+      'imagenhub_source', 'calitree_train', 'rubric_lite_train',
+      'rubric_lite_boundary', 'calitree_judge', 'calitree_eval',
     ]) {
       await expect(page.locator('.node-palette-item', { hasText: label })).toBeVisible()
     }
@@ -70,6 +71,8 @@ test.describe('Cali-Tree image workflow', () => {
           params: { engine_kind: 'gpt', model: 'mock-optimizer', max_tokens: 128 } },
         { id: 'train', type: 'rubric_lite_train', params: { max_steps: 3 } },
         { id: 'judge', type: 'calitree_judge', params: {} },
+        { id: 'boundary', type: 'rubric_lite_boundary',
+          params: { minimum_ordinal_score: 50, apply_split: 'all' } },
         { id: 'eval', type: 'calitree_eval', params: {} },
       ],
       edges: [
@@ -82,7 +85,10 @@ test.describe('Cali-Tree image workflow', () => {
         { source: 'dataset', source_socket: 'samples', target: 'judge', target_socket: 'samples' },
         { source: 'train', source_socket: 'prompt_tree', target: 'judge', target_socket: 'prompt_tree' },
         { source: 'judge_engine', source_socket: 'engine_config', target: 'judge', target_socket: 'judge_engine' },
-        { source: 'judge', source_socket: 'judge_result', target: 'eval', target_socket: 'judge_result' },
+        { source: 'dataset', source_socket: 'samples', target: 'boundary', target_socket: 'samples' },
+        { source: 'judge', source_socket: 'judge_result', target: 'boundary', target_socket: 'judge_result' },
+        { source: 'judge_engine', source_socket: 'engine_config', target: 'boundary', target_socket: 'judge_engine' },
+        { source: 'boundary', source_socket: 'judge_result', target: 'eval', target_socket: 'judge_result' },
         { source: 'dataset', source_socket: 'labels', target: 'eval', target_socket: 'labels' },
         { source: 'dataset', source_socket: 'samples', target: 'eval', target_socket: 'samples' },
       ],
@@ -100,6 +106,10 @@ test.describe('Cali-Tree image workflow', () => {
     expect(status?.node_results.train.meta).toMatchObject({
       architecture: 'rubric_lite',
       estimated_calls: { embedding: 0, critic: 0, optimizer_max: 3 },
+    })
+    expect(status?.node_results.boundary.meta).toMatchObject({
+      architecture: 'rubric_lite_boundary',
+      estimated_calls: 0,
     })
     for (const node of graph.nodes) {
       expect(status?.node_results[node.id].status).toBe('done')
