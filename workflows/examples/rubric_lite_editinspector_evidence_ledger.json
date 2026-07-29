@@ -1,0 +1,105 @@
+{
+  "name": "rubric_lite_editinspector_evidence_ledger",
+  "graph": {
+    "nodes": [
+      {
+        "id": "editinspector",
+        "type": "editinspector_source",
+        "params": {"partition": "development"}
+      },
+      {
+        "id": "dataset",
+        "type": "dataset",
+        "params": {
+          "sampling_ratio": 1.0,
+          "full_dataset": true,
+          "sampling_mode": "split_label_stratified",
+          "group_by_task": true,
+          "require_labels": true,
+          "aggregation_method": "none"
+        }
+      },
+      {
+        "id": "judge_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 768,
+          "concurrency": 4,
+          "health_check": false
+        }
+      },
+      {
+        "id": "frozen_rubric",
+        "type": "rubric_lite_frozen",
+        "params": {
+          "model_version": "rubric_lite_v6_evidence_ledger_experimental"
+        }
+      },
+      {
+        "id": "judge",
+        "type": "calitree_judge",
+        "params": {}
+      },
+      {
+        "id": "evaluate",
+        "type": "calitree_eval",
+        "params": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "editinspector",
+        "source_socket": "raw_dataset",
+        "target": "dataset",
+        "target_socket": "raw_dataset"
+      },
+      {
+        "source": "editinspector",
+        "source_socket": "raw_labels",
+        "target": "dataset",
+        "target_socket": "raw_labels"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "judge",
+        "target_socket": "samples"
+      },
+      {
+        "source": "frozen_rubric",
+        "source_socket": "prompt_tree",
+        "target": "judge",
+        "target_socket": "prompt_tree"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "judge",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "judge",
+        "source_socket": "judge_result",
+        "target": "evaluate",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "labels",
+        "target": "evaluate",
+        "target_socket": "labels"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "evaluate",
+        "target_socket": "samples"
+      }
+    ]
+  },
+  "created_at": "2026-07-29T15:31:00-07:00",
+  "updated_at": "2026-07-29T15:31:00-07:00"
+}

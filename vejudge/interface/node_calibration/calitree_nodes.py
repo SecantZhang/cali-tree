@@ -1091,6 +1091,7 @@ def _parse_judgment(content: str) -> dict[str, Any]:
                         "recognizable requested progress exists but fulfillment is incomplete"
                     )
     ordinal_score: Optional[float] = None
+    normalized_ordinal_scores: Optional[dict[str, float]] = None
     ordinal_scores = parsed.get("ordinal_scores")
     required_ordinal_fields = (
         "change_evidence",
@@ -1116,6 +1117,10 @@ def _parse_judgment(content: str) -> dict[str, Any]:
             float(ordinal_scores[field])
             for field in required_ordinal_fields
         )
+        normalized_ordinal_scores = {
+            field: float(ordinal_scores[field])
+            for field in required_ordinal_fields
+        }
         label = ordinal_label(
             ordinal_score, DEFAULT_ORDINAL_THRESHOLDS
         )
@@ -1123,6 +1128,76 @@ def _parse_judgment(content: str) -> dict[str, Any]:
             f"minimum visible-evidence score {ordinal_score:g} maps to {label} "
             "under the uncalibrated default cutpoints"
         )
+    if parsed.get("rubric_version") == "rubric-lite-evidence-ledger-v6":
+        ledger_conditions = parsed.get("conditions")
+        ledger_statuses = [
+            str(condition.get("status") or "").strip().lower()
+            for condition in (
+                ledger_conditions
+                if isinstance(ledger_conditions, list)
+                else []
+            )
+            if isinstance(condition, dict)
+        ]
+        residual_type = str(
+            parsed.get("residual_type") or ""
+        ).strip().lower()
+        scene_validity = str(
+            parsed.get("scene_validity") or ""
+        ).strip().lower()
+        semantic_completion = parsed.get("semantic_completion")
+        valid_ledger = (
+            isinstance(ledger_conditions, list)
+            and 1 <= len(ledger_conditions) <= 4
+            and len(ledger_statuses) == len(ledger_conditions)
+            and all(
+                status in {"absent", "emerging", "mostly", "complete"}
+                for status in ledger_statuses
+            )
+            and residual_type in {
+                "none",
+                "missing_change",
+                "wrong_subject",
+                "wrong_identity_or_attribute",
+                "incomplete_scope_or_count",
+                "residual_old_content",
+                "wrong_action_or_relation",
+                "scene_replacement",
+                "quality_only",
+            }
+            and scene_validity in {"same", "replaced"}
+            and isinstance(semantic_completion, (int, float))
+            and not isinstance(semantic_completion, bool)
+            and 0 <= float(semantic_completion) <= 100
+            and isinstance(parsed.get("achieved_evidence"), str)
+            and bool(str(parsed.get("achieved_evidence") or "").strip())
+            and isinstance(parsed.get("missing_evidence"), str)
+            and bool(str(parsed.get("missing_evidence") or "").strip())
+        )
+        if valid_ledger:
+            ordinal_score = (
+                0.0
+                if scene_validity == "replaced"
+                else float(semantic_completion)
+            )
+            normalized_ordinal_scores = {
+                "semantic_completion": float(semantic_completion),
+                "scene_validity_score": (
+                    0.0 if scene_validity == "replaced" else 100.0
+                ),
+            }
+            label = ordinal_label(
+                ordinal_score, DEFAULT_ORDINAL_THRESHOLDS
+            )
+            conflict_reason = (
+                f"semantic completion score {ordinal_score:g} maps to {label} "
+                "under the uncalibrated default cutpoints"
+            )
+        else:
+            ordinal_score = None
+            normalized_ordinal_scores = None
+            label = ""
+            conflict_reason = "invalid rubric-lite-evidence-ledger-v6 schema"
     return {
         "label": label if label in {"no", "partial", "yes"} else "",
         "model_label": model_label if model_label in {"no", "partial", "yes"} else "",
@@ -1130,14 +1205,7 @@ def _parse_judgment(content: str) -> dict[str, Any]:
         "raw_content": content,
         "parsed": parsed,
         "ordinal_score": ordinal_score,
-        "ordinal_scores": (
-            {
-                field: float(ordinal_scores[field])
-                for field in required_ordinal_fields
-            }
-            if ordinal_score is not None
-            else None
-        ),
+        "ordinal_scores": normalized_ordinal_scores,
         "valid": label in {"no", "partial", "yes"},
         "conflict_resolved": (
             label in {"no", "partial", "yes"}
