@@ -937,6 +937,52 @@ def _parse_judgment(content: str) -> dict[str, Any]:
     if fulfillment in {"none", "partial", "full"}:
         label = {"none": "no", "partial": "partial", "full": "yes"}[fulfillment]
         conflict_reason = f"fulfillment={fulfillment} deterministically maps to {label}"
+    if parsed.get("rubric_version") == "rubric-lite-partial-v2":
+        progress_conditions = parsed.get("conditions")
+        requested_delta = str(
+            parsed.get("requested_delta") or ""
+        ).strip().lower()
+        intended_subject = str(
+            parsed.get("intended_subject") or ""
+        ).strip().lower()
+        progress_scene = str(parsed.get("scene") or "").strip().lower()
+        if isinstance(progress_conditions, list) and progress_conditions:
+            progress_evidence = [
+                str(condition.get("evidence") or "").strip().lower()
+                for condition in progress_conditions
+                if isinstance(condition, dict)
+            ]
+            valid_progress_schema = (
+                len(progress_evidence) == len(progress_conditions)
+                and all(
+                    value in {"none", "partial", "full"}
+                    for value in progress_evidence
+                )
+                and requested_delta in {"absent", "recognizable"}
+                and intended_subject in {"correct", "wrong"}
+                and progress_scene in {"same", "replaced"}
+            )
+            if valid_progress_schema:
+                if (
+                    progress_scene == "replaced"
+                    or intended_subject == "wrong"
+                    or requested_delta == "absent"
+                    or all(value == "none" for value in progress_evidence)
+                ):
+                    label = "no"
+                    conflict_reason = (
+                        "no recognizable requested progress on the intended subject"
+                    )
+                elif all(value == "full" for value in progress_evidence):
+                    label = "yes"
+                    conflict_reason = (
+                        "every requested condition is visibly and exactly fulfilled"
+                    )
+                else:
+                    label = "partial"
+                    conflict_reason = (
+                        "recognizable requested progress exists but fulfillment is incomplete"
+                    )
     ordinal_score: Optional[float] = None
     ordinal_scores = parsed.get("ordinal_scores")
     required_ordinal_fields = (

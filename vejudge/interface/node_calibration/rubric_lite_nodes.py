@@ -35,10 +35,14 @@ RUBRIC_VERSIONS = (
     "rubric_lite_v3",
     "rubric_lite_v4",
 )
+VERIFIER_VERSIONS = (
+    "rubric_lite_v1",
+    "rubric_lite_partial_v2",
+)
 
 
 def _prompt(name: str, version: str) -> str:
-    if version not in RUBRIC_VERSIONS:
+    if version not in set(RUBRIC_VERSIONS) | set(VERIFIER_VERSIONS):
         raise ValueError(f"Unknown Rubric-Lite version {version!r}")
     return (PROMPT_ROOT / version / name).read_text(encoding="utf-8").strip()
 
@@ -493,11 +497,21 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
     param_schema = {
         "verifier_version": {
             "type": "enum",
-            "options": ["rubric_lite_v1"],
-            "default": "rubric_lite_v1",
+            "options": list(VERIFIER_VERSIONS),
+            "default": "rubric_lite_partial_v2",
         },
         "minimum_ordinal_score": {
-            "type": "number", "default": 50, "min": 0, "max": 100,
+            "type": "number", "default": 0, "min": 0, "max": 100,
+        },
+        "eligible_base_labels": {
+            "type": "list[string]",
+            "options": ["no", "partial", "yes"],
+            "default": ["yes"],
+        },
+        "decision_policy": {
+            "type": "enum",
+            "options": ["partial_only", "replace"],
+            "default": "replace",
         },
         "apply_split": {
             "type": "enum",
@@ -519,8 +533,34 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                 ),
             )
         minimum_score = float(
-            ctx.params.get("minimum_ordinal_score", 50)
+            ctx.params.get("minimum_ordinal_score", 0)
         )
+        eligible_base_labels = {
+            str(label)
+            for label in (
+                ctx.params.get("eligible_base_labels")
+                or ["yes"]
+            )
+        }
+        if (
+            not eligible_base_labels
+            or not eligible_base_labels <= {"no", "partial", "yes"}
+        ):
+            return NodeRunResult(
+                status="error",
+                error=(
+                    "eligible_base_labels must contain one or more of "
+                    "'no', 'partial', and 'yes'"
+                ),
+            )
+        decision_policy = str(
+            ctx.params.get("decision_policy") or "replace"
+        )
+        if decision_policy not in {"partial_only", "replace"}:
+            return NodeRunResult(
+                status="error",
+                error="decision_policy must be 'partial_only' or 'replace'",
+            )
         apply_split = str(ctx.params.get("apply_split") or "all")
         if apply_split not in {"all", "train", "test"}:
             return NodeRunResult(
@@ -528,9 +568,9 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                 error="apply_split must be 'all', 'train', or 'test'",
             )
         verifier_version = str(
-            ctx.params.get("verifier_version") or "rubric_lite_v1"
+            ctx.params.get("verifier_version") or "rubric_lite_partial_v2"
         )
-        if verifier_version != "rubric_lite_v1":
+        if verifier_version not in VERIFIER_VERSIONS:
             return NodeRunResult(
                 status="error",
                 error=f"Unknown boundary verifier {verifier_version!r}",
@@ -552,6 +592,8 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
             for item_id in eligible_split_ids
             if isinstance(row_for(item_id).get("ordinal_score"), (int, float))
             and float(row_for(item_id)["ordinal_score"]) >= minimum_score
+            and str(row_for(item_id).get("label") or "")
+            in eligible_base_labels
         ]
         if ctx.dry_run:
             return NodeRunResult(
@@ -564,6 +606,8 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                     "n_score_eligible": len(candidate_ids),
                     "estimated_calls": len(candidate_ids),
                     "estimated_calls_max": len(eligible_split_ids),
+                    "eligible_base_labels": sorted(eligible_base_labels),
+                    "decision_policy": decision_policy,
                 },
             )
         try:
@@ -605,14 +649,28 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                 )
                 row["boundary_verifier_version"] = verifier_version
                 row["boundary_verifier_minimum_score"] = minimum_score
-                if verifier_label == "partial" and row.get("label") != "partial":
+                should_replace = (
+                    decision_policy == "replace"
+                    and verifier_label in {"no", "partial", "yes"}
+                    and verifier_label != row.get("label")
+                )
+                should_override_partial = (
+                    decision_policy == "partial_only"
+                    and verifier_label == "partial"
+                    and row.get("label") != "partial"
+                )
+                if should_replace or should_override_partial:
                     row["pre_boundary_label"] = row.get("label")
                     row["pre_boundary_rationale"] = row.get("rationale")
-                    row["label"] = "partial"
+                    row["label"] = verifier_label
                     row["rationale"] = str(
                         verifier.get("rationale") or row.get("rationale") or ""
                     )
-                    row["boundary_action"] = "override_partial"
+                    row["boundary_action"] = (
+                        "replace_eligible"
+                        if decision_policy == "replace"
+                        else "override_partial"
+                    )
                     overrides += 1
                 else:
                     row["boundary_action"] = "retain_base"
@@ -630,10 +688,13 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
             "version": "rubric-lite-boundary-v1",
             "verifier_version": verifier_version,
             "minimum_ordinal_score": minimum_score,
+            "eligible_base_labels": sorted(eligible_base_labels),
+            "decision_policy": decision_policy,
             "apply_split": apply_split,
             "n_items": len(judge_result),
             "n_split_eligible": len(eligible_split_ids),
             "n_score_eligible": len(candidate_ids),
+            "n_overrides": overrides,
             "n_partial_overrides": overrides,
             "usage": runtime.usage,
             "verifier_results": verifier_results,
@@ -647,7 +708,10 @@ class RubricLiteBoundaryNodeExecutor(NodeExecutor):
                 "architecture": "rubric_lite_boundary",
                 "n_items": len(judge_result),
                 "n_score_eligible": len(candidate_ids),
+                "n_overrides": overrides,
                 "n_partial_overrides": overrides,
+                "eligible_base_labels": sorted(eligible_base_labels),
+                "decision_policy": decision_policy,
                 "usage": runtime.usage,
             },
         )

@@ -298,70 +298,141 @@ judge-with-abstention operating point. Development artifacts are under
 `logs/exps/260728-13:48:13-exps/`; confirmation and combined metrics are under
 `logs/exps/260728-14:29:10-exps/`.
 
-## Rubric-Lite: the simpler generalization experiment
+## Rubric-Lite: the promoted simple architecture
 
-The large held-out run shows that the hierarchy is not the source of the reported gain. On
-the same 1,200 held-out cases, the routed tree prediction *before* consensus and editor-prior
-resolution was `77.58%` accurate, below the fixed v2 initial rubric at `78.25%`. The final
-full-coverage result rose to `82.83%` only after three-way global consensus and a training-set
-editor prior. The `92.87%` figure additionally abstains on `35.75%` of cases. Therefore, the
-current evidence does not justify the complexity of task leaves, embeddings, semantic
-clustering, merge synthesis, routing thresholds, or promoted branches for deployment.
+### Why the hierarchy is not the deployment recommendation
 
-The partial class is a boundary problem rather than a tree-routing problem. Across the 1,200
-held-out cases, Cali-Tree v2 predicted `partial` 94 times, with 36 true positives among 135
-human-partial cases:
+The large held-out experiment shows that prompt-tree routing is not the main source of the
+reported gain. On the same 1,200 cases, the routed tree prediction before consensus and
+editor-prior resolution was `77.58%` accurate, below the fixed v2 initial rubric at `78.25%`.
+The complete Cali-Tree reached `82.83%` only after three global judgments plus a fitted
+editor prior. Its `92.87%` result is selective: it abstains on `35.75%` of cases. This does
+not justify task leaves, embeddings, semantic clustering, merge synthesis, routing
+thresholds, and promoted branches as the default full-coverage system.
 
-- precision: `38.30%` (`36 / 94`)
-- recall: `26.67%` (`36 / 135`)
-- F1: `31.50%`
+The partial class is principally a decision-boundary problem. Full Cali-Tree v2 predicted
+`partial` 94 times over 1,200 held-out cases, with precision `38.30%`, recall `26.67%`, and
+F1 `31.50%`. More routing did not make the semantic boundary reliable.
 
-Rubric-Lite is a deliberately small alternative available as the `rubric_lite_train` workflow
-node and in `workflows/examples/rubric_lite_imagenhub.json`. It has one learned global prompt,
-one judge call per case, and no embedding, tree, merge, route, critic ensemble, or editor prior.
-Its rubric decomposes every requested condition onto a single ordinal evidence scale:
+### Final graph
+
+The promoted path is `Rubric-Lite v4 + Partial Progress Verify`:
 
 ```text
-any condition = none, or source scene replaced  -> no
-else any condition = partial                    -> partial
-else all conditions = full                      -> yes
+SOURCE + EDITED + instruction
+  -> one global v4 rubric call
+  -> [change evidence, specification fidelity, source preservation]
+  -> minimum score + two train-fitted global cutpoints
+  -> no / partial / yes
+  -> only if the result is yes: one partial-progress verifier call
+  -> final no / partial / yes
 ```
 
-The JSON condition evidence is mapped back to the label deterministically, so a free-form
-model label cannot contradict its own evidence. Learning uses the official training tasks
-only. By default it excludes disputed human ratings, creates a task-disjoint internal
-validation slice, and mines four reusable kinds of feedback: missed partials, false partials,
-other outer-class errors, and correct boundary anchors. An optimizer rewrite is selected by
-partial F1 only when validation accuracy remains within one percentage point of the initial
-rubric. The feedback explicitly forbids item IDs, editor names, dataset-frequency rules, and
-instruction-only shortcuts.
+There is no prompt tree, embedding model, clustering, merge operation, TextGrad optimizer,
+critic ensemble, editor feature, task ID, or per-instruction learned prompt. The second call
+is conditional and was used for `51 / 600 = 8.5%` of confirmation cases.
 
-Two billable experiments used the frozen 10% offset-0 slice: all 232 official training cases
-(181 unanimous cases eligible for rubric learning) and 120 held-out cases from 15 unseen tasks.
-Both used `gpt-4.1-mini` as the image judge. V1 also evaluated three optimizer rewrites with
-`gpt-4.1-mini`; its task-grouped validation guard retained the unmodified step-0 rubric. V2
-used one completion containing three structured rubric views and a deterministic majority,
-with no optimizer call.
+The primary v4 rubric produces three `0..100` visual-evidence scores:
 
-| Rubric-Lite version | Test accuracy | Balanced accuracy | Macro F1 | Partial precision | Partial recall | Partial F1 | Unanimous accuracy | Disputed accuracy | Calls / tokens |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| v1 condition evidence | 76.67% | 65.96% | 52.74% | 55.56% | 35.71% | 43.48% | 89.69% | 21.74% | 895 judge + 3 optimizer / 1,408,677 |
-| v2 three-view vote | 73.33% | 52.43% | 42.48% | 25.00% | 14.29% | 18.18% | 85.57% | 21.74% | 354 judge / 564,116 |
+1. `change_evidence`: whether a requested source-to-edited delta is visibly present;
+2. `specification_fidelity`: exact identity, count, container, relation, removal, and
+   residual constraints;
+3. `source_preservation`: whether the result remains a local edit of the source scene.
 
-V1 improved partial F1 over the tree system while missing the overall-accuracy criterion.
-V2 reduced prompt cost and removed optimization, but degraded both overall accuracy and the
-partial boundary. Neither version is a replacement for the full-coverage Cali-Tree v2 result.
-The negative result supports keeping the single-rubric architecture as an experiment while
-continuing rubric learning, rather than adding another routing hierarchy.
+The evidence score is their minimum. Two cutpoints are fitted on official training tasks
+only, with a nonzero-recall constraint for every represented class. The deployment cutpoints
+are `75.000001` and `89.000001`. These are global scalar parameters, not dataset/editor
+lookup rules.
 
-The frozen promotion criteria were:
+The partial-progress verifier was learned from the failure pattern of the earlier condition
+rubric. That rubric treated *any* unsatisfied subcondition as `no`. The new rubric instead
+uses this deterministic evidence rule:
 
-- overall accuracy at least `84.00%` (within one point of the existing v2 run's `85.00%`)
-- partial F1 above the existing run's `31.58%` (`3/5` precision, `3/14` recall)
-- no use of editor identity, held-out labels, embeddings, or per-task prompts
+```text
+zero recognizable requested progress                         -> no
+all requested conditions visibly exact                       -> yes
+some recognizable requested progress, but not everything exact -> partial
+```
 
-Because neither version cleared both criteria, no 50% confirmation run was performed. The
-complete reports are in `logs/exps/260729-09:54:40-exps/rubric_lite_train.json` (v1) and
-`logs/exps/260729-10:27:07-exps/rubric_lite_train.json` (v2). Any next version should remain
-frozen on the 10% development slice before the unchanged rubric is promoted to the disjoint
-50% offset-1 confirmation slice.
+It decomposes the instruction into atomic visible conditions and records
+`none|partial|full`, requested-delta presence, intended-subject correctness, and scene
+continuity. Code derives the label from those fields, so a free-form label cannot contradict
+the evidence. Of 27 small global fusion policies, the policy selected on 232 training cases
+and a task-disjoint 120-case development slice was: retain v4 `no` and `partial`; rejudge
+only v4 `yes` and accept the verifier result. The policy does not inspect an editor or task.
+
+### Version results
+
+All development runs used the official 232-case training partition plus 120 held-out
+outputs from 15 offset-0 tasks. All confirmation results use the disjoint 600 outputs from
+75 offset-1 tasks. The image judge was `gpt-4.1-mini`, temperature `0`.
+
+| Version | Development accuracy | Development partial P / R / F1 | Main finding |
+|---|---:|---:|---|
+| v1 condition evidence | 76.67% | 55.56 / 35.71 / 43.48% | Better partial F1, inadequate overall accuracy |
+| v2 three-view vote | 73.33% | 25.00 / 14.29 / 18.18% | Voting reduced both accuracy and partial quality |
+| v3 ordinal scores | 83.33% | 41.94 / 92.86 / 57.78% | High partial recall but erased `yes`; rejected |
+| v4 class-preserving ordinal | 86.67% | 62.50 / 35.71 / 45.45% | Passed development gate; one global call |
+| v4 + broad v1 verifier | 87.50% | 61.54 / 57.14 / 59.26% | Promising on development, failed confirmation |
+| **v4 + yes-only partial-progress verifier** | **88.33%** | **66.67 / 42.86 / 52.17%** | Selected simple policy |
+
+The broad v1 verifier is a useful negative control. On the 600-case confirmation set it
+changed v4 from `82.17%` to `79.67%` accuracy and partial F1 from `29.51%` to `29.33%`.
+Raising recall by broadly predicting partial destroyed precision; it is not promoted.
+
+### Frozen 600-case confirmation
+
+| Metric | v4 primary | v4 + partial-progress verify | Delta |
+|---|---:|---:|---:|
+| Accuracy | 82.17% | **82.33%** | +0.17 pp |
+| Balanced accuracy | 57.18% | 57.00% | -0.18 pp |
+| Macro F1 | 58.56% | **58.78%** | +0.22 pp |
+| Partial precision | 28.13% | **28.17%** | +0.04 pp |
+| Partial recall | 31.03% | **34.48%** | +3.45 pp |
+| Partial F1 | 29.51% | **31.01%** | +1.50 pp |
+| Yes recall | 47.06% | 42.65% | -4.41 pp |
+| Calls beyond primary | 0 | 51 | +8.5% |
+
+The final confusion matrix is:
+
+| Human target | Predicted no | Predicted partial | Predicted yes |
+|---|---:|---:|---:|
+| no | 445 | 24 | 5 |
+| partial | 30 | 20 | 8 |
+| yes | 12 | 27 | 29 |
+
+The 95% grouped-task accuracy interval is `79.00–85.17%`. A paired 10,000-repeat
+task bootstrap gives an accuracy-delta interval of `-0.83 to +1.17` percentage points and
+a partial-F1-delta interval of `-1.77 to +6.02` points. The verifier changed nine cases,
+corrected four, and regressed three; exact McNemar `p=1.0`. The observed gain is therefore
+small and not statistically established. It should be described as a promising,
+cost-efficient partial-boundary refinement, not a 90% or publishable accuracy result.
+
+The simple path is nevertheless the better engineering default for full coverage:
+`82.33%` is only `0.50` points below complete Cali-Tree v2's `82.83%`, while removing the
+hierarchy and replacing three global judgments with one primary call plus an 8.5% conditional
+second pass. The selective Cali-Tree result remains appropriate only when abstention is
+acceptable.
+
+### Generalization status and artifacts
+
+The design is more likely to transfer because all learned state is expressed in general
+visual-evidence terms, but cross-dataset generalization has **not** been demonstrated. The
+confirmation set contains unseen ImagenHub tasks, not a different benchmark or annotation
+distribution. A publication claim requires a locked evaluation on an external image-editing
+dataset with compatible three-way human labels.
+
+Artifacts:
+
+- v4 development: `logs/exps/260729-11:14:03-exps/`
+- v4 600-case primary confirmation: `logs/exps/260729-11:33:04-exps/`
+- broad-verifier negative control: `logs/exps/260729-12:10:30-exps/`
+- partial-progress development: `logs/exps/260729-12:24:54-exps/`
+- promoted 51-call confirmation: `logs/exps/260729-12:30:24-exps/`
+- paired uncertainty: `logs/exps/260729-12:30:24-exps/paired_task_bootstrap.json`
+
+During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
+calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from
+every reported metric and token count. The promoted confirmation preflight reconstructed
+the original 600 `judge::` records, matched the saved base confusion matrix exactly, and
+made zero primary calls before the 51 verifier calls.

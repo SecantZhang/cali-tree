@@ -3,6 +3,8 @@ import threading
 import time
 from types import SimpleNamespace
 
+import pytest
+
 from vejudge.interface.node_calibration.calitree_nodes import (
     CaliTreeEvalNodeExecutor,
     CaliTreeJudgeNodeExecutor,
@@ -152,7 +154,13 @@ def test_rubric_lite_boundary_dry_run_counts_only_score_band(make_ctx):
     }
 
     result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
-        params={"minimum_ordinal_score": 50, "apply_split": "test"},
+        params={
+            "verifier_version": "rubric_lite_v1",
+            "minimum_ordinal_score": 50,
+            "eligible_base_labels": ["no", "partial", "yes"],
+            "decision_policy": "partial_only",
+            "apply_split": "test",
+        },
         inputs={
             "samples": samples,
             "judge_result": judge_result,
@@ -165,6 +173,52 @@ def test_rubric_lite_boundary_dry_run_counts_only_score_band(make_ctx):
     assert result.meta["n_score_eligible"] == 1
     assert result.meta["estimated_calls"] == 1
     assert result.outputs["judge_result"] is judge_result
+
+
+@pytest.mark.parametrize(
+    ("conditions", "delta", "subject", "scene", "expected"),
+    [
+        ([{"evidence": "none"}], "absent", "correct", "same", "no"),
+        (
+            [{"evidence": "full"}, {"evidence": "none"}],
+            "recognizable",
+            "correct",
+            "same",
+            "partial",
+        ),
+        (
+            [{"evidence": "partial"}],
+            "recognizable",
+            "correct",
+            "same",
+            "partial",
+        ),
+        (
+            [{"evidence": "full"}, {"evidence": "full"}],
+            "recognizable",
+            "correct",
+            "same",
+            "yes",
+        ),
+        ([{"evidence": "full"}], "recognizable", "wrong", "same", "no"),
+        ([{"evidence": "full"}], "recognizable", "correct", "replaced", "no"),
+    ],
+)
+def test_partial_progress_rubric_maps_structured_evidence_deterministically(
+    conditions, delta, subject, scene, expected
+):
+    parsed = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-partial-v2",
+        "conditions": conditions,
+        "requested_delta": delta,
+        "intended_subject": subject,
+        "scene": scene,
+        "label": "yes",
+        "rationale": "visible comparison",
+    }))
+
+    assert parsed["valid"] is True
+    assert parsed["label"] == expected
 
 
 def test_calitree_dry_run_allows_unset_models_but_live_requires_embedding(
@@ -856,7 +910,13 @@ def test_rubric_lite_boundary_overrides_only_partial_verifier_label(
     result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
         dry_run=False,
         allow_live=True,
-        params={"minimum_ordinal_score": 50, "apply_split": "test"},
+        params={
+            "verifier_version": "rubric_lite_v1",
+            "minimum_ordinal_score": 50,
+            "eligible_base_labels": ["no", "partial", "yes"],
+            "decision_policy": "partial_only",
+            "apply_split": "test",
+        },
         inputs={
             "samples": samples,
             "judge_result": judge_result,
@@ -877,6 +937,77 @@ def test_rubric_lite_boundary_overrides_only_partial_verifier_label(
     assert rows["low"]["label"] == "no"
     assert rows["low"]["boundary_action"] == "not_score_eligible"
     assert result.meta["n_score_eligible"] == 2
+    assert result.meta["n_partial_overrides"] == 1
+
+
+def test_rubric_lite_boundary_can_replace_only_selected_base_label(
+    make_ctx, monkeypatch
+):
+    samples = {
+        "no": _sample("no", "test"),
+        "yes": _sample("yes", "test"),
+    }
+    judge_result = {
+        "no": {
+            "calitree": {
+                "label": "no",
+                "ordinal_score": 75,
+                "rationale": "base no",
+            },
+        },
+        "yes": {
+            "calitree": {
+                "label": "yes",
+                "ordinal_score": 95,
+                "rationale": "base yes",
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.rubric_lite_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "judge_many",
+        lambda _runtime, _prompt, selected: {
+            item_id: {
+                "label": "partial",
+                "rationale": "recognizable incomplete progress",
+                "valid": True,
+            }
+            for item_id in selected
+        },
+    )
+
+    result = RubricLiteBoundaryNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={
+            "verifier_version": "rubric_lite_partial_v2",
+            "minimum_ordinal_score": 0,
+            "eligible_base_labels": ["yes"],
+            "decision_policy": "replace",
+            "apply_split": "test",
+        },
+        inputs={
+            "samples": samples,
+            "judge_result": judge_result,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    rows = {
+        item_id: value["calitree"]
+        for item_id, value in result.outputs["judge_result"].items()
+    }
+    assert rows["no"]["label"] == "no"
+    assert rows["no"]["boundary_action"] == "not_score_eligible"
+    assert rows["yes"]["label"] == "partial"
+    assert rows["yes"]["pre_boundary_label"] == "yes"
+    assert rows["yes"]["boundary_action"] == "replace_eligible"
+    assert result.meta["n_score_eligible"] == 1
     assert result.meta["n_partial_overrides"] == 1
 
 
