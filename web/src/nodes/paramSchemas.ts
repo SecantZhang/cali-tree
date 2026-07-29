@@ -81,7 +81,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     partition: {
       type: 'enum',
       default: 'all',
-      options: ['all', 'development', 'confirmation'],
+      options: ['all', 'calibration', 'development', 'confirmation', 'final'],
     },
   },
   dataset: {
@@ -330,9 +330,28 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     model_version: {
       type: 'enum',
       default: 'rubric_lite_v4_imagenhub',
-      options: ['rubric_lite_v4_imagenhub'],
+      options: [
+        'rubric_lite_v4_imagenhub',
+        'rubric_lite_v4_editinspector_cutpoints_v1',
+      ],
     },
   },
+  rubric_lite_fit: {
+    selection_objective: {
+      type: 'enum',
+      default: 'macro_f1',
+      options: ['macro_f1', 'accuracy_guarded_partial'],
+    },
+    minimum_class_recall: {
+      type: 'number', default: 0.1, min: 0, max: 1, step: 0.05,
+    },
+    accuracy_tolerance: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    cv_folds: { type: 'number', default: 5, min: 2, max: 10, step: 1 },
+    cv_seed: { type: 'number', default: 44, min: 0, step: 1 },
+  },
+  rubric_lite_apply: {},
   calitree_judge: {},
   calitree_eval: {},
 }

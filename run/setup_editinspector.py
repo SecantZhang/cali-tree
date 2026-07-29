@@ -119,16 +119,24 @@ def assign_evaluation_partitions(
     *,
     seed: int,
 ) -> None:
-    """Mark the frozen 10% development slice and every later nested case."""
+    """Mark frozen 10%, next-40%, and final-50% nested evaluation partitions."""
     development_ids = {
         row["item_id"]
         for row in select_rows(all_rows, ratio=0.1, seed=seed)
+    }
+    first_half_ids = {
+        row["item_id"]
+        for row in select_rows(all_rows, ratio=0.5, seed=seed)
     }
     for row in selected:
         row["evaluation_partition"] = (
             "development"
             if row["item_id"] in development_ids
-            else "confirmation"
+            else (
+                "confirmation"
+                if row["item_id"] in first_half_ids
+                else "final"
+            )
         )
 
 
@@ -154,7 +162,7 @@ def build_manifest(
             row.get("evaluation_partition") == partition
             for row in rows
         )
-        for partition in ("development", "confirmation")
+        for partition in ("development", "confirmation", "final")
     }
     return {
         "dataset": "editinspector/EditInspector",

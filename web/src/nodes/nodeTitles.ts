@@ -32,6 +32,8 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   rubric_lite_train: 'Rubric-Lite Train',
   rubric_lite_boundary: 'Partial Boundary Verifier',
   rubric_lite_frozen: 'Frozen Rubric-Lite',
+  rubric_lite_fit: 'Rubric-Lite Fit',
+  rubric_lite_apply: 'Rubric-Lite Apply',
 }
 
 export function nodeTitle(type: string | undefined): string {

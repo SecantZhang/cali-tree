@@ -44,6 +44,7 @@ def test_stratified_selection_is_exact_and_nested():
     ]
     tenth = select_rows(rows, ratio=0.1, seed=44)
     half = select_rows(rows, ratio=0.5, seed=44)
+    full = select_rows(rows, ratio=1.0, seed=44)
 
     assert {
         label: sum(row["target_label"] == label for row in tenth)
@@ -61,6 +62,22 @@ def test_stratified_selection_is_exact_and_nested():
         row["evaluation_partition"] == "confirmation"
         for row in half
     ) == 40
+    assert sum(
+        row["evaluation_partition"] == "final"
+        for row in half
+    ) == 0
+    assign_evaluation_partitions(rows, full, seed=44)
+    assert {
+        partition: sum(
+            row["evaluation_partition"] == partition
+            for row in full
+        )
+        for partition in ("development", "confirmation", "final")
+    } == {
+        "development": 10,
+        "confirmation": 40,
+        "final": 50,
+    }
 
 
 def _materialize_fixture(root):
@@ -126,6 +143,7 @@ def test_manifest_pins_revision_and_hashes_selected_assets(tmp_path):
     assert manifest["partition_counts"] == {
         "development": 1,
         "confirmation": 0,
+        "final": 0,
     }
     assert manifest["files"]["images/source/0000.png"]["sha256"] == hashlib.sha256(
         b"source"

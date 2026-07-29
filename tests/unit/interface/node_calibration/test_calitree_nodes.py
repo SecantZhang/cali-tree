@@ -30,7 +30,9 @@ from vejudge.interface.node_db.editinspector_source_node import (
     EditInspectorSourceNodeExecutor,
 )
 from vejudge.interface.node_calibration.rubric_lite_nodes import (
+    RubricLiteApplyNodeExecutor,
     RubricLiteBoundaryNodeExecutor,
+    RubricLiteFitNodeExecutor,
     RubricLiteFrozenNodeExecutor,
     RubricLiteTrainNodeExecutor,
 )
@@ -117,6 +119,13 @@ def test_editinspector_source_filters_frozen_confirmation_partition(
     assert result.meta["partition"] == "confirmation"
     assert result.meta["n_items"] == 1
 
+    calibration = EditInspectorSourceNodeExecutor().run(
+        make_ctx(params={"partition": "calibration"})
+    )
+    assert set(calibration.outputs["raw_dataset"]) == {
+        "dev", "confirm",
+    }
+
 
 def test_calitree_train_dry_run_reports_calls_and_equal_token_cap(make_ctx):
     samples = {
@@ -191,6 +200,164 @@ def test_frozen_rubric_lite_loads_versioned_prompt_and_cutpoints(make_ctx):
     assert tree["training_provenance"]["train_tasks"] == 29
     assert tree["selective_policy"]["minimum_ordinal_score"] == 100
     assert "change_evidence" in tree["nodes"]["rubric:global"]["prompt"]
+    assert result.meta["model_calls"] == 0
+
+
+def test_frozen_rubric_lite_loads_external_two_cutpoint_calibrator(
+    make_ctx,
+):
+    result = RubricLiteFrozenNodeExecutor().run(make_ctx(
+        params={
+            "model_version":
+                "rubric_lite_v4_editinspector_cutpoints_v1"
+        },
+        inputs={},
+    ))
+
+    assert result.status == "done"
+    tree = result.outputs["prompt_tree"]
+    assert tree["ordinal_thresholds"] == {
+        "no_partial": 25.000001,
+        "partial_yes": 75.000001,
+    }
+    assert tree["training_provenance"]["calibration_cases"] == 392
+    assert tree["training_provenance"]["final_partition_used"] is False
+    assert result.meta["model_calls"] == 0
+
+
+def test_rubric_lite_fit_learns_only_two_cutpoints_with_oof_report(
+    make_ctx,
+):
+    item_ids = [
+        f"{label}-{index}"
+        for label in ("no", "partial", "yes")
+        for index in range(5)
+    ]
+    targets = {
+        item_id: item_id.split("-", 1)[0]
+        for item_id in item_ids
+    }
+    scores = {
+        "no": [0, 0, 10, 20, 20],
+        "partial": [40, 40, 50, 60, 60],
+        "yes": [90, 90, 95, 100, 100],
+    }
+    samples = {
+        item_id: _sample(item_id, "test")
+        for item_id in item_ids
+    }
+    labels = {
+        item_id: {"target_label": targets[item_id]}
+        for item_id in item_ids
+    }
+    judge_result = {
+        item_id: {
+            "calitree": {
+                "label": "partial",
+                "ordinal_score": scores[targets[item_id]][
+                    int(item_id.rsplit("-", 1)[1])
+                ],
+            },
+        }
+        for item_id in item_ids
+    }
+
+    result = RubricLiteFitNodeExecutor().run(make_ctx(
+        dry_run=False,
+        inputs={
+            "samples": samples,
+            "labels": labels,
+            "judge_result": judge_result,
+        },
+        params={
+            "selection_objective": "macro_f1",
+            "cv_folds": 5,
+            "cv_seed": 44,
+        },
+    ))
+
+    assert result.status == "done"
+    calibrator = result.outputs["rubric_calibrator"]
+    report = result.outputs["calitree_report"]
+    assert calibrator["fitted"] is True
+    assert set(calibrator["thresholds"]) == {
+        "no_partial", "partial_yes",
+    }
+    assert calibrator["uses_editor_identity"] is False
+    assert calibrator["uses_instruction_features"] is False
+    assert report["out_of_fold"]["metrics"]["accuracy"] == 1
+    assert report["deployment"]["metrics"]["per_label_f1"][
+        "partial"
+    ] == 1
+    assert result.meta["model_calls"] == 0
+
+
+def test_rubric_lite_fit_dry_run_emits_placeholder_without_scores(
+    make_ctx,
+):
+    result = RubricLiteFitNodeExecutor().run(make_ctx(
+        inputs={
+            "samples": {"case": _sample("case")},
+            "labels": {"case": {"target_label": "partial"}},
+            "judge_result": {},
+        },
+    ))
+
+    assert result.status == "done"
+    assert result.outputs["rubric_calibrator"]["fitted"] is False
+    assert result.meta["n_expected"] == 1
+    assert result.meta["model_calls"] == 0
+
+
+def test_rubric_lite_apply_relabels_scores_without_model_calls(
+    make_ctx,
+):
+    judge_result = {
+        "low": {
+            "calitree": {
+                "label": "partial",
+                "ordinal_score": 10,
+                "parsed": {"label": "partial"},
+            },
+        },
+        "middle": {
+            "calitree": {
+                "label": "no",
+                "ordinal_score": 50,
+                "parsed": {"label": "no"},
+            },
+        },
+        "high": {
+            "calitree": {
+                "label": "partial",
+                "ordinal_score": 90,
+                "parsed": {"label": "partial"},
+            },
+        },
+    }
+    result = RubricLiteApplyNodeExecutor().run(make_ctx(inputs={
+        "judge_result": judge_result,
+        "rubric_calibrator": {
+            "version": "rubric-lite-cutpoints-v1",
+            "selection_objective": "macro_f1",
+            "thresholds": {
+                "no_partial": 25.000001,
+                "partial_yes": 75.000001,
+            },
+        },
+    }))
+
+    assert result.status == "done"
+    rows = {
+        item_id: value["calitree"]
+        for item_id, value in result.outputs["judge_result"].items()
+    }
+    assert {
+        item_id: row["label"] for item_id, row in rows.items()
+    } == {"low": "no", "middle": "partial", "high": "yes"}
+    assert rows["middle"]["pre_calibration_label"] == "no"
+    assert rows["high"]["parsed"]["label"] == "yes"
+    assert result.meta["n_changed"] == 3
     assert result.meta["model_calls"] == 0
 
 

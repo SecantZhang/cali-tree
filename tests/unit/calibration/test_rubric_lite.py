@@ -1,6 +1,7 @@
 from vejudge.core.calibration.rubric_lite import (
     RubricLiteLearner,
     apply_ordinal_thresholds,
+    cross_validate_ordinal_thresholds,
     fit_ordinal_thresholds,
     ordinal_label,
     select_boundary_cases,
@@ -219,3 +220,82 @@ def test_ordinal_threshold_selection_respects_accuracy_tolerance():
     assert ordinal_label(0, fitted["thresholds"]) in {
         "no", "partial", "yes"
     }
+
+
+def test_macro_f1_threshold_objective_prefers_partial_recovery():
+    ids = [f"case-{index}" for index in range(12)]
+    samples = {item_id: _sample(item_id) for item_id in ids}
+    targets = {
+        **{item_id: "no" for item_id in ids[:3]},
+        **{item_id: "partial" for item_id in ids[3:6]},
+        **{item_id: "yes" for item_id in ids[6:]},
+    }
+    results = {
+        item_id: {"label": "yes", "ordinal_score": score}
+        for item_id, score in zip(
+            ids,
+            [0, 0, 25, 25, 50, 50, 75, 75, 100, 100, 100, 100],
+        )
+    }
+
+    fitted = fit_ordinal_thresholds(
+        results=results,
+        targets=targets,
+        samples=samples,
+        ids=ids,
+        minimum_class_recall=0.1,
+        selection_objective="macro_f1",
+    )
+
+    assert fitted["selection_objective"] == "macro_f1"
+    assert fitted["thresholds"] == {
+        "no_partial": 0.000001,
+        "partial_yes": 50.000001,
+    }
+    assert fitted["metrics"]["per_label_accuracy"]["partial"] > 0
+
+
+def test_ordinal_cross_validation_holds_out_every_labelled_item():
+    ids = [
+        f"{label}-{index}"
+        for label in ("no", "partial", "yes")
+        for index in range(5)
+    ]
+    samples = {item_id: _sample(item_id) for item_id in ids}
+    targets = {
+        item_id: item_id.split("-", 1)[0]
+        for item_id in ids
+    }
+    scores = {
+        "no": [0, 0, 10, 20, 20],
+        "partial": [40, 40, 50, 60, 60],
+        "yes": [90, 90, 95, 100, 100],
+    }
+    results = {
+        item_id: {
+            "label": "partial",
+            "ordinal_score": scores[targets[item_id]][
+                int(item_id.rsplit("-", 1)[1])
+            ],
+        }
+        for item_id in ids
+    }
+
+    report = cross_validate_ordinal_thresholds(
+        results=results,
+        targets=targets,
+        samples=samples,
+        ids=ids,
+        folds=5,
+        seed=44,
+    )
+
+    assert report["n"] == 15
+    assert report["folds"] == 5
+    assert sum(
+        row["n_validation"] for row in report["fold_reports"]
+    ) == 15
+    assert all(
+        row["n_fit"] == 12 for row in report["fold_reports"]
+    )
+    assert report["metrics"]["accuracy"] == 1

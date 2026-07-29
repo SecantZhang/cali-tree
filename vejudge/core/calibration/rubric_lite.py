@@ -8,6 +8,7 @@ Cali-Tree judge and evaluation sockets.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -178,15 +179,25 @@ def fit_ordinal_thresholds(
     accuracy_tolerance: float = 0.01,
     minimum_class_recall: float = 0.10,
     default_thresholds: Optional[dict[str, float]] = None,
+    selection_objective: str = "accuracy_guarded_partial",
 ) -> dict[str, Any]:
     """Fit two global cutpoints without editor, task, or instruction features.
 
     First retain pairs that meet ``minimum_class_recall`` for every class represented in
-    calibration data, then find the maximum accuracy among them.  Among pairs within
-    ``accuracy_tolerance`` of that maximum, prefer partial F1, then macro F1, balanced
-    accuracy, and ordinary accuracy.  This makes the partial tradeoff explicit without
-    permitting a predict-partial-everywhere solution or silently erasing the rare yes class.
+    calibration data. ``accuracy_guarded_partial`` preserves the original policy: stay
+    within ``accuracy_tolerance`` of maximum accuracy, then prefer partial F1.
+    ``macro_f1`` directly prefers macro F1, then partial F1, balanced accuracy, and ordinary
+    accuracy. Both objectives reject a predict-one-class solution when a class-preserving
+    pair exists.
     """
+    if selection_objective not in {
+        "accuracy_guarded_partial",
+        "macro_f1",
+    }:
+        raise ValueError(
+            "selection_objective must be 'accuracy_guarded_partial' or "
+            "'macro_f1'"
+        )
     defaults = dict(default_thresholds or DEFAULT_ORDINAL_THRESHOLDS)
     usable = [
         item_id
@@ -203,6 +214,7 @@ def fit_ordinal_thresholds(
             "minimum_class_recall": max(
                 0.0, min(1.0, float(minimum_class_recall))
             ),
+            "selection_objective": selection_objective,
             "metrics": classification_metrics({}, {}, samples),
             "fallback": "no_valid_ordinal_scores",
         }
@@ -257,14 +269,18 @@ def fit_ordinal_thresholds(
         for trial in candidate_pool
     )
     tolerance = max(0.0, float(accuracy_tolerance))
-    eligible = [
-        trial
-        for trial in candidate_pool
-        if float(trial["metrics"].get("accuracy") or 0.0)
-        + tolerance
-        + 1e-12
-        >= max_accuracy
-    ]
+    eligible = (
+        candidate_pool
+        if selection_objective == "macro_f1"
+        else [
+            trial
+            for trial in candidate_pool
+            if float(trial["metrics"].get("accuracy") or 0.0)
+            + tolerance
+            + 1e-12
+            >= max_accuracy
+        ]
+    )
 
     def selection_key(trial: dict[str, Any]) -> tuple[float, ...]:
         metrics = trial["metrics"]
@@ -272,13 +288,27 @@ def fit_ordinal_thresholds(
         partial_f1 = float(
             (metrics.get("per_label_f1") or {}).get("partial") or 0.0
         )
+        macro_f1 = float(metrics.get("macro_f1") or 0.0)
+        balanced = float(metrics.get("balanced_accuracy") or 0.0)
+        accuracy = float(metrics.get("accuracy") or 0.0)
+        stability = (
+            -abs(thresholds["no_partial"] - defaults["no_partial"])
+            - abs(thresholds["partial_yes"] - defaults["partial_yes"])
+        )
+        if selection_objective == "macro_f1":
+            return (
+                macro_f1,
+                partial_f1,
+                balanced,
+                accuracy,
+                stability,
+            )
         return (
             partial_f1,
-            float(metrics.get("macro_f1") or 0.0),
-            float(metrics.get("balanced_accuracy") or 0.0),
-            float(metrics.get("accuracy") or 0.0),
-            -abs(thresholds["no_partial"] - defaults["no_partial"])
-            - abs(thresholds["partial_yes"] - defaults["partial_yes"]),
+            macro_f1,
+            balanced,
+            accuracy,
+            stability,
         )
 
     selected = max(eligible, key=selection_key)
@@ -289,6 +319,7 @@ def fit_ordinal_thresholds(
         "max_accuracy": max_accuracy,
         "accuracy_tolerance": tolerance,
         "minimum_class_recall": recall_floor,
+        "selection_objective": selection_objective,
         "class_preserving_candidate_count": len(class_preserving),
         "metrics": selected["metrics"],
         "candidate_count": len(trials),
@@ -297,6 +328,111 @@ def fit_ordinal_thresholds(
             if class_preserving
             else "no_candidate_met_minimum_class_recall"
         ),
+    }
+
+
+def cross_validate_ordinal_thresholds(
+    *,
+    results: dict[str, dict[str, Any]],
+    targets: dict[str, str],
+    samples: dict[str, dict[str, Any]],
+    ids: list[str],
+    folds: int = 5,
+    seed: int = 44,
+    accuracy_tolerance: float = 0.01,
+    minimum_class_recall: float = 0.10,
+    default_thresholds: Optional[dict[str, float]] = None,
+    selection_objective: str = "macro_f1",
+) -> dict[str, Any]:
+    """Estimate deployment behavior with deterministic stratified out-of-fold predictions.
+
+    Each item is predicted by cutpoints fitted without that item's label. This is a
+    development estimate only; the returned deployment calibrator must still be checked on
+    a separate frozen partition.
+    """
+    usable = [
+        item_id
+        for item_id in sorted(set(ids) & set(results) & set(targets) & set(samples))
+        if (
+            targets[item_id] in LABELS
+            and isinstance(results[item_id].get("ordinal_score"), (int, float))
+        )
+    ]
+    label_groups = {
+        label: [
+            item_id for item_id in usable
+            if targets[item_id] == label
+        ]
+        for label in LABELS
+    }
+    represented = [
+        group for group in label_groups.values() if group
+    ]
+    max_folds = min((len(group) for group in represented), default=0)
+    n_folds = min(max(2, int(folds)), max_folds) if max_folds >= 2 else 0
+    if n_folds < 2:
+        return {
+            "version": "global-ordinal-cutpoints-cv-v1",
+            "n": len(usable),
+            "folds": 0,
+            "selection_objective": selection_objective,
+            "metrics": classification_metrics({}, {}, samples),
+            "fold_reports": [],
+            "fallback": "insufficient_examples_per_represented_class",
+        }
+
+    fold_ids: list[list[str]] = [[] for _ in range(n_folds)]
+    for label_index, label in enumerate(LABELS):
+        group = list(label_groups[label])
+        random.Random(seed + label_index * 1009).shuffle(group)
+        for index, item_id in enumerate(group):
+            fold_ids[index % n_folds].append(item_id)
+
+    predictions: dict[str, str] = {}
+    fold_reports: list[dict[str, Any]] = []
+    usable_set = set(usable)
+    for fold_index, held_out in enumerate(fold_ids):
+        held_out_set = set(held_out)
+        fit_ids = sorted(usable_set - held_out_set)
+        fitted = fit_ordinal_thresholds(
+            results=results,
+            targets=targets,
+            samples=samples,
+            ids=fit_ids,
+            accuracy_tolerance=accuracy_tolerance,
+            minimum_class_recall=minimum_class_recall,
+            default_thresholds=default_thresholds,
+            selection_objective=selection_objective,
+        )
+        calibrated = apply_ordinal_thresholds(
+            {item_id: results[item_id] for item_id in held_out},
+            fitted["thresholds"],
+        )
+        predictions.update({
+            item_id: str(calibrated[item_id].get("label") or "")
+            for item_id in held_out
+        })
+        fold_reports.append({
+            "fold": fold_index,
+            "n_fit": len(fit_ids),
+            "n_validation": len(held_out),
+            "thresholds": fitted["thresholds"],
+            "fit_metrics": fitted["metrics"],
+        })
+    metrics = classification_metrics(
+        {item_id: targets[item_id] for item_id in usable},
+        predictions,
+        samples,
+    )
+    return {
+        "version": "global-ordinal-cutpoints-cv-v1",
+        "n": len(usable),
+        "folds": n_folds,
+        "seed": int(seed),
+        "selection_objective": selection_objective,
+        "metrics": metrics,
+        "fold_reports": fold_reports,
+        "fallback": None,
     }
 
 
