@@ -5,6 +5,13 @@
 - Why: Increase useful automation beyond exact `yes` without adding architecture or tuning a policy to one dataset.
 - Details: logs/updates/details/260729-16:38:20-updates.md
 
+## 260729-16:52:46 — Preregister the full Rubric-Lite v4 benchmark
+- Type: feature
+- Scope: full-1200 workflow/runner, frozen protocol, checkpoint preflight and docs
+- What: Added and dry-ran a frozen one-call v4 benchmark over all 1,200 held-out cases; 720 exact checkpoints are reusable and 480 live calls remain.
+- Why: Produce a direct full-dataset comparison with CaliTree v2 without paying again for exact prior judgments or selecting on the remaining labels.
+- Details: logs/updates/details/260729-16:52:46-updates.md
+
 ## 260729-16:01:41 — Add explicit human-review decisions
 - Type: feature
 - Scope: CaliTree judge/eval, selective metrics, frontend workbench, workflow example, docs and tests
