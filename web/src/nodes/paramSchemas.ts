@@ -269,6 +269,22 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     editor_prior_threshold: { type: 'number', default: 0.98, min: 0, max: 1, step: 0.01 },
     editor_prior_min_support: { type: 'number', default: 20, min: 1 },
   },
+  rubric_lite_train: {
+    rubric_version: {
+      type: 'enum', default: 'rubric_lite_v1', options: ['rubric_lite_v1', 'rubric_lite_v2'],
+    },
+    max_steps: { type: 'number', default: 3, min: 0, max: 10 },
+    feedback_cases_per_bucket: { type: 'number', default: 8, min: 1, max: 50 },
+    max_validation_accuracy_drop: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    validation_fraction: { type: 'number', default: 0.25, min: 0.1, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 44, min: 0 },
+    agreement_filter: {
+      type: 'enum', default: 'unanimous', options: ['all', 'unanimous'],
+    },
+    run_initial_baseline: { type: 'bool', default: true },
+  },
   calitree_judge: {},
   calitree_eval: {},
 }

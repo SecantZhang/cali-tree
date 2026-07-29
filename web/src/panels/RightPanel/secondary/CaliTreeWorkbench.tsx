@@ -66,6 +66,7 @@ const STATUS_COLORS: Record<string, string> = {
   promoted: '#c4b5fd',
   rejected: '#fca5a5',
   global: '#f0abfc',
+  global_rubric: '#86efac',
 }
 
 function AccuracyCard({ title, value }: { title: string; value?: MetricBlock }) {
@@ -174,6 +175,11 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
   const outputs = lastResult?.outputs as Record<string, unknown> | undefined
   const tree = (outputs?.prompt_tree ?? {}) as Record<string, unknown>
   const report = (outputs?.calitree_report ?? {}) as Record<string, any>
+  const isRubricLite = report.architecture === 'rubric_lite'
+  const calibrated = (report.rubric_lite ?? report.calitree) as {
+    train?: MetricBlock
+    test?: MetricBlock
+  } | undefined
   const nodes = (tree.nodes ?? {}) as Record<string, TreeNode>
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedCase, setSelectedCase] = useState<string | null>(null)
@@ -196,21 +202,21 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
   const selected = selectedNode ? nodes[selectedNode] : undefined
 
   if (!lastResult) {
-    return <p className="empty-hint">Run Cali-Tree Train to inspect its hierarchy and metrics.</p>
+    return <p className="empty-hint">Run calibration training to inspect its rubric and metrics.</p>
   }
 
   return (
     <div className="calitree-workbench">
       <div className="calitree-stats">
-        <AccuracyCard title="Initial · train" value={report.initial?.train} />
-        <AccuracyCard title="Initial · test" value={report.initial?.test} />
-        <AccuracyCard title="TextGrad · train" value={report.textgrad?.train} />
-        <AccuracyCard title="TextGrad · test" value={report.textgrad?.test} />
-        <AccuracyCard title="Cali-Tree · train" value={report.calitree?.train} />
-        <AccuracyCard title="Cali-Tree · test" value={report.calitree?.test} />
-        <AccuracyCard title="Selective · test" value={selectiveTest.accepted} />
+        <AccuracyCard title="Initial · train" value={(report.initial_baseline ?? report.initial)?.train} />
+        <AccuracyCard title="Initial · test" value={(report.initial_baseline ?? report.initial)?.test} />
+        {!isRubricLite && <AccuracyCard title="TextGrad · train" value={report.textgrad?.train} />}
+        {!isRubricLite && <AccuracyCard title="TextGrad · test" value={report.textgrad?.test} />}
+        <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · train`} value={calibrated?.train} />
+        <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · test`} value={calibrated?.test} />
+        {!isRubricLite && <AccuracyCard title="Selective · test" value={selectiveTest.accepted} />}
       </div>
-      <div className="calitree-node-detail" aria-label="Selective calibration summary">
+      {!isRubricLite && <div className="calitree-node-detail" aria-label="Selective calibration summary">
         <strong>Training-calibrated selective operating point</strong>
         <div>
           coverage {
@@ -230,11 +236,11 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
               : `${(selectiveTest.policy.editor_accuracy_threshold * 100).toFixed(0)}%`
           } · editor support ≥ {selectiveTest.policy?.editor_min_support ?? '—'}
         </div>
-      </div>
+      </div>}
       <section className="calitree-two-column">
         <div>
           <h3>Test diagnostics</h3>
-          <MetricDetails metric={report.calitree?.test} />
+          <MetricDetails metric={calibrated?.test} />
         </div>
         <div>
           <h3>Running accuracy</h3>
@@ -249,7 +255,7 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
         </div>
       </section>
 
-      <section>
+      {!isRubricLite && <section>
         <h3>Training-learned consensus calibration</h3>
         <div className="calitree-node-detail">
           <strong>{calibrator.version ?? 'not fitted'}</strong>
@@ -293,10 +299,42 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
             </table>
           )}
         </div>
-      </section>
+      </section>}
+
+      {isRubricLite && (
+        <section>
+          <h3>Validation-guarded rubric learning</h3>
+          <div className="calitree-node-detail">
+            <strong>{String(report.version ?? 'rubric-lite-v1')}</strong>
+            <div>
+              Selected step {String(report.selection?.selected_step ?? 0)} · validation accuracy {
+                report.selection?.selected_validation_accuracy == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_accuracy) * 100).toFixed(1)}%`
+              }
+            </div>
+            <div>
+              partial precision {
+                report.selection?.selected_validation_partial_precision == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_partial_precision) * 100).toFixed(1)}%`
+              } · recall {
+                report.selection?.selected_validation_partial_recall == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_partial_recall) * 100).toFixed(1)}%`
+              } · F1 {
+                report.selection?.selected_validation_partial_f1 == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_partial_f1) * 100).toFixed(1)}%`
+              }
+            </div>
+            <div>No leaves · no embeddings · no merges · no editor prior · one judge call per case</div>
+          </div>
+        </section>
+      )}
 
       <section>
-        <h3>Prompt hierarchy</h3>
+        <h3>{isRubricLite ? 'Learned global rubric' : 'Prompt hierarchy'}</h3>
         <PromptTree tree={tree} selected={selectedNode} onSelect={setSelectedNode} />
         {selected && (
           <div className="calitree-node-detail">
@@ -355,7 +393,7 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
                 </figure>
               </div>
               <div><strong>Human:</strong> {String(cases[caseId].target_label)}</div>
-              <div><strong>Cali-Tree:</strong> {String(predictions[caseId]?.label ?? '—')}</div>
+              <div><strong>{isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'}:</strong> {String(predictions[caseId]?.label ?? '—')}</div>
               <div><strong>Route:</strong> {String(predictions[caseId]?.routed_node ?? '—')}</div>
               <p>{String(predictions[caseId]?.rationale ?? '')}</p>
             </div>

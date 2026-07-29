@@ -297,3 +297,71 @@ human raters themselves do not agree, while the selective result is a deployable
 judge-with-abstention operating point. Development artifacts are under
 `logs/exps/260728-13:48:13-exps/`; confirmation and combined metrics are under
 `logs/exps/260728-14:29:10-exps/`.
+
+## Rubric-Lite: the simpler generalization experiment
+
+The large held-out run shows that the hierarchy is not the source of the reported gain. On
+the same 1,200 held-out cases, the routed tree prediction *before* consensus and editor-prior
+resolution was `77.58%` accurate, below the fixed v2 initial rubric at `78.25%`. The final
+full-coverage result rose to `82.83%` only after three-way global consensus and a training-set
+editor prior. The `92.87%` figure additionally abstains on `35.75%` of cases. Therefore, the
+current evidence does not justify the complexity of task leaves, embeddings, semantic
+clustering, merge synthesis, routing thresholds, or promoted branches for deployment.
+
+The partial class is a boundary problem rather than a tree-routing problem. Across the 1,200
+held-out cases, Cali-Tree v2 predicted `partial` 94 times, with 36 true positives among 135
+human-partial cases:
+
+- precision: `38.30%` (`36 / 94`)
+- recall: `26.67%` (`36 / 135`)
+- F1: `31.50%`
+
+Rubric-Lite is a deliberately small alternative available as the `rubric_lite_train` workflow
+node and in `workflows/examples/rubric_lite_imagenhub.json`. It has one learned global prompt,
+one judge call per case, and no embedding, tree, merge, route, critic ensemble, or editor prior.
+Its rubric decomposes every requested condition onto a single ordinal evidence scale:
+
+```text
+any condition = none, or source scene replaced  -> no
+else any condition = partial                    -> partial
+else all conditions = full                      -> yes
+```
+
+The JSON condition evidence is mapped back to the label deterministically, so a free-form
+model label cannot contradict its own evidence. Learning uses the official training tasks
+only. By default it excludes disputed human ratings, creates a task-disjoint internal
+validation slice, and mines four reusable kinds of feedback: missed partials, false partials,
+other outer-class errors, and correct boundary anchors. An optimizer rewrite is selected by
+partial F1 only when validation accuracy remains within one percentage point of the initial
+rubric. The feedback explicitly forbids item IDs, editor names, dataset-frequency rules, and
+instruction-only shortcuts.
+
+Two billable experiments used the frozen 10% offset-0 slice: all 232 official training cases
+(181 unanimous cases eligible for rubric learning) and 120 held-out cases from 15 unseen tasks.
+Both used `gpt-4.1-mini` as the image judge. V1 also evaluated three optimizer rewrites with
+`gpt-4.1-mini`; its task-grouped validation guard retained the unmodified step-0 rubric. V2
+used one completion containing three structured rubric views and a deterministic majority,
+with no optimizer call.
+
+| Rubric-Lite version | Test accuracy | Balanced accuracy | Macro F1 | Partial precision | Partial recall | Partial F1 | Unanimous accuracy | Disputed accuracy | Calls / tokens |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| v1 condition evidence | 76.67% | 65.96% | 52.74% | 55.56% | 35.71% | 43.48% | 89.69% | 21.74% | 895 judge + 3 optimizer / 1,408,677 |
+| v2 three-view vote | 73.33% | 52.43% | 42.48% | 25.00% | 14.29% | 18.18% | 85.57% | 21.74% | 354 judge / 564,116 |
+
+V1 improved partial F1 over the tree system while missing the overall-accuracy criterion.
+V2 reduced prompt cost and removed optimization, but degraded both overall accuracy and the
+partial boundary. Neither version is a replacement for the full-coverage Cali-Tree v2 result.
+The negative result supports keeping the single-rubric architecture as an experiment while
+continuing rubric learning, rather than adding another routing hierarchy.
+
+The frozen promotion criteria were:
+
+- overall accuracy at least `84.00%` (within one point of the existing v2 run's `85.00%`)
+- partial F1 above the existing run's `31.58%` (`3/5` precision, `3/14` recall)
+- no use of editor identity, held-out labels, embeddings, or per-task prompts
+
+Because neither version cleared both criteria, no 50% confirmation run was performed. The
+complete reports are in `logs/exps/260729-09:54:40-exps/rubric_lite_train.json` (v1) and
+`logs/exps/260729-10:27:07-exps/rubric_lite_train.json` (v2). Any next version should remain
+frozen on the 10% development slice before the unchanged rubric is promoted to the disjoint
+50% offset-1 confirmation slice.

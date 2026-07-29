@@ -849,6 +849,53 @@ def _parse_judgment(content: str) -> dict[str, Any]:
     model_label = str(parsed.get("label") or "").strip().lower()
     label = model_label
     conflict_reason = ""
+    conditions = parsed.get("conditions")
+    scene = str(parsed.get("scene") or "").strip().lower()
+    if isinstance(conditions, list) and conditions:
+        evidence = [
+            str(condition.get("evidence") or "").strip().lower()
+            for condition in conditions
+            if isinstance(condition, dict)
+        ]
+        if len(evidence) == len(conditions) and all(
+            value in {"none", "partial", "full"}
+            for value in evidence
+        ):
+            if scene == "replaced" or "none" in evidence:
+                label = "no"
+                conflict_reason = (
+                    "source scene replaced or a required condition has no evidence"
+                )
+            elif "partial" in evidence:
+                label = "partial"
+                conflict_reason = "a required condition has only partial evidence"
+            elif all(value == "full" for value in evidence):
+                label = "yes"
+                conflict_reason = "all required conditions have full evidence"
+    rubric_votes = parsed.get("rubric_votes")
+    if isinstance(rubric_votes, dict):
+        vote_labels = [
+            str(
+                value.get("label") if isinstance(value, dict) else value
+            ).strip().lower()
+            for value in rubric_votes.values()
+        ]
+        if len(vote_labels) == 3 and all(
+            vote in {"no", "partial", "yes"} for vote in vote_labels
+        ):
+            counts = Counter(vote_labels)
+            winner, support = max(
+                counts.items(),
+                key=lambda pair: (
+                    pair[1], pair[0] == "partial", pair[0]
+                ),
+            )
+            label = winner if support >= 2 else "partial"
+            conflict_reason = (
+                f"rubric-vote majority maps to {label}"
+                if support >= 2
+                else "three-way rubric disagreement maps to partial"
+            )
     scores = parsed.get("rubric_scores")
     if parsed.get("rubric_version") == "sc-v3" and isinstance(scores, dict):
         requested = str(scores.get("requested_change") or "").strip().lower()
@@ -1807,7 +1854,8 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
             prompt_version=str(tree.get("prompt_version") or "calitree_v2"),
             concurrency=int(engine_config.get("concurrency") or 1),
         )
-        if not runtime.embedding_model:
+        single_global_rubric = tree.get("architecture") == "rubric_lite"
+        if not runtime.embedding_model and not single_global_rubric:
             return NodeRunResult(status="error", error="prompt_tree has no embedding_model")
         output: dict[str, Any] = {}
         routed_by_item: dict[str, dict[str, Any]] = {}
@@ -1815,11 +1863,18 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
         cached_results: dict[str, dict[str, Any]] = {}
         prediction_cache = tree.get("prediction_cache") or {}
         item_ids = sorted(samples)
-        routing_vectors = runtime.embed(
-            [_routing_text(samples[item_id]) for item_id in item_ids]
-        )
-        for item_id, vector in zip(item_ids, routing_vectors):
-            routed = route_prompt(tree, vector)
+        if single_global_rubric:
+            routed_rows = [
+                route_prompt(tree, []) for _item_id in item_ids
+            ]
+        else:
+            routing_vectors = runtime.embed(
+                [_routing_text(samples[item_id]) for item_id in item_ids]
+            )
+            routed_rows = [
+                route_prompt(tree, vector) for vector in routing_vectors
+            ]
+        for item_id, routed in zip(item_ids, routed_rows):
             routed_by_item[item_id] = routed
             prompt = str(routed["prompt"])
             cached = prediction_cache.get(item_id) or {}
