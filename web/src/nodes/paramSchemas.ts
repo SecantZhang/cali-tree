@@ -297,10 +297,22 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   },
   rubric_lite_boundary: {
     verifier_version: {
-      type: 'enum', default: 'rubric_lite_v1', options: ['rubric_lite_v1'],
+      type: 'enum',
+      default: 'rubric_lite_partial_v2',
+      options: ['rubric_lite_partial_v2', 'rubric_lite_v1'],
     },
     minimum_ordinal_score: {
       type: 'number', default: 50, min: 0, max: 100, step: 5,
+    },
+    eligible_base_labels: {
+      type: 'list[string]',
+      default: ['yes'],
+      options: ['no', 'partial', 'yes'],
+    },
+    decision_policy: {
+      type: 'enum',
+      default: 'replace',
+      options: ['replace', 'partial_only'],
     },
     apply_split: {
       type: 'enum', default: 'all', options: ['all', 'train', 'test'],

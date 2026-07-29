@@ -1,3 +1,10 @@
+## 260729-12:37:30 — Promote simple Rubric-Lite partial-progress verification
+- Type: feature
+- Scope: partial-specific rubric, global fusion policy, workflow defaults, live confirmation, docs and tests
+- What: Replaced broad partial overrides with a learned yes-only partial-progress verifier; confirmed 82.33% accuracy and 31.01% partial F1 on 600 cases using 51 conditional calls.
+- Why: Retain full Cali-Tree-level accuracy with a general, auditable architecture and improve the partial boundary without tree routing or dataset-specific features.
+- Details: logs/updates/details/260729-12:37:30-updates.md
+
 ## 260729-12:01:39 — Add ordinal Rubric-Lite and boundary verification
 - Type: feature
 - Scope: Rubric-Lite v3/v4, ordinal calibration, partial-boundary verifier, workflow UI, tests
