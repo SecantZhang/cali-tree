@@ -636,6 +636,22 @@ The stronger-judge test is preregistered in
 requires at least a five-point partial-F1 gain while keeping accuracy at or above 78% and
 balanced accuracy at or above 66.65%; otherwise the candidate stops before confirmation.
 
+The candidate failed that gate:
+
+| 5-fold OOF model | Accuracy | Balanced | Macro F1 | Partial P / R / F1 | Expected agreement with one rater |
+|---|---:|---:|---:|---:|---:|
+| gpt-4.1-mini | 80.00% | **68.65%** | **59.00%** | **50.00 / 40.00 / 44.44%** | 77.08% |
+| gpt-4.1 | **82.50%** | 59.47% | 57.05% | 25.00 / 40.00 / 30.77% | **79.17%** |
+| Candidate delta | +2.50 pp | -9.18 pp | -1.95 pp | -25.00 / 0.00 / **-13.68 pp** | +2.08 pp |
+
+All five candidate folds selected `25.000001 / 50.000001`; all five baseline folds
+selected `50.000001 / 75.000001`. The larger model made nine uniquely correct predictions
+and seven unique regressions, but concentrated its improvement in the dominant `yes` class.
+It used exactly 80 primary calls and 157,387 tokens, with no verifier, optimizer, or
+embedding calls. Because partial F1 and balanced accuracy both failed their preregistered
+thresholds, no confirmation calls were made. The complete result is
+`docs/experiments/rubric_lite_gpt41_editinspector_ab_result.json`.
+
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
 calls. Until that happens, this model is a promising calibration-half result, not a

@@ -1,3 +1,10 @@
+## 260729-14:49:06 — Stop stronger-judge A/B after failed partial gate
+- Type: docs
+- Scope: gpt-4.1 live A/B result, CaliTree metrics report, experiment provenance
+- What: Recorded that gpt-4.1 improved ordinary accuracy to 82.50% but reduced balanced accuracy to 59.47% and partial F1 to 30.77%, so confirmation was stopped.
+- Why: Enforce the preregistered rule and avoid promoting a larger judge that follows the dominant class rather than improving partial.
+- Details: logs/updates/details/260729-14:49:06-updates.md
+
 ## 260729-14:43:54 — Preregister stronger-judge Rubric-Lite A/B
 - Type: docs
 - Scope: EditInspector experiment protocol and CaliTree research notes
