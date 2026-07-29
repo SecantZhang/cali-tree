@@ -7,6 +7,7 @@ export type SocketType =
   | 'evidence_bundle' | 'area_rubric_spec' | 'area_judge_result'
   | 'decomposition_features' | 'unit_labels' | 'active_labeling_report'
   | 'prompt_tree' | 'calitree_report'
+  | 'rubric_calibrator'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
   raw_dataset: 'var(--node-db)',
@@ -28,6 +29,7 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   active_labeling_report: 'var(--node-calibration)',
   prompt_tree: 'var(--node-calibration)',
   calitree_report: 'var(--node-calibration)',
+  rubric_calibrator: 'var(--node-calibration)',
 }
 
 // A representative example payload per socket type, shown (collapsed, expandable) in the
@@ -132,6 +134,14 @@ export const SOCKET_EXAMPLES: Partial<Record<SocketType, unknown>> = {
       priority: 0.92,
       reasons: ['wide_calibration_interval'],
     }],
+  },
+  rubric_calibrator: {
+    version: 'rubric-lite-cutpoints-v1',
+    feature: 'minimum_visible_evidence_score',
+    thresholds: { no_partial: 25.000001, partial_yes: 75.000001 },
+    selection_objective: 'macro_f1',
+    uses_editor_identity: false,
+    uses_instruction_features: false,
   },
   // An LM Engine node's config.
   engine_config: {

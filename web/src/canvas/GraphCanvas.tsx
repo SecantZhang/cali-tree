@@ -42,6 +42,8 @@ import { CaliTreeEvalNode } from '../nodes/CaliTreeEvalNode'
 import { RubricLiteTrainNode } from '../nodes/RubricLiteTrainNode'
 import { RubricLiteBoundaryNode } from '../nodes/RubricLiteBoundaryNode'
 import { RubricLiteFrozenNode } from '../nodes/RubricLiteFrozenNode'
+import { RubricLiteFitNode } from '../nodes/RubricLiteFitNode'
+import { RubricLiteApplyNode } from '../nodes/RubricLiteApplyNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { isValidSocketConnection } from '../nodes/socketTypes'
@@ -80,6 +82,8 @@ const NODE_TYPES = {
   rubric_lite_train: RubricLiteTrainNode,
   rubric_lite_boundary: RubricLiteBoundaryNode,
   rubric_lite_frozen: RubricLiteFrozenNode,
+  rubric_lite_fit: RubricLiteFitNode,
+  rubric_lite_apply: RubricLiteApplyNode,
   group: GroupNode,
 }
 

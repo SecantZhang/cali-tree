@@ -96,7 +96,10 @@ def main() -> int:
     )
     parser.add_argument(
         "--partition",
-        choices=("all", "development", "confirmation"),
+        choices=(
+            "all", "calibration", "development",
+            "confirmation", "final",
+        ),
         default="all",
     )
     parser.add_argument("--disable-boundary", action="store_true")

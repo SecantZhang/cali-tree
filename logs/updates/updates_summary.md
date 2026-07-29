@@ -1,3 +1,10 @@
+## 260729-13:58:08 — Add two-cutpoint Rubric-Lite domain adaptation
+- Type: feature
+- Scope: two-cutpoint calibration, EditInspector final split, workflow backend/frontend, frozen artifact, docs and tests
+- What: Replaced tree adaptation with one rubric score plus two fitted cutpoints; five-fold out-of-fold accuracy is 81.12% and partial F1 is 35.44% on 392 calibration cases.
+- Why: Improve external partial calibration with a minimal interpretable model while preserving a genuinely untouched 391-case final evaluation.
+- Details: logs/updates/details/260729-13:58:08-updates.md
+
 ## 260729-13:33:53 — Add external Rubric-Lite validation and selective deployment
 - Type: feature
 - Scope: EditInspector data source, frozen simple model, selective confidence, workflow UI, live validation, docs and tests

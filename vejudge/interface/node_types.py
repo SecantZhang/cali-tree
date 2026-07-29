@@ -16,6 +16,8 @@ from .node_calibration.calitree_nodes import (
     CaliTreeTrainNodeExecutor,
 )
 from .node_calibration.rubric_lite_nodes import (
+    RubricLiteApplyNodeExecutor,
+    RubricLiteFitNodeExecutor,
     RubricLiteFrozenNodeExecutor,
     RubricLiteTrainNodeExecutor,
 )
@@ -68,4 +70,6 @@ __all__ = [
     "CaliTreeEvalNodeExecutor",
     "RubricLiteTrainNodeExecutor",
     "RubricLiteFrozenNodeExecutor",
+    "RubricLiteFitNodeExecutor",
+    "RubricLiteApplyNodeExecutor",
 ]

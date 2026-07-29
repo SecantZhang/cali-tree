@@ -1,0 +1,201 @@
+{
+  "name": "rubric_lite_editinspector_calibrated",
+  "graph": {
+    "nodes": [
+      {
+        "id": "calibration_source",
+        "type": "editinspector_source",
+        "params": {"partition": "calibration"}
+      },
+      {
+        "id": "calibration_dataset",
+        "type": "dataset",
+        "params": {
+          "sampling_ratio": 1.0,
+          "full_dataset": true,
+          "sampling_mode": "split_label_stratified",
+          "group_by_task": true,
+          "require_labels": true,
+          "aggregation_method": "none"
+        }
+      },
+      {
+        "id": "final_source",
+        "type": "editinspector_source",
+        "params": {"partition": "final"}
+      },
+      {
+        "id": "final_dataset",
+        "type": "dataset",
+        "params": {
+          "sampling_ratio": 1.0,
+          "full_dataset": true,
+          "sampling_mode": "split_label_stratified",
+          "group_by_task": true,
+          "require_labels": true,
+          "aggregation_method": "none"
+        }
+      },
+      {
+        "id": "judge_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 512,
+          "concurrency": 4,
+          "health_check": false
+        }
+      },
+      {
+        "id": "frozen_rubric",
+        "type": "rubric_lite_frozen",
+        "params": {"model_version": "rubric_lite_v4_imagenhub"}
+      },
+      {
+        "id": "calibration_judge",
+        "type": "calitree_judge",
+        "params": {}
+      },
+      {
+        "id": "fit_cutpoints",
+        "type": "rubric_lite_fit",
+        "params": {
+          "selection_objective": "macro_f1",
+          "minimum_class_recall": 0.1,
+          "accuracy_tolerance": 0.01,
+          "cv_folds": 5,
+          "cv_seed": 44
+        }
+      },
+      {
+        "id": "final_judge",
+        "type": "calitree_judge",
+        "params": {}
+      },
+      {
+        "id": "apply_cutpoints",
+        "type": "rubric_lite_apply",
+        "params": {}
+      },
+      {
+        "id": "evaluate",
+        "type": "calitree_eval",
+        "params": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "calibration_source",
+        "source_socket": "raw_dataset",
+        "target": "calibration_dataset",
+        "target_socket": "raw_dataset"
+      },
+      {
+        "source": "calibration_source",
+        "source_socket": "raw_labels",
+        "target": "calibration_dataset",
+        "target_socket": "raw_labels"
+      },
+      {
+        "source": "final_source",
+        "source_socket": "raw_dataset",
+        "target": "final_dataset",
+        "target_socket": "raw_dataset"
+      },
+      {
+        "source": "final_source",
+        "source_socket": "raw_labels",
+        "target": "final_dataset",
+        "target_socket": "raw_labels"
+      },
+      {
+        "source": "calibration_dataset",
+        "source_socket": "samples",
+        "target": "calibration_judge",
+        "target_socket": "samples"
+      },
+      {
+        "source": "frozen_rubric",
+        "source_socket": "prompt_tree",
+        "target": "calibration_judge",
+        "target_socket": "prompt_tree"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "calibration_judge",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "calibration_judge",
+        "source_socket": "judge_result",
+        "target": "fit_cutpoints",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "calibration_dataset",
+        "source_socket": "labels",
+        "target": "fit_cutpoints",
+        "target_socket": "labels"
+      },
+      {
+        "source": "calibration_dataset",
+        "source_socket": "samples",
+        "target": "fit_cutpoints",
+        "target_socket": "samples"
+      },
+      {
+        "source": "final_dataset",
+        "source_socket": "samples",
+        "target": "final_judge",
+        "target_socket": "samples"
+      },
+      {
+        "source": "frozen_rubric",
+        "source_socket": "prompt_tree",
+        "target": "final_judge",
+        "target_socket": "prompt_tree"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "final_judge",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "final_judge",
+        "source_socket": "judge_result",
+        "target": "apply_cutpoints",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "fit_cutpoints",
+        "source_socket": "rubric_calibrator",
+        "target": "apply_cutpoints",
+        "target_socket": "rubric_calibrator"
+      },
+      {
+        "source": "apply_cutpoints",
+        "source_socket": "judge_result",
+        "target": "evaluate",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "final_dataset",
+        "source_socket": "labels",
+        "target": "evaluate",
+        "target_socket": "labels"
+      },
+      {
+        "source": "final_dataset",
+        "source_socket": "samples",
+        "target": "evaluate",
+        "target_socket": "samples"
+      }
+    ]
+  },
+  "created_at": "2026-07-29T00:00:00Z",
+  "updated_at": "2026-07-29T00:00:00Z"
+}

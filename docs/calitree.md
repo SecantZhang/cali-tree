@@ -52,12 +52,15 @@ VEJUDGE_EDITINSPECTOR_ROOT=/path/to/editinspector \
 ```
 
 The 10% slice contains 80 frozen development cases. Expanding the same seed to `--ratio
-0.5` produces a strict nested sample with those same 80 cases plus 312 untouched
-confirmation cases. The setup downloads source/edited images resumably, stores the three
-individual ratings, and hashes the pinned CSV, metadata, and every selected image. Graph
-execution never downloads implicitly. `workflows/examples/rubric_lite_editinspector_zero_shot.json`
-loads the frozen Rubric-Lite artifact with the verifier disabled and its model field blank.
-The reproducible CLI defaults to a no-call dry run:
+0.5` produces a strict nested sample with those same 80 cases plus 312 confirmation
+cases. These 392 cases are now the calibration half. Expanding to `--ratio 1.0` preserves
+that half and adds the final 391 cases, whose labels and predictions have not been used to
+choose the two-cutpoint model described below. The setup downloads source/edited images
+resumably, stores the three individual ratings, and hashes the pinned CSV, metadata, and
+every selected image. Graph execution never downloads implicitly.
+`workflows/examples/rubric_lite_editinspector_zero_shot.json` loads the frozen ImagenHub
+Rubric-Lite artifact with the verifier disabled and its model field blank. The reproducible
+CLI defaults to a no-call dry run:
 
 ```bash
 ./run/run_editinspector_rubric_lite.sh \
@@ -493,6 +496,55 @@ abstention rule transfers to a different image-edit dataset at 97.62% accuracy a
 coverage.** It does not establish full-coverage 90% accuracy, cross-dataset no/partial
 calibration, or a solution to the partial boundary. The next research target should be a
 separately validated high-confidence no/partial rule, not more tree routing.
+
+### Two-cutpoint domain adaptation: the next frozen candidate
+
+The external full-coverage result also shows that adding another prompt tree is the wrong
+complexity. Rubric-Lite v4 already emits a single interpretable scalar: the minimum of its
+three visible-evidence scores. The new domain-adaptation model learns only two global
+cutpoints on that scalar:
+
+```text
+score < 25.000001             -> no
+25.000001 <= score < 75.000001 -> partial
+score >= 75.000001            -> yes
+```
+
+There are no prompt leaves, embeddings, semantic clusters, merge rules, routers, editor
+identities, instruction features, or second model calls. Fitting enumerates the finite
+cutpoints immediately above observed scores, rejects candidates that fail the configured
+minimum recall for a represented class, and selects macro F1. Five-fold stratification is
+deterministic (`seed=44`), and every out-of-fold prediction is made by cutpoints fitted
+without that case's label.
+
+The complete 392-case calibration half has 26 `no`, 24 `partial`, and 342 `yes` cases:
+
+| Candidate on calibration half | Accuracy | Balanced | Macro F1 | Partial precision | Partial recall | Partial F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| Frozen ImagenHub v4 cutpoints | 58.93% | 55.03% | 39.87% | 5.56% | 20.83% | 8.77% |
+| Raw model label | 63.52% | 57.20% | 43.02% | 13.79% | 83.33% | 23.67% |
+| **Two cutpoints, 5-fold out of fold** | **81.12%** | **68.03%** | **58.22%** | **25.45%** | **58.33%** | **35.44%** |
+
+All five folds independently selected the same `25.000001 / 75.000001` pair, as did the
+deployment fit on all 392 calibration cases. This is evidence of threshold stability, not
+an untouched test result: the old 312-case “confirmation” partition is part of model
+selection in this iteration and must no longer be described as confirmation for this
+candidate. The accuracy is still below 90%, but partial F1 is more than four times the
+frozen cross-dataset value while using the smallest plausible calibration model.
+
+The frozen artifact is
+`vejudge/core/calibration/artifacts/rubric_lite_v4_editinspector_cutpoints_v1.json`.
+`rubric_lite_fit` learns and reports the same two values generically;
+`rubric_lite_apply` applies them without a model call. The fully wired fit/apply graph is
+`workflows/examples/rubric_lite_editinspector_calibrated.json`. For the pending final
+evaluation, `workflows/examples/rubric_lite_editinspector_final.json` loads the frozen
+artifact and evaluates only the final 391 cases, so the 392 calibration judgments are not
+billed again. Both workflow engine model fields are intentionally blank.
+
+The final partition has not been downloaded or judged. Testing it requires expanding setup
+to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
+calls. Until that happens, this model is a promising calibration-half result, not a
+publishable external test result.
 
 Artifacts:
 

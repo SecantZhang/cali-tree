@@ -18,7 +18,10 @@ class EditInspectorSourceNodeExecutor(NodeExecutor):
     param_schema = {
         "partition": {
             "type": "enum",
-            "options": ["all", "development", "confirmation"],
+            "options": [
+                "all", "calibration", "development",
+                "confirmation", "final",
+            ],
             "default": "all",
         },
     }
@@ -34,12 +37,27 @@ class EditInspectorSourceNodeExecutor(NodeExecutor):
         except ValueError as exc:
             return NodeRunResult(status="error", error=str(exc))
         partition = str(ctx.params.get("partition") or "all")
-        if partition not in {"all", "development", "confirmation"}:
+        if partition not in {
+            "all", "calibration", "development",
+            "confirmation", "final",
+        }:
             return NodeRunResult(
                 status="error",
                 error=f"Unknown EditInspector partition {partition!r}",
             )
-        if partition != "all":
+        if partition == "calibration":
+            samples = {
+                item_id: sample
+                for item_id, sample in samples.items()
+                if sample.get("external_partition")
+                in {"development", "confirmation"}
+            }
+            labels = {
+                item_id: label
+                for item_id, label in labels.items()
+                if item_id in samples
+            }
+        elif partition != "all":
             samples = {
                 item_id: sample
                 for item_id, sample in samples.items()
