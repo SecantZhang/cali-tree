@@ -532,6 +532,55 @@ selection in this iteration and must no longer be described as confirmation for 
 candidate. The accuracy is still below 90%, but partial F1 is more than four times the
 frozen cross-dataset value while using the smallest plausible calibration model.
 
+#### Partial-label reliability and rejected soft-label calibration
+
+The official target is a useful benchmark label, but `partial` is not a cleanly agreed
+class in EditInspector. The new evaluation report preserves the usual hard-label metrics
+and also measures the individual SC ratings. `modal_rater_agreement_ceiling` means the
+maximum expected agreement with a randomly selected rater if an item-specific oracle
+always chose the modal rating; it is not a ceiling on accuracy against the released target.
+`prediction_expected_rater_agreement` is the fraction of individual raters agreeing with
+the model prediction, averaged over cases.
+
+| EditInspector target | N | Unanimous ratings | Majority supports target | Mean entropy (bits) | Modal-rater ceiling |
+|---|---:|---:|---:|---:|---:|
+| no | 26 | 38.46% | 84.62% | 0.642 | 75.64% |
+| **partial** | **24** | **8.33%** | **66.67%** | **1.008** | **61.11%** |
+| yes | 342 | 87.43% | 99.42% | 0.119 | 95.61% |
+| all | 392 | 79.34% | 96.43% | 0.208 | 92.18% |
+
+Only two of the 24 `partial` targets have three matching ratings. On the 81 disputed
+items, the two-cutpoint model has 61.73% accuracy and 58.33% partial F1. On the 311
+unanimous items it has 86.17% accuracy, but the unanimous subset contains only two
+`partial` cases, neither predicted correctly. The model's expected agreement with one
+randomly selected human rater is 78.49% overall and 48.61% on `partial` targets. This does
+not excuse errors against the released label; it identifies partial as both a visual
+decision-boundary problem and a human-label-reliability problem.
+
+The same effect exists, but is weaker, in the 1,432 ImagenHub cases: 31.52% of the 165
+`partial` targets are unanimous and 84.24% have majority support, compared with only 8.33%
+and 66.67% on EditInspector. Dataset-specific partial definitions therefore remain a
+material cross-dataset generalization risk.
+
+Several compact probabilistic alternatives were evaluated from the same three v4 scores.
+The important comparison is fully nested five-by-four-fold validation: model family,
+regularization, class weights, and the partial probability threshold were selected only
+inside each outer training fold.
+
+| Calibration model | OOF accuracy | Balanced | Macro F1 | Partial P / R / F1 |
+|---|---:|---:|---:|---:|
+| **Two scalar cutpoints** | 81.12% | **68.03%** | **58.22%** | 25.45 / **58.33** / **35.44%** |
+| Nested soft-rater multinomial | **85.46%** | 58.28% | 56.54% | 28.00 / 29.17 / 28.57% |
+| Nested partial-F1-selected multinomial | 84.95% | 58.29% | 56.54% | **29.03** / 37.50 / 32.73% |
+
+The soft-label models improved ordinary accuracy by following the dominant `yes` class,
+but reduced balanced accuracy and leakage-safe partial F1. A fixed balanced logistic
+variant reached 39.39% partial F1 in a non-nested exploratory run, but its minority gain
+did not survive nested selection or the historical 80-to-312 transfer. It is therefore
+not added to the runtime. This negative result is important: the deployed candidate
+remains one rubric call plus two cutpoints, while the evaluator now makes label ambiguity
+explicit instead of hiding it behind one accuracy number.
+
 The frozen artifact is
 `vejudge/core/calibration/artifacts/rubric_lite_v4_editinspector_cutpoints_v1.json`.
 `rubric_lite_fit` learns and reports the same two values generically;

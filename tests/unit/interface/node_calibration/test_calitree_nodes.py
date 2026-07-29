@@ -1,4 +1,5 @@
 import json
+import math
 import threading
 import time
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from vejudge.interface.node_calibration.calitree_nodes import (
     _fit_selective_policy,
     _hash,
     _human_agreement_bucket,
+    _human_label_reliability,
     _parse_judgment,
     _prompt,
     _select_consensus_calibrator,
@@ -702,6 +704,33 @@ def test_human_agreement_filter_distinguishes_rating_noise():
         "ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 0.5}],
     }) == "disputed"
     assert _human_agreement_bucket({}) == "unknown"
+
+
+def test_human_label_reliability_quantifies_partial_ambiguity():
+    targets = {"no": "no", "partial": "partial", "yes": "yes"}
+    predictions = {"no": "no", "partial": "partial", "yes": "partial"}
+    labels = {
+        "no": {"ratings": [{"sc": 0}, {"sc": 0}, {"sc": 0}]},
+        "partial": {"ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 1}]},
+        "yes": {"ratings": [{"sc": 1}, {"sc": 1}, {"sc": 0.5}]},
+    }
+
+    report = _human_label_reliability(targets, predictions, labels)
+
+    assert report["n"] == 3
+    assert report["mean_raters"] == 3
+    assert report["unanimous_fraction"] == pytest.approx(1 / 3)
+    assert report["target_majority_support_fraction"] == pytest.approx(2 / 3)
+    assert report["target_matches_rating_median_fraction"] == 1
+    assert report["modal_rater_agreement_ceiling"] == pytest.approx(2 / 3)
+    assert report["prediction_expected_rater_agreement"] == pytest.approx(5 / 9)
+    assert report["per_target"]["partial"]["unanimous_fraction"] == 0
+    assert report["per_target"]["partial"][
+        "target_majority_support_fraction"
+    ] == 0
+    assert report["per_target"]["partial"][
+        "mean_label_entropy_bits"
+    ] == pytest.approx(math.log2(3))
 
 
 def test_selective_policy_is_fit_only_from_supported_training_editors():

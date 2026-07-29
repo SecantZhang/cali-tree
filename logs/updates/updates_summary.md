@@ -1,3 +1,10 @@
+## 260729-14:39:17 — Expose partial-label reliability and reject soft calibration
+- Type: feature
+- Scope: CaliTree evaluation metrics, workbench reliability table, nested calibration audit, docs and tests
+- What: Added per-target rater reliability to every evaluation and documented that nested soft-label models reduce partial F1, leaving the one-rubric/two-cutpoint model as the supported candidate.
+- Why: Distinguish judge errors from intrinsic partial-label disagreement without adding another overfit classifier.
+- Details: logs/updates/details/260729-14:39:17-updates.md
+
 ## 260729-14:20:48 — Audit simple generalization and test core-completion rubric
 - Type: feature
 - Scope: Rubric-Lite v5 negative control, cross-dataset audit, parser, workflow, docs and tests
