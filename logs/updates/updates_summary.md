@@ -1,3 +1,10 @@
+## 260729-15:06:41 — Correct task-grouped Rubric-Lite validation
+- Type: fix
+- Scope: Rubric-Lite grouped cutpoint CV, monotone-feature audit, workflow, frontend, docs and tests
+- What: Added non-leaking five-fold task-grouped validation and rejected all 30 monotone scalar alternatives; the minimum-score rule remains the strongest cross-dataset partial classifier.
+- Why: Prevent task leakage and empty validation folds, and avoid promoting a dataset-specific result caused by a preliminary allocator defect.
+- Details: logs/updates/details/260729-15:06:41-updates.md
+
 ## 260729-14:49:06 — Stop stronger-judge A/B after failed partial gate
 - Type: docs
 - Scope: gpt-4.1 live A/B result, CaliTree metrics report, experiment provenance

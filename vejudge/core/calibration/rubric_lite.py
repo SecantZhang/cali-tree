@@ -9,6 +9,7 @@ Cali-Tree judge and evaluation sockets.
 from __future__ import annotations
 
 import random
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -343,12 +344,14 @@ def cross_validate_ordinal_thresholds(
     minimum_class_recall: float = 0.10,
     default_thresholds: Optional[dict[str, float]] = None,
     selection_objective: str = "macro_f1",
+    group_by_task: bool = False,
 ) -> dict[str, Any]:
-    """Estimate deployment behavior with deterministic stratified out-of-fold predictions.
+    """Estimate deployment behavior with deterministic out-of-fold predictions.
 
     Each item is predicted by cutpoints fitted without that item's label. This is a
     development estimate only; the returned deployment calibrator must still be checked on
-    a separate frozen partition.
+    a separate frozen partition. When ``group_by_task`` is enabled, every editor output
+    for the same task stays in one fold and fold assignment balances label and case load.
     """
     usable = [
         item_id
@@ -365,10 +368,19 @@ def cross_validate_ordinal_thresholds(
         ]
         for label in LABELS
     }
-    represented = [
-        group for group in label_groups.values() if group
-    ]
-    max_folds = min((len(group) for group in represented), default=0)
+    task_groups: dict[str, list[str]] = {}
+    for item_id in usable:
+        task_groups.setdefault(
+            _task_uid(item_id, samples[item_id]),
+            [],
+        ).append(item_id)
+    if group_by_task:
+        max_folds = len(task_groups)
+    else:
+        represented = [
+            group for group in label_groups.values() if group
+        ]
+        max_folds = min((len(group) for group in represented), default=0)
     n_folds = min(max(2, int(folds)), max_folds) if max_folds >= 2 else 0
     if n_folds < 2:
         return {
@@ -376,17 +388,92 @@ def cross_validate_ordinal_thresholds(
             "n": len(usable),
             "folds": 0,
             "selection_objective": selection_objective,
+            "group_by_task": bool(group_by_task),
             "metrics": classification_metrics({}, {}, samples),
             "fold_reports": [],
             "fallback": "insufficient_examples_per_represented_class",
         }
 
     fold_ids: list[list[str]] = [[] for _ in range(n_folds)]
-    for label_index, label in enumerate(LABELS):
-        group = list(label_groups[label])
-        random.Random(seed + label_index * 1009).shuffle(group)
-        for index, item_id in enumerate(group):
-            fold_ids[index % n_folds].append(item_id)
+    if group_by_task:
+        rng = random.Random(seed)
+        tie_breakers = {
+            task_uid: rng.random() for task_uid in task_groups
+        }
+        label_totals = Counter(targets[item_id] for item_id in usable)
+        target_per_fold = {
+            label: label_totals[label] / n_folds
+            for label in LABELS
+        }
+        target_n = len(usable) / n_folds
+        ordered_tasks = sorted(
+            task_groups,
+            key=lambda task_uid: (
+                -len(task_groups[task_uid]),
+                -max(
+                    Counter(
+                        targets[item_id]
+                        for item_id in task_groups[task_uid]
+                    ).values()
+                ),
+                tie_breakers[task_uid],
+                task_uid,
+            ),
+        )
+        fold_counts = [Counter() for _ in range(n_folds)]
+        fold_sizes = [0 for _ in range(n_folds)]
+        for task_uid in ordered_tasks:
+            task_counts = Counter(
+                targets[item_id]
+                for item_id in task_groups[task_uid]
+            )
+            # Seed every requested fold with one whole task. A greedy squared-load
+            # objective alone can keep choosing populated folds and silently leave
+            # validation folds empty.
+            empty_folds = [
+                index
+                for index, fold_size in enumerate(fold_sizes)
+                if fold_size == 0
+            ]
+            candidate_folds = (
+                empty_folds if empty_folds else range(n_folds)
+            )
+            choices = []
+            for fold_index in candidate_folds:
+                label_loss = sum(
+                    (
+                        (
+                            fold_counts[fold_index][label]
+                            + task_counts[label]
+                        )
+                        / max(target_per_fold[label], 1.0)
+                    ) ** 2
+                    for label in LABELS
+                )
+                size_loss = (
+                    (
+                        fold_sizes[fold_index]
+                        + len(task_groups[task_uid])
+                    )
+                    / max(target_n, 1.0)
+                ) ** 2
+                choices.append(
+                    (
+                        label_loss + 0.1 * size_loss,
+                        fold_sizes[fold_index],
+                        fold_index,
+                    )
+                )
+            selected_fold = min(choices)[2]
+            fold_ids[selected_fold].extend(task_groups[task_uid])
+            fold_counts[selected_fold].update(task_counts)
+            fold_sizes[selected_fold] += len(task_groups[task_uid])
+    else:
+        for label_index, label in enumerate(LABELS):
+            group = list(label_groups[label])
+            random.Random(seed + label_index * 1009).shuffle(group)
+            for index, item_id in enumerate(group):
+                fold_ids[index % n_folds].append(item_id)
 
     predictions: dict[str, str] = {}
     fold_reports: list[dict[str, Any]] = []
@@ -418,6 +505,10 @@ def cross_validate_ordinal_thresholds(
             "n_validation": len(held_out),
             "thresholds": fitted["thresholds"],
             "fit_metrics": fitted["metrics"],
+            "validation_task_uids": sorted({
+                _task_uid(item_id, samples[item_id])
+                for item_id in held_out
+            }),
         })
     metrics = classification_metrics(
         {item_id: targets[item_id] for item_id in usable},
@@ -430,6 +521,7 @@ def cross_validate_ordinal_thresholds(
         "folds": n_folds,
         "seed": int(seed),
         "selection_objective": selection_objective,
+        "group_by_task": bool(group_by_task),
         "metrics": metrics,
         "fold_reports": fold_reports,
         "fallback": None,

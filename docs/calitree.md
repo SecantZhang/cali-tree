@@ -652,6 +652,36 @@ embedding calls. Because partial F1 and balanced accuracy both failed their prer
 thresholds, no confirmation calls were made. The complete result is
 `docs/experiments/rubric_lite_gpt41_editinspector_ab_result.json`.
 
+#### Monotone rubric-feature audit: no replacement for the minimum
+
+The next experiment changed neither the prompt nor the model. It compared 30 convex,
+monotone scalar combinations of the three v4 scores on the 392 EditInspector calibration
+cases. Each scalar still received only two cutpoints. `specification_fidelity` alone was
+best on EditInspector, reaching 82.14% accuracy and 37.84% partial F1 versus 81.12% and
+35.44% for the minimum.
+
+That gain did not transfer. The external audit used 600 ImagenHub cases from 75 tasks, with
+five balanced folds of exactly 15 tasks and 120 cases each:
+
+| Task-grouped ImagenHub OOF scalar | Accuracy | Balanced | Macro F1 | Partial P / R / F1 |
+|---|---:|---:|---:|---:|
+| **minimum of three** | **80.83%** | 60.15% | 59.77% | **27.78 / 43.10 / 33.78%** |
+| specification fidelity | 77.50% | 59.92% | 56.93% | 26.97 / 41.38 / 32.65% |
+| change evidence + preservation | 79.50% | **63.79%** | **60.57%** | 24.10 / 34.48 / 28.37% |
+
+No candidate improves partial F1 on both datasets. The ImagenHub-selected
+change/preservation scalar also falls below the minimum when transferred back to
+EditInspector: 32.91% versus 35.44% partial F1 and 64.37% versus 68.03% balanced accuracy.
+Therefore no learned scalar is added to the runtime, and the frozen final workflow continues
+to use the minimum-score artifact.
+
+A preliminary fold allocator kept task groups intact but accidentally left two of five
+folds empty. It made specification fidelity appear externally better. The production
+allocator now balances both task and label load, tests assert non-empty grouped folds, and
+the corrected audit confirms all five ImagenHub folds contain data. The invalid preliminary
+result was withdrawn before commit. The corrected negative audit is
+`docs/experiments/rubric_lite_monotone_feature_audit.json`.
+
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
 calls. Until that happens, this model is a promising calibration-half result, not a
@@ -675,6 +705,10 @@ Artifacts:
   `logs/exps/260729-13:22:51-editinspector-rubric-lite-exps/`
 - EditInspector v5 core-completion negative control:
   `logs/exps/260729-14:20:00-editinspector-rubric-lite-v5-core-exps/`
+- monotone rubric-feature audit:
+  `docs/experiments/rubric_lite_monotone_feature_audit.json`
+- gpt-4.1 stronger-judge negative control:
+  `docs/experiments/rubric_lite_gpt41_editinspector_ab_result.json`
 
 During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
 calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from
