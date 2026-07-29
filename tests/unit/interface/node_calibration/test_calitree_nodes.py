@@ -225,6 +225,28 @@ def test_frozen_rubric_lite_loads_external_two_cutpoint_calibrator(
     assert result.meta["model_calls"] == 0
 
 
+def test_frozen_rubric_lite_loads_core_completion_rubric(make_ctx):
+    result = RubricLiteFrozenNodeExecutor().run(make_ctx(
+        params={
+            "model_version":
+                "rubric_lite_v5_core_completion_experimental"
+        },
+        inputs={},
+    ))
+
+    assert result.status == "done"
+    tree = result.outputs["prompt_tree"]
+    assert tree["prompt_version"] == "rubric_lite_v5"
+    assert tree["ordinal_thresholds"] == {
+        "no_partial": 25.0,
+        "partial_yes": 75.0,
+    }
+    prompt = tree["nodes"]["rubric:global"]["prompt"]
+    assert "CORE visibly testable requirements" in prompt
+    assert "GENERATION QUALITY" in prompt
+    assert result.meta["model_calls"] == 0
+
+
 def test_rubric_lite_fit_learns_only_two_cutpoints_with_oof_report(
     make_ctx,
 ):
@@ -886,6 +908,24 @@ def test_rubric_lite_ordinal_score_uses_weakest_visible_evidence():
     assert result["model_label"] == "yes"
     assert result["conflict_resolved"] is True
     assert "minimum visible-evidence score 68" in result["conflict_reason"]
+
+
+def test_rubric_lite_v5_core_completion_uses_fixed_ordinal_score():
+    result = _parse_judgment(json.dumps({
+        "rubric_version": "rubric-lite-core-completion-v5",
+        "ordinal_scores": {
+            "change_evidence": 100,
+            "specification_fidelity": 50,
+            "source_preservation": 100,
+        },
+        "label": "yes",
+        "rationale": "One core requirement remains incomplete.",
+    }))
+
+    assert result["ordinal_score"] == 50
+    assert result["label"] == "partial"
+    assert result["model_label"] == "yes"
+    assert result["conflict_resolved"] is True
 
 
 def test_rubric_lite_ordinal_score_rejects_out_of_range_fields():

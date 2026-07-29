@@ -1,3 +1,10 @@
+## 260729-14:20:48 — Audit simple generalization and test core-completion rubric
+- Type: feature
+- Scope: Rubric-Lite v5 negative control, cross-dataset audit, parser, workflow, docs and tests
+- What: Rejected an overfit 89.80% score rule after it collapsed cross-dataset, and stopped v5 after its 80-call test reached only 72.50% accuracy and 10.53% partial F1.
+- Why: Identify the simplest calibration that actually transfers and avoid adding complexity based on calibration-half accuracy.
+- Details: logs/updates/details/260729-14:20:48-updates.md
+
 ## 260729-13:58:08 — Add two-cutpoint Rubric-Lite domain adaptation
 - Type: feature
 - Scope: two-cutpoint calibration, EditInspector final split, workflow backend/frontend, frozen artifact, docs and tests

@@ -541,6 +541,46 @@ evaluation, `workflows/examples/rubric_lite_editinspector_final.json` loads the 
 artifact and evaluates only the final 391 cases, so the 392 calibration judgments are not
 billed again. Both workflow engine model fields are intentionally blank.
 
+#### Generalization audit and v5 rubric-learning negative result
+
+The tempting 89.80% calibration-half rule was not promoted. It used four exact score
+patterns discovered on EditInspector and reached 42.86% partial F1 there, but applying it
+unchanged to the existing 600-case ImagenHub holdout collapsed to 54.83% accuracy and 8.70%
+partial F1. A simpler `specification_fidelity` rule also fell to 71.83% accuracy and 9.09%
+partial F1. These are direct evidence that hand-coded score-pattern rules overfit the label
+schema even when they never use dataset or editor identity.
+
+The global two-cutpoint design is more stable. On that same 600-case ImagenHub holdout, the
+EditInspector `25/75` pair gives 75.50% accuracy, 63.94% balanced accuracy, and 23.29%
+partial F1, versus 74.50%, 62.52%, and 33.33% for the original ImagenHub pair. It does not
+solve partial transfer, but it avoids the catastrophic failure of the richer rule list.
+Retrospectively fitting only the 80 EditInspector development cases selected `50/75`; on
+the separate 312 cases it gives 80.13% accuracy and 30.30% partial F1. Thus even a small
+in-domain calibration sample transfers better than a cross-domain fixed rule, although
+this retrospective analysis is no substitute for the untouched final half.
+
+Rubric-Lite v5 tested whether a better partial definition could provide the missing signal
+without a tree or a second pass. It replaced fuzzy severity scores with `0/50/100` core
+completion states and explicitly ignored generation-quality defects. The 80-call
+development run produced:
+
+| Rubric on 80 development cases | Accuracy | Balanced | Macro F1 | Partial P / R / F1 |
+|---|---:|---:|---:|---:|
+| v4 + development-fitted cutpoints | **80.00%** | **68.65%** | **59.00%** | **50.00 / 40.00 / 44.44%** |
+| v5 core completion | 72.50% | 44.35% | 42.41% | 7.14 / 20.00 / 10.53% |
+
+V5 made 80 primary calls, zero verifier/optimizer/embedding calls, and used 178,156 total
+tokens. It was not advanced to the 312-case partition. The model converted the leniency
+instruction mostly into `yes` predictions rather than separating partial from no. The
+version remains available as an explicitly experimental negative control, not a deployment
+candidate. Its raw outputs and parser-corrected report are in
+`logs/exps/260729-14:20:00-editinspector-rubric-lite-v5-core-exps/`.
+
+The evidence therefore favors the one-call v4 rubric plus two fitted cutpoints. Improving
+partial further requires a genuinely stronger visual signal or judge model; adding
+score-pattern rules, text classifiers, or another leniency prompt increases complexity
+without transferring.
+
 The final partition has not been downloaded or judged. Testing it requires expanding setup
 to `--ratio 1.0` (roughly another 391 source/edited pairs) and exactly 391 primary judge
 calls. Until that happens, this model is a promising calibration-half result, not a
@@ -562,6 +602,8 @@ Artifacts:
   `logs/exps/260729-13:12:30-editinspector-rubric-lite-exps/`
 - EditInspector untouched 312-case confirmation:
   `logs/exps/260729-13:22:51-editinspector-rubric-lite-exps/`
+- EditInspector v5 core-completion negative control:
+  `logs/exps/260729-14:20:00-editinspector-rubric-lite-v5-core-exps/`
 
 During analysis, an attempted server checkpoint restore appended 60 duplicate v4 training
 calls to the old `260729-11:33:04` checkpoint before it was stopped. They are excluded from

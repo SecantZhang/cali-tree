@@ -38,6 +38,7 @@ RUBRIC_VERSIONS = (
     "rubric_lite_v2",
     "rubric_lite_v3",
     "rubric_lite_v4",
+    "rubric_lite_v5",
 )
 VERIFIER_VERSIONS = (
     "rubric_lite_v1",
@@ -46,6 +47,7 @@ VERIFIER_VERSIONS = (
 FROZEN_MODEL_VERSIONS = (
     "rubric_lite_v4_imagenhub",
     "rubric_lite_v4_editinspector_cutpoints_v1",
+    "rubric_lite_v5_core_completion_experimental",
 )
 
 
@@ -655,7 +657,9 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
         )
         selected_results = raw_selected_results
         ordinal_calibration: Optional[dict[str, Any]] = None
-        if rubric_version in {"rubric_lite_v3", "rubric_lite_v4"}:
+        if rubric_version in {
+            "rubric_lite_v3", "rubric_lite_v4", "rubric_lite_v5",
+        }:
             accuracy_tolerance = float(
                 ctx.params.get("ordinal_accuracy_tolerance", 0.01)
             )

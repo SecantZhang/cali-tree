@@ -992,7 +992,11 @@ def _parse_judgment(content: str) -> dict[str, Any]:
     )
     if (
         parsed.get("rubric_version")
-        in {"rubric-lite-ordinal-v3", "rubric-lite-ordinal-v4"}
+        in {
+            "rubric-lite-ordinal-v3",
+            "rubric-lite-ordinal-v4",
+            "rubric-lite-core-completion-v5",
+        }
         and isinstance(ordinal_scores, dict)
         and all(
             isinstance(ordinal_scores.get(field), (int, float))
