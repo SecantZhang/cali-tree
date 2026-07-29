@@ -28,7 +28,9 @@ const EVAL_TYPES = new Set(['eval'])
 function DetailsTab({ node }: { node: VeNode }) {
   const type = node.type ?? ''
   if (type === 'imagenhub_source') return <ImagenHubSourceSecondaryTab node={node} />
-  if (type === 'calitree_train') return <CaliTreeWorkbench node={node} />
+  if (type === 'calitree_train' || type === 'rubric_lite_train') {
+    return <CaliTreeWorkbench node={node} />
+  }
   if (type.endsWith('_source')) return <SourceSecondaryTab node={node} />
   if (type === 'dataset') return <DatasetSecondaryTab node={node} />
   if (type === 'edit_decomposition') return <EditDecompositionSecondaryTab node={node} />

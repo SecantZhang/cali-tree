@@ -515,6 +515,9 @@ def test_metrics_include_confusion_distribution_and_per_editor():
     assert report["accuracy"] == 0.5
     assert report["balanced_accuracy"] == 0.5
     assert report["per_label_accuracy"] == {"no": None, "partial": 0.0, "yes": 1.0}
+    assert report["per_label_precision"] == {"no": 0.0, "partial": None, "yes": 1.0}
+    assert report["per_label_f1"] == {"no": None, "partial": None, "yes": 1.0}
+    assert report["macro_f1"] == 1.0
     assert report["confusion"]["partial"]["no"] == 1
     assert report["prediction_distribution"] == {"no": 1, "partial": 0, "yes": 1}
     assert report["per_editor"]["SDEdit"]["accuracy"] == 1

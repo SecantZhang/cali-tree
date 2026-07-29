@@ -28,6 +28,7 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   calitree_train: 'Cali-Tree Train',
   calitree_judge: 'Cali-Tree Judge',
   calitree_eval: 'Cali-Tree Eval',
+  rubric_lite_train: 'Rubric-Lite Train',
 }
 
 export function nodeTitle(type: string | undefined): string {

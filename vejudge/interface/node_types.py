@@ -15,6 +15,7 @@ from .node_calibration.calitree_nodes import (
     CaliTreeJudgeNodeExecutor,
     CaliTreeTrainNodeExecutor,
 )
+from .node_calibration.rubric_lite_nodes import RubricLiteTrainNodeExecutor
 from .node_db.coconut_source_node import CoconutSourceNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
 from .node_db.grapenut_source_node import GrapenutSourceNodeExecutor
@@ -60,4 +61,5 @@ __all__ = [
     "CaliTreeTrainNodeExecutor",
     "CaliTreeJudgeNodeExecutor",
     "CaliTreeEvalNodeExecutor",
+    "RubricLiteTrainNodeExecutor",
 ]

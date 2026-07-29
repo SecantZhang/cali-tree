@@ -24,6 +24,9 @@ from vejudge.interface.node_calibration.calitree_nodes import (
     _semantic_edit_type,
 )
 from vejudge.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
+from vejudge.interface.node_calibration.rubric_lite_nodes import (
+    RubricLiteTrainNodeExecutor,
+)
 
 
 def _sample(item_id, split="train"):
@@ -103,6 +106,36 @@ def test_calitree_train_dry_run_reports_calls_and_equal_token_cap(make_ctx):
     assert result.meta["optimizer_completion_token_budget"] == 300
     assert result.meta["n_fit_tasks"] == 1
     assert result.meta["estimated_calls"]["task_leaf_optimizer_max"] == 3
+
+
+def test_rubric_lite_dry_run_has_no_tree_embedding_or_critic_calls(make_ctx):
+    samples = {
+        "train::SDEdit": _sample("train::SDEdit"),
+        "test::SDEdit": _sample("test::SDEdit", "test"),
+    }
+    labels = {
+        "train::SDEdit": {
+            "target_label": "partial",
+            "ratings": [{"sc": 0.5}, {"sc": 0.5}, {"sc": 0.5}],
+        },
+        "test::SDEdit": {"target_label": "yes"},
+    }
+    result = RubricLiteTrainNodeExecutor().run(make_ctx(
+        params={"max_steps": 3},
+        inputs={
+            "samples": samples,
+            "labels": labels,
+            "judge_engine": {"model": "judge"},
+            "optimizer_engine": {"model": "optimizer", "max_tokens": 100},
+        },
+    ))
+
+    assert result.status == "done"
+    assert result.meta["architecture"] == "rubric_lite"
+    assert result.meta["optimizer_completion_token_budget"] == 300
+    assert result.meta["estimated_calls"]["embedding"] == 0
+    assert result.meta["estimated_calls"]["critic"] == 0
+    assert result.meta["estimated_calls"]["optimizer_max"] == 3
 
 
 def test_calitree_dry_run_allows_unset_models_but_live_requires_embedding(
@@ -453,6 +486,40 @@ def test_v4_fulfillment_field_has_a_deterministic_label_mapping():
     assert "fulfillment=none" in result["conflict_reason"]
 
 
+def test_rubric_lite_condition_evidence_deterministically_maps_partial():
+    result = _parse_judgment(json.dumps({
+        "conditions": [
+            {"condition": "make shirt blue", "evidence": "full"},
+            {"condition": "add a logo", "evidence": "partial"},
+        ],
+        "scene": "same",
+        "label": "yes",
+        "rationale": "The logo is incomplete.",
+    }))
+
+    assert result["label"] == "partial"
+    assert result["model_label"] == "yes"
+    assert result["conflict_resolved"] is True
+    assert "partial evidence" in result["conflict_reason"]
+
+
+def test_rubric_lite_three_view_vote_overrides_inconsistent_model_label():
+    result = _parse_judgment(json.dumps({
+        "rubric_votes": {
+            "evidence_gate": {"label": "partial", "evidence": "incomplete"},
+            "completion_gate": {"label": "partial", "evidence": "ambiguous"},
+            "locality_gate": {"label": "no", "evidence": "drift"},
+        },
+        "label": "yes",
+        "rationale": "The model emitted an inconsistent label.",
+    }))
+
+    assert result["label"] == "partial"
+    assert result["model_label"] == "yes"
+    assert result["conflict_resolved"] is True
+    assert "majority" in result["conflict_reason"]
+
+
 def test_valid_judgments_resume_from_checkpoint_without_a_second_call(make_ctx):
     class Engine:
         model = "judge"
@@ -570,6 +637,57 @@ def test_routed_judge_reuses_matching_training_prediction_cache(make_ctx, monkey
     assert result.status == "done"
     assert result.outputs["judge_result"]["case"]["calitree"]["label"] == "yes"
     assert result.meta["cache_hits"] == 1
+    assert result.meta["judge_calls"] == 0
+
+
+def test_rubric_lite_judge_routes_single_root_without_embedding(make_ctx, monkeypatch):
+    prompt = "one global rubric"
+    cached = {"label": "partial", "rationale": "boundary", "valid": True}
+    tree = {
+        "architecture": "rubric_lite",
+        "prompt_version": "rubric_lite_v1",
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global",
+                "prompt": prompt,
+                "embedding": [],
+                "children": [],
+            },
+        },
+        "prediction_cache": {
+            "case": {
+                "prompt_hash": _hash("calitree_prediction", prompt),
+                "result": cached,
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "embed",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("Rubric-Lite must not embed or route")
+        ),
+    )
+
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        inputs={
+            "samples": {"case": _sample("case")},
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    row = result.outputs["judge_result"]["case"]["calitree"]
+    assert row["label"] == "partial"
+    assert row["routed_node"] == "rubric:global"
     assert result.meta["judge_calls"] == 0
 
 

@@ -38,6 +38,7 @@ import { ImagenHubSourceNode } from '../nodes/ImagenHubSourceNode'
 import { CaliTreeTrainNode } from '../nodes/CaliTreeTrainNode'
 import { CaliTreeJudgeNode } from '../nodes/CaliTreeJudgeNode'
 import { CaliTreeEvalNode } from '../nodes/CaliTreeEvalNode'
+import { RubricLiteTrainNode } from '../nodes/RubricLiteTrainNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { isValidSocketConnection } from '../nodes/socketTypes'
@@ -72,6 +73,7 @@ const NODE_TYPES = {
   calitree_train: CaliTreeTrainNode,
   calitree_judge: CaliTreeJudgeNode,
   calitree_eval: CaliTreeEvalNode,
+  rubric_lite_train: RubricLiteTrainNode,
   group: GroupNode,
 }
 

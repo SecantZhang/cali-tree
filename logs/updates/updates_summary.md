@@ -1,3 +1,10 @@
+## 260729-10:37:37 — Add and validate Rubric-Lite calibration
+- Type: feature
+- Scope: global rubric learning, workflow backend/frontend, live validation, tests and docs
+- What: Added a one-prompt Cali-Tree alternative and evaluated two frozen rubric forms on the 10% held-out development slice.
+- Why: Determine whether a simpler, more general calibration method can retain accuracy while improving the partial class.
+- Details: logs/updates/details/260729-10:37:37-updates.md
+
 ## 260728-16:23:59 — Document Cali-Tree v1–v4 metric comparison
 - Type: docs
 - Scope: Cali-Tree prompt versions, archived experiments, full held-out report

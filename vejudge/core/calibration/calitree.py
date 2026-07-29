@@ -141,12 +141,39 @@ def classification_metrics(
         )
         for label in LABELS
     }
+    per_label_precision = {
+        label: (
+            confusion[label][label]
+            / sum(confusion[target][label] for target in LABELS)
+            if sum(confusion[target][label] for target in LABELS)
+            else None
+        )
+        for label in LABELS
+    }
+    per_label_f1 = {
+        label: (
+            2 * per_label_precision[label] * per_label_accuracy[label]
+            / (per_label_precision[label] + per_label_accuracy[label])
+            if per_label_precision[label] is not None
+            and per_label_accuracy[label] is not None
+            and per_label_precision[label] + per_label_accuracy[label] > 0
+            else 0.0
+            if per_label_precision[label] is not None
+            and per_label_accuracy[label] is not None
+            else None
+        )
+        for label in LABELS
+    }
     supported = [value for value in per_label_accuracy.values() if value is not None]
+    supported_f1 = [value for value in per_label_f1.values() if value is not None]
     return {
         "n": len(ids),
         "accuracy": correct / len(ids) if ids else None,
         "balanced_accuracy": sum(supported) / len(supported) if supported else None,
         "per_label_accuracy": per_label_accuracy,
+        "per_label_precision": per_label_precision,
+        "per_label_f1": per_label_f1,
+        "macro_f1": sum(supported_f1) / len(supported_f1) if supported_f1 else None,
         "confusion": confusion,
         "prediction_distribution": distribution,
         "per_editor": {
