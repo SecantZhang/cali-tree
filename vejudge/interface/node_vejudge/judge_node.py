@@ -21,7 +21,7 @@ from ._concurrent_judging import run_concurrent_judging
 from .judge_spec import spec_key, spec_modality
 
 # Modality-appropriate engine default when the wired engine_config doesn't pin an engine_kind.
-_DEFAULT_ENGINE_KIND = {"text": "gpt", "video": "gemini"}
+_DEFAULT_ENGINE_KIND = {"text": "gpt", "image": "gemini", "video": "gemini"}
 
 
 @register
@@ -113,9 +113,10 @@ class JudgeNodeExecutor(NodeExecutor):
 
         def _should_skip(sample: dict[str, Any]) -> bool:
             # Video-modality judges auto-skip an item with no rendered video.
-            if modality != "video":
+            if modality not in {"video", "image"}:
                 return False
-            return not bool((sample.get("output") or {}).get("output_video_path"))
+            output_key = "output_video_path" if modality == "video" else "edited_image_path"
+            return not bool((sample.get("output") or {}).get(output_key))
 
         per_item, meta = run_concurrent_judging(
             dataset=dataset,
@@ -124,7 +125,7 @@ class JudgeNodeExecutor(NodeExecutor):
             concurrency=max(1, int(engine_config.get("concurrency") or 1)),
             batch_size=max(1, int(p.get("batch_size") or 1)),
             ctx=ctx,
-            should_skip=_should_skip if modality == "video" else None,
+            should_skip=_should_skip if modality in {"video", "image"} else None,
             calibration=calibration,
             general_calibration=general_calibration,
             judge_provenance=judge_provenance,

@@ -37,6 +37,9 @@ HUMAN_ANNOTATIONS_ROOT: Path = _env_path(
 VEBENCH_ROOT: Path = _env_path(
     "VEJUDGE_VEBENCH_ROOT", DATA_ROOT / "ve-bench" / "VE-Bench-DB"
 )
+IMAGENHUB_ROOT: Path = _env_path(
+    "VEJUDGE_IMAGENHUB_ROOT", DATA_ROOT / "imagenhub" / "text_guided_ie"
+)
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
 # Credentials entered manually via the interface's Settings modal — takes top precedence
 # over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient

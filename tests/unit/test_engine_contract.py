@@ -239,3 +239,30 @@ def test_failover_uses_mirror_when_primary_fails(monkeypatch):
     # primary is retried (max_retries+1 = 3 times) before falling over to the mirror.
     assert calls.count("https://primary/chat/completions") == 3
     assert calls[-1] == "https://mirror/chat/completions"
+
+
+def test_embeddings_preserve_input_order_and_usage(monkeypatch):
+    import requests
+
+    class Resp:
+        status_code = 200
+        headers: dict = {}
+        text = ""
+
+        def json(self):
+            # Deliberately reversed: the adapter must restore API index order.
+            return {
+                "data": [
+                    {"index": 1, "embedding": [0, 1]},
+                    {"index": 0, "embedding": [1, 0]},
+                ],
+                "usage": {"prompt_tokens": 7, "total_tokens": 7},
+            }
+
+    monkeypatch.setattr(requests, "post", lambda *_args, **_kwargs: Resp())
+    result = openai_compat.embeddings(
+        endpoints=["https://primary"], token="t", model="embed", inputs=["a", "b"]
+    )
+    assert result.vectors == [[1.0, 0.0], [0.0, 1.0]]
+    assert result.prompt_tokens == result.total_tokens == 7
+    assert result.endpoint_host == "primary"

@@ -34,6 +34,10 @@ import { AreaRubricNode } from '../nodes/AreaRubricNode'
 import { AreaJudgeNode } from '../nodes/AreaJudgeNode'
 import { AreaAggregationNode } from '../nodes/AreaAggregationNode'
 import { EditAwareCalibrationNode } from '../nodes/EditAwareCalibrationNode'
+import { ImagenHubSourceNode } from '../nodes/ImagenHubSourceNode'
+import { CaliTreeTrainNode } from '../nodes/CaliTreeTrainNode'
+import { CaliTreeJudgeNode } from '../nodes/CaliTreeJudgeNode'
+import { CaliTreeEvalNode } from '../nodes/CaliTreeEvalNode'
 import { nodesInGroup } from '../nodes/geometry'
 import { ancestorsOf, descendantsOf } from '../nodes/graphTraversal'
 import { isValidSocketConnection } from '../nodes/socketTypes'
@@ -47,6 +51,7 @@ const NODE_TYPES = {
   coconut_source: CoconutSourceNode,
   grapenut_source: GrapenutSourceNode,
   vebench_source: VeBenchSourceNode,
+  imagenhub_source: ImagenHubSourceNode,
   dataset: DatasetNode,
   preprocessing: PreprocessingNode,
   unit_labels: UnitLabelsNode,
@@ -64,6 +69,9 @@ const NODE_TYPES = {
   cl_rule_tree: ClRuleTreeNode,
   cl_semantic_tree: ClSemanticTreeNode,
   edit_aware_calibration: EditAwareCalibrationNode,
+  calitree_train: CaliTreeTrainNode,
+  calitree_judge: CaliTreeJudgeNode,
+  calitree_eval: CaliTreeEvalNode,
   group: GroupNode,
 }
 

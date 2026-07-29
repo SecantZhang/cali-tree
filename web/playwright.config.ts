@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 // Backend port is baked into the frontend build via VITE_API_BASE_URL (see
 // e2e/global-setup.ts's comment) — run/run_e2e_tests.sh sets it before `npm run build`.
-const FRONTEND_PORT = 5183
+const FRONTEND_PORT = Number(process.env.VEJUDGE_E2E_FRONTEND_PORT ?? 5183)
 
 export default defineConfig({
   testDir: './e2e/specs',

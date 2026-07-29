@@ -27,7 +27,7 @@ from typing import Any
 from ...database.dl_human_annotations import aggregate_annotations, load_human_annotations
 from ...database.dl_peanut_eval.loader import use_case_for
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
-from .sampling import apply_filters, select_items
+from .sampling import apply_filters, select_items, select_split_label_items
 from .warnings import zero_items_warning
 
 
@@ -35,11 +35,11 @@ from .warnings import zero_items_warning
 class DatasetNodeExecutor(NodeExecutor):
     node_type = "dataset"
     category = "node_db"
-    input_sockets = {"raw_dataset": "raw_dataset"}
+    input_sockets = {"raw_dataset": "raw_dataset", "raw_labels": "raw_labels"}
     # Fan-in: multiple source nodes (e.g. Peanut/Coconut/Grapenut) can wire into
     # `raw_dataset`; their item pools are merged (item ids are model-namespaced, so no
     # collision). The executor delivers the inputs as a list of raw_dataset dicts.
-    multi_input_sockets = frozenset({"raw_dataset"})
+    multi_input_sockets = frozenset({"raw_dataset", "raw_labels"})
     output_sockets = {"samples": "samples", "labels": "labels"}
     param_schema = {
         # Dual-purpose size control: a value ≤ 1 is a fraction (0.5 = 50%), a value > 1 is an
@@ -50,8 +50,28 @@ class DatasetNodeExecutor(NodeExecutor):
         # `sampling_ratio` is ignored.
         "full_dataset": {"type": "bool", "default": False},
         "sampling_mode": {
-            "type": "enum", "options": ["unified", "stratified"], "default": "unified",
+            "type": "enum",
+            "options": ["unified", "stratified", "split_label_stratified"],
+            "default": "unified",
         },
+        # Optional split-specific fractions for calibration datasets. When either is set,
+        # these take precedence over the single global ratio for that split. This permits
+        # using all scarce official training data while evaluating on a bounded held-out
+        # subset.
+        "train_sampling_ratio": {
+            "type": "number", "default": None, "min": 0.0, "max": 1.0,
+        },
+        "test_sampling_ratio": {
+            "type": "number", "default": None, "min": 0.0, "max": 1.0,
+        },
+        # Rotate grouped held-out task IDs before deterministic selection. At a 50%
+        # ratio, offsets 0 and 1 are exact complementary task halves.
+        "test_group_offset": {
+            "type": "number", "default": 0, "min": 0,
+        },
+        # Keep all editor outputs sharing a task UID together whenever split-specific
+        # sampling is active.
+        "group_by_task": {"type": "bool", "default": True},
         "use_case_filter": {"type": "list[string]", "default": None},
         "item_id_pattern": {"type": "string", "default": None},
         # Off by default so existing full/dry runs (sampling_ratio=1.0, or any run that
@@ -105,16 +125,26 @@ class DatasetNodeExecutor(NodeExecutor):
             item_use_case=item_use_case,
         )
 
-        # Computed before sampling (not just against the final selected items) so both the
-        # `require_labels` guarantee and the coverage diagnostic below see the same
-        # pre-sampling pool.
-        records = load_human_annotations()
-        use_case_by_project = {r.project: use_case_for(r.project) for r in records}
-        aggregated = aggregate_annotations(
-            records,
-            use_case_lookup=use_case_by_project,
-            method=p.get("aggregation_method") or "none",
-        )
+        # A labeled source (ImagenHub) can supply its own labels through the optional
+        # raw_labels socket. Legacy video sources omit it and retain the existing human
+        # annotation lookup unchanged.
+        raw_labels = ctx.inputs.get("raw_labels")
+        if raw_labels is not None:
+            if isinstance(raw_labels, list):
+                aggregated: dict[str, Any] = {}
+                for part in raw_labels:
+                    if isinstance(part, dict):
+                        aggregated.update(part)
+            else:
+                aggregated = raw_labels
+        else:
+            records = load_human_annotations()
+            use_case_by_project = {r.project: use_case_for(r.project) for r in records}
+            aggregated = aggregate_annotations(
+                records,
+                use_case_lookup=use_case_by_project,
+                method=p.get("aggregation_method") or "none",
+            )
         n_pool_labeled = sum(1 for iid in pool if iid in aggregated)
 
         if p.get("require_labels"):
@@ -130,13 +160,74 @@ class DatasetNodeExecutor(NodeExecutor):
         else:
             ratio, count = raw_size, None
 
-        items = select_items(
-            pool,
-            ratio=ratio,
-            count=count,
-            mode=p.get("sampling_mode", "unified"),
-            use_case_lookup=item_use_case,
-        )
+        sampling_mode = p.get("sampling_mode", "unified")
+        if sampling_mode == "split_label_stratified":
+            if not raw_labels:
+                return NodeRunResult(
+                    status="error",
+                    error=(
+                        "split_label_stratified sampling requires a connected raw_labels "
+                        "input with split and target_label metadata"
+                    ),
+                )
+            train_ratio_raw = p.get("train_sampling_ratio")
+            test_ratio_raw = p.get("test_sampling_ratio")
+            split_ratios = (
+                None
+                if train_ratio_raw is None and test_ratio_raw is None
+                else {
+                    "train": (
+                        ratio
+                        if train_ratio_raw is None
+                        else float(train_ratio_raw)
+                    ),
+                    "test": (
+                        ratio
+                        if test_ratio_raw is None
+                        else float(test_ratio_raw)
+                    ),
+                }
+            )
+            group_lookup = (
+                {
+                    item_id: str(
+                        raw_dataset[item_id].get("task_uid")
+                        or item_id.split("::", 1)[0]
+                    )
+                    for item_id in pool
+                }
+                if split_ratios is not None
+                and bool(p.get("group_by_task", True))
+                else None
+            )
+            items = select_split_label_items(
+                pool,
+                ratio=ratio,
+                count=count,
+                split_ratios=split_ratios,
+                group_lookup=group_lookup,
+                split_group_offsets={
+                    "test": int(p.get("test_group_offset") or 0),
+                },
+                split_lookup={
+                    item_id: str(raw_dataset[item_id].get("split") or "unknown")
+                    for item_id in pool
+                },
+                label_lookup={
+                    item_id: str(
+                        (aggregated.get(item_id) or {}).get("target_label") or "unknown"
+                    )
+                    for item_id in pool
+                },
+            )
+        else:
+            items = select_items(
+                pool,
+                ratio=ratio,
+                count=count,
+                mode=sampling_mode,
+                use_case_lookup=item_use_case,
+            )
 
         samples: dict[str, Any] = {iid: raw_dataset[iid] for iid in items}
         labels: dict[str, Any] = {iid: aggregated[iid] for iid in items if iid in aggregated}
@@ -151,6 +242,28 @@ class DatasetNodeExecutor(NodeExecutor):
             "n_labels": len(labels),
             "n_pool_labeled": n_pool_labeled,
         }
+        if any(
+            sample.get("split") in {"train", "test"}
+            for sample in samples.values()
+        ):
+            meta["split_counts"] = {
+                split: sum(
+                    sample.get("split") == split
+                    for sample in samples.values()
+                )
+                for split in ("train", "test")
+            }
+            meta["task_counts"] = {
+                split: len({
+                    str(
+                        sample.get("task_uid")
+                        or item_id.split("::", 1)[0]
+                    )
+                    for item_id, sample in samples.items()
+                    if sample.get("split") == split
+                })
+                for split in ("train", "test")
+            }
         if not samples:
             meta["warning"] = zero_items_warning("dataset")
         elif not p.get("require_labels") and not labels and n_pool_labeled > 0:

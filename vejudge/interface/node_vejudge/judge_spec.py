@@ -29,6 +29,7 @@ from ...postprocessing.align import score_at_path
 PRESET_METRIC_IDS: list[str] = list(JUDGE_METRICS.keys())
 # The human dimensions a custom judge may target (its alignment binding for Eval).
 TARGET_DIMENSIONS: list[str] = list(HUMAN_DIMENSIONS)
+CUSTOM_TARGET_DIMENSIONS: list[str] = [*TARGET_DIMENSIONS, "satisfaction"]
 
 
 def builtin_spec(metric_id: str) -> dict[str, Any]:
@@ -83,18 +84,23 @@ def run_custom_judge(
     system = fill_template(spec.get("system") or "", sample) or None
     user = fill_template(spec.get("user_template") or "", sample)
     media: Optional[list[dict[str, Any]]] = None
-    if spec.get("modality") == "video":
+    modality = spec.get("modality")
+    if modality in {"video", "image"}:
         parts: list[dict[str, Any]] = []
         # A source/original video, when the sample carries one (e.g. VE-Bench edits), is
         # attached FIRST so a judge can compare edited-vs-source (instruction following,
         # preservation). Peanut assembly samples have no source_video_path, so this is a
         # no-op there and the edited video stays the only attachment.
-        src = (sample.get("input") or {}).get("source_video_path", "")
-        out = (sample.get("output") or {}).get("output_video_path", "")
+        if modality == "video":
+            src = (sample.get("input") or {}).get("source_video_path", "")
+            out = (sample.get("output") or {}).get("output_video_path", "")
+        else:
+            src = (sample.get("input") or {}).get("source_image_path", "")
+            out = (sample.get("output") or {}).get("edited_image_path", "")
         if src:
-            parts.append({"type": "video", "path": src})
+            parts.append({"type": modality, "path": src})
         if out:
-            parts.append({"type": "video", "path": out})
+            parts.append({"type": modality, "path": out})
         media = parts or None
 
     result: dict[str, Any] = {

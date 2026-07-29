@@ -28,6 +28,16 @@ class ChatResult:
     model: str
 
 
+@dataclass
+class EmbeddingResult:
+    vectors: list[list[float]]
+    prompt_tokens: int
+    total_tokens: int
+    endpoint_host: str
+    latency_s: float
+    model: str
+
+
 def text_part(text: str) -> dict[str, Any]:
     return {"type": "text", "text": text}
 
@@ -146,3 +156,62 @@ def chat_completion(
     raise RuntimeError(
         "All chat/completions endpoints failed:\n  " + "\n  ".join(errors)
     )
+
+
+def embeddings(
+    *,
+    endpoints: list[str],
+    token: str,
+    model: str,
+    inputs: list[str],
+    timeout: int = 300,
+    max_retries: int = 4,
+) -> EmbeddingResult:
+    """OpenAI-compatible ``/embeddings`` transport with the same retry/failover policy."""
+    payload = {"model": model, "input": inputs}
+    headers = {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Authorization": f"Bearer {token}",
+    }
+    errors: list[str] = []
+    for base in endpoints:
+        url = base.rstrip("/") + "/embeddings"
+        host = urlparse(url).netloc
+        for attempt in range(max_retries + 1):
+            t0 = time.time()
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+                latency = time.time() - t0
+            except requests.RequestException as exc:
+                errors.append(f"{host}: {type(exc).__name__}: {exc}")
+                if attempt < max_retries:
+                    time.sleep(_retry_after_seconds(None, attempt))
+                    continue
+                break
+            if resp.status_code in _RETRYABLE_STATUS:
+                if attempt < max_retries:
+                    time.sleep(_retry_after_seconds(resp, attempt))
+                    continue
+                errors.append(f"{host}: HTTP {resp.status_code} {resp.text[:300]}")
+                break
+            if resp.status_code >= 400:
+                errors.append(f"{host}: HTTP {resp.status_code} {resp.text[:500]}")
+                break
+            data = resp.json()
+            ordered = sorted(data.get("data") or [], key=lambda row: row.get("index", 0))
+            vectors = [list(map(float, row["embedding"])) for row in ordered]
+            if len(vectors) != len(inputs):
+                errors.append(
+                    f"{host}: expected {len(inputs)} embeddings, received {len(vectors)}"
+                )
+                break
+            usage = data.get("usage") or {}
+            return EmbeddingResult(
+                vectors=vectors,
+                prompt_tokens=int(usage.get("prompt_tokens") or 0),
+                total_tokens=int(usage.get("total_tokens") or usage.get("prompt_tokens") or 0),
+                endpoint_host=host,
+                latency_s=latency,
+                model=model,
+            )
+    raise RuntimeError("All embeddings endpoints failed:\n  " + "\n  ".join(errors))
