@@ -18,6 +18,7 @@ import { SourceSecondaryTab } from './SourceSecondaryTab'
 import { EditDecompositionSecondaryTab } from './EditDecompositionSecondaryTab'
 import { AreaJudgeSecondaryTab } from './AreaJudgeSecondaryTab'
 import { CaliTreeWorkbench } from './CaliTreeWorkbench'
+import { CaliTreeEvalSecondaryTab } from './CaliTreeEvalSecondaryTab'
 import { ImagenHubSourceSecondaryTab } from './ImagenHubSourceSecondaryTab'
 
 const JUDGE_TYPES = new Set(['judge', 'area_aggregation', 'edit_aware_calibration'])
@@ -31,6 +32,7 @@ function DetailsTab({ node }: { node: VeNode }) {
   if (type === 'calitree_train' || type === 'rubric_lite_train') {
     return <CaliTreeWorkbench node={node} />
   }
+  if (type === 'calitree_eval') return <CaliTreeEvalSecondaryTab node={node} />
   if (type.endsWith('_source')) return <SourceSecondaryTab node={node} />
   if (type === 'dataset') return <DatasetSecondaryTab node={node} />
   if (type === 'edit_decomposition') return <EditDecompositionSecondaryTab node={node} />

@@ -356,7 +356,13 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     group_by_task: { type: 'bool', default: true },
   },
   rubric_lite_apply: {},
-  calitree_judge: {},
+  calitree_judge: {
+    human_review_mode: {
+      type: 'enum',
+      default: 'off',
+      options: ['off', 'selective_policy'],
+    },
+  },
   calitree_eval: {},
 }
 

@@ -64,7 +64,10 @@ describe('CaliTreeWorkbench', () => {
             selective: {
               test: {
                 n_total: 1, n_accepted: 1, n_abstained: 0,
-                coverage: 1, minimum_support: 3,
+                n_needs_human: 0, coverage: 1, review_rate: 0,
+                error_capture_rate: 1, partial_review_rate: 0.75,
+                system_accuracy_with_perfect_human_review: 1,
+                minimum_support: 3,
                 accepted: { n: 1, accuracy: 1, balanced_accuracy: 1 },
                 policy: {
                   active_editors: ['SDEdit'],
@@ -101,7 +104,11 @@ describe('CaliTreeWorkbench', () => {
               },
             },
             predictions: {
-              case: { label: 'yes', routed_node: 'root', rationale: 'correct edit' },
+              case: {
+                label: 'yes', decision_label: 'yes',
+                review_reason: 'selective_policy_accepted',
+                routed_node: 'root', rationale: 'correct edit',
+              },
             },
           },
         },
@@ -110,8 +117,10 @@ describe('CaliTreeWorkbench', () => {
     render(<CaliTreeWorkbench node={n} />)
     expect(screen.getByText('Cali-Tree · test').parentElement).toHaveTextContent('100.0%')
     expect(screen.getByText('Cali-Tree · test').parentElement).toHaveTextContent('balanced 100.0%')
-    expect(screen.getByText('Selective · test').parentElement).toHaveTextContent('100.0%')
+    expect(screen.getByText('Auto-decided · test').parentElement).toHaveTextContent('100.0%')
     expect(screen.getByLabelText('Selective calibration summary')).toHaveTextContent('coverage 100.0%')
+    expect(screen.getByLabelText('Selective calibration summary')).toHaveTextContent('needs human 0')
+    expect(screen.getByLabelText('Selective calibration summary')).toHaveTextContent('partial cases sent to human 75.0%')
     expect(screen.getByLabelText('Selective calibration summary')).toHaveTextContent('SDEdit')
     expect(screen.getByLabelText('Selective calibration summary')).toHaveTextContent('85%')
     expect(screen.getByRole('table', { name: 'Cali-Tree confusion matrix' })).toHaveTextContent('1')
@@ -119,6 +128,9 @@ describe('CaliTreeWorkbench', () => {
     expect(screen.getByLabelText('Accuracy by human agreement')).toHaveTextContent('unanimous: 100.0%')
     expect(screen.getByRole('table', { name: 'Human label reliability' }))
       .toHaveTextContent('modal ceiling')
+    expect(screen.getByText(/Deployment decision:/).parentElement).toHaveTextContent(
+      'yes · selective_policy_accepted',
+    )
     expect(screen.getByRole('table', { name: 'Human label reliability' }))
       .toHaveTextContent('yes')
     expect(screen.getByText('hierarchical-consensus-v1')).toBeInTheDocument()
