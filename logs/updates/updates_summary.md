@@ -1,3 +1,10 @@
+## 260729-16:38:20 — Preregister multi-lane human review
+- Type: docs
+- Scope: Rubric-Lite selective-policy protocol and CaliTree research report
+- What: Froze simple target-blind `no` and `partial` acceptance candidates, cross-dataset development/confirmation gates, input hashes, and a zero-call stopping rule.
+- Why: Increase useful automation beyond exact `yes` without adding architecture or tuning a policy to one dataset.
+- Details: logs/updates/details/260729-16:38:20-updates.md
+
 ## 260729-16:01:41 — Add explicit human-review decisions
 - Type: feature
 - Scope: CaliTree judge/eval, selective metrics, frontend workbench, workflow example, docs and tests
