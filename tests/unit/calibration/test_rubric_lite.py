@@ -299,3 +299,59 @@ def test_ordinal_cross_validation_holds_out_every_labelled_item():
         row["n_fit"] == 12 for row in report["fold_reports"]
     )
     assert report["metrics"]["accuracy"] == 1
+
+
+def test_grouped_ordinal_cross_validation_never_splits_a_task():
+    ids = [
+        f"task-{task_index}::{editor}"
+        for task_index in range(6)
+        for editor in ("a", "b")
+    ]
+    samples = {
+        item_id: _sample(item_id, item_id.split("::", 1)[0])
+        for item_id in ids
+    }
+    label_by_task = {
+        0: "no", 1: "no",
+        2: "partial", 3: "partial",
+        4: "yes", 5: "yes",
+    }
+    score_by_label = {"no": 10, "partial": 50, "yes": 90}
+    targets = {
+        item_id: label_by_task[
+            int(item_id.split("::", 1)[0].split("-")[1])
+        ]
+        for item_id in ids
+    }
+    results = {
+        item_id: {"ordinal_score": score_by_label[targets[item_id]]}
+        for item_id in ids
+    }
+
+    report = cross_validate_ordinal_thresholds(
+        results=results,
+        targets=targets,
+        samples=samples,
+        ids=ids,
+        folds=3,
+        seed=44,
+        group_by_task=True,
+    )
+
+    validation_tasks = [
+        task_uid
+        for fold in report["fold_reports"]
+        for task_uid in fold["validation_task_uids"]
+    ]
+    assert report["group_by_task"] is True
+    assert sorted(validation_tasks) == [
+        f"task-{index}" for index in range(6)
+    ]
+    assert all(
+        fold["n_validation"] > 0
+        for fold in report["fold_reports"]
+    )
+    assert all(
+        fold["n_validation"] % 2 == 0
+        for fold in report["fold_reports"]
+    )

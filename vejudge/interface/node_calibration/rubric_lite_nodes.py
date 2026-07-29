@@ -189,6 +189,7 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
         },
         "cv_folds": {"type": "number", "default": 5, "min": 2, "max": 10},
         "cv_seed": {"type": "number", "default": 44, "min": 0},
+        "group_by_task": {"type": "bool", "default": True},
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
@@ -301,6 +302,9 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
             accuracy_tolerance=tolerance,
             minimum_class_recall=recall_floor,
             selection_objective=objective,
+            group_by_task=bool(
+                ctx.params.get("group_by_task", True)
+            ),
         )
         fitted = fit_ordinal_thresholds(
             results=result_rows,
@@ -333,6 +337,9 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
             },
             "cv_folds": cv_report["folds"],
             "cv_seed": int(ctx.params.get("cv_seed", 44)),
+            "group_by_task": bool(
+                ctx.params.get("group_by_task", True)
+            ),
         }
         report = {
             "version": "rubric-lite-cutpoints-report-v1",

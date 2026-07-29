@@ -352,6 +352,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     cv_folds: { type: 'number', default: 5, min: 2, max: 10, step: 1 },
     cv_seed: { type: 'number', default: 44, min: 0, step: 1 },
+    group_by_task: { type: 'bool', default: true },
   },
   rubric_lite_apply: {},
   calitree_judge: {},
