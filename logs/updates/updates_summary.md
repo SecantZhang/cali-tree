@@ -5,6 +5,13 @@
 - Why: Increase useful automation beyond exact `yes` without adding architecture or tuning a policy to one dataset.
 - Details: logs/updates/details/260729-16:38:20-updates.md
 
+## 260729-17:09:18 — Complete the full Rubric-Lite v4 benchmark
+- Type: feature
+- Scope: full-1200 live result, paired v2 analysis, artifact safety scoping, docs and tests
+- What: Evaluated frozen v4 on all 1,200 held-out cases: 81.33% full accuracy versus v2's 82.83%; its old review rule failed at 51.58% selective accuracy and was removed from the base artifact.
+- Why: Replace the optimistic half-set comparison with a matched benchmark and prevent an externally successful but ImagenHub-unsafe confidence rule from remaining the default.
+- Details: logs/updates/details/260729-17:09:18-updates.md
+
 ## 260729-16:52:46 — Preregister the full Rubric-Lite v4 benchmark
 - Type: feature
 - Scope: full-1200 workflow/runner, frozen protocol, checkpoint preflight and docs

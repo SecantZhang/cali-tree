@@ -294,7 +294,17 @@ def main() -> int:
 
     print(f"run_dir={run.run_dir}")
     print(f"status={result.status}")
-    print(f"preflight={json.dumps(preflight, sort_keys=True)}")
+    print(
+        "preflight="
+        + json.dumps(
+            {
+                key: value
+                for key, value in preflight.items()
+                if key != "missing_item_ids"
+            },
+            sort_keys=True,
+        )
+    )
     for node_id in ("imagenhub", "dataset", "frozen_rubric", "judge", "evaluate"):
         node_result = result.node_results.get(node_id)
         if node_result is not None:
