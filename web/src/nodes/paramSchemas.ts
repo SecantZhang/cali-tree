@@ -333,6 +333,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
       default: 'rubric_lite_v4_imagenhub',
       options: [
         'rubric_lite_v4_imagenhub',
+        'rubric_lite_v4_editinspector_selective_v1',
         'rubric_lite_v4_editinspector_cutpoints_v1',
         'rubric_lite_v5_core_completion_experimental',
         'rubric_lite_v6_evidence_ledger_experimental',

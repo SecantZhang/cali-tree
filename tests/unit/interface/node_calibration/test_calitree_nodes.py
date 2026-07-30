@@ -200,9 +200,29 @@ def test_frozen_rubric_lite_loads_versioned_prompt_and_cutpoints(make_ctx):
         "partial_yes": 89.000001,
     }
     assert tree["training_provenance"]["train_tasks"] == 29
-    assert tree["selective_policy"]["minimum_ordinal_score"] == 100
+    assert tree["selective_policy"] == {}
     assert "change_evidence" in tree["nodes"]["rubric:global"]["prompt"]
     assert result.meta["model_calls"] == 0
+
+
+def test_frozen_rubric_lite_scopes_external_selective_policy(
+    make_ctx,
+):
+    result = RubricLiteFrozenNodeExecutor().run(make_ctx(
+        params={
+            "model_version":
+                "rubric_lite_v4_editinspector_selective_v1"
+        },
+        inputs={},
+    ))
+
+    assert result.status == "done"
+    tree = result.outputs["prompt_tree"]
+    assert tree["selective_policy"]["minimum_ordinal_score"] == 100
+    assert tree["selective_policy"]["allowed_labels"] == ["yes"]
+    assert tree["training_provenance"]["scope"] == (
+        "EditInspector selective deployment only"
+    )
 
 
 def test_frozen_rubric_lite_loads_external_two_cutpoint_calibrator(

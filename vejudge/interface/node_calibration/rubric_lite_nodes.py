@@ -47,6 +47,7 @@ VERIFIER_VERSIONS = (
 )
 FROZEN_MODEL_VERSIONS = (
     "rubric_lite_v4_imagenhub",
+    "rubric_lite_v4_editinspector_selective_v1",
     "rubric_lite_v4_editinspector_cutpoints_v1",
     "rubric_lite_v5_core_completion_experimental",
     "rubric_lite_v6_evidence_ledger_experimental",

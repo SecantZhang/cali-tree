@@ -249,19 +249,27 @@ successfully merged its leaves, and was materially cheaper. V4's simpler output 
 but reduced ordinary accuracy, while its high balanced score rests on two minority examples.
 These runs are useful diagnostics, not a statistically adequate ranking.
 
-### Large-scale report for the selected v2 system
+### Large-scale matched report: Cali-Tree v2 and Rubric-Lite v4
 
-Only v2 was advanced to the full 1,200-case, 150-task held-out evaluation. These figures
-include the later task-level tree, consensus calibration, unanimous-label preprocessing,
-and editor-reliability selective policy; they should not be attributed to prompt wording
-alone.
+V2 was the first system advanced to all 1,200 cases. Frozen Rubric-Lite v4 has now been
+evaluated on the identical 150 tasks and eight public editors. The v2 figures include the
+later task-level tree, consensus calibration, unanimous-label preprocessing, and
+editor-reliability policy; they should not be attributed to prompt wording alone.
 
 | Metric | N / coverage | Accuracy | Balanced | Recall no | Recall partial | Recall yes | 95% grouped-task accuracy CI |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Initial rubric | 1,200 / 100% | 78.25% | 59.81% | 86.90% | 30.37% | 62.16% | 75.67–80.92% |
 | Global TextGrad | 1,200 / 100% | 77.75% | 58.59% | 86.69% | 29.63% | 59.46% | 75.17–80.42% |
 | Cali-Tree v2 | 1,200 / 100% | 82.83% | 60.41% | 93.29% | 26.67% | 61.26% | 80.67–84.92% |
+| **Rubric-Lite v4** | **1,200 / 100%** | **81.33%** | **55.37%** | **93.08%** | **28.89%** | **44.14%** | **78.75–83.67%** |
 | Selective Cali-Tree v2 | 771 / 64.25% | 92.87% | 60.07% | 98.02% | 8.11% | 74.07% | 91.04–94.58% |
+
+V4 is 1.50 accuracy points below v2. A paired 10,000-repeat task bootstrap gives a
+v4-minus-v2 interval of `-3.58 to +0.58` points, and exact McNemar `p=0.153`: the ordinary
+accuracy difference is not statistically established. V4 is nevertheless weaker on
+balanced accuracy (`55.37%` versus `60.41%`), macro F1 (`56.42%` versus `59.17%`), and
+partial F1 (`29.77%` versus `31.44%`). It is a much simpler near-accuracy alternative, not
+a better calibrated classifier.
 
 The selective result is optimized for high-confidence accuracy, not macro recall. In
 particular, it accepts only 37 human-`partial` cases, so its low partial recall must be shown
@@ -291,14 +299,16 @@ The existing frozen, target-blind policies imply the following operating points:
 | System and evaluation | Auto accuracy | Auto coverage | Needs human | Error capture | Partial sent to human | Perfect-review ceiling |
 |---|---:|---:|---:|---:|---:|---:|
 | Cali-Tree v2, 1,200 ImagenHub held-out | 92.87% | 64.25% | 429 / 1,200 | 73.30% | 72.59% | 95.42% |
+| Rubric-Lite v4 perfect-evidence rule, 1,200 ImagenHub held-out | **51.58%** | **7.92%** | 1,105 / 1,200 | 79.46% | 78.52% | 96.17% |
 | Rubric-Lite v4, 312 EditInspector confirmation | 97.62% | 53.85% | 144 / 312 | 96.90% | 94.74% | 98.72% |
 
 For v2, 716 of 771 auto-decided cases are correct; review captures 151 of the 206
-full-coverage errors. For external Rubric-Lite v4, 164 of 168 auto-decided cases are
-correct; review captures 125 of 129 errors. The second policy is especially useful for the
-known partial ambiguity because it refers 18 of 19 human-`partial` cases. Its limitation is
-equally important: it auto-decides almost exclusively high-confidence `yes`, so it is a
-high-precision automation lane rather than balanced three-class automation.
+full-coverage errors. The same perfect-evidence predicate is **not** a valid universal
+confidence rule: on full ImagenHub it accepts 95 `yes` predictions, but only 49 are human
+`yes`; the other 17 are `no` and 29 are `partial`. On external EditInspector, 164 of 168
+auto-decided cases are correct and review captures 125 of 129 errors. That result is now
+scoped to the explicitly named `rubric_lite_v4_editinspector_selective_v1` artifact. The
+base ImagenHub artifact no longer exposes a selective policy.
 
 Review mode fails before any judge call if the prompt tree has no persisted selective
 policy. The example `rubric_lite_editinspector_zero_shot.json` enables it; its judge engine
@@ -489,11 +499,11 @@ corrected four, and regressed three; exact McNemar `p=1.0`. The observed gain is
 small and not statistically established. It should be described as a promising,
 cost-efficient partial-boundary refinement, not a 90% or publishable accuracy result.
 
-The simple path is nevertheless the better engineering default for full coverage:
-`82.33%` is only `0.50` points below complete Cali-Tree v2's `82.83%`, while removing the
-hierarchy and replacing three global judgments with one primary call plus an 8.5% conditional
-second pass. The selective Cali-Tree result remains appropriate only when abstention is
-acceptable.
+The earlier half-set conclusion was optimistic. On all 1,200 cases, primary v4 is `81.33%`,
+1.50 points below complete Cali-Tree v2's `82.83%`, while still removing the hierarchy and
+using one global judgment per case. It remains the better simplicity/cost option when that
+accuracy and class-balance loss is acceptable. The verifier has not been run on the full
+1,200 and its half-set gain was not statistically established.
 
 ### External generalization: EditInspector
 
@@ -510,10 +520,12 @@ accept iff calibrated label == yes and
 otherwise abstain
 ```
 
-This rule is stored in `rubric_lite_v4_imagenhub.json`. A score of 100 already means all
-three v4 dimensions are visibly exact; no EditInspector label was used to alter the prompt,
-score, or accepted prediction. The 80-case development slice was used only as the gate for
-advancing the frozen rule to the disjoint confirmation partition.
+This rule is stored in `rubric_lite_v4_editinspector_selective_v1.json`. A score of 100
+already means all three v4 dimensions are visibly exact; no EditInspector label was used
+to alter the prompt or scores. The 80-case development slice gated advancement to the
+disjoint confirmation partition. The new full ImagenHub result shows that its confidence
+meaning is dataset-specific despite the target-blind predicate, so it must not be presented
+as a general selective policy.
 
 | External split | N | Full accuracy | Balanced | Partial P / R / F1 | Selective accepted | Coverage | Selective accuracy | 95% accepted-accuracy CI |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -816,6 +828,11 @@ Artifacts:
 
 - v4 development: `logs/exps/260729-11:14:03-exps/`
 - v4 600-case primary confirmation: `logs/exps/260729-11:33:04-exps/`
+- v4 full 1,200-case primary:
+  `logs/exps/260729-16:54:00-imagenhub-rubric-lite-v4-full1200-exps/`
+- v4 full protocol and result:
+  `docs/experiments/rubric_lite_v4_full_1200_protocol.json` and
+  `docs/experiments/rubric_lite_v4_full_1200_result.json`
 - broad-verifier negative control: `logs/exps/260729-12:10:30-exps/`
 - partial-progress development: `logs/exps/260729-12:24:54-exps/`
 - promoted 51-call confirmation: `logs/exps/260729-12:30:24-exps/`
