@@ -20,12 +20,24 @@ from vejudge.interface.node_calibration.calitree_nodes import (
     _fit_conflict_policy,
     _fit_selective_policy,
     _hash,
+    _evidence_referral,
+    _evidence_signals,
+    _failure_mode_groups,
+    _failure_mode_signature,
+    _fit_evidence_referral_policy,
     _human_agreement_bucket,
     _human_label_reliability,
+    _is_referred,
     _parse_judgment,
     _prompt,
+    _referral_quality_metrics,
+    _fit_residual_context_partition,
+    _fit_pareto_prompt_cascade,
+    _residual_context_keys,
+    _route_metrics,
     _select_consensus_calibrator,
     _semantic_edit_type,
+    _tree_metrics,
 )
 from vejudge.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
 from vejudge.interface.node_db.editinspector_source_node import (
@@ -775,6 +787,449 @@ def test_human_label_reliability_quantifies_partial_ambiguity():
     ] == pytest.approx(math.log2(3))
 
 
+def test_referral_quality_separates_consensus_from_model_error():
+    # Four cases: two referred, two accepted; disputed/unanimous mix.
+    targets = {"d1": "partial", "d2": "no", "u1": "yes", "u2": "no"}
+    predictions = {"d1": "no", "d2": "no", "u1": "yes", "u2": "yes"}
+    samples = {
+        "d1": _sample("d1"),
+        "d2": _sample("d2"),
+        "u1": _sample("u1"),
+        "u2": _sample("u2"),
+    }
+    labels = {
+        # d1 disputed + referred + model-wrong; d2 disputed + accepted + correct.
+        "d1": {"ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 1}]},
+        "d2": {"ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 0}]},
+        # u1 unanimous + accepted + correct; u2 unanimous + referred + model-wrong.
+        "u1": {"ratings": [{"sc": 1}, {"sc": 1}, {"sc": 1}]},
+        "u2": {"ratings": [{"sc": 0}, {"sc": 0}, {"sc": 0}]},
+    }
+    rows = {
+        "d1": {"needs_human": True},
+        "d2": {"needs_human": False},
+        "u1": {"needs_human": False},
+        "u2": {"needs_human": True},
+    }
+
+    report = _referral_quality_metrics(targets, predictions, samples, labels, rows)
+
+    assert report["n"] == 4
+    assert report["n_referred"] == 2
+    assert report["review_rate"] == 0.5
+    assert report["n_disputed"] == 2
+    # Referred: {d1 disputed, u2 unanimous} -> precision 1/2.
+    assert report["consensus_referral_precision"] == 0.5
+    # Disputed: {d1, d2}; only d1 referred -> recall 1/2.
+    assert report["consensus_referral_recall"] == 0.5
+    assert report["consensus_referral_f1"] == pytest.approx(0.5)
+    # Model errors: {d1, u2}; both referred -> full capture.
+    assert report["error_capture_recall"] == 1.0
+    assert report["error_prevalence_in_referrals"] == 1.0
+    # One true partial (d1), referred.
+    assert report["fraction_true_partial_referred"] == 1.0
+    assert "by_editor" in report and "by_operation_family" in report
+
+
+def test_is_referred_reads_flag_then_decision_label():
+    assert _is_referred({"needs_human": True}) is True
+    assert _is_referred({"needs_human": False}) is False
+    assert _is_referred({"decision_label": "needs_human"}) is True
+    assert _is_referred({"decision_label": "partial"}) is False
+    assert _is_referred({}) is False
+
+
+def test_tree_metrics_report_compression_and_root_coverage():
+    tree = {
+        "roots": ["root"],
+        "nodes": {
+            "root": {
+                "status": "global",
+                "level": 2,
+                "covered_ids": ["a", "b", "c"],
+                "validation_accuracy": 0.8,
+                "children": ["leaf_a", "leaf_b"],
+            },
+            "leaf_a": {
+                "status": "leaf",
+                "level": 0,
+                "covered_ids": ["a"],
+                "validation_accuracy": 1.0,
+                "children": [],
+            },
+            "leaf_b": {
+                "status": "leaf",
+                "level": 0,
+                "covered_ids": ["b"],
+                "validation_accuracy": 1.0,
+                "children": [],
+            },
+        },
+        "timeline": [
+            {"kind": "accepted", "node_id": "root"},
+            {"kind": "branch", "node_id": "x"},
+        ],
+        "stats": {
+            "leaves": 2,
+            "leaf_cases": 3,
+            "accepted_merges": 1,
+            "rejected_merges": 0,
+            "promoted": 0,
+            "specialized_roots": 1,
+            "merge_attempts": 2,
+            "merge_budget_exhausted": False,
+        },
+        "usage": {"judge_calls": 10},
+    }
+
+    report = _tree_metrics(tree)
+
+    assert report["n_leaves"] == 2
+    assert report["n_final_nodes"] == 3
+    assert report["compression_ratio"] == pytest.approx(2 / 3)
+    assert report["n_full_merges"] == 1
+    assert report["n_branch_merges"] == 1
+    assert report["root_coverage"] == 1.0
+    assert report["root_accuracy"] == 0.8
+    # Mean child accuracy 1.0 minus parent 0.8 -> 0.2 accuracy loss.
+    assert report["accuracy_loss_child_to_parent"] == pytest.approx(0.2)
+    assert report["by_depth"]["0"]["n_nodes"] == 2
+    assert report["token_usage"] == {"judge_calls": 10}
+
+
+def test_route_metrics_report_depth_and_fallback():
+    rows = {
+        "deep": {"calitree": {"route_path": ["root", "mid", "leaf"], "routed_node": "leaf"}},
+        "shallow": {"calitree": {"route_path": ["root"], "routed_node": "root"}},
+    }
+    report = _route_metrics(rows)
+    assert report["n_routed"] == 2
+    assert report["mean_route_depth"] == pytest.approx(1.0)
+    assert report["fallback_to_root_rate"] == 0.5
+
+
+def test_failure_mode_grouping_is_deterministic_and_signature_based():
+    samples = {
+        "a": _sample("a"),  # instruction "make it blue" -> family "color"
+        "b": _sample("b"),
+        "c": _sample("c"),
+    }
+    base_results = {
+        "a": {"label": "no"},
+        "b": {"label": "no"},
+        "c": {"label": "yes"},
+    }
+    targets = {"a": "partial", "b": "partial", "c": "partial"}
+    groups = _failure_mode_groups(base_results, samples, targets, ["a", "b", "c"])
+    # a and b share the same (base=no -> target=partial) failure mode; c differs.
+    assert groups["a"] == groups["b"]
+    assert groups["a"] != groups["c"]
+    assert groups["a"].endswith("no->partial")
+    # Deterministic re-run.
+    assert _failure_mode_groups(base_results, samples, targets, ["a", "b", "c"]) == groups
+    # An invalid base label is bucketed, not crashed on.
+    assert _failure_mode_signature("garbage", "no", "color").endswith("invalid->no")
+
+
+def test_residual_context_partition_backs_off_by_support_without_targets():
+    samples = {
+        "a1": {**_sample("a1"), "editor": "EditorA"},
+        "a2": {**_sample("a2"), "editor": "EditorA"},
+        "b1": {
+            **_sample("b1"),
+            "editor": "EditorB",
+            "input": {**_sample("b1")["input"], "instruction": "remove the cup"},
+        },
+        "b2": {
+            **_sample("b2"),
+            "editor": "EditorB",
+            "input": {**_sample("b2")["input"], "instruction": "remove the cup"},
+        },
+        "c1": {
+            **_sample("c1"),
+            "editor": "EditorC",
+            "input": {**_sample("c1")["input"], "instruction": "move it left"},
+        },
+        "va": {**_sample("va"), "editor": "EditorA"},
+        "vb": {
+            **_sample("vb"),
+            "editor": "EditorB",
+            "input": {**_sample("vb")["input"], "instruction": "remove the cup"},
+        },
+        "vc": {
+            **_sample("vc"),
+            "editor": "EditorC",
+            "input": {**_sample("vc")["input"], "instruction": "move it left"},
+        },
+    }
+    fit_ids = ["a1", "a2", "b1", "b2", "c1"]
+    validation_ids = ["va", "vb", "vc"]
+    fit_base = {item_id: {"label": "no"} for item_id in fit_ids}
+    validation_base = {item_id: {"label": "no"} for item_id in validation_ids}
+
+    fit, validation, policy = _fit_residual_context_partition(
+        fit_base_results=fit_base,
+        validation_base_results=validation_base,
+        samples=samples,
+        fit_ids=fit_ids,
+        validation_ids=validation_ids,
+        min_fit_support=2,
+        min_validation_support=1,
+    )
+
+    assert fit["a1"] == fit["a2"]
+    assert fit["a1"].startswith("editor_operation_prediction:")
+    assert fit["b1"] == fit["b2"]
+    assert fit["b1"].startswith("editor_operation_prediction:")
+    assert fit["c1"].startswith("prediction:")
+    assert validation["va"] == fit["a1"]
+    assert validation["vb"] == fit["b1"]
+    assert validation["vc"] == fit["c1"]
+    assert policy["target_blind"] is True
+    assert policy["fit_support"][fit["c1"]] == 1
+
+
+def test_residual_context_keys_are_ordered_specific_to_prediction_backoff():
+    keys = _residual_context_keys(_sample("case"), "partial")
+    assert [key.split(":", 1)[0] for key in keys] == [
+        "editor_operation_prediction",
+        "editor_prediction",
+        "operation_prediction",
+        "prediction",
+    ]
+    assert all("partial" in key for key in keys)
+
+
+def test_pareto_prompt_cascade_accepts_only_non_regressing_correction():
+    ids = ["fix", "same1", "same2", "same3", "regress", "validation"]
+    samples = {item_id: _sample(item_id) for item_id in ids}
+    initial = {
+        "fix": {"label": "yes"},
+        "same1": {"label": "yes"},
+        "same2": {"label": "yes"},
+        "same3": {"label": "yes"},
+        "regress": {"label": "no"},
+        "validation": {"label": "no"},
+    }
+    optimized = {
+        "fix": {"label": "partial"},
+        "same1": {"label": "yes"},
+        "same2": {"label": "yes"},
+        "same3": {"label": "yes"},
+        "regress": {"label": "partial"},
+        "validation": {"label": "no"},
+    }
+    targets = {
+        "fix": "partial",
+        "same1": "yes",
+        "same2": "yes",
+        "same3": "yes",
+        "regress": "no",
+        "validation": "no",
+    }
+
+    policy = _fit_pareto_prompt_cascade(
+        initial_results=initial,
+        optimized_results=optimized,
+        samples=samples,
+        targets=targets,
+        fit_ids=["fix", "same1", "same2", "same3", "regress"],
+        validation_ids=["validation"],
+        min_fit_support=4,
+    )
+
+    yes_key = _residual_context_keys(samples["fix"], "yes")[-1]
+    no_key = _residual_context_keys(samples["regress"], "no")[-1]
+    assert list(policy["rules"]) == [yes_key]
+    assert policy["rules"][yes_key]["fit_improvements"] == 1
+    assert policy["rules"][yes_key]["fit_regressions"] == 0
+    assert policy["rules"][yes_key]["validation_support"] == 0
+    assert no_key not in policy["rules"]
+
+
+def test_evidence_referral_distinguishes_partial_from_needs_human():
+    node = {"routing_threshold": 0.5, "covered_ids": ["a", "b", "c"]}
+    # Total three-way disagreement is indeterminate -> needs_human.
+    disagreeing = _evidence_signals(
+        {"consensus_tie": True}, node, 0.9, min_route_support=2
+    )
+    refer, reason = _evidence_referral(disagreeing, {"rule": "disagreement"})
+    assert refer is True
+    assert "total_disagreement" in reason
+    # A confident consensus (no tie, strong route) is kept, even when it is partial.
+    agreeing = _evidence_signals(
+        {"consensus_tie": False}, node, 0.9, min_route_support=2
+    )
+    refer, reason = _evidence_referral(agreeing, {"rule": "disagreement"})
+    assert refer is False
+    assert reason == "evidence_accepted"
+
+
+def test_evidence_referral_routing_rule_fires_on_weak_route():
+    node = {"routing_threshold": 0.8, "covered_ids": ["only"]}
+    signals = _evidence_signals(
+        {"consensus_tie": False}, node, 0.6, min_route_support=2
+    )
+    # Below-threshold similarity and unsupported one-case leaf both fire.
+    assert signals["low_route_similarity"] is True
+    assert signals["unsupported_route"] is True
+    assert _evidence_referral(signals, {"rule": "routing"})[0] is True
+    # The disagreement-only rule ignores routing weakness.
+    assert _evidence_referral(signals, {"rule": "disagreement"})[0] is False
+
+
+def test_fit_evidence_referral_policy_uses_only_training_labels():
+    tree = {"nodes": {"root": {"routing_threshold": 0.5, "covered_ids": ["a", "b", "c"]}}}
+    tree_results = {
+        "t_disp": {
+            "label": "no", "consensus_tie": True,
+            "routed_node": "root", "route_similarity": 0.9,
+        },
+        "t_unan": {
+            "label": "yes", "consensus_tie": False,
+            "routed_node": "root", "route_similarity": 0.9,
+        },
+        # A disputed test case that must not influence the fitted policy.
+        "x_test": {
+            "label": "no", "consensus_tie": True,
+            "routed_node": "root", "route_similarity": 0.9,
+        },
+    }
+    labels = {
+        "t_disp": {"ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 1}]},
+        "t_unan": {"ratings": [{"sc": 1}, {"sc": 1}, {"sc": 1}]},
+        "x_test": {"ratings": [{"sc": 0}, {"sc": 0.5}, {"sc": 1}]},
+    }
+    targets = {"t_disp": "no", "t_unan": "yes", "x_test": "no"}
+
+    policy = _fit_evidence_referral_policy(
+        tree_results,
+        tree,
+        targets,
+        labels,
+        ["t_disp", "t_unan"],
+        coverage_floor=0.0,
+    )
+
+    assert policy["version"] == "evidence-referral-v1"
+    assert policy["rule"] == "disagreement"
+    # Only the one disputed training case is referred; the test-set disputed case is
+    # excluded, so recall is 1/1 rather than 1/2.
+    assert policy["train_metrics"]["referral_recall"] == 1.0
+    assert policy["train_metrics"]["referral_precision"] == 1.0
+    assert policy["train_metrics"]["coverage"] == 0.5
+
+
+def test_calitree_evidence_policy_requires_a_persisted_policy_before_calls(
+    make_ctx, monkeypatch
+):
+    tree = {
+        "architecture": "rubric_lite",
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global", "prompt": "rubric",
+                "embedding": [], "children": [],
+            },
+        },
+    }
+    engine_calls = 0
+
+    def engine_from(_config, _ctx):
+        nonlocal engine_calls
+        engine_calls += 1
+        return object()
+
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        engine_from,
+    )
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={"human_review_mode": "evidence_policy"},
+        inputs={
+            "samples": {"case": _sample("case")},
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "error"
+    assert "persisted evidence_referral_policy" in str(result.error)
+    assert engine_calls == 0
+
+
+def test_calitree_evidence_policy_refers_only_indeterminate_cases(
+    make_ctx, monkeypatch
+):
+    tree = {
+        "architecture": "rubric_lite",
+        "roots": ["rubric:global"],
+        "nodes": {
+            "rubric:global": {
+                "id": "rubric:global", "prompt": "rubric",
+                "embedding": [], "children": [],
+                "routing_threshold": 0.0, "covered_ids": ["a", "b"],
+            },
+        },
+        "evidence_referral_policy": {
+            "version": "evidence-referral-v1",
+            "rule": "disagreement",
+            "min_route_support": 1,
+        },
+    }
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "judge_many",
+        lambda _runtime, _prompt, _samples: {
+            "indeterminate": {
+                "label": "partial", "consensus_tie": True,
+                "rationale": "split", "valid": True,
+            },
+            "confident": {
+                "label": "partial", "consensus_tie": False,
+                "rationale": "clear partial", "valid": True,
+            },
+        },
+    )
+
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        params={"human_review_mode": "evidence_policy"},
+        inputs={
+            "samples": {
+                "indeterminate": _sample("indeterminate"),
+                "confident": _sample("confident"),
+            },
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    rows = {
+        item_id: value["calitree"]
+        for item_id, value in result.outputs["judge_result"].items()
+    }
+    # Indeterminate: underlying label preserved, but referred.
+    assert rows["indeterminate"]["label"] == "partial"
+    assert rows["indeterminate"]["needs_human"] is True
+    assert rows["indeterminate"]["decision_label"] == "needs_human"
+    assert "total_disagreement" in rows["indeterminate"]["review_reason"]
+    # Confident partial stays partial, not referred.
+    assert rows["confident"]["label"] == "partial"
+    assert rows["confident"]["needs_human"] is False
+    assert rows["confident"]["decision_label"] == "partial"
+    assert rows["confident"]["evidence_referral_policy_version"] == (
+        "evidence-referral-v1"
+    )
+
+
 def test_selective_policy_is_fit_only_from_supported_training_editors():
     rows = {
         "a1": {"label": "no", "consensus_support": 3},
@@ -876,6 +1331,65 @@ def test_v2_rubric_targets_semantic_consistency_not_standalone_quality():
     assert "Minor visual artifacts alone do not reduce SC" in rubric
     assert "no versus partial" in rubric
     assert "partial versus yes" in rubric
+
+
+def test_parser_recovers_an_explicit_gpt4o_prose_final_label():
+    result = _parse_judgment(
+        "The requested object is present but its color is wrong.\n\n"
+        "**Final assessment: Partial** — the edit is incomplete."
+    )
+
+    assert result["valid"] is True
+    assert result["label"] == "partial"
+    assert result["parser_mode"] == "explicit_prose_final_label"
+
+
+def test_parser_does_not_infer_label_from_unmarked_prose():
+    result = _parse_judgment("The edit is partial in one region but yes in another.")
+
+    assert result["valid"] is False
+
+
+def test_parser_recovers_explicit_presence_phrase_from_gpt4o_prose():
+    result = _parse_judgment(
+        "### Final Decision:\nThe requested edit is **partly present**."
+    )
+
+    assert result["valid"] is True
+    assert result["label"] == "partial"
+    assert result["parser_mode"] == "explicit_prose_presence_label"
+
+
+def test_parser_scene_failure_overrides_fully_present_phrase():
+    result = _parse_judgment(
+        "Scene Continuity:\n- Label: No\n\n"
+        "### Final Decision:\nThe requested edit is **fully present**."
+    )
+
+    assert result["valid"] is True
+    assert result["label"] == "no"
+
+
+def test_parser_recovers_explicit_final_scorecard():
+    result = _parse_judgment(
+        "### Final Assessment:\n- **Requested Change**: Partial\n"
+        "- **Scene Continuity**: Yes"
+    )
+
+    assert result["valid"] is True
+    assert result["label"] == "partial"
+    assert result["parser_mode"] == "explicit_prose_scorecard"
+
+
+def test_parser_normalizes_nested_gpt4o_rubric_scores_without_top_level_label():
+    result = _parse_judgment(json.dumps({"rubric_scores": {
+        "requested_change": {"label": "partial", "rationale": "change incomplete"},
+        "scene_continuity": {"label": "yes", "rationale": "scene preserved"},
+    }}))
+
+    assert result["valid"] is True
+    assert result["label"] == "partial"
+    assert result["parser_mode"] == "nested_rubric_scores"
 
 
 def test_v3_decomposed_rubric_resolves_conflicting_model_label():
@@ -1200,6 +1714,70 @@ def test_routed_judge_reuses_matching_training_prediction_cache(make_ctx, monkey
     assert result.outputs["judge_result"]["case"]["calitree"]["label"] == "yes"
     assert result.meta["cache_hits"] == 1
     assert result.meta["judge_calls"] == 0
+
+
+def test_routed_judge_predicts_context_then_runs_supported_leaf(make_ctx, monkeypatch):
+    sample = _sample("case")
+    routing_key = _residual_context_keys(sample, "no")[0]
+    tree = {
+        "embedding_model": "embed",
+        "prompt_version": "calitree_v2",
+        "roots": ["root"],
+        "config": {"min_routing_support": 2},
+        "prediction_conditioned_router": {
+            "router_prompt": "TOP",
+            "routes": {routing_key: "leaf"},
+        },
+        "nodes": {
+            "root": {
+                "id": "root", "prompt": "ROOT", "embedding": [0.0, 1.0],
+                "children": ["leaf"],
+            },
+            "leaf": {
+                "id": "leaf", "prompt": "LEAF", "embedding": [1.0, 0.0],
+                "children": [], "covered_ids": ["a", "b"],
+                "routing_eligible": True, "routing_validation_support": 2,
+            },
+        },
+        "prediction_cache": {},
+    }
+    calls = []
+
+    monkeypatch.setattr(
+        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        lambda _config, _ctx: object(),
+    )
+    monkeypatch.setattr(
+        _CaliTreeRuntime,
+        "embed",
+        lambda _runtime, texts: [[1.0, 0.0] for _ in texts],
+    )
+
+    def judge_many(_runtime, prompt, prompt_samples):
+        calls.append((prompt, sorted(prompt_samples)))
+        label = "no" if prompt == "TOP" else "yes"
+        return {
+            item_id: {"label": label, "rationale": prompt, "valid": True}
+            for item_id in prompt_samples
+        }
+
+    monkeypatch.setattr(_CaliTreeRuntime, "judge_many", judge_many)
+
+    result = CaliTreeJudgeNodeExecutor().run(make_ctx(
+        dry_run=False,
+        allow_live=True,
+        inputs={
+            "samples": {"case": sample},
+            "prompt_tree": tree,
+            "judge_engine": {"model": "judge"},
+        },
+    ))
+
+    assert result.status == "done"
+    row = result.outputs["judge_result"]["case"]["calitree"]
+    assert row["label"] == "yes"
+    assert row["routed_node"] == "leaf"
+    assert calls == [("TOP", ["case"]), ("LEAF", ["case"])]
 
 
 def test_rubric_lite_judge_routes_single_root_without_embedding(make_ctx, monkeypatch):

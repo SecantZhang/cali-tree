@@ -16,6 +16,7 @@ from typing import Any, Optional
 from ...core.calibration.calitree import CaliTreeBuilder, classification_metrics, route_prompt
 from ...core.calibration.rubric_lite import (
     DEFAULT_ORDINAL_THRESHOLDS,
+    RubricLiteLearner,
     apply_ordinal_thresholds,
     ordinal_label,
 )
@@ -23,6 +24,7 @@ from ...core.calibration.textgrad_adapter import textgrad_update
 from ...core.judge.parse import parse_json_object
 from ...lm_engine import get_engine, load_creds, require_live
 from ...lm_engine import openai_compat
+from ...lm_engine.health import reorder_creds_by_health
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
 
 PROMPT_ROOT = Path(__file__).resolve().parents[2] / "core" / "prompts" / "templates"
@@ -220,6 +222,253 @@ def _semantic_edit_type(sample: dict[str, Any]) -> str:
         if re.search(pattern, instruction):
             return name
     return "attribute_other"
+
+
+def _failure_mode_signature(
+    base_label: str, target: str, family: str
+) -> str:
+    """A residual signature grouping cases by how the base rubric is wrong.
+
+    Uses the base prediction and the training target, so leaves specialize a coherent
+    failure mode (e.g. ``no->partial`` for the operation family) rather than an instruction
+    cluster. The target is a training-time input only; inference routing never reads it.
+    """
+    pred = base_label if base_label in {"no", "partial", "yes"} else "invalid"
+    return f"{family}:{pred}->{target}"
+
+
+def _failure_mode_groups(
+    base_results: dict[str, dict[str, Any]],
+    samples: dict[str, dict[str, Any]],
+    targets: dict[str, str],
+    ids: list[str],
+) -> dict[str, str]:
+    return {
+        item_id: _failure_mode_signature(
+            str((base_results.get(item_id) or {}).get("label") or ""),
+            targets[item_id],
+            _semantic_edit_type(samples[item_id]),
+        )
+        for item_id in ids
+    }
+
+
+_RESIDUAL_CONTEXT_LEVELS = (
+    "editor_operation_prediction",
+    "editor_prediction",
+    "operation_prediction",
+    "prediction",
+)
+
+
+def _residual_context_key(
+    level: str, sample: dict[str, Any], base_label: str
+) -> str:
+    """Return a target-blind key for prediction-conditioned specialization.
+
+    The top judge's prediction is available at both training and inference.  Adding
+    editor/operation context lets a leaf learn a local correction without using the
+    hidden target label as a routing feature.
+    """
+    prediction = base_label if base_label in {"no", "partial", "yes"} else "invalid"
+    editor = str(sample.get("editor") or sample.get("model") or "unknown")
+    operation = _semantic_edit_type(sample)
+    values = {
+        "editor_operation_prediction": (editor, operation, prediction),
+        "editor_prediction": (editor, prediction),
+        "operation_prediction": (operation, prediction),
+        "prediction": (prediction,),
+    }
+    if level not in values:
+        raise ValueError(f"Unknown residual context level {level!r}")
+    # JSON avoids ambiguous separators when editor names or future feature values contain
+    # punctuation. sort_keys is unnecessary for a list but separators keep tree ids compact.
+    return f"{level}:{json.dumps(values[level], separators=(',', ':'))}"
+
+
+def _residual_context_keys(
+    sample: dict[str, Any], base_label: str
+) -> list[str]:
+    """Return observable routing keys from most specific to broadest."""
+    return [
+        _residual_context_key(level, sample, base_label)
+        for level in _RESIDUAL_CONTEXT_LEVELS
+    ]
+
+
+def _fit_residual_context_partition(
+    *,
+    fit_base_results: dict[str, dict[str, Any]],
+    validation_base_results: dict[str, dict[str, Any]],
+    samples: dict[str, dict[str, Any]],
+    fit_ids: list[str],
+    validation_ids: list[str],
+    min_fit_support: int,
+    min_validation_support: int,
+) -> tuple[dict[str, str], dict[str, str], dict[str, Any]]:
+    """Build a disjoint, support-aware residual leaf partition.
+
+    A case takes the most specific observable context with enough fit *and* held-out
+    support.  If no context clears both gates, it backs off to the broadest prediction
+    bucket.  This is a small decision tree whose split/pruning decisions use no targets;
+    targets are consumed later only for prompt optimization and held-out acceptance.
+    """
+    min_fit_support = max(1, int(min_fit_support))
+    min_validation_support = max(1, int(min_validation_support))
+    fit_candidates = {
+        item_id: _residual_context_keys(
+            samples[item_id],
+            str((fit_base_results.get(item_id) or {}).get("label") or ""),
+        )
+        for item_id in fit_ids
+    }
+    validation_candidates = {
+        item_id: _residual_context_keys(
+            samples[item_id],
+            str((validation_base_results.get(item_id) or {}).get("label") or ""),
+        )
+        for item_id in validation_ids
+    }
+    fit_counts = Counter(
+        key for keys in fit_candidates.values() for key in keys
+    )
+    validation_counts = Counter(
+        key for keys in validation_candidates.values() for key in keys
+    )
+
+    def select(keys: list[str]) -> str:
+        for key in keys:
+            if (
+                fit_counts[key] >= min_fit_support
+                and validation_counts[key] >= min_validation_support
+            ):
+                return key
+        # Every case has a prediction key. Keeping that deterministic coarse leaf allows
+        # the builder to optimize it, while its own held-out guard still prevents routing
+        # if the cohort is too small or fails to improve the top judge.
+        return keys[-1]
+
+    fit_groups = {
+        item_id: select(keys) for item_id, keys in fit_candidates.items()
+    }
+    group_ids = set(fit_groups.values())
+
+    def select_existing(keys: list[str]) -> str:
+        return next((key for key in keys if key in group_ids), keys[-1])
+
+    validation_groups = {
+        item_id: select_existing(keys)
+        for item_id, keys in validation_candidates.items()
+    }
+    policy = {
+        "version": "prediction-conditioned-residual-v1",
+        "levels": list(_RESIDUAL_CONTEXT_LEVELS),
+        "min_fit_support": min_fit_support,
+        "min_validation_support": min_validation_support,
+        "group_ids": sorted(group_ids),
+        "fit_support": {
+            key: sum(group == key for group in fit_groups.values())
+            for key in sorted(group_ids)
+        },
+        "validation_support": {
+            key: sum(group == key for group in validation_groups.values())
+            for key in sorted(group_ids)
+        },
+        "target_blind": True,
+    }
+    return fit_groups, validation_groups, policy
+
+
+def _fit_pareto_prompt_cascade(
+    *,
+    initial_results: dict[str, dict[str, Any]],
+    optimized_results: dict[str, dict[str, Any]],
+    samples: dict[str, dict[str, Any]],
+    targets: dict[str, str],
+    fit_ids: list[str],
+    validation_ids: list[str],
+    min_fit_support: int,
+) -> dict[str, Any]:
+    """Select optimized-prompt routes that Pareto-dominate the top prompt.
+
+    This is the optimize→merge bridge for the residual tree: the fixed top prompt first
+    predicts a label, then a globally optimized prompt is reused only on observable cohorts
+    where it fixes at least one fit error, introduces no fit regression, and introduces no
+    held-out regression. A zero-support validation cohort is recorded explicitly and is
+    allowed only after the stronger per-example fit dominance and support gates pass.
+    """
+    min_fit_support = max(1, int(min_fit_support))
+    candidate_ids = sorted(set(fit_ids) | set(validation_ids))
+    keys_by_id = {
+        item_id: _residual_context_keys(
+            samples[item_id],
+            str((initial_results.get(item_id) or {}).get("label") or ""),
+        )
+        for item_id in candidate_ids
+    }
+    # Prefer broad, reusable corrections. More-specific rules are retained only when no
+    # accepted ancestor already makes the same optimized-prompt decision.
+    accepted: dict[str, dict[str, Any]] = {}
+    accepted_broad_values: set[tuple[str, str]] = set()
+    for level_index in reversed(range(len(_RESIDUAL_CONTEXT_LEVELS))):
+        level = _RESIDUAL_CONTEXT_LEVELS[level_index]
+        keys = sorted({keys_by_id[item_id][level_index] for item_id in candidate_ids})
+        for key in keys:
+            fit_group = [item_id for item_id in fit_ids if keys_by_id[item_id][level_index] == key]
+            validation_group = [
+                item_id
+                for item_id in validation_ids
+                if keys_by_id[item_id][level_index] == key
+            ]
+            if len(fit_group) < min_fit_support:
+                continue
+
+            def transitions(ids: list[str]) -> tuple[int, int, int, int]:
+                improvements = regressions = initial_correct = optimized_correct = 0
+                for item_id in ids:
+                    initial_ok = initial_results[item_id].get("label") == targets[item_id]
+                    optimized_ok = optimized_results[item_id].get("label") == targets[item_id]
+                    initial_correct += int(initial_ok)
+                    optimized_correct += int(optimized_ok)
+                    improvements += int(optimized_ok and not initial_ok)
+                    regressions += int(initial_ok and not optimized_ok)
+                return improvements, regressions, initial_correct, optimized_correct
+
+            fit_improvements, fit_regressions, fit_initial, fit_optimized = transitions(fit_group)
+            val_improvements, val_regressions, val_initial, val_optimized = transitions(
+                validation_group
+            )
+            if fit_improvements < 1 or fit_regressions or val_regressions:
+                continue
+            # If a broader key for this same top prediction is already accepted, the
+            # narrower rule cannot change the action and would only inflate the tree.
+            prediction = str(
+                (initial_results.get(fit_group[0]) or {}).get("label") or "invalid"
+            )
+            if ("prediction", prediction) in accepted_broad_values:
+                continue
+            accepted[key] = {
+                "level": level,
+                "fit_ids": sorted(fit_group),
+                "fit_support": len(fit_group),
+                "fit_improvements": fit_improvements,
+                "fit_regressions": fit_regressions,
+                "fit_initial_correct": fit_initial,
+                "fit_optimized_correct": fit_optimized,
+                "validation_support": len(validation_group),
+                "validation_improvements": val_improvements,
+                "validation_regressions": val_regressions,
+                "validation_initial_correct": val_initial,
+                "validation_optimized_correct": val_optimized,
+            }
+            if level == "prediction":
+                accepted_broad_values.add(("prediction", prediction))
+    return {
+        "version": "pareto-prompt-cascade-v1",
+        "min_fit_support": min_fit_support,
+        "selection_split": "fit_plus_internal_validation_guard",
+        "rules": accepted,
+    }
 
 
 def _task_uid(
@@ -882,6 +1131,212 @@ def _selective_metrics(
     }
 
 
+def _is_referred(row: dict[str, Any]) -> bool:
+    """True when a result was sent to human review under any review mode."""
+    flag = row.get("needs_human")
+    if flag is not None:
+        return bool(flag)
+    return str(row.get("decision_label") or "") == "needs_human"
+
+
+def _referral_quality_metrics(
+    targets: dict[str, str],
+    predictions: dict[str, str],
+    samples: dict[str, dict[str, Any]],
+    labels: dict[str, Any],
+    result_rows: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Metric 3: is ``needs_human`` referral aligned with disputed human consensus?
+
+    Annotation ambiguity (non-unanimous SC ratings) and model risk (model error) are two
+    different objectives, so both are reported separately. Consensus-referral
+    precision/recall are computed only over cases whose SC ratings are known; error capture
+    is computed over every case regardless of rating availability.
+    """
+    ids = sorted(set(targets) & set(predictions) & set(result_rows))
+
+    def block(subset: list[str]) -> dict[str, Any]:
+        buckets = {i: _human_agreement_bucket(labels.get(i)) for i in subset}
+        referred = [i for i in subset if _is_referred(result_rows[i])]
+        known = [i for i in subset if buckets[i] in {"unanimous", "disputed"}]
+        disputed = [i for i in known if buckets[i] == "disputed"]
+        referred_known = [i for i in referred if buckets[i] in {"unanimous", "disputed"}]
+        referred_disputed = [i for i in referred_known if buckets[i] == "disputed"]
+        errors = [i for i in subset if predictions[i] != targets[i]]
+        referred_errors = [i for i in referred if predictions[i] != targets[i]]
+        partial_targets = [i for i in subset if targets[i] == "partial"]
+        referred_partial = [i for i in partial_targets if _is_referred(result_rows[i])]
+        precision = (
+            len(referred_disputed) / len(referred_known) if referred_known else None
+        )
+        recall = len(referred_disputed) / len(disputed) if disputed else None
+        if precision is None or recall is None:
+            f1: Optional[float] = None
+        elif precision + recall == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+        return {
+            "n": len(subset),
+            "n_referred": len(referred),
+            "review_rate": (len(referred) / len(subset)) if subset else None,
+            "n_disputed": len(disputed),
+            "n_rating_known": len(known),
+            "consensus_referral_precision": precision,
+            "consensus_referral_recall": recall,
+            "consensus_referral_f1": f1,
+            "error_capture_recall": (
+                len(referred_errors) / len(errors) if errors else None
+            ),
+            "error_prevalence_in_referrals": (
+                len(referred_errors) / len(referred) if referred else None
+            ),
+            "fraction_true_partial_referred": (
+                len(referred_partial) / len(partial_targets)
+                if partial_targets
+                else None
+            ),
+        }
+
+    overall = block(ids)
+    editors: dict[str, list[str]] = {}
+    families: dict[str, list[str]] = {}
+    for item_id in ids:
+        editor = str(
+            samples[item_id].get("editor") or samples[item_id].get("model") or "unknown"
+        )
+        editors.setdefault(editor, []).append(item_id)
+        families.setdefault(_semantic_edit_type(samples[item_id]), []).append(item_id)
+    overall["by_editor"] = {editor: block(v) for editor, v in sorted(editors.items())}
+    overall["by_operation_family"] = {
+        family: block(v) for family, v in sorted(families.items())
+    }
+    return overall
+
+
+def _route_metrics(route_rows: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Mean inference route depth and fallback-to-root rate from judge route records.
+
+    A case is a root fallback when it is routed at depth zero (the route path never
+    descended past the selected root), so this needs no separate root-id list.
+    """
+    depths: list[int] = []
+    fallbacks = 0
+    counted = 0
+    for row in route_rows.values():
+        cal = row.get("calitree") if isinstance(row.get("calitree"), dict) else row
+        path = cal.get("route_path")
+        routed = cal.get("routed_node")
+        if path is None and routed is None:
+            continue
+        counted += 1
+        depth = len(path) - 1 if isinstance(path, list) and path else 0
+        depths.append(depth)
+        if depth <= 0:
+            fallbacks += 1
+    return {
+        "n_routed": counted,
+        "mean_route_depth": (sum(depths) / len(depths) if depths else None),
+        "fallback_to_root_rate": (fallbacks / counted if counted else None),
+    }
+
+
+def _tree_metrics(tree: dict[str, Any]) -> dict[str, Any]:
+    """Bottom-up compression diagnostics for a persisted prompt tree.
+
+    All fields are derived from the tree's own ``stats``/``timeline``/``nodes``. Routing
+    diagnostics (route depth, fallback rate) come from ``_route_metrics`` at eval time,
+    since they depend on per-item judge route records rather than tree structure.
+    """
+    nodes = tree.get("nodes") or {}
+    stats = tree.get("stats") or {}
+    timeline = tree.get("timeline") or []
+    roots = [node_id for node_id in (tree.get("roots") or []) if node_id in nodes]
+
+    timeline_kinds = Counter(str(entry.get("kind") or "") for entry in timeline)
+    status_counts = Counter(str(node.get("status") or "") for node in nodes.values())
+
+    leaf_cases = int(stats.get("leaf_cases") or 0)
+    n_leaves = int(stats.get("leaves") or status_counts.get("leaf", 0))
+    n_final_nodes = len(nodes)
+
+    root_covered: set[str] = set()
+    for root in roots:
+        root_covered |= set((nodes.get(root) or {}).get("covered_ids") or [])
+    root_accuracies = [
+        nodes[root].get("validation_accuracy")
+        for root in roots
+        if nodes[root].get("validation_accuracy") is not None
+    ]
+
+    losses: list[float] = []
+    for node in nodes.values():
+        if node.get("status") not in {"accepted", "partial", "global"}:
+            continue
+        parent_acc = node.get("validation_accuracy")
+        child_accs = [
+            nodes[child].get("validation_accuracy")
+            for child in (node.get("children") or [])
+            if child in nodes and nodes[child].get("validation_accuracy") is not None
+        ]
+        if parent_acc is None or not child_accs:
+            continue
+        losses.append(sum(child_accs) / len(child_accs) - float(parent_acc))
+
+    by_depth: dict[int, dict[str, float]] = {}
+    for node in nodes.values():
+        level = int(node.get("level") or 0)
+        row = by_depth.setdefault(
+            level, {"n_nodes": 0, "covered": 0, "acc_sum": 0.0, "acc_n": 0}
+        )
+        row["n_nodes"] += 1
+        row["covered"] += len(node.get("covered_ids") or [])
+        acc = node.get("validation_accuracy")
+        if acc is not None:
+            row["acc_sum"] += float(acc)
+            row["acc_n"] += 1
+
+    report: dict[str, Any] = {
+        "n_leaves": n_leaves,
+        "n_leaf_cases": leaf_cases,
+        "n_full_merges": int(
+            timeline_kinds.get("accepted", 0) or stats.get("accepted_merges", 0)
+        ),
+        "n_partial_merges": int(timeline_kinds.get("partial", 0)),
+        "n_rejected_merges": int(stats.get("rejected_merges", 0)),
+        "n_branch_merges": int(timeline_kinds.get("branch", 0)),
+        "n_promoted_leaves": int(stats.get("promoted", 0)),
+        "n_final_nodes": n_final_nodes,
+        "specialization_mode": stats.get("specialization_mode", "replace"),
+        "root_source": stats.get("root_source"),
+        "accumulated_root": stats.get("accumulated_root"),
+        "compression_ratio": (n_leaves / n_final_nodes if n_final_nodes else None),
+        "specialized_roots": int(stats.get("specialized_roots", 0)),
+        "merge_attempts": int(stats.get("merge_attempts", 0)),
+        "merge_budget_exhausted": bool(stats.get("merge_budget_exhausted", False)),
+        "status_counts": dict(sorted(status_counts.items())),
+        "root_coverage": (len(root_covered) / leaf_cases if leaf_cases else None),
+        "root_accuracy": (
+            sum(root_accuracies) / len(root_accuracies) if root_accuracies else None
+        ),
+        "accuracy_loss_child_to_parent": (
+            sum(losses) / len(losses) if losses else None
+        ),
+        "by_depth": {
+            str(level): {
+                "n_nodes": row["n_nodes"],
+                "coverage": (row["covered"] / leaf_cases if leaf_cases else None),
+                "mean_validation_accuracy": (
+                    row["acc_sum"] / row["acc_n"] if row["acc_n"] else None
+                ),
+            }
+            for level, row in sorted(by_depth.items())
+        },
+        "token_usage": tree.get("usage"),
+    }
+    return report
+
+
 def _selective_acceptance(
     result: dict[str, Any],
     sample: dict[str, Any],
@@ -958,6 +1413,172 @@ def _fit_selective_policy(
         "active_editors": sorted(
             editor for editor, row in editors.items() if row["active"]
         ),
+    }
+
+
+EVIDENCE_REFERRAL_RULES = ("disagreement", "routing", "disagreement_or_routing")
+
+
+def _evidence_signals(
+    result: dict[str, Any],
+    routed_node: dict[str, Any],
+    route_similarity: float,
+    *,
+    min_route_support: int,
+) -> dict[str, bool]:
+    """Target-blind evidence signals used to separate ``partial`` from ``needs_human``.
+
+    ``total_disagreement`` fires when the three independent judge paths reach no majority
+    (the consensus resolver's ``consensus_tie``); the routing signals fire when the case
+    landed on an unsupported or below-threshold node. None of these inspect the human
+    target, dataset, editor identity, or instruction text.
+    """
+    threshold = float(routed_node.get("routing_threshold") or 0.70)
+    support = len(routed_node.get("covered_ids") or [])
+    return {
+        "total_disagreement": bool(result.get("consensus_tie")),
+        "low_route_similarity": float(route_similarity) < threshold,
+        "unsupported_route": support < int(min_route_support),
+    }
+
+
+def _row_evidence_signals(
+    row: dict[str, Any], tree: dict[str, Any], *, min_route_support: int
+) -> dict[str, bool]:
+    node = (tree.get("nodes") or {}).get(str(row.get("routed_node") or "")) or {}
+    return _evidence_signals(
+        row,
+        node,
+        float(row.get("route_similarity") or 0.0),
+        min_route_support=min_route_support,
+    )
+
+
+def _evidence_referral(
+    signals: dict[str, bool], policy: dict[str, Any]
+) -> tuple[bool, str]:
+    """Decide referral from evidence signals under a fitted rule. Never reads a label."""
+    rule = str(policy.get("rule") or "disagreement_or_routing")
+    routing_weak = signals["low_route_similarity"] or signals["unsupported_route"]
+    if rule == "disagreement":
+        refer = signals["total_disagreement"]
+    elif rule == "routing":
+        refer = routing_weak
+    else:
+        refer = signals["total_disagreement"] or routing_weak
+    if not refer:
+        return False, "evidence_accepted"
+    fired = [name for name, value in signals.items() if value]
+    return True, "evidence_referral:" + ",".join(fired)
+
+
+def _fit_evidence_referral_policy(
+    result_rows: dict[str, dict[str, Any]],
+    tree: dict[str, Any],
+    targets: dict[str, str],
+    labels: dict[str, Any],
+    train_ids: list[str],
+    *,
+    coverage_floor: float,
+    support_candidates: tuple[int, ...] = (1, 2, 3),
+) -> dict[str, Any]:
+    """Fit an evidence-based referral rule using training labels only.
+
+    Selection maximizes consensus-referral F1 (disputed-rating target) subject to a minimum
+    auto-decision coverage floor. Only the referral *rule* and route-support threshold are
+    chosen; the underlying three-class prediction is never altered by this policy.
+    """
+    ids = [item_id for item_id in train_ids if item_id in result_rows]
+    disputed = {
+        item_id
+        for item_id in ids
+        if _human_agreement_bucket(labels.get(item_id)) == "disputed"
+    }
+    known = {
+        item_id
+        for item_id in ids
+        if _human_agreement_bucket(labels.get(item_id)) in {"unanimous", "disputed"}
+    }
+    errors = {
+        item_id
+        for item_id in ids
+        if str(result_rows[item_id].get("label") or "") != targets.get(item_id)
+    }
+
+    candidates: list[dict[str, Any]] = []
+    for rule in EVIDENCE_REFERRAL_RULES:
+        for support in support_candidates:
+            referred = {
+                item_id
+                for item_id in ids
+                if _evidence_referral(
+                    _row_evidence_signals(
+                        result_rows[item_id], tree, min_route_support=support
+                    ),
+                    {"rule": rule},
+                )[0]
+            }
+            n = len(ids)
+            coverage = (1 - len(referred) / n) if n else 1.0
+            referred_known = referred & known
+            referred_disputed = referred & disputed
+            precision = (
+                len(referred_disputed) / len(referred_known)
+                if referred_known
+                else None
+            )
+            recall = len(referred_disputed) / len(disputed) if disputed else None
+            if precision is None or recall is None or precision + recall == 0:
+                f1 = 0.0 if precision is not None and recall is not None else None
+            else:
+                f1 = 2 * precision * recall / (precision + recall)
+            candidates.append(
+                {
+                    "rule": rule,
+                    "min_route_support": support,
+                    "coverage": coverage,
+                    "review_rate": (len(referred) / n if n else 0.0),
+                    "referral_precision": precision,
+                    "referral_recall": recall,
+                    "referral_f1": f1,
+                    "error_capture_recall": (
+                        len(referred & errors) / len(errors) if errors else None
+                    ),
+                }
+            )
+
+    def rank(candidate: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            candidate["coverage"] >= coverage_floor,
+            candidate["referral_f1"] if candidate["referral_f1"] is not None else -1.0,
+            candidate["error_capture_recall"]
+            if candidate["error_capture_recall"] is not None
+            else -1.0,
+            candidate["coverage"],
+        )
+
+    selected = max(candidates, key=rank) if candidates else {
+        "rule": "disagreement",
+        "min_route_support": 2,
+    }
+    return {
+        "version": "evidence-referral-v1",
+        "selection_split": "official_train",
+        "coverage_floor": coverage_floor,
+        "rule": selected["rule"],
+        "min_route_support": selected["min_route_support"],
+        "train_metrics": {
+            key: selected.get(key)
+            for key in (
+                "coverage",
+                "review_rate",
+                "referral_precision",
+                "referral_recall",
+                "referral_f1",
+                "error_capture_recall",
+            )
+        },
+        "candidates": candidates,
     }
 
 
@@ -1045,12 +1666,20 @@ def _engine_from(config: dict[str, Any], ctx: NodeRunContext) -> Any:
         raise ValueError("Cali-Tree requires an explicitly configured engine model")
     temperature = config.get("temperature")
     kwargs: dict[str, Any] = {} if temperature is None else {"temperature": temperature}
+    creds = load_creds()
+    if bool(config.get("health_check")):
+        reorder_creds_by_health(
+            creds,
+            model=model,
+            logger=ctx.run.logger,
+        )
     return get_engine(
         config.get("engine_kind") or "gpt",
         history=ctx.run.history,
         model=model,
-        creds=load_creds(),
+        creds=creds,
         max_tokens=int(config.get("max_tokens") or 4096),
+        timeout=max(1, int(config.get("timeout") or 300)),
         **kwargs,
     )
 
@@ -1063,13 +1692,149 @@ def _media(sample: dict[str, Any]) -> list[dict[str, str]]:
     return [{"type": "image", "path": source}, {"type": "image", "path": edited}]
 
 
+def _media_with_change(
+    sample: dict[str, Any], descriptor: str, map_path: str
+) -> list[dict[str, str]]:
+    """SOURCE + EDITED + the localized change map + its textual descriptor."""
+    media = _media(sample)
+    media.append({"type": "image", "path": str(map_path)})
+    media.append({"type": "text", "text": str(descriptor)})
+    return media
+
+
 def _parse_judgment(content: str) -> dict[str, Any]:
     try:
         parsed = parse_json_object(content)
     except (ValueError, TypeError):
         parsed = None
     if not isinstance(parsed, dict):
+        # GPT-4o occasionally follows the rubric reasoning but emits a prose conclusion
+        # instead of the requested JSON.  Accept only an explicit final-label marker; never
+        # infer a label from incidental words in the rationale. This preserves a useful,
+        # auditable judgment and prevents the training loop from repeatedly paying for the
+        # same otherwise-complete call.
+        prose_labels = re.findall(
+            r"(?:final\s+(?:assessment|label|verdict|decision)|"
+            r"overall\s+(?:assessment|label|verdict|decision)|"
+            r"conclusion|judgment)\s*(?:is|:|-)\s*[*_\s:,-]*"
+            r"(?:the\s+(?:edit|label|verdict)\s+is\s+)?"
+            r"(no|partial|yes)\b",
+            str(content),
+            flags=re.IGNORECASE,
+        )
+        if prose_labels:
+            label = prose_labels[-1].lower()
+            return {
+                "label": label,
+                "rationale": str(content).strip(),
+                "raw_content": content,
+                "valid": True,
+                "parser_mode": "explicit_prose_final_label",
+                "conflict_reason": "explicit prose final label recovered",
+            }
+        # Some optimized rubrics express the terminal decision as a presence phrase rather
+        # than a categorical token ("fully/partly/not present"). Restrict recovery to an
+        # explicit requested-edit phrase so incidental rationale text remains invalid.
+        presence_labels = re.findall(
+            r"(?:requested\s+(?:edit|change)|the\s+edit|the\s+requested\s+change)"
+            r"\s+(?:is\s+)?(?:[*_]+)?"
+            r"(not\s+present|absent|partly\s+present|partially\s+present|fully\s+present)\b",
+            str(content),
+            flags=re.IGNORECASE,
+        )
+        if presence_labels:
+            phrase = " ".join(presence_labels[-1].lower().split())
+            label = (
+                "no" if phrase in {"not present", "absent"}
+                else "partial" if phrase in {"partly present", "partially present"}
+                else "yes"
+            )
+            # Preserve the structured parser's strict scene-continuity rule when the prose
+            # scorecard explicitly marks continuity as failed.
+            if re.search(
+                r"scene\s+continuity[\s\S]{0,160}?(?:label\s*[:=-]\s*)?(?:[*_]+)?no\b",
+                str(content),
+                flags=re.IGNORECASE,
+            ):
+                label = "no"
+            return {
+                "label": label,
+                "rationale": str(content).strip(),
+                "raw_content": content,
+                "valid": True,
+                "parser_mode": "explicit_prose_presence_label",
+                "conflict_reason": "explicit prose presence label recovered",
+            }
+        final_sections = re.split(
+            r"(?:final\s+assessment|rubric\s+scores)\s*:",
+            str(content),
+            flags=re.IGNORECASE,
+        )
+        if len(final_sections) > 1:
+            scorecard = final_sections[-1]
+            requested_match = re.search(
+                r"requested\s+change\s*[*_\s:=-]+(no|partial|yes)\b",
+                scorecard,
+                flags=re.IGNORECASE,
+            )
+            scene_match = re.search(
+                r"scene\s+continuity\s*[*_\s:=-]+(no|partial|yes)\b",
+                scorecard,
+                flags=re.IGNORECASE,
+            )
+            if requested_match:
+                requested = requested_match.group(1).lower()
+                scene_label = scene_match.group(1).lower() if scene_match else ""
+                label = "no" if requested == "no" or scene_label == "no" else requested
+                return {
+                    "label": label,
+                    "rationale": str(content).strip(),
+                    "raw_content": content,
+                    "valid": True,
+                    "parser_mode": "explicit_prose_scorecard",
+                    "conflict_reason": "explicit prose scorecard recovered",
+                }
+        final_presence = re.findall(
+            r"(?:final\s+(?:assessment|decision)|conclusion)\s*:\s*[*_\s-]*"
+            r"(not\s+present|absent|partly\s+present|partially\s+present|fully\s+present)\b",
+            str(content),
+            flags=re.IGNORECASE,
+        )
+        if final_presence:
+            phrase = " ".join(final_presence[-1].lower().split())
+            label = (
+                "no" if phrase in {"not present", "absent"}
+                else "partial" if phrase in {"partly present", "partially present"}
+                else "yes"
+            )
+            return {
+                "label": label,
+                "rationale": str(content).strip(),
+                "raw_content": content,
+                "valid": True,
+                "parser_mode": "explicit_prose_presence_label",
+                "conflict_reason": "explicit final presence label recovered",
+            }
         return {"label": "", "rationale": "", "raw_content": content, "valid": False}
+    # TextGrad's GPT-4o rewrites sometimes retain a structured four-criterion scorecard but
+    # omit the redundant top-level label. It is still an unambiguous rubric judgment: the
+    # requested-change field controls no/partial/yes, while a failed scene continuity blocks
+    # an otherwise affirmative verdict.
+    nested_scores = parsed.get("rubric_scores")
+    if not parsed.get("label") and isinstance(nested_scores, dict):
+        def nested_label(name: str) -> str:
+            value = nested_scores.get(name)
+            return str(value.get("label") or "").strip().lower() if isinstance(value, dict) else ""
+        requested = nested_label("requested_change")
+        scene_score = nested_label("scene_continuity")
+        if requested in {"no", "partial", "yes"}:
+            label = "no" if requested == "no" or scene_score == "no" else requested
+            rationale = "\n".join(
+                str(value.get("rationale") or "").strip()
+                for value in nested_scores.values() if isinstance(value, dict)
+            ).strip()
+            return {"label": label, "rationale": rationale, "raw_content": content,
+                    "valid": True, "parser_mode": "nested_rubric_scores"}
     model_label = str(parsed.get("label") or "").strip().lower()
     label = model_label
     conflict_reason = ""
@@ -1359,6 +2124,7 @@ class _CaliTreeRuntime:
         optimizer_budget: int,
         prompt_version: str = "calitree_v2",
         concurrency: int = 1,
+        change_signal: str = "off",
     ) -> None:
         self.ctx = ctx
         self.judge_engine = judge_engine
@@ -1367,6 +2133,11 @@ class _CaliTreeRuntime:
         self.optimizer_budget = optimizer_budget
         self.prompt_version = prompt_version
         self.concurrency = max(1, int(concurrency))
+        self.change_signal = change_signal if change_signal in {"off", "all"} else "off"
+        self._change_pre = None
+        if self.change_signal != "off":
+            from ...preprocessing.localized_change import LocalizedChangePreprocessor
+            self._change_pre = LocalizedChangePreprocessor()
         self.optimizer_completion_tokens = 0
         self._usage_lock = threading.Lock()
         self.usage = {
@@ -1389,14 +2160,44 @@ class _CaliTreeRuntime:
     def reset_optimizer_budget(self) -> None:
         self.optimizer_completion_tokens = 0
 
+    def _judge_media(self, sample: dict[str, Any]) -> tuple[list[dict[str, str]], str, str]:
+        """Media + an extra user note + a checkpoint-key component for the change signal.
+
+        The key component stays empty when the signal is off, so existing image-less
+        checkpoints (and cross-run resume) reuse unchanged; a non-empty component makes a
+        change-augmented judgment a distinct cache entry.
+        """
+        if self.change_signal == "all" and self._change_pre is not None:
+            try:
+                evidence = self._change_pre.run(sample)
+            except (ValueError, OSError, KeyError):
+                return _media(sample), "", ""
+            note = (
+                " A third image is the SOURCE→EDITED change map; use it and the change "
+                "descriptor to judge whether the requested edit is fully, partly, or not present."
+            )
+            return (
+                _media_with_change(
+                    sample, evidence["descriptor"], evidence["change_map_path"]
+                ),
+                note,
+                str(evidence.get("cache_key") or ""),
+            )
+        return _media(sample), "", ""
+
     def judge(self, prompt: str, sample: dict[str, Any]) -> dict[str, Any]:
-        key = f"{self.ctx.node_id}::calitree::judge::{_hash(prompt, sample.get('item_id'))}"
+        media, note, change_key = self._judge_media(sample)
+        key_parts = [prompt, sample.get("item_id")]
+        if change_key:
+            key_parts.append(change_key)
+        key = f"{self.ctx.node_id}::calitree::judge::{_hash(*key_parts)}"
         if self.ctx.checkpoint.has(key):
             return self.ctx.checkpoint.get(key)
         instruction = str((sample.get("input") or {}).get("instruction") or "")
         result = self.judge_engine.generate(
-            f"Instruction: {instruction}\nThe first image is SOURCE; the second is EDITED.",
-            media_inputs=_media(sample),
+            f"Instruction: {instruction}\nThe first image is SOURCE; the second is EDITED."
+            + note,
+            media_inputs=media,
             system=prompt,
         )
         self._record(result, "judge")
@@ -1624,6 +2425,25 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
         "semantic_premerge_levels": {
             "type": "number", "default": 2, "min": 0, "max": 10,
         },
+        "clustering_algorithm": {
+            "type": "enum", "default": "semantic_complete_link",
+            "options": ["semantic_complete_link", "behavioral_complete_link"],
+        },
+        "semantic_similarity_weight": {
+            "type": "number", "default": 0.35, "min": 0, "max": 1,
+        },
+        "behavior_similarity_weight": {
+            "type": "number", "default": 0.25, "min": 0, "max": 1,
+        },
+        "cross_generalization_weight": {
+            "type": "number", "default": 0.40, "min": 0, "max": 1,
+        },
+        "behavioral_probe_cap": {
+            "type": "number", "default": 48, "min": 1,
+        },
+        "cross_generalization_cap": {
+            "type": "number", "default": 6, "min": 1,
+        },
         "validation_fraction": {
             "type": "number", "default": 0.25, "min": 0, "max": 0.5,
         },
@@ -1657,6 +2477,32 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
         "editor_prior_min_support": {
             "type": "number", "default": 20, "min": 1,
         },
+        "evidence_referral_coverage_floor": {
+            "type": "number", "default": 0.5, "min": 0, "max": 1,
+        },
+        "specialization_mode": {
+            "type": "enum", "default": "replace",
+            "options": ["replace", "additive"],
+        },
+        "leaf_grouping": {
+            "type": "enum", "default": "task",
+            "options": ["task", "failure_mode", "residual_context", "per_case"],
+        },
+        "min_leaf_fit_support": {
+            "type": "number", "default": 4, "min": 1,
+        },
+        "root_objective": {
+            "type": "enum", "default": "balanced",
+            "options": ["balanced", "coverage"],
+        },
+        "change_signal": {
+            "type": "enum", "default": "off",
+            "options": ["off", "all"],
+        },
+        "architecture": {
+            "type": "enum", "default": "hierarchical",
+            "options": ["hierarchical", "rubric_lite"],
+        },
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
@@ -1670,14 +2516,53 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                 status="error",
                 error="Cali-Tree Train requires samples, labels, judge_engine, and optimizer_engine",
             )
+        architecture = str(ctx.params.get("architecture") or "hierarchical")
+        if architecture not in {"hierarchical", "rubric_lite"}:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown architecture {architecture!r}",
+            )
+        # The flat architecture is one global prompt with no embedding-based routing, so it
+        # trains the same consensus/editor-prior/selective-policy machinery (below) without an
+        # embedding model at all -- mirrors calitree_judge's existing single_global_rubric path.
         embedding_model = str(ctx.params.get("embedding_model") or "").strip()
-        if not embedding_model and not ctx.dry_run:
+        if not embedding_model and not ctx.dry_run and architecture != "rubric_lite":
             return NodeRunResult(status="error", error="embedding_model must be configured")
         prompt_version = str(ctx.params.get("prompt_version") or "calitree_v2")
         if prompt_version not in PROMPT_VERSIONS:
             return NodeRunResult(
                 status="error",
                 error=f"Unknown prompt_version {prompt_version!r}",
+            )
+        specialization_mode = str(ctx.params.get("specialization_mode") or "replace")
+        if specialization_mode not in {"replace", "additive"}:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown specialization_mode {specialization_mode!r}",
+            )
+        leaf_grouping = str(ctx.params.get("leaf_grouping") or "task")
+        if leaf_grouping not in {
+            "task", "failure_mode", "residual_context", "per_case"
+        }:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown leaf_grouping {leaf_grouping!r}",
+            )
+        clustering_algorithm = str(
+            ctx.params.get("clustering_algorithm") or "semantic_complete_link"
+        )
+        if clustering_algorithm not in {
+            "semantic_complete_link", "behavioral_complete_link"
+        }:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown clustering_algorithm {clustering_algorithm!r}",
+            )
+        change_signal = str(ctx.params.get("change_signal") or "off")
+        if change_signal not in {"off", "all"}:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown change_signal {change_signal!r}",
             )
         train_ids = sorted(
             item_id for item_id in set(samples) & set(labels)
@@ -1744,10 +2629,74 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             for item_id in fit_ids
         }
         if ctx.dry_run:
+            estimated_calls = (
+                {
+                    "warm_start_judge_max": 0,
+                    "task_leaf_optimizer_max": 0,
+                    "task_leaf_judge_max": 0,
+                    "component_extraction_max": 0,
+                    "merge_optimizer_max": 0,
+                    "warm_start_judge_max": (
+                        (len(fit_ids) + len(validation_ids)) * (max_steps + 1)
+                    ),
+                    "warm_start_optimizer_max": max_steps,
+                    "global_judge_max": len(train_ids) + len(test_ids),
+                    "test_judge_min": len(test_ids),
+                    "consensus_judge_max": (
+                        3 * (len(train_ids) + len(test_ids))
+                        if bool(ctx.params.get("run_conflict_resolver", True))
+                        else 0
+                    ),
+                }
+                if architecture == "rubric_lite"
+                else {
+                    "warm_start_judge_max": (
+                        len(fit_ids) * (max_steps + 1)
+                    ),
+                    "task_leaf_optimizer_max": (
+                        len(fit_tasks) * max_steps
+                    ),
+                    "task_leaf_judge_max": (
+                        len(fit_ids) * max_steps
+                    ),
+                    "component_extraction_max": (
+                        len(fit_tasks)
+                        + int(ctx.params.get("max_merge_attempts", 20))
+                        + 1
+                    ),
+                    "merge_optimizer_max": (
+                        int(ctx.params.get("max_merge_attempts", 20))
+                        * (max_steps + 1)
+                    ),
+                    "behavioral_cluster_judge_max": (
+                        min(len(fit_ids), int(ctx.params.get("behavioral_probe_cap", 48)))
+                        * (len(fit_tasks) + int(ctx.params.get("max_merge_attempts", 20)))
+                        if clustering_algorithm == "behavioral_complete_link"
+                        else 0
+                    ),
+                    "behavioral_transfer_judge_max": (
+                        2
+                        * min(
+                            int(ctx.params.get("cross_generalization_cap", 6)),
+                            len(fit_ids),
+                        )
+                        * int(ctx.params.get("max_merge_attempts", 20))
+                        if clustering_algorithm == "behavioral_complete_link"
+                        else 0
+                    ),
+                    "test_judge_min": len(test_ids),
+                    "consensus_judge_max": (
+                        3 * (len(train_ids) + len(test_ids))
+                        if bool(ctx.params.get("run_conflict_resolver", True))
+                        else 0
+                    ),
+                }
+            )
             return NodeRunResult(
                 outputs={"prompt_tree": {}, "calitree_report": {}},
                 meta={
                     "dry_run": True,
+                    "architecture": architecture,
                     "n_train": len(train_ids),
                     "n_fit": len(fit_ids),
                     "n_fit_tasks": len(fit_tasks),
@@ -1763,33 +2712,10 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                         calibration_agreement_filter
                     ),
                     "n_test": len(test_ids),
-                    "optimizer_completion_token_budget": budget,
-                    "estimated_calls": {
-                        "warm_start_judge_max": (
-                            len(fit_ids) * (max_steps + 1)
-                        ),
-                        "task_leaf_optimizer_max": (
-                            len(fit_tasks) * max_steps
-                        ),
-                        "task_leaf_judge_max": (
-                            len(fit_ids) * max_steps
-                        ),
-                        "component_extraction_max": (
-                            len(fit_tasks)
-                            + int(ctx.params.get("max_merge_attempts", 20))
-                            + 1
-                        ),
-                        "merge_optimizer_max": (
-                            int(ctx.params.get("max_merge_attempts", 20))
-                            * (max_steps + 1)
-                        ),
-                        "test_judge_min": len(test_ids),
-                        "consensus_judge_max": (
-                            3 * (len(train_ids) + len(test_ids))
-                            if bool(ctx.params.get("run_conflict_resolver", True))
-                            else 0
-                        ),
-                    },
+                    "optimizer_completion_token_budget": (
+                        0 if architecture == "rubric_lite" else budget
+                    ),
+                    "estimated_calls": estimated_calls,
                 },
             )
         try:
@@ -1806,87 +2732,350 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             optimizer_budget=budget,
             prompt_version=prompt_version,
             concurrency=int(judge_config.get("concurrency") or 1),
+            change_signal=change_signal,
         )
         targets = {item_id: _target(labels[item_id]) for item_id in fit_ids}
-        builder = CaliTreeBuilder(
-            judge=runtime.judge,
-            judge_many=runtime.judge_many,
-            optimize=runtime.optimize,
-            extract_components=runtime.extract,
-            embed=runtime.embed,
-            merge_prompts=runtime.merge,
-            format_feedback=lambda ids, case_samples, case_targets, results: _format_feedback(
-                ids,
-                case_samples,
-                case_targets,
-                results,
-                prompt_version=prompt_version,
-            ),
-            max_steps=max_steps,
-            merge_acceptance=float(ctx.params.get("merge_acceptance") or 0.8),
-            similarity_start=float(ctx.params.get("similarity_start") or 0.9),
-            similarity_decay=float(ctx.params.get("similarity_decay") or 0.05),
-            similarity_floor=float(ctx.params.get("similarity_floor") or 0.7),
-            warm_start=bool(ctx.params.get("warm_start", True)),
-            merge_validation_cap=int(ctx.params.get("merge_validation_cap", 6)),
-            merge_regression_tolerance=float(
-                ctx.params.get("merge_regression_tolerance", 0.05)
-            ),
-            merge_generalization_floor=float(
-                ctx.params.get("merge_generalization_floor", 0.8)
-            ),
-            routing_margin=float(ctx.params.get("routing_margin", 0.02)),
-            min_routing_support=int(ctx.params.get("min_routing_support", 2)),
-            singleton_exact_threshold=float(
-                ctx.params.get("singleton_exact_threshold", 0.995)
-            ),
-            global_min_validation_gain=float(
-                ctx.params.get("global_min_validation_gain", 0.0)
-            ),
-            max_merge_attempts=int(ctx.params.get("max_merge_attempts", 20)),
-            semantic_premerge_levels=int(
-                ctx.params.get("semantic_premerge_levels", 2)
-            ),
-            progress=ctx.progress_cb,
-        )
         initial_prompt = _prompt("initial_rubric.txt", prompt_version)
-        tree = builder.build(
-            initial_prompt=initial_prompt,
-            samples={item_id: samples[item_id] for item_id in fit_ids},
-            targets=targets,
-            routing_texts={
-                item_id: _routing_text(samples[item_id]) for item_id in fit_ids
-            },
-            validation_samples={
-                item_id: samples[item_id] for item_id in validation_ids
-            },
-            validation_targets={
-                item_id: _target(labels[item_id]) for item_id in validation_ids
-            },
-            validation_routing_texts={
-                item_id: _routing_text(samples[item_id]) for item_id in validation_ids
-            },
-            semantic_groups={
-                item_id: _semantic_edit_type(samples[item_id])
-                for item_id in fit_ids
-            },
-            leaf_groups={
-                item_id: _task_uid(
-                    item_id, samples[item_id], labels[item_id]
+        all_ids = train_ids + test_ids
+        router_base_results: dict[str, dict[str, Any]] = {}
+        residual_router_policy: Optional[dict[str, Any]] = None
+        cascade_textgrad_results: dict[str, dict[str, Any]] = {}
+        if architecture == "rubric_lite":
+            # No embeddings, no leaves, no clustering, no merges: one global node covering
+            # every case. This flows into the exact same consensus / editor-prior /
+            # selective-policy fitting below as the hierarchical path, so it is a clean test
+            # of whether that machinery needs a tree underneath it at all.
+            tree: dict[str, Any] = {
+                "roots": ["rubric:global"],
+                "nodes": {
+                    "rubric:global": {
+                        "id": "rubric:global",
+                        "prompt": initial_prompt,
+                        "covered_ids": [],
+                        "children": [],
+                        "embedding": [],
+                        "centroid": [],
+                        "validated": True,
+                        "state": "global",
+                    },
+                },
+                "config": {},
+                "architecture": "rubric_lite",
+                "timeline": [],
+                "stats": {
+                    "leaves": 1,
+                    "leaf_cases": len(fit_ids),
+                    "accepted_merges": 0,
+                    "rejected_merges": 0,
+                    "promoted": 0,
+                    "roots": 1,
+                    "specialized_roots": 0,
+                    "merge_attempts": 0,
+                    "merge_budget_exhausted": False,
+                    "specialization_mode": specialization_mode,
+                    "root_source": None,
+                    "accumulated_root": None,
+                },
+            }
+            # The three-way consensus below compares "initial" against "textgrad"
+            # (tree["warm_start_prompt"], falling back to initial_prompt if unset). Without
+            # a genuine second candidate, initial and textgrad would be the identical prompt
+            # and the consensus would degenerate to "trust initial unless critic ties" --
+            # not a real test of the mechanism. Run the same one-global-prompt TextGrad loop
+            # RubricLiteTrainNodeExecutor uses so the flat path gets a real optimized rival.
+            warm_start_targets = {
+                item_id: _target(labels[item_id])
+                for item_id in fit_ids + validation_ids
+            }
+            warm_started = RubricLiteLearner(
+                judge_many=runtime.judge_many,
+                optimize=runtime.optimize,
+                format_feedback=lambda ids, case_samples, case_targets, results: _format_feedback(
+                    ids,
+                    case_samples,
+                    case_targets,
+                    results,
+                    prompt_version=prompt_version,
+                ),
+                max_steps=max_steps,
+                progress=ctx.progress_cb,
+            ).fit(
+                initial_prompt=initial_prompt,
+                samples={
+                    item_id: samples[item_id]
+                    for item_id in fit_ids + validation_ids
+                },
+                targets=warm_start_targets,
+                fit_ids=fit_ids,
+                validation_ids=validation_ids,
+            )
+            tree["warm_start_prompt"] = warm_started.prompt
+            tree["warm_start_accuracy"] = float(
+                warm_started.report["selected"]["validation"].get("accuracy") or 0.0
+            )
+            tree["warm_start_report"] = warm_started.report
+            routed_prompts = {
+                item_id: route_prompt(tree, []) for item_id in all_ids
+            }
+        else:
+            builder = CaliTreeBuilder(
+                judge=runtime.judge,
+                judge_many=runtime.judge_many,
+                optimize=runtime.optimize,
+                extract_components=runtime.extract,
+                embed=runtime.embed,
+                merge_prompts=runtime.merge,
+                format_feedback=lambda ids, case_samples, case_targets, results: _format_feedback(
+                    ids,
+                    case_samples,
+                    case_targets,
+                    results,
+                    prompt_version=prompt_version,
+                ),
+                max_steps=max_steps,
+                merge_acceptance=float(ctx.params.get("merge_acceptance") or 0.8),
+                similarity_start=float(ctx.params.get("similarity_start") or 0.9),
+                similarity_decay=float(ctx.params.get("similarity_decay") or 0.05),
+                similarity_floor=float(ctx.params.get("similarity_floor") or 0.7),
+                warm_start=bool(ctx.params.get("warm_start", True)),
+                merge_validation_cap=int(ctx.params.get("merge_validation_cap", 6)),
+                merge_regression_tolerance=float(
+                    ctx.params.get("merge_regression_tolerance", 0.05)
+                ),
+                merge_generalization_floor=float(
+                    ctx.params.get("merge_generalization_floor", 0.8)
+                ),
+                routing_margin=float(ctx.params.get("routing_margin", 0.02)),
+                min_routing_support=int(ctx.params.get("min_routing_support", 2)),
+                singleton_exact_threshold=float(
+                    ctx.params.get("singleton_exact_threshold", 0.995)
+                ),
+                global_min_validation_gain=float(
+                    ctx.params.get("global_min_validation_gain", 0.0)
+                ),
+                max_merge_attempts=int(ctx.params.get("max_merge_attempts", 20)),
+                semantic_premerge_levels=int(
+                    ctx.params.get("semantic_premerge_levels", 2)
+                ),
+                clustering_algorithm=clustering_algorithm,
+                semantic_similarity_weight=float(
+                    ctx.params.get("semantic_similarity_weight", 0.35)
+                ),
+                behavior_similarity_weight=float(
+                    ctx.params.get("behavior_similarity_weight", 0.25)
+                ),
+                cross_generalization_weight=float(
+                    ctx.params.get("cross_generalization_weight", 0.40)
+                ),
+                behavioral_probe_cap=int(
+                    ctx.params.get("behavioral_probe_cap", 48)
+                ),
+                cross_generalization_cap=int(
+                    ctx.params.get("cross_generalization_cap", 6)
+                ),
+                specialization_mode=specialization_mode,
+                root_objective=str(ctx.params.get("root_objective") or "balanced"),
+                progress=ctx.progress_cb,
+            )
+            # Failure-mode clustering groups leaves by how the base rubric errs rather than by
+            # instruction semantics, so each leaf specializes one coherent, well-supported failure
+            # mode. It needs the base rubric's own predictions first; the pass is checkpointed and
+            # reused by the builder's warm start, so it is not billed twice.
+            if leaf_grouping == "failure_mode":
+                base_results = runtime.judge_many(
+                    initial_prompt,
+                    {item_id: samples[item_id] for item_id in fit_ids},
                 )
-                for item_id in fit_ids
-            },
-        )
+                groups = _failure_mode_groups(base_results, samples, targets, fit_ids)
+                leaf_groups_arg: Optional[dict[str, str]] = groups
+                validation_target_map = {
+                    item_id: _target(labels[item_id]) for item_id in validation_ids
+                }
+                validation_base_results = runtime.judge_many(
+                    initial_prompt,
+                    {item_id: samples[item_id] for item_id in validation_ids},
+                )
+                validation_leaf_groups_arg: Optional[dict[str, str]] = (
+                    _failure_mode_groups(
+                        validation_base_results,
+                        samples,
+                        validation_target_map,
+                        validation_ids,
+                    )
+                )
+                semantic_groups_arg = groups
+            elif leaf_grouping == "residual_context":
+                # The top judge supplies a coarse prediction first. Leaves are optimized on
+                # supported observable contexts of that prediction, never on a target-bearing
+                # failure signature. This makes training and inference routing identical.
+                fit_base_results = runtime.judge_many(
+                    initial_prompt,
+                    {item_id: samples[item_id] for item_id in fit_ids},
+                )
+                validation_base_results = runtime.judge_many(
+                    initial_prompt,
+                    {item_id: samples[item_id] for item_id in validation_ids},
+                )
+                (
+                    leaf_groups_arg,
+                    validation_leaf_groups_arg,
+                    residual_router_policy,
+                ) = _fit_residual_context_partition(
+                    fit_base_results=fit_base_results,
+                    validation_base_results=validation_base_results,
+                    samples=samples,
+                    fit_ids=fit_ids,
+                    validation_ids=validation_ids,
+                    min_fit_support=int(
+                        ctx.params.get("min_leaf_fit_support", 4)
+                    ),
+                    min_validation_support=int(
+                        ctx.params.get("min_routing_support", 2)
+                    ),
+                )
+                router_base_results.update(fit_base_results)
+                router_base_results.update(validation_base_results)
+                semantic_groups_arg = {
+                    item_id: _semantic_edit_type(samples[item_id])
+                    for item_id in fit_ids
+                }
+            elif leaf_grouping == "per_case":
+                leaf_groups_arg = None
+                validation_leaf_groups_arg = None
+                semantic_groups_arg = {
+                    item_id: _semantic_edit_type(samples[item_id]) for item_id in fit_ids
+                }
+            else:  # "task" — the frozen v2 default
+                leaf_groups_arg = {
+                    item_id: _task_uid(item_id, samples[item_id], labels[item_id])
+                    for item_id in fit_ids
+                }
+                validation_leaf_groups_arg = None
+                semantic_groups_arg = {
+                    item_id: _semantic_edit_type(samples[item_id]) for item_id in fit_ids
+                }
+            tree = builder.build(
+                initial_prompt=initial_prompt,
+                samples={item_id: samples[item_id] for item_id in fit_ids},
+                targets=targets,
+                routing_texts={
+                    item_id: _routing_text(samples[item_id]) for item_id in fit_ids
+                },
+                validation_samples={
+                    item_id: samples[item_id] for item_id in validation_ids
+                },
+                validation_targets={
+                    item_id: _target(labels[item_id]) for item_id in validation_ids
+                },
+                validation_routing_texts={
+                    item_id: _routing_text(samples[item_id]) for item_id in validation_ids
+                },
+                validation_leaf_groups=validation_leaf_groups_arg,
+                semantic_groups=semantic_groups_arg,
+                leaf_groups=leaf_groups_arg,
+            )
+            routing_vectors = runtime.embed(
+                [_routing_text(samples[item_id]) for item_id in all_ids]
+            )
+            if residual_router_policy is not None:
+                router_base_results = runtime.judge_many(
+                    initial_prompt,
+                    {item_id: samples[item_id] for item_id in all_ids},
+                )
+                residual_router_policy.update({
+                    "router_prompt": initial_prompt,
+                    "router_prompt_hash": _hash(initial_prompt),
+                    "routes": {
+                        group_id: f"leaf:{group_id}"
+                        for group_id in residual_router_policy["group_ids"]
+                    },
+                    "fallback": tree["roots"][0],
+                })
+                tree["prediction_conditioned_router"] = residual_router_policy
+                cascade_prompt = str(tree.get("warm_start_prompt") or initial_prompt)
+                cascade_textgrad_results = runtime.judge_many(
+                    cascade_prompt,
+                    {item_id: samples[item_id] for item_id in all_ids},
+                )
+                cascade_policy = _fit_pareto_prompt_cascade(
+                    initial_results=router_base_results,
+                    optimized_results=cascade_textgrad_results,
+                    samples=samples,
+                    targets={
+                        item_id: _target(labels[item_id]) for item_id in all_ids
+                    },
+                    fit_ids=fit_ids,
+                    validation_ids=validation_ids,
+                    min_fit_support=int(
+                        ctx.params.get("min_leaf_fit_support", 4)
+                    ),
+                )
+                root_id = tree["roots"][0]
+                root_embedding = list(
+                    ((tree.get("nodes") or {}).get(root_id) or {}).get("embedding")
+                    or []
+                )
+                for key, rule in cascade_policy["rules"].items():
+                    node_id = f"cascade:textgrad:{_hash(key)}"
+                    tree["nodes"][node_id] = {
+                        "id": node_id,
+                        "prompt": cascade_prompt,
+                        "covered_ids": rule["fit_ids"],
+                        "embedding": root_embedding,
+                        "components": {},
+                        "level": 1,
+                        "status": "cascade",
+                        "children": [],
+                        "validation_accuracy": (
+                            rule["validation_optimized_correct"]
+                            / rule["validation_support"]
+                            if rule["validation_support"] else 0.0
+                        ),
+                        "routing_threshold": -1.0,
+                        "routing_eligible": True,
+                        "routing_support": rule["fit_support"],
+                        "routing_validation_support": rule["validation_support"],
+                        "routing_validation_accuracy": (
+                            rule["validation_optimized_correct"]
+                            / rule["validation_support"]
+                            if rule["validation_support"] else None
+                        ),
+                        "routing_baseline_accuracy": (
+                            rule["validation_initial_correct"]
+                            / rule["validation_support"]
+                            if rule["validation_support"] else None
+                        ),
+                        "behavior_profile": [],
+                        "semantic_groups": [],
+                        "criteria_embedding": [],
+                        "member_embeddings": [],
+                        "conflict_reason": "",
+                        "generalization_accuracy": None,
+                    }
+                    tree["prediction_conditioned_router"]["routes"][key] = node_id
+                    tree["nodes"][root_id].setdefault("children", []).append(node_id)
+                tree["pareto_prompt_cascade"] = cascade_policy
+                tree["stats"]["cascade_routes"] = len(cascade_policy["rules"])
+                routed_prompts = {
+                    item_id: route_prompt(
+                        tree,
+                        vector,
+                        routing_keys=_residual_context_keys(
+                            samples[item_id],
+                            str(router_base_results[item_id].get("label") or ""),
+                        ),
+                    )
+                    for item_id, vector in zip(all_ids, routing_vectors)
+                }
+            else:
+                routed_prompts = {
+                    item_id: route_prompt(tree, vector)
+                    for item_id, vector in zip(all_ids, routing_vectors)
+                }
         tree["embedding_model"] = embedding_model
         tree["prompt_version"] = prompt_version
-        all_ids = train_ids + test_ids
-        routing_vectors = runtime.embed(
-            [_routing_text(samples[item_id]) for item_id in all_ids]
-        )
-        routed_prompts = {
-            item_id: route_prompt(tree, vector)
-            for item_id, vector in zip(all_ids, routing_vectors)
-        }
+        tree["change_signal"] = change_signal
+        tree["leaf_grouping"] = leaf_grouping
         results_by_prompt: dict[str, dict[str, dict[str, Any]]] = {}
         prompt_routes: dict[str, dict[str, Any]] = {}
         for item_id, routed in routed_prompts.items():
@@ -1915,12 +3104,18 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             all_samples = {
                 item_id: samples[item_id] for item_id in all_ids
             }
-            initial_results = runtime.judge_many(initial_prompt, all_samples)
+            initial_results = (
+                router_base_results
+                if set(router_base_results) == set(all_ids)
+                else runtime.judge_many(initial_prompt, all_samples)
+            )
             textgrad_prompt = str(
                 tree.get("warm_start_prompt") or initial_prompt
             )
-            textgrad_results = runtime.judge_many(
-                textgrad_prompt, all_samples
+            textgrad_results = (
+                cascade_textgrad_results
+                if set(cascade_textgrad_results) == set(all_ids)
+                else runtime.judge_many(textgrad_prompt, all_samples)
             )
         if run_conflict_resolver:
             critic_prompt = _prompt("conflict_resolver.txt", "calitree_v2")
@@ -2068,6 +3263,17 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             tree_results[item_id]["selective_policy_version"] = (
                 selective_policy["version"]
             )
+        evidence_referral_policy = _fit_evidence_referral_policy(
+            tree_results,
+            tree,
+            all_targets,
+            labels,
+            calibration_train_ids,
+            coverage_floor=float(
+                ctx.params.get("evidence_referral_coverage_floor", 0.5)
+            ),
+        )
+        tree["evidence_referral_policy"] = evidence_referral_policy
         # The routed judge node commonly consumes the same samples immediately after
         # training. Preserve those exact, already-paid judgments so evaluation is both
         # reproducible and free of duplicate model calls. Cache hits are accepted only
@@ -2076,12 +3282,23 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             item_id: {
                 "prompt_hash": _hash("calitree_prediction", routed_prompts[item_id]["prompt"]),
                 "result": tree_results[item_id],
+                **(
+                    {
+                        "routing_keys": _residual_context_keys(
+                            samples[item_id],
+                            str(router_base_results[item_id].get("label") or ""),
+                        )
+                    }
+                    if residual_router_policy is not None
+                    else {}
+                ),
             }
             for item_id in all_ids
         }
         tree_predictions = {item_id: row["label"] for item_id, row in tree_results.items()}
         report: dict[str, Any] = {
             "version": "calitree-v2",
+            "architecture": architecture,
             "prompt_version": prompt_version,
             "n_train": len(train_ids),
             "n_fit": len(fit_ids),
@@ -2104,6 +3321,8 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             ),
             "editor_prior_policy": tree.get("editor_prior_policy"),
             "selective_policy": selective_policy,
+            "evidence_referral_policy": tree.get("evidence_referral_policy"),
+            "tree_metrics": _tree_metrics(tree),
             "timeline": tree["timeline"],
             "calitree": {
                 "train": _metrics_with_human_agreement(
@@ -2180,6 +3399,17 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                         labels,
                     ),
                 }
+            report["baseline_predictions"] = {
+                item_id: {
+                    "initial": initial_results[item_id].get("label"),
+                    "textgrad": textgrad_results[item_id].get("label"),
+                    "target": all_targets[item_id],
+                    "split": samples[item_id].get("split"),
+                    "editor": samples[item_id].get("editor"),
+                    "operation": _semantic_edit_type(samples[item_id]),
+                }
+                for item_id in all_ids
+            }
         ctx.run.write_json(f"calitree_tree_{ctx.node_id}.json", tree)
         ctx.run.write_json(f"calitree_{ctx.node_id}.json", report)
         return NodeRunResult(
@@ -2208,7 +3438,7 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
         "human_review_mode": {
             "type": "enum",
             "default": "off",
-            "options": ["off", "selective_policy"],
+            "options": ["off", "selective_policy", "evidence_policy"],
         },
     }
 
@@ -2222,13 +3452,17 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                 error="Cali-Tree Judge requires samples, prompt_tree, and judge_engine",
             )
         human_review_mode = str(ctx.params.get("human_review_mode") or "off")
-        if human_review_mode not in {"off", "selective_policy"}:
+        if human_review_mode not in {"off", "selective_policy", "evidence_policy"}:
             return NodeRunResult(
                 status="error",
                 error=f"Unsupported human_review_mode: {human_review_mode}",
             )
-        if human_review_mode == "selective_policy" and not tree.get(
-            "selective_policy"
+        # The persisted-policy guards fail before any billable call. In a dry run the tree
+        # is empty (training does not build it), so the guard is a no-op there.
+        if (
+            not ctx.dry_run
+            and human_review_mode == "selective_policy"
+            and not tree.get("selective_policy")
         ):
             return NodeRunResult(
                 status="error",
@@ -2237,12 +3471,30 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                     "prompt_tree with a persisted selective_policy"
                 ),
             )
+        if (
+            not ctx.dry_run
+            and human_review_mode == "evidence_policy"
+            and not tree.get("evidence_referral_policy")
+        ):
+            return NodeRunResult(
+                status="error",
+                error=(
+                    "human_review_mode=evidence_policy requires a "
+                    "prompt_tree with a persisted evidence_referral_policy"
+                ),
+            )
         if ctx.dry_run:
+            prediction_conditioned = bool(
+                tree.get("prediction_conditioned_router")
+            )
             return NodeRunResult(
                 outputs={"judge_result": {}},
                 meta={
                     "dry_run": True,
-                    "estimated_calls": len(samples),
+                    "estimated_calls": len(samples) * (
+                        2 if prediction_conditioned else 1
+                    ),
+                    "prediction_conditioned_routing": prediction_conditioned,
                     "human_review_mode": human_review_mode,
                 },
             )
@@ -2259,6 +3511,9 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
             optimizer_budget=0,
             prompt_version=str(tree.get("prompt_version") or "calitree_v2"),
             concurrency=int(engine_config.get("concurrency") or 1),
+            # Routed judging reuses the change signal the tree was trained with, so training
+            # and inference see the same evidence.
+            change_signal=str(tree.get("change_signal") or "off"),
         )
         single_global_rubric = tree.get("architecture") == "rubric_lite"
         if not runtime.embedding_model and not single_global_rubric:
@@ -2277,9 +3532,46 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
             routing_vectors = runtime.embed(
                 [_routing_text(samples[item_id]) for item_id in item_ids]
             )
-            routed_rows = [
-                route_prompt(tree, vector) for vector in routing_vectors
-            ]
+            residual_router = tree.get("prediction_conditioned_router") or {}
+            if residual_router:
+                router_prompt = str(residual_router.get("router_prompt") or "")
+                if not router_prompt:
+                    return NodeRunResult(
+                        status="error",
+                        error="prediction-conditioned tree has no router_prompt",
+                    )
+                routing_keys_by_id: dict[str, list[str]] = {}
+                needs_router: dict[str, dict[str, Any]] = {}
+                for item_id in item_ids:
+                    stored_keys = (
+                        prediction_cache.get(item_id) or {}
+                    ).get("routing_keys")
+                    if isinstance(stored_keys, list) and all(
+                        isinstance(key, str) for key in stored_keys
+                    ):
+                        routing_keys_by_id[item_id] = stored_keys
+                    else:
+                        needs_router[item_id] = samples[item_id]
+                router_results = (
+                    runtime.judge_many(router_prompt, needs_router)
+                    if needs_router else {}
+                )
+                for item_id, result in router_results.items():
+                    routing_keys_by_id[item_id] = _residual_context_keys(
+                        samples[item_id], str(result.get("label") or "")
+                    )
+                routed_rows = [
+                    route_prompt(
+                        tree,
+                        vector,
+                        routing_keys=routing_keys_by_id[item_id],
+                    )
+                    for item_id, vector in zip(item_ids, routing_vectors)
+                ]
+            else:
+                routed_rows = [
+                    route_prompt(tree, vector) for vector in routing_vectors
+                ]
         for item_id, routed in zip(item_ids, routed_rows):
             routed_by_item[item_id] = routed
             prompt = str(routed["prompt"])
@@ -2426,6 +3718,7 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                         base["policy_base_label"] = policy_base_results[item_id].get("label")
         editor_prior_policy = tree.get("editor_prior_policy") or {}
         selective_policy = tree.get("selective_policy") or {}
+        evidence_referral_policy = tree.get("evidence_referral_policy") or {}
         for item_id in uncached_ids:
             prior_label, prior_rule = _editor_prior_action(
                 editor_prior_policy, samples[item_id]
@@ -2449,21 +3742,40 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
                 result["selective_policy_version"] = selective_policy.get(
                     "version"
                 )
-            needs_human = (
-                human_review_mode == "selective_policy"
-                and selective_accepted is False
-            )
+            if human_review_mode == "selective_policy":
+                needs_human = selective_accepted is False
+                review_reason = (
+                    "selective_policy_accepted"
+                    if selective_accepted
+                    else "selective_policy_rejected"
+                )
+            elif human_review_mode == "evidence_policy":
+                signals = _evidence_signals(
+                    result,
+                    routed,
+                    float(routed.get("route_similarity") or 0.0),
+                    min_route_support=int(
+                        evidence_referral_policy.get("min_route_support", 2)
+                    ),
+                )
+                needs_human, review_reason = _evidence_referral(
+                    signals, evidence_referral_policy
+                )
+                result["evidence_signals"] = signals
+                result["evidence_referral_policy_version"] = (
+                    evidence_referral_policy.get("version")
+                )
+            else:
+                needs_human = False
+                review_reason = "human_review_disabled"
+            # The underlying three-class label is preserved even when referred, so that
+            # full-coverage classification can be measured independently of the policy.
             result["decision_label"] = (
                 "needs_human" if needs_human else result["label"]
             )
             result["needs_human"] = needs_human
             result["human_review_mode"] = human_review_mode
-            if human_review_mode == "off":
-                result["review_reason"] = "human_review_disabled"
-            elif selective_accepted:
-                result["review_reason"] = "selective_policy_accepted"
-            else:
-                result["review_reason"] = "selective_policy_rejected"
+            result["review_reason"] = review_reason
             parsed_output = dict(result.get("parsed") or {})
             parsed_output.update({
                 "label": result["label"],
@@ -2533,6 +3845,12 @@ class CaliTreeEvalNodeExecutor(NodeExecutor):
                     result_rows,
                 )
             },
+            "referral_quality": {
+                "overall": _referral_quality_metrics(
+                    targets, predictions, samples, labels, result_rows
+                )
+            },
+            "tree_metrics": {"routing": _route_metrics(result_rows)},
         }
         for split in ("train", "test"):
             split_ids = [item_id for item_id in ids if samples[item_id].get("split") == split]
@@ -2548,6 +3866,13 @@ class CaliTreeEvalNodeExecutor(NodeExecutor):
                 samples,
                 labels,
                 result_rows,
+            )
+            report["referral_quality"][split] = _referral_quality_metrics(
+                {i: targets[i] for i in split_ids},
+                {i: predictions[i] for i in split_ids},
+                samples,
+                labels,
+                {i: result_rows[i] for i in split_ids},
             )
         ctx.run.write_json(f"calitree_eval_{ctx.node_id}.json", report)
         return NodeRunResult(outputs={"metrics_report": report}, meta={"n_items": len(ids)})

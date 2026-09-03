@@ -1,0 +1,51 @@
+{
+  "protocol": "docs/calitree_status.md#first-confirming-experiment",
+  "status": "confirmed",
+  "hypothesis": "Cali-Tree v2's headline numbers (82.83% full-coverage, 92.87% selective @ 64.25% coverage) come from independent-judge consensus + calibrated abstention / editor-reliability priors, not from the prompt hierarchy (leaves, embeddings, clustering, merge synthesis, routing). If a FLAT single-global-prompt path with the exact same consensus/editor-prior/selective-policy fitting reproduces those numbers, the tree contributes nothing beyond that machinery.",
+  "implementation": {
+    "change": "Added architecture={hierarchical,rubric_lite} to the calitree_train node executor (vejudge/interface/node_calibration/calitree_nodes.py). architecture=rubric_lite skips embedding, leaf specialization, semantic clustering, and merge synthesis entirely: the tree starts and ends as one global node. It then runs the identical three-way consensus resolver (_consensus_result), editor-reliability-prior fitting (_fit_editor_prior), and selective-policy fitting (_fit_selective_policy) that the hierarchical path uses -- byte-identical downstream code, zero special-casing.",
+    "critical_fix": "The first attempt skipped CaliTreeBuilder.build() entirely, which is also where the hierarchical path's 'textgrad' warm-start candidate is produced. Without it, tree.get('warm_start_prompt') fell back to initial_prompt, so the 'initial' and 'textgrad' consensus candidates were the literal same prompt -- the three-way consensus degenerated to 'trust the base rubric unless critic ties', not a real test. Fixed by running a genuine global TextGrad optimization pass (RubricLiteLearner, the same optimizer Rubric-Lite's own training node uses) to produce tree['warm_start_prompt'] before judging. Verified the fix took effect: warm_start_prompt != initial_prompt post-fix, and partial F1 recovered from 0.0 (broken) to a real (non-degenerate) value.",
+    "workflow": "workflows/examples/calitree_imagenhub_flat_selective_full_1200.json",
+    "config": {"architecture": "rubric_lite", "prompt_version": "calitree_v2", "max_steps": 3, "calibration_agreement_filter": "unanimous", "human_review_mode": "selective_policy"},
+    "engine": {"judge_model": "gpt-4.1-mini", "temperature": 0, "concurrency": 8}
+  },
+  "runs": {
+    "dev_120_broken": {
+      "run_dir": "logs/exps/260812-13:47:04-flat-selective-dev120-exps-exps",
+      "note": "First attempt, missing warm-start candidate (see critical_fix). Kept for the record, not used for the confirmation.",
+      "test_120": {"accuracy": 0.825, "balanced_accuracy": 0.3901, "macro_f1": 0.3872, "partial_f1": 0.0}
+    },
+    "dev_120_fixed": {
+      "run_dir": "logs/exps/260812-14:15:53-flat-selective-v2fix-dev120-exps-exps",
+      "test_120": {"accuracy": 0.825, "balanced_accuracy": 0.4945, "macro_f1": 0.4519, "partial_f1": 0.20},
+      "selective_test_120": {"coverage": 0.6417, "n_accepted": 77, "accepted_accuracy": 0.961, "error_capture_rate": 0.8571}
+    },
+    "full_1200_confirmation": {
+      "run_dir": "logs/exps/260812-14:38:42-flat-selective-full1200-exps-exps",
+      "note": "Checkpoint-resumed from the dev-120-fixed run; all 232 train-side calls (including the warm-start optimization) were reused, only the additional 1,200-test-case judge/critic/consensus calls were newly billed (~4,763 total judge calls end to end).",
+      "test_1200_full_coverage": {
+        "accuracy": 0.8275, "balanced_accuracy": 0.5952, "macro_f1": 0.5835, "ordinal_mae": 0.1058,
+        "partial_precision": 0.3596, "partial_recall": 0.237, "partial_f1": 0.2857
+      },
+      "selective_test_1200": {
+        "n_total": 1200, "n_accepted": 758, "n_abstained": 442,
+        "coverage": 0.6317, "review_rate": 0.3683, "error_capture_rate": 0.7488,
+        "accepted_accuracy": 0.9314, "accepted_balanced_accuracy": 0.5833
+      }
+    }
+  },
+  "comparison_vs_frozen_v2_full_1200": {
+    "frozen_v2_full_coverage": {"accuracy": 0.8283, "balanced_accuracy": 0.6041, "macro_f1": 0.5917, "partial_recall": 0.2667, "partial_f1": 0.3144},
+    "flat_selective_full_coverage": {"accuracy": 0.8275, "balanced_accuracy": 0.5952, "macro_f1": 0.5835, "partial_recall": 0.237, "partial_f1": 0.2857},
+    "delta_full_coverage": {"accuracy": -0.0008, "balanced_accuracy": -0.0089, "macro_f1": -0.0082, "partial_recall": -0.0297, "partial_f1": -0.0287},
+    "frozen_v2_selective": {"accepted_accuracy": 0.9287, "coverage": 0.6425, "n_accepted": 771},
+    "flat_selective_selective": {"accepted_accuracy": 0.9314, "coverage": 0.6317, "n_accepted": 758},
+    "delta_selective": {"accepted_accuracy": 0.0027, "coverage": -0.0108, "n_accepted": -13}
+  },
+  "conclusion": "CONFIRMED: a flat single-global-prompt judge with no embeddings, no leaves, no clustering, no merges, and no routing -- running only three-way consensus, an editor-reliability prior, and a fitted selective-abstention policy -- reproduces frozen Cali-Tree v2's full-1,200-case numbers within 0.1-3pp on every full-coverage metric, and MATCHES OR SLIGHTLY EXCEEDS v2's deployable selective headline (93.14% accepted accuracy @ 63.17% coverage, n=758, versus v2's 92.87% @ 64.25%, n=771). The only metric where the flat path meaningfully trails is partial recall/F1 (-3.0pp / -2.9pp), consistent with this session's other finding that partial is a signal problem independent of architecture. This closes the 'first confirming experiment' from docs/calitree_status.md: the prompt hierarchy (leaves, embeddings, semantic clustering, merge synthesis, routing) is not the source of Cali-Tree v2's accuracy or its selective-abstention win. Both are fully attributable to independent-judge consensus plus calibrated editor-reliability priors, which are architecture-agnostic and now demonstrated to work without any tree underneath them.",
+  "caveats": [
+    "Single run, no repeats/bootstrap CI on the flat path itself (frozen v2's 82.83% carries a bootstrap CI of 80.67-84.92% per docs/calitree.md; the flat path's 82.75% falls comfortably inside that interval, but its own CI was not separately computed).",
+    "The flat path's warm-start optimization ran once (3 max steps, same budget as v2's global warm start) on the identical 176-case fit split; a different optimizer seed/budget could shift the specific prompt found.",
+    "Editor-reliability prior and selective-policy fitting are identical code paths shared with v2 by construction -- this experiment isolates the hierarchy specifically, not the calibration machinery, which was never in question."
+  ]
+}

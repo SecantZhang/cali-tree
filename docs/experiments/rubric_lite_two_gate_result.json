@@ -1,0 +1,36 @@
+{
+  "protocol": "docs/experiments/rubric_lite_two_gate_protocol.json",
+  "status": "completed_negative_both_hypotheses_failed_gate",
+  "run_dirs": {
+    "two_gate_macro_f1": "logs/exps/twogate-dev120-macrof1-exps",
+    "min_scalar_macro_f1": "logs/exps/twogate-dev120-minscalar-macrof1-exps",
+    "min_scalar_accuracy": "logs/exps/twogate-dev120-minscalar-acc-exps"
+  },
+  "engine": {"judge_model": "gpt-4.1-mini", "prompt_version": "rubric_lite_v4", "temperature": 0},
+  "usage": {"judge_calls": 352, "note": "One judging pass; the two comparison rungs reused the checkpoints (0 new calls). Fitting is free."},
+  "class_support": {"n": 352, "no": 289, "partial": 44, "yes": 19},
+  "ab_ladder_out_of_fold": [
+    {"config": "min_scalar / accuracy_guarded_partial", "accuracy": 0.8324, "balanced_accuracy": 0.5127, "macro_f1": 0.5211, "partial_precision": 0.425, "partial_recall": 0.3864, "partial_f1": 0.4048, "thresholds": {"no_partial": 75.000001, "partial_yes": 89.000001}},
+    {"config": "min_scalar / macro_f1", "accuracy": 0.7869, "balanced_accuracy": 0.5241, "macro_f1": 0.4998, "partial_precision": 0.2917, "partial_recall": 0.3182, "partial_f1": 0.3043, "thresholds": {"no_partial": 50.000001, "partial_yes": 89.000001}},
+    {"config": "two_gate / macro_f1", "accuracy": 0.7273, "balanced_accuracy": 0.6217, "macro_f1": 0.485, "partial_precision": 0.25, "partial_recall": 0.2273, "partial_f1": 0.2381, "thresholds": {"presence_cut": 25.000001, "completeness_cut": 75.000001}}
+  ],
+  "H1_macro_f1_objective": {
+    "verdict": "not_supported",
+    "note": "macro_f1 selection LOWERED partial F1 (0.30 vs 0.40) and macro F1 (0.50 vs 0.52) versus the existing accuracy_guarded_partial, which already prefers partial F1 within an accuracy band. Pure macro_f1 relaxed the lower cutpoint (75->50) without better partial separation."
+  },
+  "H2_two_gate": {
+    "verdict": "not_supported",
+    "note": "Two independent cutpoints (presence on change_evidence, completeness on specification_fidelity) did NOT separate partial better. two_gate raised balanced accuracy to 0.622 by lifting minority recall, but at a large precision cost (no->partial 28, no->yes 31 out of 289 no cases), so partial F1 fell to 0.238 and accuracy to 0.727."
+  },
+  "advancement_gate": "FAILED — two_gate did not beat both min_scalar rungs on partial F1 and macro F1. Per the preregistered stopping rule, region grounding (step 3) is NOT auto-advanced.",
+  "interpretation": "The best calibrator on this dev slice is the EXISTING min-scalar + accuracy-guarded-partial (partial F1 0.40, macro F1 0.52). Neither a macro-F1 objective nor two independent cutpoints improves partial. This is strong evidence that partial is a SIGNAL problem, not a calibration-representation problem: the model's change_evidence/specification_fidelity scores do not cleanly encode completeness, so no cutpoint reshuffling separates partial. Note also that the flat scored path already achieves partial F1 ~0.40 here — the partial-F1=0.0 collapse seen earlier was specific to the delta-tree's free-form labels + coverage objective, not the flat path.",
+  "stronger_judge_ab": {
+    "verdict": "not_supported",
+    "gate": "does gpt-4.1 raise partial F1 above the gpt-4.1-mini best (0.405)? — FAILED (0.315 < 0.405)",
+    "run_dirs": {"gpt41_two_gate": "logs/exps/twogate-dev120-gpt41-exps", "gpt41_min_scalar_accuracy": "logs/exps/twogate-dev120-gpt41-minscalar-acc-exps"},
+    "gpt41_min_scalar_accuracy": {"accuracy": 0.7983, "balanced_accuracy": 0.496, "macro_f1": 0.4953, "partial_f1": 0.3146},
+    "gpt41_two_gate_macro_f1": {"accuracy": 0.7727, "balanced_accuracy": 0.4991, "macro_f1": 0.4689, "partial_f1": 0.2857},
+    "note": "A stronger judge (gpt-4.1) on the same inputs did NOT move partial — it regressed partial F1, accuracy, and macro F1 vs gpt-4.1-mini. Consistent with the earlier EditInspector gpt-4.1 A/B. Three independent negatives (two-gate, macro-F1 objective, stronger judge) triangulate that partial is not fixable by calibration or a bigger LLM on source+edited images + instruction alone."
+  },
+  "next": "Calibration and judge-model levers are exhausted. The only untried lever is a genuinely different signal (step 3: region-grounded completeness — pixel-change localization independent of the judge's semantic read). Its upside is bounded (~+7 accuracy points) and further capped by partial label noise (only 8-31% of partial targets are unanimous). Proceeding is a deliberate research bet, not an automatic step."
+}

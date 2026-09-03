@@ -1,0 +1,58 @@
+{
+  "protocol": "docs/experiments/calitree_delta_tree_protocol.json",
+  "status": "completed_mechanism_converges_partial_still_unsolved",
+  "run_dir": "logs/exps/calitree-delta-dev120-v2-exps",
+  "config": {"specialization_mode": "additive", "leaf_grouping": "failure_mode", "change_signal": "all"},
+  "engine": {"judge_model": "gpt-4.1-mini", "embedding_model": "text-embedding-3-small", "temperature": 0, "concurrency": 8},
+  "usage": {"judge_calls": 2350, "optimizer_calls": 147, "embedding_calls": 12, "total_tokens": 4567346,
+            "note": "A first attempt failed on a transient Pluto gateway outage (both endpoints timed out) after 120 checkpointed calls; those were reused via --checkpoint-from on the successful retry."},
+  "H1_delta_root_vs_flat_base": {
+    "verdict": "confirmed_for_accuracy",
+    "test_120": {
+      "flat_base_initial_accuracy": 0.775,
+      "delta_tree_accuracy": 0.8167,
+      "note": "First configuration where the tree beats the flat base (previously routed 77.58% < flat 78.25%). root_source=accumulated, root guard accuracy 1.0, 8 full + 8 partial merges accepted vs only 4 rejected — reversing the old 13/20-reject pathology. The specialize->compress->strong-root mechanism converges."
+    }
+  },
+  "H1_caveat_partial_sacrificed": {
+    "test_120": {
+      "delta_tree_balanced_accuracy": 0.5135,
+      "flat_base_balanced_accuracy": 0.5362,
+      "delta_tree_partial_f1": 0.0,
+      "flat_base_partial_f1": 0.3226,
+      "delta_tree_test_confusion": {"no": {"no": 95, "partial": 3, "yes": 3}, "partial": {"no": 6, "partial": 0, "yes": 8}, "yes": {"no": 2, "partial": 0, "yes": 3}},
+      "interpretation": "The accuracy gain is entirely majority-class (no) driven. The accumulated root is selected by widest coverage under a no-regression-vs-base balanced guard, which lets it trade the partial class for a confident `no`: it predicted partial 3 times (all wrong) and got 0/14 partial cases. Balanced accuracy and partial F1 both fell below the flat base."
+    }
+  },
+  "H3_change_signal": {
+    "verdict": "not_supported_in_this_config",
+    "note": "With the localized change map attached to every judge call, partial F1 on the held-out split was still 0.0. This is not a clean A/B (no change_signal=off additive run was made), but the change signal did not rescue partial once the accumulated root optimized for accuracy."
+  },
+  "tree_metrics": {
+    "n_leaves": 34, "n_full_merges": 8, "n_partial_merges": 8, "n_rejected_merges": 4,
+    "n_final_nodes": 82, "compression_ratio": 0.4146, "root_source": "accumulated", "root_guard_accuracy": 1.0,
+    "note": "Node count still grows (partial merges + promotions add nodes), but unlike v2 there is now a single accumulated root that covers everything and is validated >= the flat base."
+  },
+  "conclusion": "The redesign fixes the mechanism: for the first time the hierarchy converges on one strong root that beats the flat rubric on accuracy, and merges accept instead of rejecting. But it confirms the deeper finding again — `partial` is a signal/objective problem. Selecting the root and gating merges on ACCURACY/coverage lets the root abandon partial; the localized change signal did not breach it. Next: (a) select the root and gate merges on macro-F1 / balanced accuracy so the accumulated root cannot trade partial for `no`; (b) a clean change_signal off-vs-on additive A/B to isolate the signal. The untouched EditInspector final partition is unaffected.",
+  "next_experiments": [
+    "root/merge selection on macro-F1 or balanced accuracy instead of accuracy/coverage",
+    "additive change_signal off vs all A/B for a clean H3",
+    "partial-only change-signal leaves (efficiency) once balance is restored"
+  ],
+  "full_1200_case_followup_root_objective_balanced": {
+    "run_dir": "logs/exps/calitree-delta-full1200-v3-exps",
+    "config": {"specialization_mode": "additive", "leaf_grouping": "failure_mode", "change_signal": "all", "root_objective": "balanced"},
+    "note": "Resumed across three checkpointed segments (calitree-delta-full1200-exps -> -v2 -> -v3, ~12,035 total judge calls) after repeated environment/session interruptions; each resume reused all prior checkpointed calls via --checkpoint-from, so no calls were repaid.",
+    "test_1200": {
+      "accuracy": 0.8225, "balanced_accuracy": 0.5613, "macro_f1": 0.5547, "ordinal_mae": 0.1087,
+      "partial_precision": 0.2973, "partial_recall": 0.163, "partial_f1": 0.2105
+    },
+    "tree_structure": {"n_leaves": 36, "n_full_merges": 6, "n_partial_merges": 3, "n_rejected_merges": 11, "n_final_nodes": 68, "compression_ratio": 0.529, "root_source": "accumulated"},
+    "comparison_vs_frozen_v2_full_1200": {
+      "frozen_v2": {"accuracy": 0.8283, "balanced_accuracy": 0.6041, "partial_recall": 0.2667},
+      "delta_tree_balanced_root": {"accuracy": 0.8225, "balanced_accuracy": 0.5613, "partial_recall": 0.163},
+      "delta": {"accuracy": -0.0058, "balanced_accuracy": -0.0428, "partial_recall": -0.1037}
+    },
+    "conclusion": "The root_objective=balanced fix DID work as designed: it eliminated the catastrophic partial collapse seen in the dev-slice run (partial F1 0.0 -> 0.2105 at full scale) by preventing the accumulated root from being selected purely on coverage. This confirms the diagnosed bug and its fix were mechanistically correct. HOWEVER, at full 1,200-case scale the fixed delta-tree still does NOT beat the frozen Cali-Tree v2 baseline on any metric -- it is slightly worse on accuracy (-0.6pp), balanced accuracy (-4.3pp), and partial recall (-10.4pp). So the fix graduates the delta-tree from 'catastrophically broken' to 'a valid but not-better alternative' -- it does not establish that additive specialization / accumulate-into-root is an improvement over the existing frozen v2 mechanism (three-way consensus + editor-reliability priors) at scale. Combined with every other experiment this session (GEPA, two-gate calibration, macro-F1 objective, stronger judge), this closes the delta-tree investigation: the hierarchy-side interventions tried so far do not beat the frozen baseline; the frozen v2's edge appears to come from consensus/editor-prior machinery, not tree structure."
+  }
+}

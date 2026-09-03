@@ -1,11 +1,91 @@
 # Cali-Tree image-judge calibration
 
+> **Status (2026-09-02): the prediction-conditioned optimize–merge–optimize branch now beats
+> the plain GPT-4o judge on a disjoint 120-case ImagenHub holdout (75.83% vs 70.00%).** It does not treat prompt-text
+> similarity as sufficient evidence for a merge: every leaf is optimized first, candidate pairs
+> are ranked by semantic affinity, decision-behavior similarity, and bidirectional
+> cross-generalization, and a merged parent must pass the held-out no-regression guard. The
+> 120-case gain is encouraging but not statistically decisive by an exact paired McNemar test
+> (`13` wins, `6` losses, `p=0.167`), so the flat abstention-first judge remains the production
+> default pending a larger confirmation.
+
 This implementation translates the five-page *Cali-Tree: Hierarchical Calibration for VLM
 Judges* demo paper into VEJudge's workflow system. The paper specifies the construction
 stages and the 179-task, three-repeat evaluation, but not its exact clustering thresholds,
 merge acceptance threshold, optimizer step limit, routing rule, split manifests, or original
 Gemma checkpoint. Those values are therefore explicit, versioned configuration rather than
 claims of exact paper reproduction.
+
+## Behavioral optimize–merge–optimize branch
+
+`clustering_algorithm=behavioral_complete_link` is the new opt-in hierarchy builder. It first
+optimizes every leaf, probes each leaf across the common fit set, and represents its decision
+behavior as a normalized 3×3 human-label/prediction confusion profile. A candidate pair is
+then scored as a normalized weighted combination of complete-link semantic similarity (0.35),
+behavior-profile cosine similarity (0.25), and bidirectional balanced cross-generalization
+(0.40). Parents are optimized on the union and retained only if their held-out balanced accuracy
+does not regress beyond `merge_regression_tolerance`; this preserves `partial` rather than
+trading it for majority-class accuracy. A parent can become the global root only after beating
+the selected flat prompt on the complete internal-validation split without reducing raw
+accuracy. Prediction-conditioned leaves likewise need at least `min_routing_support` matching held-out
+cases and must strictly beat the flat prompt on that cohort. Unvalidated leaves and promoted
+singletons remain diagnostics/clustering inputs but cannot intercept unseen cases.
+
+### Prediction-conditioned residual routing
+
+`leaf_grouping=residual_context` replaces the target-bearing failure-mode route with an
+inference-valid hierarchy. The fixed top prompt predicts `no`, `partial`, or `yes`; the router
+then tries `(editor, operation, top prediction)`, `(editor, top prediction)`, `(operation, top
+prediction)`, and `(top prediction)` in that order. A context survives only when it has enough
+fit and internal-validation support. Its prompt must strictly improve its matching held-out
+cohort or routing falls back to the validated root. Semantic nearest-neighbor routing is never
+used as a fallback for a rejected residual context.
+
+The optimize→merge bridge also fits a Pareto prompt cascade. A globally optimized prompt is
+reused on a top-prediction cohort only when it fixes at least one fit error, introduces zero fit
+regressions, and introduces zero internal-validation regressions. This is target-blind at
+inference; the persisted top prediction chooses the node. High-confidence editor leaves are
+fit from the official training partition only.
+
+The frozen development pilot (58 train, 24 test) scored `87.50%` versus `83.33%`. A subsequent
+holdout used all 232 official training cases and 120 test cases from 15 complete tasks at group
+offset 4, with zero overlap with the development cases:
+
+| GPT-4o, disjoint 120-case holdout | Accuracy | Balanced accuracy | Macro F1 | Ordinal MAE |
+|---|---:|---:|---:|---:|
+| Plain initial judge | 70.00% | 46.39% | 44.24% | 0.1625 |
+| Global TextGrad prompt | 68.33% | 53.31% | 47.31% | 0.1750 |
+| Prediction-conditioned CaliTree | **75.83%** | **53.51%** | **49.03%** | **0.1292** |
+
+The paired attribution matters: editor-prior leaves supply the seven-case accuracy gain, while
+the prediction cascade preserves that 91/120 accuracy and raises balanced accuracy from 45.88%
+to 53.51%. All 120 outputs were valid. The live artifact is
+`logs/exps/calitree-pareto-gpt4o-holdout120-v1-exps/`.
+
+The ImagenHub runner defaults to `gpt-4o` as both judge and optimizer. Start with the free
+preflight, then use explicit `--live` only after reviewing its call count:
+
+```bash
+./run/run_imagenhub_calitree.sh \
+  --workflow workflows/examples/calitree_imagenhub_delta.json \
+  --embedding-model text-embedding-3-small \
+  --specialization-mode additive --leaf-grouping residual_context \
+  --clustering-algorithm behavioral_complete_link
+```
+
+To execute that configured run, append `--live`; both the plain global judge and the tree are
+reported by the workflow so their held-out accuracy, balanced accuracy, macro-F1, and per-label
+recall can be compared directly.
+
+Before a benchmark, add `--pilot` to sample 12 training and 24 held-out cases and bound the run
+to one optimizer step and three merge attempts. Use `--pilot-train-ratio`,
+`--pilot-test-ratio`, `--pilot-group-by-task`, and `--test-group-offset` for larger or disjoint
+confirmations. The first 2026-09-02 GPT-4o pilot caught three live
+path failures (under-supported leaf routing, a locally accepted parent replacing the root
+without a full-split gain, and prose verdicts disappearing from metrics). After the guards and
+parser fixes, the final pilot completed with zero invalid predictions and safely tied the plain
+judge at `83.33%` held-out accuracy. That diagnostic led to the supported residual router and
+the later disjoint holdout result above.
 
 ## Public data setup
 
@@ -131,9 +211,9 @@ Equivalent unoptimized prompts that already fail the shared generalization guard
 without repeating image judgments, and at most 20 merge candidates are attempted by
 default. Routing embeds only inference-time information (instruction and editor family),
 never the target. Unseen cases start at the initial or TextGrad global root selected on the
-internal validation slice and descend while a supported child centroid clears its calibrated
-threshold. Unsupported one-case leaves require a near-exact match; otherwise routing stays
-at the nearest validated ancestor.
+internal validation slice and descend while a supported, held-out-validated child centroid
+clears its calibrated threshold. Under-supported or regressing leaves remain at the nearest
+validated ancestor even on a near-exact embedding match.
 
 Final classification uses a target-blind three-way consensus among the initial rubric,
 matched-budget global TextGrad rubric, and an independent image critic. A strict majority
@@ -314,6 +394,69 @@ Review mode fails before any judge call if the prompt tree has no persisted sele
 policy. The example `rubric_lite_editinspector_zero_shot.json` enables it; its judge engine
 model remains intentionally unset. With review mode off, `decision_label` remains identical
 to `label`, preserving existing workflows.
+
+### Evidence-based referral: separating `partial` from `needs_human`
+
+The selective policy above refers on consensus support plus fitted editor reliability. A
+second, independently versioned referral mode makes the distinction the goal document asks
+for — clear evidence of a *partially* completed edit versus an *indeterminate* case the
+system cannot reliably classify. Set `human_review_mode=evidence_policy` on `calitree_judge`;
+it requires a tree carrying a persisted `evidence_referral_policy` (fitted during
+`calitree_train` on official training labels only) and fails before any judge call otherwise.
+
+The policy is fully target-blind. It refers only on evidence signals already emitted per
+case: `total_disagreement` (the three independent judge paths reach no majority — the
+consensus resolver's uncertainty class), `low_route_similarity` (the case landed below its
+routed node's calibrated routing threshold), and `unsupported_route` (the routed node covers
+fewer than `min_route_support` training cases). It never inspects the human target, dataset
+identity, editor identity, or instruction text. Fitting enumerates the finite
+rule × support grid and selects the configuration maximizing consensus-referral F1 subject to
+a minimum auto-decision coverage floor (default `0.5`). A confident consensus `partial` is
+therefore kept as `partial`; only genuinely indeterminate cases become `needs_human`. The
+underlying three-class `label` is preserved in every result, so full-coverage classification
+stays measurable independently of the review policy.
+
+`calitree_eval` now also reports the full evaluation suite named in `docs/calitree_goal.md`:
+an ordinal MAE (`no=0, partial=0.5, yes=1`, overall and per editor) alongside the existing
+Metric 1 classification block; a `referral_quality` block (Metric 3) with consensus-referral
+precision (`P(disputed | needs_human)`), recall (`P(needs_human | disputed)`), F1, model-error
+capture, error prevalence among referrals, and the fraction of true `partial` cases referred,
+each broken down `by_editor` and `by_operation_family`; and a `tree_metrics` block reporting
+bottom-up compression (leaf count, full/partial/rejected merges, final node count, compression
+ratio, root coverage/accuracy, accuracy loss child→parent, and accuracy/coverage by depth)
+plus routing depth and fallback-to-root rate. The preregistered protocol is
+`docs/experiments/calitree_evidence_referral_protocol.json`; the wired workflow is
+`workflows/examples/calitree_imagenhub_evidence.json`, run via `run/run_imagenhub_calitree.sh`.
+Cali-Tree v2 and Rubric-Lite v4 are unchanged: `human_review_mode=off` reproduces the frozen
+v2 behavior exactly.
+
+#### Live dev-slice result (negative for the referral, suite validated)
+
+The evidence policy and full metric suite were run live on the 120-case development slice
+(15 held-out tasks × 8 editors) plus the 232 official training cases, with `gpt-4.1-mini`
+for judging/optimization and `text-embedding-3-small` for routing (2,835 judge + 161
+optimizer calls, 4.74M tokens; run `logs/exps/calitree-evidence-dev120-v2-exps`, result
+`docs/experiments/calitree_evidence_referral_result.json`).
+
+Full-coverage classification held at the expected level — overall accuracy `82.67%` (352
+cases) and held-out accuracy `80.83%` (120 cases), with the new **ordinal MAE** at `0.109`
+overall / `0.125` held-out. The tree compressed 22 leaves through 2 full and 5 partial
+merges (13 rejected, 10 promoted) to a 40-node forest, routing at mean depth `0.60` with a
+`55%` fallback-to-root rate.
+
+The **evidence-based referral did not fire.** Its three target-blind signals are too rare on
+this data: three-way consensus ties occur in `~0.6%` of training cases and none were
+disputed; the routed node's similarity clears its threshold, so `low_route_similarity` never
+triggers; and `unsupported_route` at support ≥ 1 never triggers. Under the `0.5` coverage
+floor the fit therefore degenerates to zero abstention (`n_referred=0`, consensus-referral
+recall `0.0` over 74 disputed cases). This is a genuine negative result for the current
+signal design, not a pipeline error. For comparison, on the same held-out split the existing
+consensus + editor-reliability `selective_policy` reaches `96.15%` accepted accuracy at
+`65%` coverage. The evidence policy as defined does not beat it here; richer or more
+frequently-firing target-blind signals — consensus-support bands, a partial-specific evidence
+field, or a smaller similarity margin — are the next thing to try. The measurement suite
+(Metric 1 with MAE, Metric 3 consensus-referral precision/recall/F1, and the tree metrics)
+is confirmed working end-to-end on live judgments.
 
 The next zero-call experiment is preregistered in
 `docs/experiments/rubric_lite_multilane_selective_gate.json`. It tests whether the exact

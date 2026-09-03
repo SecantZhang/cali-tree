@@ -11,6 +11,18 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable, Optional
 
 LABELS = ("no", "partial", "yes")
+ORDINAL_VALUE = {"no": 0.0, "partial": 0.5, "yes": 1.0}
+
+
+def ordinal_absolute_error(target: str, prediction: str) -> Optional[float]:
+    """Absolute error on the ``no=0, partial=0.5, yes=1`` ordinal scale.
+
+    Returns ``None`` when either label is outside the ordinal vocabulary so unknown
+    predictions do not silently count as a perfect or worst-case distance.
+    """
+    if target not in ORDINAL_VALUE or prediction not in ORDINAL_VALUE:
+        return None
+    return abs(ORDINAL_VALUE[target] - ORDINAL_VALUE[prediction])
 
 
 def cosine_similarity(left: Iterable[float], right: Iterable[float]) -> float:
@@ -55,6 +67,17 @@ class CaliTreeNode:
     member_embeddings: list[list[float]] = field(default_factory=list)
     generalization_accuracy: Optional[float] = None
     semantic_groups: list[str] = field(default_factory=list)
+    # Specialized routing is opt-in when a held-out leaf cohort exists. A leaf that does
+    # not match or beat the root on enough validation cases remains useful for clustering
+    # but cannot intercept unseen cases.
+    routing_eligible: bool = True
+    routing_validation_support: int = 0
+    routing_validation_accuracy: Optional[float] = None
+    routing_baseline_accuracy: Optional[float] = None
+    # A normalized no/partial/yes confusion profile measured after leaf optimization.
+    # It is deliberately derived from predictions, not prompt wording, so clustering can
+    # discover leaves with compatible decision boundaries.
+    behavior_profile: list[float] = field(default_factory=list)
 
 
 def complete_link_similarity(left: CaliTreeNode, right: CaliTreeNode) -> float:
@@ -79,6 +102,7 @@ def _pair_candidates(
     compatible: Optional[
         Callable[[CaliTreeNode, CaliTreeNode], bool]
     ] = None,
+    pair_score: Optional[Callable[[CaliTreeNode, CaliTreeNode], float]] = None,
 ) -> list[tuple[int, int, float]]:
     candidates: list[tuple[int, int, float]] = []
     for i, left in enumerate(nodes):
@@ -90,7 +114,11 @@ def _pair_candidates(
                 continue
             if compatible is not None and not compatible(left, nodes[j]):
                 continue
-            score = complete_link_similarity(left, nodes[j])
+            score = (
+                pair_score(left, nodes[j])
+                if pair_score is not None
+                else complete_link_similarity(left, nodes[j])
+            )
             if score >= threshold:
                 candidates.append((i, j, score))
     return sorted(candidates, key=lambda row: (-row[2], nodes[row[0]].id, nodes[row[1]].id))
@@ -103,11 +131,12 @@ def greedy_pairs(
     compatible: Optional[
         Callable[[CaliTreeNode, CaliTreeNode], bool]
     ] = None,
+    pair_score: Optional[Callable[[CaliTreeNode, CaliTreeNode], float]] = None,
 ) -> tuple[list[tuple[CaliTreeNode, CaliTreeNode, float]], list[CaliTreeNode]]:
     used: set[int] = set()
     pairs: list[tuple[CaliTreeNode, CaliTreeNode, float]] = []
     for i, j, score in _pair_candidates(
-        nodes, threshold, blocked_pairs, compatible
+        nodes, threshold, blocked_pairs, compatible, pair_score
     ):
         if i not in used and j not in used:
             used.update((i, j))
@@ -118,21 +147,41 @@ def greedy_pairs(
 def classification_metrics(
     targets: dict[str, str], predictions: dict[str, str], samples: dict[str, Any]
 ) -> dict[str, Any]:
-    ids = sorted(set(targets) & set(predictions))
-    correct = sum(targets[item_id] == predictions[item_id] for item_id in ids)
-    confusion = {label: {pred: 0 for pred in LABELS} for label in LABELS}
-    by_editor: dict[str, dict[str, int]] = {}
+    ids = sorted(targets)
+    normalized_predictions = {
+        item_id: (
+            predictions.get(item_id)
+            if predictions.get(item_id) in LABELS
+            else "invalid"
+        )
+        for item_id in ids
+    }
+    correct = sum(
+        targets[item_id] == normalized_predictions[item_id] for item_id in ids
+    )
+    confusion = {
+        label: {pred: 0 for pred in (*LABELS, "invalid")} for label in LABELS
+    }
+    by_editor: dict[str, dict[str, float]] = {}
     distribution = {label: 0 for label in LABELS}
+    abs_errors: list[float] = []
     for item_id in ids:
-        target, prediction = targets[item_id], predictions[item_id]
+        target, prediction = targets[item_id], normalized_predictions[item_id]
         if target in confusion and prediction in confusion[target]:
             confusion[target][prediction] += 1
         if prediction in distribution:
             distribution[prediction] += 1
+        else:
+            distribution["invalid"] = distribution.get("invalid", 0) + 1
         editor = str(samples[item_id].get("editor") or samples[item_id].get("model") or "unknown")
-        row = by_editor.setdefault(editor, {"correct": 0, "n": 0})
+        row = by_editor.setdefault(editor, {"correct": 0, "n": 0, "abs_error_sum": 0.0, "n_ordinal": 0})
         row["n"] += 1
         row["correct"] += int(target == prediction)
+        abs_error = ordinal_absolute_error(target, prediction)
+        if abs_error is not None:
+            abs_errors.append(abs_error)
+            row["abs_error_sum"] += abs_error
+            row["n_ordinal"] += 1
     per_label_accuracy = {
         label: (
             confusion[label][label] / sum(confusion[label].values())
@@ -174,10 +223,19 @@ def classification_metrics(
         "per_label_precision": per_label_precision,
         "per_label_f1": per_label_f1,
         "macro_f1": sum(supported_f1) / len(supported_f1) if supported_f1 else None,
+        "ordinal_mae": (sum(abs_errors) / len(abs_errors) if abs_errors else None),
         "confusion": confusion,
         "prediction_distribution": distribution,
         "per_editor": {
-            editor: {"n": row["n"], "accuracy": row["correct"] / row["n"]}
+            editor: {
+                "n": int(row["n"]),
+                "accuracy": row["correct"] / row["n"],
+                "ordinal_mae": (
+                    row["abs_error_sum"] / row["n_ordinal"]
+                    if row["n_ordinal"]
+                    else None
+                ),
+            }
             for editor, row in sorted(by_editor.items())
         },
     }
@@ -200,6 +258,10 @@ class CaliTreeBuilder:
         ] = None,
         max_steps: int = 3,
         merge_acceptance: float = 0.80,
+        specialization_mode: str = "replace",
+        merge_objective: str = "covered_accuracy",
+        require_ge_base: bool = False,
+        root_objective: str = "balanced",
         similarity_start: float = 0.90,
         similarity_decay: float = 0.05,
         similarity_floor: float = 0.70,
@@ -213,6 +275,12 @@ class CaliTreeBuilder:
         global_min_validation_gain: float = 0.0,
         max_merge_attempts: int = 20,
         semantic_premerge_levels: int = 2,
+        clustering_algorithm: str = "semantic_complete_link",
+        semantic_similarity_weight: float = 0.35,
+        behavior_similarity_weight: float = 0.25,
+        cross_generalization_weight: float = 0.40,
+        behavioral_probe_cap: int = 48,
+        cross_generalization_cap: int = 6,
         progress: Optional[Callable[[str, dict[str, Any]], None]] = None,
     ) -> None:
         self.judge = judge
@@ -224,6 +292,22 @@ class CaliTreeBuilder:
         self.format_feedback = format_feedback
         self.max_steps = max_steps
         self.merge_acceptance = merge_acceptance
+        if specialization_mode not in {"replace", "additive"}:
+            raise ValueError(f"Unknown specialization_mode {specialization_mode!r}")
+        if merge_objective not in {"covered_accuracy", "balanced"}:
+            raise ValueError(f"Unknown merge_objective {merge_objective!r}")
+        self.specialization_mode = specialization_mode
+        # Additive specialization accumulates validated deltas into the root; the natural
+        # acceptance objective there is balanced accuracy against the base, and the root must
+        # never regress below the flat base rubric.
+        self.merge_objective = (
+            "balanced" if specialization_mode == "additive" and
+            merge_objective == "covered_accuracy" else merge_objective
+        )
+        self.require_ge_base = bool(require_ge_base or specialization_mode == "additive")
+        if root_objective not in {"balanced", "coverage"}:
+            raise ValueError(f"Unknown root_objective {root_objective!r}")
+        self.root_objective = root_objective
         self.similarity_start = similarity_start
         self.similarity_decay = similarity_decay
         self.similarity_floor = similarity_floor
@@ -239,6 +323,24 @@ class CaliTreeBuilder:
         self.semantic_premerge_levels = max(
             0, int(semantic_premerge_levels)
         )
+        if clustering_algorithm not in {
+            "semantic_complete_link", "behavioral_complete_link"
+        }:
+            raise ValueError(f"Unknown clustering_algorithm {clustering_algorithm!r}")
+        self.clustering_algorithm = clustering_algorithm
+        weights = (
+            max(0.0, float(semantic_similarity_weight)),
+            max(0.0, float(behavior_similarity_weight)),
+            max(0.0, float(cross_generalization_weight)),
+        )
+        if clustering_algorithm == "behavioral_complete_link" and not any(weights):
+            raise ValueError("behavioral clustering requires at least one positive weight")
+        total_weight = sum(weights) or 1.0
+        self.semantic_similarity_weight = weights[0] / total_weight
+        self.behavior_similarity_weight = weights[1] / total_weight
+        self.cross_generalization_weight = weights[2] / total_weight
+        self.behavioral_probe_cap = max(1, int(behavioral_probe_cap))
+        self.cross_generalization_cap = max(1, int(cross_generalization_cap))
         self.progress = progress
         self.timeline: list[dict[str, Any]] = []
 
@@ -338,6 +440,67 @@ class CaliTreeBuilder:
                 )
         return sum(scores) / len(scores) if scores else 0.0
 
+    @staticmethod
+    def _behavior_profile(
+        ids: list[str],
+        targets: dict[str, str],
+        results: dict[str, dict[str, Any]],
+    ) -> list[float]:
+        """Return a label-confusion fingerprint for a prompt on a fixed probe set.
+
+        A profile has one coordinate per target/prediction pair.  Comparing profiles on
+        the same examples makes leaves with the same *decision behavior* close even when
+        their generated prompt text happens to look unrelated.
+        """
+        profile = [0.0] * (len(LABELS) * len(LABELS))
+        label_index = {label: index for index, label in enumerate(LABELS)}
+        for item_id in ids:
+            target = targets.get(item_id)
+            prediction = (results.get(item_id) or {}).get("label")
+            if target in label_index and prediction in label_index:
+                profile[
+                    label_index[target] * len(LABELS) + label_index[prediction]
+                ] += 1.0
+        total = sum(profile)
+        return [value / total for value in profile] if total else profile
+
+    def _behavioral_pair_score(
+        self,
+        left: CaliTreeNode,
+        right: CaliTreeNode,
+        cross_generalization: Optional[float] = None,
+    ) -> tuple[float, dict[str, float]]:
+        """Score a candidate merge by semantic affinity and bidirectional transfer.
+
+        Cross-generalization is measured lazily for proposed pairs before prompting the merge:
+        a leaf must already classify the other leaf's cases reasonably well. This avoids a
+        quadratic all-leaf evaluation while still preventing embedding-only merges.
+        """
+        semantic = complete_link_similarity(left, right)
+        behavior = cosine_similarity(left.behavior_profile, right.behavior_profile)
+        # Before the exact transfer probe, use the normalized semantic/behavioral portion to
+        # rank candidates.  The transfer weight enters only once a pair is proposed.
+        active_weights = self.semantic_similarity_weight + self.behavior_similarity_weight
+        if cross_generalization is not None:
+            active_weights += self.cross_generalization_weight
+        if active_weights == 0:
+            active_weights = 1.0
+        score = (
+            self.semantic_similarity_weight * semantic
+            + self.behavior_similarity_weight * behavior
+            + (
+                self.cross_generalization_weight * cross_generalization
+                if cross_generalization is not None else 0.0
+            )
+        ) / active_weights
+        diagnostics: dict[str, float] = {
+            "semantic_similarity": semantic,
+            "behavior_similarity": behavior,
+        }
+        if cross_generalization is not None:
+            diagnostics["cross_generalization"] = cross_generalization
+        return score, diagnostics
+
     def _calibrate_routing_thresholds(
         self,
         nodes: dict[str, CaliTreeNode],
@@ -391,6 +554,7 @@ class CaliTreeBuilder:
         validation_samples: Optional[dict[str, Any]] = None,
         validation_targets: Optional[dict[str, str]] = None,
         validation_routing_texts: Optional[dict[str, str]] = None,
+        validation_leaf_groups: Optional[dict[str, str]] = None,
         semantic_groups: Optional[dict[str, str]] = None,
         leaf_groups: Optional[dict[str, str]] = None,
     ) -> dict[str, Any]:
@@ -516,6 +680,87 @@ class CaliTreeBuilder:
             nodes[f"leaf:{group_id}"]
             for group_id in sorted(grouped_ids)
         ]
+        if validation_leaf_groups is not None:
+            for group_id in sorted(grouped_ids):
+                leaf = nodes[f"leaf:{group_id}"]
+                leaf_validation_ids = [
+                    item_id for item_id in external_validation_ids
+                    if validation_leaf_groups.get(item_id) == group_id
+                ]
+                leaf.routing_validation_support = len(leaf_validation_ids)
+                if leaf_validation_ids:
+                    leaf_accuracy, _correct, _results = self._validate(
+                        leaf.prompt,
+                        leaf_validation_ids,
+                        external_validation_samples,
+                        external_validation_targets,
+                    )
+                    warm_baseline_accuracy, _base_correct, _base_results = self._validate(
+                        warm_prompt,
+                        leaf_validation_ids,
+                        external_validation_samples,
+                        external_validation_targets,
+                    )
+                    initial_baseline_accuracy, _initial_correct, _initial_results = self._validate(
+                        initial_prompt,
+                        leaf_validation_ids,
+                        external_validation_samples,
+                        external_validation_targets,
+                    )
+                    leaf.routing_validation_accuracy = leaf_accuracy
+                    leaf.routing_baseline_accuracy = max(
+                        warm_baseline_accuracy, initial_baseline_accuracy
+                    )
+                leaf.routing_eligible = bool(
+                    len(leaf_validation_ids) >= self.min_routing_support
+                    and leaf.routing_validation_accuracy is not None
+                    and leaf.routing_baseline_accuracy is not None
+                    and leaf.routing_validation_accuracy
+                    > leaf.routing_baseline_accuracy
+                    + self.global_min_validation_gain
+                )
+                self.timeline.append({
+                    "kind": "leaf_routing_validation",
+                    "node_id": leaf.id,
+                    "support": leaf.routing_validation_support,
+                    "leaf_accuracy": leaf.routing_validation_accuracy,
+                    "baseline_accuracy": leaf.routing_baseline_accuracy,
+                    "routing_eligible": leaf.routing_eligible,
+                })
+        # Prompt-text embeddings alone are a poor proxy for whether two judges can be
+        # compressed.  In behavioral mode, run every optimized leaf over a common probe set
+        # once and retain both its confusion fingerprint and its transfer predictions.  The
+        # probe is training-only here; actual merge acceptance remains held-out below.
+        behavioral_probe_ids = self._balanced_case_subset(
+            item_ids, targets, self.behavioral_probe_cap
+        )
+        if self.clustering_algorithm == "behavioral_complete_link" and item_ids:
+            for leaf in active:
+                _score, _correct, results = self._validate(
+                    leaf.prompt, behavioral_probe_ids, samples, targets
+                )
+                leaf.behavior_profile = self._behavior_profile(
+                    behavioral_probe_ids, targets, results
+                )
+            self.timeline.append({
+                "kind": "behavioral_clustering_probe",
+                "node_id": "behavioral_clustering",
+                "leaves": len(active),
+                "probe_cases": len(behavioral_probe_ids),
+            })
+
+        def pair_score(left: CaliTreeNode, right: CaliTreeNode) -> float:
+            if self.clustering_algorithm != "behavioral_complete_link":
+                return complete_link_similarity(left, right)
+            return self._behavioral_pair_score(left, right)[0]
+
+        def pair_diagnostics(
+            left: CaliTreeNode, right: CaliTreeNode
+        ) -> dict[str, float]:
+            if self.clustering_algorithm != "behavioral_complete_link":
+                return {"semantic_similarity": complete_link_similarity(left, right)}
+            return self._behavioral_pair_score(left, right)[1]
+
         promoted_count = accepted_merges = rejected_merges = 0
         blocked_pairs: set[frozenset[str]] = set()
         rejected_static_generalization_prompts: set[str] = set()
@@ -555,6 +800,7 @@ class CaliTreeBuilder:
                 threshold,
                 blocked_pairs,
                 compatible,
+                pair_score,
             )
             if not pairs:
                 if threshold <= self.similarity_floor:
@@ -563,6 +809,7 @@ class CaliTreeBuilder:
             next_active = list(unpaired)
             level_success = 0
             for pair_index, (left, right, similarity) in enumerate(pairs):
+                diagnostics = pair_diagnostics(left, right)
                 if merge_attempts >= self.max_merge_attempts:
                     for pending_left, pending_right, _score in pairs[pair_index:]:
                         next_active.extend((pending_left, pending_right))
@@ -576,6 +823,50 @@ class CaliTreeBuilder:
                     })
                     break
                 merge_attempts += 1
+                if self.clustering_algorithm == "behavioral_complete_link":
+                    # Probe transfer only for a candidate that survived the cheap
+                    # semantic/behavior ranking. This is the actual pairwise criterion:
+                    # both leaves must generalize to the other's examples before a parent is
+                    # synthesized or optimized.
+                    left_probe_ids = self._balanced_case_subset(
+                        right.covered_ids, targets, self.cross_generalization_cap
+                    )
+                    right_probe_ids = self._balanced_case_subset(
+                        left.covered_ids, targets, self.cross_generalization_cap
+                    )
+                    _left_raw, _left_correct, left_probe_results = self._validate(
+                        left.prompt, left_probe_ids, samples, targets
+                    )
+                    _right_raw, _right_correct, right_probe_results = self._validate(
+                        right.prompt, right_probe_ids, samples, targets
+                    )
+                    left_on_right = self._balanced_accuracy(
+                        left_probe_ids, targets, left_probe_results
+                    )
+                    right_on_left = self._balanced_accuracy(
+                        right_probe_ids, targets, right_probe_results
+                    )
+                    transfer = (left_on_right + right_on_left) / 2
+                    similarity, diagnostics = self._behavioral_pair_score(
+                        left, right, transfer
+                    )
+                    diagnostics.update({
+                        "left_on_right": left_on_right,
+                        "right_on_left": right_on_left,
+                    })
+                    if similarity < threshold:
+                        blocked_pairs.add(frozenset((left.id, right.id)))
+                        next_active.extend((left, right))
+                        rejected_merges += 1
+                        self.timeline.append({
+                            "kind": "rejected_transfer",
+                            "node_id": f"merge:{level + 1}:{pair_index}:{left.id}:{right.id}",
+                            "level": level + 1,
+                            "similarity": similarity,
+                            "threshold": threshold,
+                            **diagnostics,
+                        })
+                        continue
                 merged = self.merge_prompts(left.prompt, right.prompt)
                 merge_id = f"merge:{level + 1}:{pair_index}:{left.id}:{right.id}"
                 if merged.get("conflict") or not str(merged.get("prompt") or "").strip():
@@ -588,6 +879,7 @@ class CaliTreeBuilder:
                     self.timeline.append({
                         "kind": "branch", "node_id": merge_id, "level": level + 1,
                         "similarity": similarity, "reason": left.conflict_reason,
+                        **diagnostics,
                     })
                     continue
                 raw_merge_prompt = str(merged["prompt"])
@@ -601,6 +893,7 @@ class CaliTreeBuilder:
                         "node_id": merge_id,
                         "level": level + 1,
                         "similarity": similarity,
+                        **diagnostics,
                         "reason": "identical unoptimized prompt already failed the shared guard",
                     })
                     continue
@@ -608,13 +901,18 @@ class CaliTreeBuilder:
                 prompt, accuracy, correct, _results, steps = self._optimize_for_cases(
                     raw_merge_prompt, covered, samples, targets
                 )
-                if accuracy < self.merge_acceptance:
+                # In additive/balanced mode the merged prompt is base + a compacted union of
+                # deltas, so it fits its own cluster by construction; acceptance is decided by
+                # the no-regression-vs-base generalization guard below, not a covered-accuracy
+                # floor. Replace mode keeps the original covered-accuracy gate.
+                if self.merge_objective == "covered_accuracy" and accuracy < self.merge_acceptance:
                     blocked_pairs.add(frozenset((left.id, right.id)))
                     next_active.extend((left, right))
                     rejected_merges += 1
                     self.timeline.append({
                         "kind": "rejected", "node_id": merge_id, "level": level + 1,
                         "accuracy": accuracy, "similarity": similarity, "steps": steps,
+                        **diagnostics,
                     })
                     continue
                 if external_validation_ids:
@@ -651,8 +949,16 @@ class CaliTreeBuilder:
                         warm_guard_accuracy = self._balanced_accuracy(
                             guard_ids, guard_targets, warm_guard_results
                         )
+                        # The absolute balanced floor is calibrated for replace mode; in
+                        # additive/balanced mode a typical balanced accuracy (~0.6) is well
+                        # below 0.80, so only the no-regression-vs-base condition applies —
+                        # that is what keeps delta accumulation monotone.
+                        floor_violated = (
+                            self.merge_objective == "covered_accuracy"
+                            and generalization_accuracy < self.merge_generalization_floor
+                        )
                         if (
-                            generalization_accuracy < self.merge_generalization_floor
+                            floor_violated
                             or
                             generalization_accuracy + self.merge_regression_tolerance
                             < warm_guard_accuracy
@@ -674,11 +980,20 @@ class CaliTreeBuilder:
                                 "generalization_floor": self.merge_generalization_floor,
                                 "similarity": similarity,
                                 "steps": steps,
+                                **diagnostics,
                             })
                             continue
                 components = self.extract_components(prompt)
                 criteria_embedding = self.embed([self.component_text(components)])[0]
                 status = "accepted" if accuracy == 1.0 else "partial"
+                parent_behavior_results: dict[str, dict[str, Any]] = {}
+                if self.clustering_algorithm == "behavioral_complete_link":
+                    # This is deliberately a fresh evaluation of the optimized parent on
+                    # the common probe set.  Reusing child behavior here would turn the next
+                    # level back into text/centroid clustering instead of measuring the merge.
+                    _probe_score, _probe_correct, parent_behavior_results = self._validate(
+                        prompt, behavioral_probe_ids, samples, targets
+                    )
                 parent = CaliTreeNode(
                     id=merge_id,
                     prompt=prompt,
@@ -698,6 +1013,15 @@ class CaliTreeBuilder:
                     semantic_groups=sorted(set(
                         left.semantic_groups + right.semantic_groups
                     )),
+                    behavior_profile=(
+                        self._behavior_profile(
+                            behavioral_probe_ids,
+                            targets,
+                            parent_behavior_results,
+                        )
+                        if self.clustering_algorithm == "behavioral_complete_link"
+                        else []
+                    ),
                 )
                 nodes[parent.id] = parent
                 next_active.append(parent)
@@ -719,12 +1043,17 @@ class CaliTreeBuilder:
                             criteria_embedding=list(source.criteria_embedding),
                             member_embeddings=[list(row) for row in source.member_embeddings],
                             semantic_groups=list(source.semantic_groups),
+                            routing_eligible=source.routing_eligible,
+                            routing_validation_support=source.routing_validation_support,
+                            routing_validation_accuracy=source.routing_validation_accuracy,
+                            routing_baseline_accuracy=source.routing_baseline_accuracy,
                         )
                         nodes[promoted.id] = promoted
                         next_active.append(promoted)
                 self.timeline.append({
                     "kind": status, "node_id": parent.id, "level": level + 1,
                     "accuracy": accuracy, "similarity": similarity, "steps": steps,
+                    **diagnostics,
                 })
                 if self.progress:
                     self.progress("calitree_merge", {
@@ -799,6 +1128,113 @@ class CaliTreeBuilder:
                 "node_id": f"global:{global_source}",
                 **global_selection,
             })
+        accumulated_root_id: Optional[str] = None
+        if self.specialization_mode == "additive":
+            # The root is the accumulation of validated deltas — the widest-coverage accepted
+            # merge. Every accepted merge already cleared the no-regression-vs-base guard, so
+            # this node is validated >= the flat base on its guard set. With no accepted merge
+            # the root falls back to the base rubric, so the root is never worse than flat.
+            accepted_parents = [
+                node for node in nodes.values()
+                if node.status in {"accepted", "partial"}
+            ]
+            if external_validation_ids:
+                baseline_validation_accuracy = (
+                    warm_validation_accuracy
+                    if global_source == "textgrad"
+                    else initial_validation_accuracy
+                )
+                baseline_validation_balanced = (
+                    warm_validation_balanced
+                    if global_source == "textgrad"
+                    else initial_validation_balanced
+                )
+                root_candidates: list[CaliTreeNode] = []
+                for node in accepted_parents:
+                    candidate_accuracy, _correct, candidate_results = self._validate(
+                        node.prompt,
+                        external_validation_ids,
+                        external_validation_samples,
+                        external_validation_targets,
+                    )
+                    candidate_balanced = self._balanced_accuracy(
+                        external_validation_ids,
+                        external_validation_targets,
+                        candidate_results,
+                    )
+                    node.generalization_accuracy = candidate_balanced
+                    node.routing_eligible = bool(
+                        candidate_accuracy >= baseline_validation_accuracy
+                        and candidate_balanced
+                        > baseline_validation_balanced + self.global_min_validation_gain
+                    )
+                    self.timeline.append({
+                        "kind": "accumulated_root_validation",
+                        "node_id": node.id,
+                        "accuracy": candidate_accuracy,
+                        "balanced_accuracy": candidate_balanced,
+                        "baseline_accuracy": baseline_validation_accuracy,
+                        "baseline_balanced_accuracy": baseline_validation_balanced,
+                        "routing_eligible": node.routing_eligible,
+                    })
+                    if node.routing_eligible:
+                        root_candidates.append(node)
+                accepted_parents = root_candidates
+            if accepted_parents:
+                if self.root_objective == "balanced":
+                    # Prefer the accumulated node with the best held-out balanced accuracy
+                    # (each merge's generalization guard already measured it), so the root
+                    # cannot trade the minority `partial` class for a wider `no`-heavy merge.
+                    best = max(
+                        accepted_parents,
+                        key=lambda node: (
+                            node.generalization_accuracy
+                            if node.generalization_accuracy is not None
+                            else -1.0,
+                            len(node.covered_ids),
+                            node.validation_accuracy,
+                            node.id,
+                        ),
+                    )
+                else:
+                    best = max(
+                        accepted_parents,
+                        key=lambda node: (
+                            len(node.covered_ids), node.validation_accuracy, node.id
+                        ),
+                    )
+                global_prompt = best.prompt
+                global_source = "accumulated"
+                accumulated_root_id = best.id
+            else:
+                # Keep the flat prompt already selected on the full validation split. A
+                # locally accepted merge remains useful evidence, but cannot become the
+                # root (or intercept a route) until it improves the complete held-out set.
+                accumulated_root_id = None
+                flat_prompt_source = global_source
+                global_source = "base"
+                global_selection["base_prompt_source"] = flat_prompt_source
+                if external_validation_ids:
+                    global_selection["base_validation_accuracy"] = (
+                        warm_validation_accuracy
+                        if flat_prompt_source == "textgrad"
+                        else initial_validation_accuracy
+                    )
+                else:
+                    global_selection["base_fit_accuracy"] = warm_accuracy
+            global_selection = {
+                **global_selection,
+                "selected": global_source,
+                "criterion": "widest_validated_delta_accumulation",
+                "accumulated_node": accumulated_root_id,
+                "accepted_merges": accepted_merges,
+            }
+            self.timeline.append({
+                "kind": "additive_root",
+                "node_id": f"global:{global_source}",
+                "selected": global_source,
+                "accumulated_node": accumulated_root_id,
+            })
         global_components = self.extract_components(global_prompt)
         global_criteria_embedding = self.embed(
             [self.component_text(global_components)]
@@ -818,9 +1254,13 @@ class CaliTreeBuilder:
             status="global",
             children=[node.id for node in active],
             validation_accuracy=float(
-                global_selection.get(f"{global_source}_validation_accuracy")
-                if external_validation_ids
-                else global_selection.get(f"{global_source}_fit_accuracy")
+                (
+                    global_selection.get(f"{global_source}_validation_accuracy")
+                    if external_validation_ids
+                    else global_selection.get(f"{global_source}_fit_accuracy")
+                )
+                or (nodes[accumulated_root_id].validation_accuracy
+                    if accumulated_root_id else warm_accuracy)
             ),
             routing_threshold=-1.0,
             criteria_embedding=global_criteria_embedding,
@@ -853,9 +1293,20 @@ class CaliTreeBuilder:
                 "global_min_validation_gain": self.global_min_validation_gain,
                 "max_merge_attempts": self.max_merge_attempts,
                 "semantic_premerge_levels": self.semantic_premerge_levels,
+                "clustering_algorithm": self.clustering_algorithm,
+                "semantic_similarity_weight": self.semantic_similarity_weight,
+                "behavior_similarity_weight": self.behavior_similarity_weight,
+                "cross_generalization_weight": self.cross_generalization_weight,
                 "leaf_grouping": (
                     "configured" if leaf_groups else "per_case"
                 ),
+                "specialization_mode": self.specialization_mode,
+                "merge_objective": self.merge_objective,
+                "require_ge_base": self.require_ge_base,
+                "root_objective": self.root_objective,
+                # Additive roots already contain the accumulated deltas, so routing biases to
+                # the root and diverts to a leaf only on a near-exact match.
+                "route_default_to_root": self.specialization_mode == "additive",
             },
             "stats": {
                 "leaves": len(grouped_ids),
@@ -867,11 +1318,19 @@ class CaliTreeBuilder:
                 "specialized_roots": len(active),
                 "merge_attempts": merge_attempts,
                 "merge_budget_exhausted": merge_budget_exhausted,
+                "specialization_mode": self.specialization_mode,
+                "root_source": global_source,
+                "accumulated_root": accumulated_root_id,
             },
         }
 
 
-def route_prompt(tree: dict[str, Any], embedding: list[float]) -> dict[str, Any]:
+def route_prompt(
+    tree: dict[str, Any],
+    embedding: list[float],
+    *,
+    routing_keys: Optional[list[str]] = None,
+) -> dict[str, Any]:
     nodes = tree.get("nodes") or {}
     roots = [node_id for node_id in tree.get("roots") or [] if node_id in nodes]
     if not roots:
@@ -881,6 +1340,37 @@ def route_prompt(tree: dict[str, Any], embedding: list[float]) -> dict[str, Any]
         return cosine_similarity(embedding, nodes[node_id].get("embedding") or [])
 
     current_id = max(roots, key=lambda node_id: (similarity(node_id), node_id))
+    residual_router = tree.get("prediction_conditioned_router") or {}
+    if residual_router:
+        routes = residual_router.get("routes") or {}
+        config = tree.get("config") or {}
+        min_support = max(1, int(config.get("min_routing_support") or 1))
+        for key in routing_keys or []:
+            target_id = routes.get(key)
+            target = nodes.get(target_id) or {}
+            if (
+                target_id in nodes
+                and target.get("routing_eligible", False)
+                and int(
+                    target.get("routing_support")
+                    or target.get("routing_validation_support")
+                    or 0
+                ) >= min_support
+            ):
+                selected = dict(target)
+                selected["route_path"] = [current_id, target_id]
+                selected["route_similarity"] = similarity(target_id)
+                selected["route_basis"] = "top_prediction_context"
+                selected["routing_key"] = key
+                return selected
+        # Prediction-conditioned trees never fall through to a semantically nearby leaf:
+        # an unsupported or rejected correction must preserve the validated top prompt.
+        selected = dict(nodes[current_id])
+        selected["route_path"] = [current_id]
+        selected["route_similarity"] = similarity(current_id)
+        selected["route_basis"] = "top_prediction_fallback"
+        selected["routing_key"] = None
+        return selected
     path = [current_id]
     while True:
         current = nodes[current_id]
@@ -893,13 +1383,21 @@ def route_prompt(tree: dict[str, Any], embedding: list[float]) -> dict[str, Any]
         eligible = [
             child
             for child in children
-            if len(nodes[child].get("covered_ids") or []) >= min_support
-            or similarity(child) >= singleton_exact
+            if nodes[child].get("routing_eligible", True)
+            and (
+                len(nodes[child].get("covered_ids") or []) >= min_support
+                or similarity(child) >= singleton_exact
+            )
         ]
         if not eligible:
             break
         candidate = max(eligible, key=lambda node_id: (similarity(node_id), node_id))
+        # In additive mode the root already carries the accumulated deltas, so a case only
+        # diverts to a specialized child on a near-exact match; otherwise the strong root
+        # (which is validated >= the flat base) handles it, and routing cannot hurt.
         threshold = float(nodes[candidate].get("routing_threshold") or 0.70)
+        if config.get("route_default_to_root"):
+            threshold = max(threshold, singleton_exact)
         if similarity(candidate) < threshold:
             break
         current_id = candidate

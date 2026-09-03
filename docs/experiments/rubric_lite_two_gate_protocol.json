@@ -1,0 +1,36 @@
+{
+  "protocol_version": 1,
+  "status": "completed_see_rubric_lite_two_gate_result.json",
+  "objective": "Solve the partial boundary by (1) selecting cutpoints on macro-F1 and (2) deriving the label in code from two independent gates — presence (change_evidence) and completeness (specification_fidelity) — instead of collapsing to min(scores). Partial is where ~64% of held-out errors concentrate.",
+  "frozen_before_final_eval": true,
+  "baseline_preservation": "Rubric-Lite v4 min-scalar + frozen artifacts unchanged; two_gate is opt-in via calibration_mode. Cali-Tree v2 unchanged.",
+  "hypotheses": [
+    "H1 (objective): selecting cutpoints on macro_f1 rather than accuracy recovers partial recall from ~0 without collapsing to the majority class.",
+    "H2 (two-gate): two independent cutpoints (presence on change_evidence, completeness on specification_fidelity) separate partial where a single min-scalar cutpoint cannot, because ~95% of partial cases share their exact score tuple with a no/yes case under the collapsed scalar."
+  ],
+  "method": {
+    "scalar_baseline": "min(change_evidence, specification_fidelity, source_preservation) + two ordinal cutpoints (rubric_lite.ordinal_label)",
+    "two_gate": "label = no if change_evidence < presence_cut; yes if specification_fidelity >= completeness_cut; else partial (rubric_lite.two_gate_label)",
+    "fitting": "brute-force two independent cutpoints with a per-class recall floor (0.10), selected on macro_f1; nested task-grouped 5-fold out-of-fold estimate (cross_validate_two_gate, seed 44)",
+    "target_blind": "no editor, task, or instruction features; scores only"
+  },
+  "dataset": {
+    "name": "ImagenHub/Text_Guided_Image_Editing",
+    "split_seed": 44,
+    "training_cases": 232,
+    "dev_slice_cases": 120,
+    "development_status": "development/ablation; the out-of-fold CV is the honest metric, not an untouched test"
+  },
+  "engine": {"judge_model": "gpt-4.1-mini", "prompt_version": "rubric_lite_v4", "temperature": 0, "concurrency": 8},
+  "ab_ladder": [
+    "(min_scalar, accuracy_guarded_partial)",
+    "(min_scalar, macro_f1)",
+    "(two_gate, macro_f1)"
+  ],
+  "primary_metrics": ["out_of_fold macro_f1", "partial_precision", "partial_recall", "partial_f1", "balanced_accuracy", "accuracy", "ordinal_mae"],
+  "advancement_gate": "two_gate must beat both min_scalar rungs on partial F1 and macro F1 (out-of-fold) before advancing to region grounding (docs/experiments, step 3) or any full-1200/second-dataset run. Otherwise record the negative result.",
+  "workflow": "workflows/examples/rubric_lite_imagenhub_two_gate.json",
+  "runner": "run/run_imagenhub_calitree.sh --workflow workflows/examples/rubric_lite_imagenhub_two_gate.json --calibration-mode two_gate --selection-objective macro_f1",
+  "reserved": "The untouched EditInspector final 391-case partition is not part of this experiment.",
+  "next_if_plateau": "Region-grounded completeness signal (open-vocab detection; change inside vs outside the instruction's target region), preregistered separately."
+}

@@ -74,8 +74,9 @@ def _retry_after_seconds(resp: Optional["requests.Response"], attempt: int) -> f
 
 
 # Transient statuses worth retrying on the SAME endpoint (gateway/upstream blips):
-# 429 rate limit, 408 request timeout, and 5xx upstream errors (the Pluto proxy returns
-# 502/503/504 when its Gemini upstream resets or read-times-out on large video payloads).
+# 408 request timeout and 5xx upstream errors (the Pluto proxy returns 502/503/504 when
+# its upstream resets or read-times-out on large media payloads).  A 429 is handled
+# separately: when a mirror exists it is a capacity signal, so fail over immediately.
 _RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
 
 
@@ -92,11 +93,11 @@ def chat_completion(
 ) -> ChatResult:
     """POST to the first reachable endpoint, falling over to the rest in order.
 
-    Transient failures — HTTP 429/408/5xx and network errors (connection reset, read
-    timeout) — are retried on the *same* endpoint up to ``max_retries`` times (honoring
-    ``Retry-After`` on 429, else exponential backoff). Only after a transient error
-    exhausts its retries do we fall over to the next endpoint. Non-retryable responses
-    (e.g. 400/401/404) fall over immediately. Raises only if all endpoints fail.
+    Transient failures — HTTP 408/5xx and network errors (connection reset, read timeout)
+    — are retried on the *same* endpoint up to ``max_retries`` times. A 429 falls through
+    to a configured mirror immediately, but retains the same-endpoint retry behavior when
+    it is the only endpoint. Non-retryable responses (e.g. 400/401/404) fall over
+    immediately. Raises only if all endpoints fail.
     """
     payload = {
         "model": model,
@@ -110,7 +111,7 @@ def chat_completion(
     }
 
     errors: list[str] = []
-    for base in endpoints:
+    for endpoint_index, base in enumerate(endpoints):
         url = base.rstrip("/") + "/chat/completions"
         host = urlparse(url).netloc
         for attempt in range(max_retries + 1):
@@ -126,6 +127,13 @@ def chat_completion(
                 break  # exhausted -> next endpoint
 
             if resp.status_code in _RETRYABLE_STATUS:
+                # A per-user 429 means this endpoint is presently saturated for this
+                # workload. Retrying it from every concurrent worker only extends the stall;
+                # move immediately to the configured mirror, which may have independent
+                # capacity. Other transient statuses retain bounded same-endpoint retries.
+                if resp.status_code == 429 and endpoint_index < len(endpoints) - 1:
+                    errors.append(f"{host}: HTTP 429 {resp.text[:300]}")
+                    break
                 if attempt < max_retries:
                     time.sleep(_retry_after_seconds(resp, attempt))
                     continue

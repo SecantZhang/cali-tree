@@ -1,4 +1,5 @@
 import type { NodeProps } from '@xyflow/react'
+import { NODE_PARAM_SCHEMAS } from './paramSchemas'
 import { SimpleParamNode } from './SimpleParamNode'
 import { SocketHandle, socketTop } from './SocketHandle'
 import { SOCKET_COLORS } from './socketTypes'
@@ -9,7 +10,8 @@ export function CaliTreeJudgeNode({ id, data, selected }: NodeProps) {
   return (
     <SimpleParamNode
       id={id} data={d} selected={selected}
-      title="Cali-Tree Judge" color="var(--node-vejudge)" schema={{}}
+      title="Cali-Tree Judge" color="var(--node-vejudge)"
+      schema={NODE_PARAM_SCHEMAS.calitree_judge}
       sockets={
         <>
           <SocketHandle kind="target" id="samples" label="samples" top={socketTop(0, 3)} color={SOCKET_COLORS.samples} />

@@ -1,0 +1,101 @@
+{
+  "protocol_version": 1,
+  "status": "completed_see_calitree_evidence_referral_result.json",
+  "objective": "Evaluate an evidence-based needs_human referral for Cali-Tree v2 that separates a visibly `partial` edit from an indeterminate case, and report the full evaluation suite from docs/calitree_goal.md (Metric 1 with ordinal MAE, Metric 2 auto accuracy + coverage, Metric 3 consensus-referral precision/recall/F1, plus tree-compression metrics).",
+  "frozen_before_final_eval": true,
+  "baseline_preservation": "Cali-Tree v2 and Rubric-Lite v4 are unchanged. The evidence referral is a new human_review_mode=evidence_policy on calitree_judge; human_review_mode=off reproduces the frozen v2 behavior exactly.",
+  "dataset": {
+    "name": "ImagenHub/Text_Guided_Image_Editing",
+    "revision": "a393c006cd0c843d8ca57ae4a6ee954ee376ef67",
+    "split_seed": 44,
+    "training_tasks": 29,
+    "training_cases": 232,
+    "held_out_tasks": 150,
+    "public_editors": 8,
+    "held_out_cases": 1200,
+    "task_grouping": true,
+    "development_status": "The full 1,200-case ImagenHub set has been inspected repeatedly and is development/ablation data, not untouched confirmation."
+  },
+  "model": {
+    "architecture": "calitree",
+    "prompt_version": "calitree_v2",
+    "workflow": "workflows/examples/calitree_imagenhub_evidence.json",
+    "referral": {
+      "human_review_mode": "evidence_policy",
+      "policy_version": "evidence-referral-v1",
+      "fit_on": "official_train_labels_only",
+      "target_blind_signals": [
+        "total_disagreement (three-way consensus has no majority)",
+        "low_route_similarity (routed node below its routing_threshold)",
+        "unsupported_route (routed node covered support < min_route_support)"
+      ],
+      "coverage_floor": 0.5,
+      "rule_candidates": ["disagreement", "routing", "disagreement_or_routing"],
+      "support_candidates": [1, 2, 3],
+      "selection_objective": "consensus_referral_f1_subject_to_coverage_floor",
+      "forbidden_inputs": ["human target", "dataset identity", "editor identity", "instruction text", "test-set performance"]
+    }
+  },
+  "engine": {
+    "judge_model": "gpt-4.1-mini",
+    "optimizer_model": "gpt-4.1-mini",
+    "embedding_model": "text-embedding-3-small",
+    "kind": "gpt",
+    "temperature": 0,
+    "max_tokens": 1024,
+    "concurrency": 8
+  },
+  "primary_metrics": [
+    "accuracy",
+    "balanced_accuracy",
+    "macro_f1",
+    "per_class_precision_recall_f1",
+    "confusion_matrix",
+    "ordinal_mae",
+    "per_editor_accuracy",
+    "per_editor_ordinal_mae",
+    "human_agreement_slices",
+    "task_grouped_bootstrap_95_ci"
+  ],
+  "selective_metrics": [
+    "accepted_accuracy",
+    "coverage",
+    "review_rate",
+    "error_capture_rate",
+    "partial_review_rate",
+    "system_accuracy_with_perfect_human_review"
+  ],
+  "referral_quality_metrics": [
+    "consensus_referral_precision",
+    "consensus_referral_recall",
+    "consensus_referral_f1",
+    "error_capture_recall",
+    "error_prevalence_in_referrals",
+    "fraction_true_partial_referred",
+    "by_editor",
+    "by_operation_family"
+  ],
+  "tree_metrics": [
+    "n_leaves",
+    "n_full_merges",
+    "n_partial_merges",
+    "n_rejected_merges",
+    "n_final_nodes",
+    "compression_ratio",
+    "root_coverage",
+    "root_accuracy",
+    "accuracy_loss_child_to_parent",
+    "by_depth",
+    "mean_route_depth",
+    "fallback_to_root_rate"
+  ],
+  "interpretation_rule": "Full-coverage classification (Metric 1) is primary and is measured on the underlying `label` for every case, including referred ones. Auto accuracy (Metric 2) must always be reported with coverage. needs_human is a deployment outcome, never a fourth class prediction, and never counted as correct. The perfect-human-review ceiling is not model accuracy. Referral quality (Metric 3) measures alignment with disputed human consensus and is separate from model-error capture.",
+  "comparison": {
+    "calitree_v2_full_1200_accuracy": 0.8283333333333334,
+    "calitree_v2_full_1200_balanced_accuracy": 0.6041,
+    "selective_editor_reliability_v2_auto_accuracy": 0.9287,
+    "selective_editor_reliability_v2_coverage": 0.6425,
+    "paired_comparison_required": "The evidence policy is compared against the existing selective_policy on the identical held-out cases; both preserve the same underlying three-class label."
+  },
+  "reserved": "The untouched EditInspector final 391-case partition is not part of this experiment and is not spent by it."
+}
