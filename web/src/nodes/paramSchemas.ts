@@ -133,6 +133,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     temperature: { type: 'number', default: 0.3 },
     max_tokens: { type: 'number', default: 4096, min: 1 },
     concurrency: { type: 'number', default: 1, min: 1 },
+    timeout: { type: 'number', default: 300, min: 1 },
     health_check: { type: 'bool', default: false },
   },
   // A metric's identity (prompt/schema/alignment) is now a wired `judge_spec` from a Judge
@@ -258,6 +259,15 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     max_merge_attempts: { type: 'number', default: 20, min: 0 },
     semantic_premerge_levels: { type: 'number', default: 2, min: 0, max: 10 },
+    clustering_algorithm: {
+      type: 'enum', default: 'semantic_complete_link',
+      options: ['semantic_complete_link', 'behavioral_complete_link'],
+    },
+    semantic_similarity_weight: { type: 'number', default: 0.35, min: 0, max: 1, step: 0.05 },
+    behavior_similarity_weight: { type: 'number', default: 0.25, min: 0, max: 1, step: 0.05 },
+    cross_generalization_weight: { type: 'number', default: 0.4, min: 0, max: 1, step: 0.05 },
+    behavioral_probe_cap: { type: 'number', default: 48, min: 1 },
+    cross_generalization_cap: { type: 'number', default: 6, min: 1 },
     validation_fraction: { type: 'number', default: 0.25, min: 0, max: 0.5, step: 0.05 },
     split_seed: { type: 'number', default: 44, min: 0 },
     run_baselines: { type: 'bool', default: true },
@@ -275,6 +285,21 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     editor_prior_threshold: { type: 'number', default: 0.98, min: 0, max: 1, step: 0.01 },
     editor_prior_min_support: { type: 'number', default: 20, min: 1 },
+    specialization_mode: {
+      type: 'enum',
+      default: 'replace',
+      options: ['replace', 'additive'],
+    },
+    leaf_grouping: {
+      type: 'enum',
+      default: 'task',
+      options: ['task', 'failure_mode', 'per_case'],
+    },
+    change_signal: {
+      type: 'enum',
+      default: 'off',
+      options: ['off', 'all'],
+    },
   },
   rubric_lite_train: {
     rubric_version: {
@@ -295,6 +320,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
     ordinal_minimum_class_recall: {
       type: 'number', default: 0.1, min: 0, max: 1, step: 0.05,
+    },
+    selection_objective: {
+      type: 'enum',
+      default: 'macro_f1',
+      options: ['macro_f1', 'accuracy_guarded_partial'],
     },
     validation_fraction: { type: 'number', default: 0.25, min: 0.1, max: 0.5, step: 0.05 },
     split_seed: { type: 'number', default: 44, min: 0 },
@@ -341,6 +371,11 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     },
   },
   rubric_lite_fit: {
+    calibration_mode: {
+      type: 'enum',
+      default: 'min_scalar',
+      options: ['min_scalar', 'two_gate'],
+    },
     selection_objective: {
       type: 'enum',
       default: 'macro_f1',
@@ -361,7 +396,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     human_review_mode: {
       type: 'enum',
       default: 'off',
-      options: ['off', 'selective_policy'],
+      options: ['off', 'selective_policy', 'evidence_policy'],
     },
   },
   calitree_eval: {},

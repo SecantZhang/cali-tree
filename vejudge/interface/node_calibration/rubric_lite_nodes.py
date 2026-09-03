@@ -9,10 +9,15 @@ from typing import Any, Optional
 
 from ...core.calibration.rubric_lite import (
     RubricLiteLearner,
+    _two_gate_axes,
     apply_ordinal_thresholds,
+    apply_two_gate,
     cross_validate_ordinal_thresholds,
+    cross_validate_two_gate,
     fit_ordinal_thresholds,
+    fit_two_gate_thresholds,
     ordinal_label,
+    two_gate_label,
 )
 from ...lm_engine import require_live
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
@@ -179,6 +184,11 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
         "calitree_report": "calitree_report",
     }
     param_schema = {
+        "calibration_mode": {
+            "type": "enum",
+            "options": ["min_scalar", "two_gate"],
+            "default": "min_scalar",
+        },
         "selection_objective": {
             "type": "enum",
             "options": ["macro_f1", "accuracy_guarded_partial"],
@@ -216,6 +226,13 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
                 status="error",
                 error=f"Unknown threshold selection objective {objective!r}",
             )
+        mode = str(ctx.params.get("calibration_mode") or "min_scalar")
+        if mode not in {"min_scalar", "two_gate"}:
+            return NodeRunResult(
+                status="error",
+                error=f"Unknown calibration_mode {mode!r}",
+            )
+        two_gate = mode == "two_gate"
         targets = {
             item_id: _target(label)
             for item_id, label in labels.items()
@@ -231,20 +248,32 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
             for item_id in sorted(
                 set(result_rows) & set(targets) & set(samples)
             )
-            if isinstance(
-                result_rows[item_id].get("ordinal_score"), (int, float)
+            if (
+                _two_gate_axes(result_rows[item_id]) is not None
+                if two_gate
+                else isinstance(
+                    result_rows[item_id].get("ordinal_score"), (int, float)
+                )
             )
         ]
         label_counts = Counter(
             targets[item_id] for item_id in usable_ids
         )
         default_calibrator = {
-            "version": "rubric-lite-cutpoints-v1",
-            "feature": "minimum_visible_evidence_score",
-            "thresholds": {
-                "no_partial": 35.0,
-                "partial_yes": 90.0,
-            },
+            "version": (
+                "rubric-lite-two-gate-v1" if two_gate else "rubric-lite-cutpoints-v1"
+            ),
+            "calibration_mode": mode,
+            "feature": (
+                "change_evidence_presence_and_specification_fidelity_completeness"
+                if two_gate
+                else "minimum_visible_evidence_score"
+            ),
+            "thresholds": (
+                {"presence_cut": 35.0, "completeness_cut": 90.0}
+                if two_gate
+                else {"no_partial": 35.0, "partial_yes": 90.0}
+            ),
             "selection_objective": objective,
             "fitted": False,
             "uses_editor_identity": False,
@@ -295,7 +324,13 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
         recall_floor = float(
             ctx.params.get("minimum_class_recall", 0.10)
         )
-        cv_report = cross_validate_ordinal_thresholds(
+        cross_validate = (
+            cross_validate_two_gate if two_gate else cross_validate_ordinal_thresholds
+        )
+        fit_thresholds = (
+            fit_two_gate_thresholds if two_gate else fit_ordinal_thresholds
+        )
+        cv_report = cross_validate(
             results=result_rows,
             targets=targets,
             samples=samples,
@@ -309,7 +344,7 @@ class RubricLiteFitNodeExecutor(NodeExecutor):
                 ctx.params.get("group_by_task", True)
             ),
         )
-        fitted = fit_ordinal_thresholds(
+        fitted = fit_thresholds(
             results=result_rows,
             targets=targets,
             samples=samples,
@@ -403,14 +438,21 @@ class RubricLiteApplyNodeExecutor(NodeExecutor):
                     "rubric_calibrator"
                 ),
             )
+        two_gate = str(calibrator.get("calibration_mode") or "min_scalar") == "two_gate"
         try:
             thresholds = calibrator["thresholds"]
-            ordinal_label(0, thresholds)
+            if two_gate:
+                two_gate_label(
+                    0, 0, thresholds["presence_cut"], thresholds["completeness_cut"]
+                )
+            else:
+                ordinal_label(0, thresholds)
         except (KeyError, TypeError, ValueError) as exc:
             return NodeRunResult(
                 status="error",
                 error=f"Invalid Rubric-Lite calibrator: {exc}",
             )
+        apply_fn = apply_two_gate if two_gate else apply_ordinal_thresholds
         output: dict[str, Any] = {}
         changed = 0
         scored = 0
@@ -420,10 +462,15 @@ class RubricLiteApplyNodeExecutor(NodeExecutor):
             if not isinstance(row, dict):
                 output[item_id] = value_copy
                 continue
-            calibrated = apply_ordinal_thresholds(
+            calibrated = apply_fn(
                 {item_id: row}, thresholds
             )[item_id]
-            if isinstance(row.get("ordinal_score"), (int, float)):
+            scored_predicate = (
+                _two_gate_axes(row) is not None
+                if two_gate
+                else isinstance(row.get("ordinal_score"), (int, float))
+            )
+            if scored_predicate:
                 scored += 1
                 previous = str(row.get("label") or "")
                 calibrated["pre_calibration_label"] = previous
@@ -490,6 +537,11 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
         },
         "ordinal_minimum_class_recall": {
             "type": "number", "default": 0.10, "min": 0, "max": 1,
+        },
+        "selection_objective": {
+            "type": "enum",
+            "options": ["macro_f1", "accuracy_guarded_partial"],
+            "default": "macro_f1",
         },
         "validation_fraction": {
             "type": "number", "default": 0.25, "min": 0.1, "max": 0.5,
@@ -677,6 +729,9 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
             minimum_class_recall = float(
                 ctx.params.get("ordinal_minimum_class_recall", 0.10)
             )
+            selection_objective = str(
+                ctx.params.get("selection_objective") or "macro_f1"
+            )
             fit_calibration = fit_ordinal_thresholds(
                 results=raw_selected_results,
                 targets=targets,
@@ -684,6 +739,7 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
                 ids=fit_ids,
                 accuracy_tolerance=accuracy_tolerance,
                 minimum_class_recall=minimum_class_recall,
+                selection_objective=selection_objective,
             )
             validation_calibrated = apply_ordinal_thresholds(
                 {
@@ -711,6 +767,7 @@ class RubricLiteTrainNodeExecutor(NodeExecutor):
                 ids=learning_ids,
                 accuracy_tolerance=accuracy_tolerance,
                 minimum_class_recall=minimum_class_recall,
+                selection_objective=selection_objective,
             )
             selected_results = apply_ordinal_thresholds(
                 raw_selected_results,

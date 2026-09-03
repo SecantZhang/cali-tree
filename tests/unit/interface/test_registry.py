@@ -102,6 +102,7 @@ def test_only_the_in_scope_node_types_are_registered():
         "editinspector_source",
         "calitree_train", "rubric_lite_train", "rubric_lite_boundary",
         "rubric_lite_frozen",
+        "gepa_frozen",
         "rubric_lite_fit", "rubric_lite_apply",
         "calitree_judge", "calitree_eval",
     }

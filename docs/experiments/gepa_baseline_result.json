@@ -1,0 +1,46 @@
+{
+  "objective": "Add GEPA (reflective mutation + Pareto-frontier prompt optimization; github.com/gepa-ai/gepa) as an independent baseline alongside Initial Rubric and Global TextGrad -- not a replacement for TextGrad anywhere in Cali-Tree -- evaluated on the identical 120-case dev slice this session used throughout, for a direct accuracy and optimizer-cost comparison.",
+  "environment": {
+    "note": "gepa (PyPI 0.1.4) requires Python >=3.10; the main project venv is 3.9. Isolated in a separate .venv-gepa (Python 3.11, via brew install python@3.11), with zero new dependency added to pyproject.toml/the main venv.",
+    "adapter_design": "Custom GEPAAdapter (task side) makes the real multimodal SOURCE+EDITED judge call directly against the Pluto gateway, since GEPA's built-in text-only task_lm cannot express image inputs. Reflection (text-only) uses a plain LanguageModel Protocol implementation (__call__(prompt)->str) backed by the same gateway -- no litellm env-var routing needed, since GEPA's LanguageModel protocol accepts any callable.",
+    "integration": "The optimized prompt is a committed artifact (vejudge/core/calibration/artifacts/gepa_v1_imagenhub.json), loaded by a new gepa_frozen node (mirrors RubricLiteFrozenNodeExecutor) and evaluated through the EXISTING, unmodified calitree_judge -> calitree_eval pipeline -- zero changes to calitree.py/calitree_nodes.py's tree-building or metric code."
+  },
+  "dataset": {
+    "name": "ImagenHub/Text_Guided_Image_Editing",
+    "split_seed": 44,
+    "training_cases": 232,
+    "gepa_fit_cases": 176,
+    "gepa_validation_cases": 56,
+    "held_out_test_cases": 120,
+    "seed_prompt": "calitree_v2/initial_rubric.txt (identical seed to Global TextGrad, for a fair comparison)"
+  },
+  "gepa_optimization_run": {
+    "judge_model": "gpt-4.1-mini",
+    "reflection_model": "gpt-4.1-mini",
+    "max_metric_calls_budget": 700,
+    "total_metric_calls": 754,
+    "num_candidates_explored": 8,
+    "reflection_calls": 33,
+    "total_tokens": 1457503,
+    "wall_clock_seconds": 1319.4,
+    "best_val_score_gepa_internal": 0.875,
+    "note": "best_val_score_gepa_internal is GEPA's own minibatch/valset scoring during search (56-case valset), not the full calitree_eval metric suite below."
+  },
+  "comparison_same_120_case_dev_slice": {
+    "initial_rubric_unoptimized": {"test_accuracy": 0.80, "test_balanced_accuracy": 0.4846, "test_macro_f1": 0.44, "test_ordinal_mae": 0.1333, "test_partial_f1": 0.20, "optimizer_cost": "0 calls (no optimization)"},
+    "global_textgrad": {"test_accuracy": 0.825, "test_balanced_accuracy": 0.4703, "test_macro_f1": 0.451, "test_ordinal_mae": 0.10, "test_partial_f1": 0.4375, "optimizer_cost": "~704 judge calls (warm-start phase) + a handful of optimizer calls, well under GEPA's budget"},
+    "gepa_new": {"test_accuracy": 0.8083, "test_balanced_accuracy": 0.3835, "test_macro_f1": 0.3494, "test_ordinal_mae": 0.125, "test_partial_f1": 0.0, "optimizer_cost": "754 rollouts, 33 reflection calls, 1,457,503 tokens, 1319s wall-clock"},
+    "cali_tree_v2_full_tree_same_slice": {"test_accuracy": 0.8083, "test_balanced_accuracy": 0.3612, "test_macro_f1": 0.3726, "test_ordinal_mae": 0.125, "test_partial_f1": 0.20}
+  },
+  "run_dirs": {
+    "gepa_optimization": "run/gepa_baseline/gepa_run",
+    "gepa_evaluation": "logs/exps/gepa-baseline-dev120-live-exps",
+    "reference_initial_and_textgrad": "logs/exps/calitree-evidence-dev120-v2-exps"
+  },
+  "conclusion": "Negative for GEPA as configured here: it ties or slightly beats Initial Rubric on raw accuracy (0.8083 vs 0.80) but underperforms Global TextGrad on accuracy (0.808 vs 0.825), balanced accuracy (0.384 vs 0.470), and dramatically on partial F1 (0.0 vs 0.4375) -- despite using substantially more optimizer compute (754 rollouts + 33 reflection calls + 1.46M tokens vs TextGrad's ~704 judge calls with a much smaller token footprint). On this dataset/budget/reflection-model combination, GEPA's reflective-mutation + Pareto-selection search did not find a prompt as good as TextGrad's simpler single-lineage gradient-style rewrite, and specifically collapsed to zero partial recall on the held-out test split (it produced a longer, more elaborate rubric with additional strict failure-mode clauses that appears to have pushed borderline cases toward `no`). This is one run at one budget/model configuration, not an exhaustive claim about GEPA in general -- a larger reflection model, a richer per-example reward signal (e.g. partial credit via ordinal distance instead of a 0/1 label match), or a larger rollout budget could change this.",
+  "caveats": [
+    "Single run, no repeats -- some of this gap could be seed/sampling noise given the small 120-case test set and only 24/44 partial cases in the calibration pool.",
+    "The adapter's per-example score is a strict 0/1 label match; TextGrad's own feedback loop may implicitly reward closer-but-wrong labels differently through its gradient text, which is a real methodological difference, not just 'GEPA vs TextGrad' in the abstract.",
+    "GEPA's reflection ran on the same gpt-4.1-mini as the task model; the GEPA paper's own results use a stronger reflection model in some configurations."
+  ]
+}

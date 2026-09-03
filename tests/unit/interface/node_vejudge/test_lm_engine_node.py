@@ -13,6 +13,8 @@ def test_default_params_produce_a_json_safe_config_dict(make_ctx):
         "temperature": 0.3,
         "max_tokens": 4096,
         "concurrency": 1,
+        "timeout": 300,
+        "health_check": False,
     }
     # Every value must be a plain JSON-safe primitive — no live objects (this is the whole
     # point of this node: never carry a live LMEngine across a socket).
@@ -23,13 +25,13 @@ def test_default_params_produce_a_json_safe_config_dict(make_ctx):
 def test_custom_params_flow_through(make_ctx):
     ctx = make_ctx(params={
         "engine_kind": "gemini", "model": "gemini-2.5-pro", "temperature": 0.7,
-        "max_tokens": 2048, "concurrency": 8,
+        "max_tokens": 2048, "concurrency": 8, "timeout": 45, "health_check": True,
     })
     result = LMEngineNodeExecutor().run(ctx)
 
     assert result.outputs["engine_config"] == {
         "engine_kind": "gemini", "model": "gemini-2.5-pro", "temperature": 0.7,
-        "max_tokens": 2048, "concurrency": 8,
+        "max_tokens": 2048, "concurrency": 8, "timeout": 45, "health_check": True,
     }
 
 

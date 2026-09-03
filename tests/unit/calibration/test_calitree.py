@@ -1,3 +1,5 @@
+import pytest
+
 from vejudge.core.calibration.calitree import (
     CaliTreeBuilder,
     CaliTreeNode,
@@ -59,6 +61,91 @@ def test_complete_link_rejects_a_centroid_shortcut_with_dissimilar_members():
     pairs, remaining = greedy_pairs([left, right], 0.8)
     assert pairs == []
     assert remaining == [left, right]
+
+
+def test_behavioral_clustering_prioritizes_cross_generalizing_leaf_pair():
+    """A hierarchy can beat the plain judge when leaves transfer across a merge.
+
+    The two leaves have only moderately similar prompt components, but each already predicts
+    the other leaf's examples correctly.  Behavioral clustering therefore merges them and
+    the root routes both classes through the validated merged prompt.
+    """
+    samples = {
+        item_id: _sample(item_id)
+        for item_id in ("a1", "a2", "b1", "b2")
+    }
+    targets = {item_id: "yes" for item_id in samples}
+
+    def judge(prompt, sample):
+        item_id = sample["item_id"]
+        if prompt == "plain":
+            return {"label": "no"}
+        if prompt in {"leaf-a", "leaf-b", "merged"}:
+            return {"label": "yes"}
+        return {"label": "no"}
+
+    def optimize(prompt, feedback):
+        if prompt == "plain" and "instruction a" in feedback:
+            return "leaf-a"
+        if prompt == "plain" and "instruction b" in feedback:
+            return "leaf-b"
+        return prompt
+
+    def embed(texts):
+        vectors = {
+            "leaf-a": [1.0, 0.0],
+            "leaf-b": [0.8, 0.6],
+            "merged": [0.9, 0.3],
+            "instruction a1": [1.0, 0.0],
+            "instruction a2": [1.0, 0.0],
+            "instruction b1": [0.8, 0.6],
+            "instruction b2": [0.8, 0.6],
+        }
+        return [vectors.get(text, [0.9, 0.3]) for text in texts]
+
+    builder = CaliTreeBuilder(
+        judge=judge,
+        optimize=optimize,
+        extract_components=lambda prompt: {
+            "criteria": [prompt], "priorities": [], "constraints": [],
+        },
+        embed=embed,
+        merge_prompts=lambda _left, _right: {
+            "conflict": False, "prompt": "merged"
+        },
+        warm_start=False,
+        max_steps=1,
+        similarity_start=0.6,
+        similarity_floor=0.6,
+        similarity_decay=0.1,
+        clustering_algorithm="behavioral_complete_link",
+    )
+    tree = builder.build(
+        initial_prompt="plain",
+        samples=samples,
+        targets=targets,
+        routing_texts={item_id: f"instruction {item_id}" for item_id in samples},
+        leaf_groups={
+            "a1": "a", "a2": "a", "b1": "b", "b2": "b",
+        },
+    )
+
+    plain_accuracy = sum(
+        judge("plain", sample)["label"] == targets[item_id]
+        for item_id, sample in samples.items()
+    ) / len(samples)
+    routed_accuracy = sum(
+        judge(route_prompt(tree, embed([f"instruction {item_id}"])[0])["prompt"], sample)["label"]
+        == targets[item_id]
+        for item_id, sample in samples.items()
+    ) / len(samples)
+
+    assert plain_accuracy == 0.0
+    assert routed_accuracy == 1.0
+    assert tree["stats"]["accepted_merges"] == 1
+    assert tree["config"]["clustering_algorithm"] == "behavioral_complete_link"
+    accepted = next(event for event in tree["timeline"] if event["kind"] == "accepted")
+    assert accepted["cross_generalization"] == 1.0
 
 
 def test_semantic_premerge_compatibility_groups_similar_operations_first():
@@ -338,6 +425,204 @@ def test_low_accuracy_merge_is_rejected_without_replacing_children():
     assert set(global_root["children"]) == {"leaf:a", "leaf:b"}
 
 
+def _additive_builder(judge, merge, *, max_steps=0):
+    return CaliTreeBuilder(
+        judge=judge,
+        optimize=lambda prompt, _feedback: prompt,
+        extract_components=lambda prompt: {
+            "criteria": [prompt], "priorities": [], "constraints": ["json"]
+        },
+        embed=lambda texts: [[1.0, 0.0] for _ in texts],
+        merge_prompts=merge,
+        max_steps=max_steps,
+        specialization_mode="additive",
+    )
+
+
+def test_additive_mode_sets_balanced_objective_and_validates_params():
+    builder = _additive_builder(
+        lambda _p, _s: {"label": "yes"},
+        lambda _l, _r: {"conflict": False, "prompt": "m"},
+    )
+    # Additive mode implies the balanced, no-regression-vs-base objective.
+    assert builder.merge_objective == "balanced"
+    assert builder.require_ge_base is True
+    with pytest.raises(ValueError):
+        CaliTreeBuilder(
+            judge=lambda _p, _s: {"label": "yes"},
+            optimize=lambda p, _f: p,
+            extract_components=lambda p: {"criteria": [p], "priorities": [], "constraints": []},
+            embed=lambda texts: [[1.0, 0.0] for _ in texts],
+            merge_prompts=lambda _l, _r: {"conflict": False, "prompt": "m"},
+            specialization_mode="bogus",
+        )
+
+
+def test_root_objective_defaults_to_balanced_and_validates():
+    builder = _additive_builder(
+        lambda _p, _s: {"label": "yes"},
+        lambda _l, _r: {"conflict": False, "prompt": "m"},
+    )
+    assert builder.root_objective == "balanced"
+    with pytest.raises(ValueError):
+        CaliTreeBuilder(
+            judge=lambda _p, _s: {"label": "yes"},
+            optimize=lambda p, _f: p,
+            extract_components=lambda p: {"criteria": [p], "priorities": [], "constraints": []},
+            embed=lambda texts: [[1.0, 0.0] for _ in texts],
+            merge_prompts=lambda _l, _r: {"conflict": False, "prompt": "m"},
+            root_objective="bogus",
+        )
+
+
+def test_additive_root_accumulates_widest_validated_merge():
+    samples = {item_id: _sample(item_id) for item_id in ("a", "b")}
+    tree = _additive_builder(
+        lambda _prompt, _sample: {"label": "yes", "rationale": "ok"},
+        lambda _left, _right: {"conflict": False, "prompt": "merged"},
+    ).build(initial_prompt="base", samples=samples, targets={"a": "yes", "b": "yes"})
+    assert tree["stats"]["accepted_merges"] == 1
+    assert tree["stats"]["root_source"] == "accumulated"
+    # The root prompt IS the accumulated merge, not a fallback.
+    assert tree["nodes"][tree["roots"][0]]["prompt"] == "merged"
+    assert tree["config"]["specialization_mode"] == "additive"
+    assert tree["config"]["route_default_to_root"] is True
+
+
+def test_additive_root_falls_back_to_base_when_no_merge_accepted():
+    samples = {item_id: _sample(item_id) for item_id in ("a", "b")}
+    tree = _additive_builder(
+        lambda _prompt, _sample: {"label": "yes"},
+        lambda _left, _right: {
+            "conflict": True, "conflict_reason": "opposed", "prompt": ""
+        },
+    ).build(initial_prompt="base", samples=samples, targets={"a": "yes", "b": "yes"})
+    assert tree["stats"]["accepted_merges"] == 0
+    assert tree["stats"]["root_source"] == "base"
+    # Root can never be worse than the flat base: it is the base rubric itself.
+    assert tree["nodes"][tree["roots"][0]]["prompt"] == "base"
+
+
+def test_additive_merge_rejected_when_it_regresses_minority_on_guard():
+    samples = {
+        "a": {**_sample("a"), "gold": "yes"},
+        "b": {**_sample("b"), "gold": "yes"},
+    }
+    validation = {
+        "v_no": {**_sample("v_no"), "gold": "no"},
+        "v_yes": {**_sample("v_yes"), "gold": "yes"},
+    }
+
+    def judge(prompt, sample):
+        # The merged delta over-predicts yes, regressing the `no` guard case.
+        if "merged" in prompt:
+            return {"label": "yes"}
+        return {"label": sample["gold"]}
+
+    tree = _additive_builder(
+        judge,
+        lambda _left, _right: {"conflict": False, "prompt": "merged"},
+    ).build(
+        initial_prompt="base",
+        samples=samples,
+        targets={"a": "yes", "b": "yes"},
+        validation_samples=validation,
+        validation_targets={"v_no": "no", "v_yes": "yes"},
+    )
+    assert tree["stats"]["accepted_merges"] == 0
+    assert tree["stats"]["root_source"] == "base"
+    assert any(
+        event["kind"] == "rejected_generalization" for event in tree["timeline"]
+    )
+
+
+def test_additive_routing_defaults_to_root_below_near_exact_match():
+    tree = {
+        "roots": ["root"],
+        "config": {
+            "route_default_to_root": True,
+            "singleton_exact_threshold": 0.995,
+            "min_routing_support": 1,
+        },
+        "nodes": {
+            "root": {
+                "id": "root", "embedding": [1.0, 0.0], "children": ["child"],
+                "covered_ids": ["a", "b"], "routing_threshold": -1.0, "prompt": "ROOT",
+            },
+            "child": {
+                "id": "child", "embedding": [0.9, 0.1], "children": [],
+                "covered_ids": ["a"], "routing_threshold": 0.5, "prompt": "CHILD",
+            },
+        },
+    }
+    # cos([0.8,0.2],[0.9,0.1]) ~= 0.991 < 0.995 -> stays at the strong root.
+    stayed = route_prompt(tree, [0.8, 0.2])
+    assert stayed["id"] == "root"
+    # Without the flag the same case would divert (threshold 0.5).
+    tree["config"]["route_default_to_root"] = False
+    diverted = route_prompt(tree, [0.8, 0.2])
+    assert diverted["id"] == "child"
+
+
+def test_routing_ignores_leaf_that_failed_held_out_guard():
+    tree = {
+        "roots": ["root"],
+        "config": {"min_routing_support": 1},
+        "nodes": {
+            "root": {
+                "id": "root", "embedding": [0.0, 1.0], "children": ["leaf"],
+                "covered_ids": ["a"], "routing_threshold": -1.0, "prompt": "ROOT",
+            },
+            "leaf": {
+                "id": "leaf", "embedding": [1.0, 0.0], "children": [],
+                "covered_ids": ["a"], "routing_threshold": 0.0, "prompt": "LEAF",
+                "routing_eligible": False,
+            },
+        },
+    }
+    routed = route_prompt(tree, [1.0, 0.0])
+    assert routed["id"] == "root"
+    assert routed["route_path"] == ["root"]
+
+
+def test_prediction_conditioned_routing_uses_supported_key_and_safe_fallback():
+    tree = {
+        "roots": ["root"],
+        "config": {"min_routing_support": 2},
+        "prediction_conditioned_router": {
+            "routes": {"specific": "good", "rejected": "bad"},
+        },
+        "nodes": {
+            "root": {
+                "id": "root", "embedding": [0.0, 1.0], "children": ["good", "bad"],
+                "covered_ids": ["a", "b"], "prompt": "ROOT",
+            },
+            "good": {
+                "id": "good", "embedding": [0.0, 1.0], "children": [],
+                "covered_ids": ["a", "b"], "prompt": "GOOD",
+                "routing_eligible": True, "routing_validation_support": 2,
+            },
+            "bad": {
+                "id": "bad", "embedding": [1.0, 0.0], "children": [],
+                "covered_ids": ["c", "d"], "prompt": "BAD",
+                "routing_eligible": False, "routing_validation_support": 2,
+            },
+        },
+    }
+
+    routed = route_prompt(
+        tree, [1.0, 0.0], routing_keys=["specific", "prediction"]
+    )
+    assert routed["id"] == "good"
+    assert routed["route_basis"] == "top_prediction_context"
+    assert routed["routing_key"] == "specific"
+
+    fallback = route_prompt(tree, [1.0, 0.0], routing_keys=["rejected"])
+    assert fallback["id"] == "root"
+    assert fallback["route_basis"] == "top_prediction_fallback"
+    assert route_prompt(tree, [1.0, 0.0])["id"] == "root"
+
+
 def test_partial_merge_promotes_incorrect_original_leaf():
     item_ids = tuple(str(index) for index in range(8))
     samples = {item_id: _sample(item_id) for item_id in item_ids}
@@ -521,3 +806,39 @@ def test_metrics_include_confusion_distribution_and_per_editor():
     assert report["confusion"]["partial"]["no"] == 1
     assert report["prediction_distribution"] == {"no": 1, "partial": 0, "yes": 1}
     assert report["per_editor"]["SDEdit"]["accuracy"] == 1
+
+
+def test_metrics_include_ordinal_mae():
+    samples = {"a": _sample("a"), "b": _sample("b", editor="DiffEdit")}
+    # a: yes->yes has ordinal error 0; b: partial->no has |0.5-0.0|=0.5.
+    report = classification_metrics(
+        {"a": "yes", "b": "partial"}, {"a": "yes", "b": "no"}, samples
+    )
+    assert report["ordinal_mae"] == 0.25
+    assert report["per_editor"]["SDEdit"]["ordinal_mae"] == 0.0
+    assert report["per_editor"]["DiffEdit"]["ordinal_mae"] == 0.5
+
+
+def test_metrics_count_missing_predictions_as_invalid_errors():
+    samples = {"a": _sample("a"), "b": _sample("b")}
+    report = classification_metrics(
+        {"a": "yes", "b": "no"}, {"a": "yes"}, samples
+    )
+    assert report["n"] == 2
+    assert report["accuracy"] == 0.5
+    assert report["per_label_accuracy"]["no"] == 0.0
+    assert report["prediction_distribution"]["invalid"] == 1
+    assert report["confusion"]["no"]["invalid"] == 1
+
+
+def test_ordinal_mae_ignores_unknown_labels():
+    from vejudge.core.calibration.calitree import ordinal_absolute_error
+
+    assert ordinal_absolute_error("no", "yes") == 1.0
+    assert ordinal_absolute_error("partial", "yes") == 0.5
+    assert ordinal_absolute_error("yes", "needs_human") is None
+    # An unrepresented prediction does not silently count toward MAE.
+    report = classification_metrics(
+        {"a": "yes"}, {"a": "needs_human"}, {"a": _sample("a")}
+    )
+    assert report["ordinal_mae"] is None

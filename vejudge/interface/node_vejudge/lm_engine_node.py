@@ -34,9 +34,7 @@ class LMEngineNodeExecutor(NodeExecutor):
         "temperature": {"type": "number", "default": 0.3},
         "max_tokens": {"type": "number", "default": 4096, "min": 1},
         "concurrency": {"type": "number", "default": 1, "min": 1},
-        # Not wired to any behavior yet — vejudge/lm_engine/health.py exists at the engine
-        # layer but isn't hooked into the interface's Judge nodes at all today (same
-        # "shape now, behavior later" precedent as the Preprocessing Node's stub params).
+        "timeout": {"type": "number", "default": 300, "min": 1},
         "health_check": {"type": "bool", "default": False},
     }
 
@@ -53,5 +51,7 @@ class LMEngineNodeExecutor(NodeExecutor):
             "temperature": p.get("temperature", 0.3),
             "max_tokens": int(p.get("max_tokens") or 4096),
             "concurrency": max(1, int(p.get("concurrency") or 1)),
+            "timeout": max(1, int(p.get("timeout") or 300)),
+            "health_check": bool(p.get("health_check", False)),
         }
         return NodeRunResult(outputs={"engine_config": engine_config}, meta={})

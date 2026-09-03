@@ -1,3 +1,66 @@
+## 260902-22:51:09 — Pilot-first Cali-Tree safety guards
+- Type: fix
+- Scope: Cali-Tree builder/parser/metrics, LM engine transport/config, ImagenHub runner, UI schema, tests, docs
+- What: Added a bounded live pilot and used it to fix unvalidated leaf routing, unsafe accumulated-root promotion, dropped GPT-4o prose verdicts, misleading invalid-output metrics, and live timeout/health failover plumbing. The guarded 24-case held-out pilot has zero invalids and safely ties the plain judge at 83.33% accuracy.
+- Why: Validate the complete live optimize–merge–optimize path before resuming an expensive benchmark and prevent tree structure from silently regressing the flat judge.
+- Details: logs/updates/details/260902-22:51:09-updates.md
+
+## 260812-15:56:48 — Confirmed: flat path reproduces Cali-Tree v2's selective headline (no tree needed)
+- Type: feature
+- Scope: vejudge/interface/node_calibration/calitree_nodes.py (new architecture=rubric_lite param on calitree_train), two new workflows, docs/experiments/calitree_flat_selective_result.json, docs/calitree_status.md
+- What: Ran the long-standing "first confirming experiment" — a flat single-global-prompt path (no embeddings/leaves/clustering/merges/routing) through the identical consensus + editor-prior + selective-policy code as the tree. At full 1,200-case scale it reproduces v2's full-coverage numbers within 0.1-3pp and matches its selective headline (93.14% @ 63.17% coverage vs v2's 92.87% @ 64.25%).
+- Why: User asked to actually run the experiment the status doc had flagged as pending, to settle whether the prompt hierarchy contributes anything beyond consensus/editor-priors.
+- Details: logs/updates/details/260812-15:56:48-updates.md
+
+## 260812-13:13:38 — Full-scale delta-tree follow-up: fix confirmed, still loses to frozen v2
+- Type: fix
+- Scope: docs/experiments/calitree_delta_tree_result.json, docs/calitree_status.md
+- What: Resumed the interrupted root_objective=balanced delta-tree run to full 1,200-case scale across three checkpointed segments (nohup/disown to survive session resets); confirmed the fix eliminates the dev-slice's catastrophic partial F1 collapse (0.0 -> 0.2105), but the fixed tree still underperforms frozen Cali-Tree v2 on every metric (acc -0.6pp, balanced -4.3pp, partial recall -10.4pp). Closed the delta-tree investigation.
+- Why: User asked to resume the interrupted full-1200 validation run to determine whether the root-selection fix actually improves on the frozen baseline at scale, not just on the dev slice.
+- Details: logs/updates/details/260812-13:13:38-updates.md
+
+## 260812-01:54:01 — GEPA as an independent global-prompt baseline
+- Type: feature
+- Scope: isolated .venv-gepa + run/gepa_baseline/ (custom GEPAAdapter, credential/dataset export), new gepa_frozen node, committed gepa_v1_imagenhub.json artifact, comparison workflow/runner, tests, docs
+- What: Added GEPA (reflective mutation + Pareto search) as a new flat-prompt baseline evaluated through the unmodified calitree_judge/calitree_eval pipeline; ran the full live optimization + evaluation on the session's standard dev slice.
+- Why: User wanted a second optimizer compared against Global TextGrad/Cali-Tree, not a TextGrad replacement.
+- Details: logs/updates/details/260812-01:54:01-updates.md
+
+## 260804-09:40:41 — Complete worktree/version comparison report
+- Type: docs
+- Scope: docs/calitree_worktree_comparison_report.md (new), docs/experiments/calitree_worktree_comparison_result.json (new), one live run in the sibling calitree-implementation worktree
+- What: Verified-from-source diff of every Cali-Tree/Rubric-Lite prompt version plus a full code/function diff between this worktree and the uncommitted Codex worktree; ran Codex's implementation live for a true accuracy comparison; found and root-caused two real bugs (a metrics bug, and confirmed the global-optimizer-rewrite guard rejects TextGrad's rewrite in both systems).
+- Why: User requested a complete, independently-verifiable reference to run their own evaluation.
+- Details: logs/updates/details/260804-09:40:41-updates.md
+
+## 260803-21:53:23 — Two-gate partial + macro-F1 objective for the partial boundary
+- Type: feature
+- Scope: rubric_lite.py (two-gate cutpoints), rubric_lite_nodes.py (calibration_mode + selection_objective), calitree.py (root_objective), workflow/runner/web/protocol/docs
+- What: Opt-in two-gate calibration deriving partial from independent presence/completeness cutpoints (macro-F1 selected) instead of one min scalar; plumbed macro-F1 objective into rubric_lite_train and fixed the delta-root to select on balanced accuracy. Targets the partial boundary (64% of held-out errors).
+- Why: partial is the dominant remaining error source and is a representation/objective problem, not a structure one.
+- Details: logs/updates/details/260803-21:53:23-updates.md
+
+## 260803-10:07:38 — Cali-Tree delta-tree: additive specialization, failure-mode clustering, partial change signal
+- Type: feature
+- Scope: calitree.py (additive mode), calitree_nodes.py (failure-mode clustering + change signal), new localized_change preprocessor, workflow/runner/web/protocol/docs
+- What: Opt-in delta-tree that accumulates validated deltas into a root >= the flat base, clusters leaves by (base-prediction, target) failure mode, and attaches a localized source→edited change map so `partial` is visible; v2 replace mode default and frozen.
+- Why: Make the "specialize → compress → strong root" idea actually converge and attack the partial signal at the representation level, per the findings.
+- Details: logs/updates/details/260803-10:07:38-updates.md
+
+## 260803-09:25:29 — Converge on the flat abstention-first path; add canonical status map
+- Type: docs
+- Scope: docs/calitree_status.md (new), docs/calitree.md banner
+- What: Declared the Cali-Tree hierarchy a frozen baseline and the flat abstention-first judge the canonical forward path; added a one-page map classifying every version/artifact/mode/workflow as canonical, frozen baseline, or negative control.
+- Why: Reduce version chaos and align the active line of work with the evidence that the hierarchy is not the lever. Nothing deleted.
+- Details: logs/updates/details/260803-09:25:29-updates.md
+
+## 260802-22:20:49 — Cali-Tree evidence-based referral + full evaluation suite
+- Type: feature
+- Scope: calitree core metrics, calitree_train/judge/eval nodes, web judge node + schema, workflow/runner/protocol/docs
+- What: Added a target-blind `evidence_policy` referral that separates visibly `partial` from indeterminate `needs_human`, plus ordinal MAE, consensus-referral precision/recall/F1, and tree-compression metrics; v2 and Rubric-Lite v4 unchanged.
+- Why: Implement the genuinely-new asks in `docs/calitree_goal.md` on top of the existing v2 system without disturbing frozen baselines.
+- Details: logs/updates/details/260802-22:20:49-updates.md
+
 ## 260729-16:38:20 — Preregister multi-lane human review
 - Type: docs
 - Scope: Rubric-Lite selective-policy protocol and CaliTree research report
@@ -312,3 +375,15 @@
 - What: Drag nodes from the palette onto the canvas at the cursor; a new Runs tab lists past runs under logs/exps and can Open one (graph + statuses + outputs reconstructed from disk) or Resume a stopped one from checkpoint. Terminal runs now persist a faithful run_results.json; GET /api/runs/{id} falls back to disk.
 - Why: Let users place nodes where they want and revisit/continue previous runs after a server restart.
 - Details: logs/updates/details/260720-11:06:00-updates.md
+## 260902-20:15:31 — Behavioral optimize–merge–optimize Cali-Tree
+- Type: feature
+- Scope: CaliTree builder, train-node API/UI, ImagenHub runner, tests, and research docs
+- What: Added behavior- and cross-generalization-aware complete-link clustering on top of leaf optimization and held-out merge gates; GPT-4o is the runner default.
+- Why: Implement the requested bottom-up hierarchy where only leaves that demonstrably transfer can be compressed into a parent.
+- Details: logs/updates/details/260902-20:15:31-updates.md
+## 260902-23:57:59 — Prediction-conditioned CaliTree beats plain GPT-4o
+- Type: feature
+- Scope: CaliTree residual partition/router, Pareto prompt cascade, judge inference, pilot runner, tests, docs
+- What: Replaced target-bearing failure-mode routing with a support-pruned top-prediction context tree and added a non-regressing optimized-prompt cascade. On a disjoint 120-case GPT-4o holdout, CaliTree scored 75.83% versus the plain judge's 70.00%, with 53.51% versus 46.39% balanced accuracy and zero invalids.
+- Why: Make leaf routing reproducible at inference, eliminate unsupported semantic diversion, and obtain a real held-out accuracy gain from the optimize–merge–optimize system.
+- Details: logs/updates/details/260902-23:57:59-updates.md

@@ -1,11 +1,90 @@
 from vejudge.core.calibration.rubric_lite import (
     RubricLiteLearner,
     apply_ordinal_thresholds,
+    apply_two_gate,
     cross_validate_ordinal_thresholds,
+    cross_validate_two_gate,
     fit_ordinal_thresholds,
+    fit_two_gate_thresholds,
     ordinal_label,
     select_boundary_cases,
+    two_gate_label,
 )
+
+
+def _scored(change_evidence, specification_fidelity, source_preservation=100):
+    """A judge row carrying the two evidence axes the two-gate reads."""
+    return {
+        "ordinal_scores": {
+            "change_evidence": change_evidence,
+            "specification_fidelity": specification_fidelity,
+            "source_preservation": source_preservation,
+        },
+        "ordinal_score": min(change_evidence, specification_fidelity, source_preservation),
+        "label": "no",
+    }
+
+
+def test_two_gate_label_truth_table():
+    # No requested change present -> no, regardless of completeness.
+    assert two_gate_label(10, 100, presence_cut=50, completeness_cut=90) == "no"
+    # Present and complete -> yes.
+    assert two_gate_label(80, 95, presence_cut=50, completeness_cut=90) == "yes"
+    # Present but not complete -> partial (the boundary min() hides).
+    assert two_gate_label(80, 60, presence_cut=50, completeness_cut=90) == "partial"
+
+
+def test_two_gate_recovers_partial_that_min_scalar_collapses():
+    # A partial case with high change_evidence but low specification_fidelity has the SAME
+    # min-score (30) as a `no` case with low change_evidence — the collision the audit found.
+    samples = {i: _sample(i, i) for i in ("p", "n", "y")}
+    results = {
+        "p": _scored(90, 30),  # present, incomplete -> partial ; min=30
+        "n": _scored(30, 95),  # absent            -> no      ; min=30 (same scalar!)
+        "y": _scored(95, 95),  # present, complete -> yes
+    }
+    targets = {"p": "partial", "n": "no", "y": "yes"}
+    fit = fit_two_gate_thresholds(
+        results=results, targets=targets, samples=samples,
+        ids=list(samples), minimum_class_recall=0.0, selection_objective="macro_f1",
+    )
+    calibrated = apply_two_gate(results, fit["thresholds"])
+    preds = {i: calibrated[i]["label"] for i in samples}
+    # Two independent cutpoints separate all three where a single min-scalar cannot.
+    assert preds == {"p": "partial", "n": "no", "y": "yes"}
+    assert set(fit["thresholds"]) == {"presence_cut", "completeness_cut"}
+    assert fit["selection_objective"] == "macro_f1"
+
+
+def test_two_gate_apply_preserves_uncalibrated_label():
+    results = {"p": _scored(90, 30)}
+    calibrated = apply_two_gate(results, {"presence_cut": 50, "completeness_cut": 90})
+    assert calibrated["p"]["label"] == "partial"
+    assert calibrated["p"]["uncalibrated_label"] == "no"
+    assert calibrated["p"]["threshold_calibrated"] is True
+
+
+def test_two_gate_cross_validation_is_deterministic():
+    samples = {f"t{i}::e": _sample(f"t{i}::e", f"t{i}") for i in range(6)}
+    results, targets = {}, {}
+    for i in range(6):
+        item = f"t{i}::e"
+        if i % 3 == 0:
+            results[item], targets[item] = _scored(20, 95), "no"
+        elif i % 3 == 1:
+            results[item], targets[item] = _scored(90, 30), "partial"
+        else:
+            results[item], targets[item] = _scored(95, 95), "yes"
+    first = cross_validate_two_gate(
+        results=results, targets=targets, samples=samples, ids=list(samples),
+        folds=3, seed=44, minimum_class_recall=0.0,
+    )
+    second = cross_validate_two_gate(
+        results=results, targets=targets, samples=samples, ids=list(samples),
+        folds=3, seed=44, minimum_class_recall=0.0,
+    )
+    assert first["metrics"] == second["metrics"]
+    assert first["folds"] >= 2
 
 
 def _sample(item_id, task=None):

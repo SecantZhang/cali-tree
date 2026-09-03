@@ -15,6 +15,7 @@ from .node_calibration.calitree_nodes import (
     CaliTreeJudgeNodeExecutor,
     CaliTreeTrainNodeExecutor,
 )
+from .node_calibration.gepa_nodes import GepaFrozenNodeExecutor
 from .node_calibration.rubric_lite_nodes import (
     RubricLiteApplyNodeExecutor,
     RubricLiteFitNodeExecutor,
@@ -71,5 +72,6 @@ __all__ = [
     "RubricLiteTrainNodeExecutor",
     "RubricLiteFrozenNodeExecutor",
     "RubricLiteFitNodeExecutor",
+    "GepaFrozenNodeExecutor",
     "RubricLiteApplyNodeExecutor",
 ]
