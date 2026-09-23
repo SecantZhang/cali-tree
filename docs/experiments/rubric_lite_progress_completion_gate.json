@@ -1,0 +1,72 @@
+{
+  "protocol_version": "rubric-lite-progress-completion-gate-v1",
+  "created_at": "2026-07-29T15:23:02-07:00",
+  "status": "preregistered",
+  "hypothesis": "Partial is better represented by visible requested-edit progress without complete fulfillment than by a single interval on the minimum of all rubric scores.",
+  "architecture": {
+    "judge_calls_per_case": 1,
+    "additional_model_calls": 0,
+    "tree": false,
+    "classifier": false,
+    "editor_or_dataset_features": false,
+    "fitted_parameters": 2,
+    "decision_rule": [
+      "progress_score < no_progress_threshold -> no",
+      "completion_score >= full_completion_threshold -> yes",
+      "otherwise -> partial"
+    ],
+    "completion_score": "minimum(change_evidence, specification_fidelity, source_preservation)"
+  },
+  "candidate_progress_scores": [
+    {
+      "id": "requested_min",
+      "definition": "minimum(change_evidence, specification_fidelity)"
+    },
+    {
+      "id": "requested_mean",
+      "definition": "mean(change_evidence, specification_fidelity)"
+    },
+    {
+      "id": "requested_max",
+      "definition": "maximum(change_evidence, specification_fidelity)"
+    }
+  ],
+  "data": {
+    "selection": {
+      "dataset": "EditInspector calibration half",
+      "cases": 392,
+      "final_partition_used": false
+    },
+    "external_transfer": {
+      "dataset": "ImagenHub existing judged holdout",
+      "cases": 600,
+      "tasks": 75
+    },
+    "model_outputs": "Existing rubric_lite_v4 judgments only; no model calls are authorized for this experiment."
+  },
+  "validation": {
+    "folds": 5,
+    "seed": 44,
+    "group_by_task": true,
+    "threshold_candidates": "observed score values plus epsilon, fitted inside each training fold",
+    "minimum_recall_per_represented_class": 0.1,
+    "candidate_selection_order": [
+      "macro_f1",
+      "partial_f1",
+      "balanced_accuracy",
+      "accuracy",
+      "candidate id"
+    ],
+    "baseline": "minimum-score two-cutpoint Rubric-Lite under identical outer folds",
+    "selection_policy": "Select one progress definition on EditInspector only, then evaluate that fixed definition on ImagenHub. Threshold values may be fitted per target domain; the rule definition may not change."
+  },
+  "advancement_gate": {
+    "must_hold_on_editinspector_and_imagenhub": {
+      "partial_f1_delta_minimum": 0.05,
+      "balanced_accuracy_delta_minimum": 0.0,
+      "accuracy_delta_minimum": -0.02
+    },
+    "action_if_passed": "Implement the fixed progress definition as an optional Rubric-Lite calibrator and preserve minimum-score mode as the compatibility default.",
+    "action_if_failed": "Do not add runtime complexity. Record the negative result and retain the minimum-score calibrator."
+  }
+}

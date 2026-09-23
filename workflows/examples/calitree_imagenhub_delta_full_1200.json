@@ -1,0 +1,198 @@
+{
+  "name": "calitree_imagenhub_delta_full_1200",
+  "graph": {
+    "nodes": [
+      {
+        "id": "imagenhub",
+        "type": "imagenhub_source",
+        "params": {
+          "repeat": "1",
+          "editors": [
+            "CycleDiffusion",
+            "DiffEdit",
+            "InstructPix2Pix",
+            "MagicBrush",
+            "Pix2PixZero",
+            "Prompt2prompt",
+            "SDEdit",
+            "Text2Live"
+          ]
+        }
+      },
+      {
+        "id": "dataset",
+        "type": "dataset",
+        "params": {
+          "sampling_ratio": 1.0,
+          "full_dataset": false,
+          "sampling_mode": "split_label_stratified",
+          "train_sampling_ratio": 1.0,
+          "test_sampling_ratio": 1.0,
+          "test_group_offset": 0,
+          "group_by_task": true,
+          "require_labels": true,
+          "aggregation_method": "none"
+        }
+      },
+      {
+        "id": "judge_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 1024,
+          "concurrency": 1,
+          "health_check": false
+        }
+      },
+      {
+        "id": "optimizer_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 1024,
+          "concurrency": 1,
+          "health_check": false
+        }
+      },
+      {
+        "id": "train",
+        "type": "calitree_train",
+        "params": {
+          "embedding_model": "",
+          "prompt_version": "calitree_v2",
+          "max_steps": 3,
+          "merge_acceptance": 0.8,
+          "similarity_start": 0.9,
+          "similarity_decay": 0.05,
+          "similarity_floor": 0.7,
+          "warm_start": true,
+          "merge_validation_cap": 6,
+          "merge_regression_tolerance": 0.05,
+          "merge_generalization_floor": 0.8,
+          "routing_margin": 0.02,
+          "min_routing_support": 2,
+          "singleton_exact_threshold": 0.995,
+          "global_min_validation_gain": 0.0,
+          "max_merge_attempts": 20,
+          "semantic_premerge_levels": 2,
+          "validation_fraction": 0.25,
+          "split_seed": 44,
+          "run_baselines": true,
+          "run_conflict_resolver": true,
+          "conflict_min_support": 4,
+          "conflict_min_gain": 0.0,
+          "consensus_min_gain": 0.0,
+          "calibration_agreement_filter": "unanimous",
+          "selective_min_consensus_support": 3,
+          "selective_editor_min_support": 10,
+          "selective_editor_accuracy_threshold": 0.85,
+          "editor_prior_threshold": 0.98,
+          "editor_prior_min_support": 20,
+          "evidence_referral_coverage_floor": 0.5,
+          "specialization_mode": "additive",
+          "leaf_grouping": "failure_mode",
+          "change_signal": "all",
+          "root_objective": "balanced"
+        }
+      },
+      {
+        "id": "route",
+        "type": "calitree_judge",
+        "params": {
+          "human_review_mode": "off"
+        }
+      },
+      {
+        "id": "evaluate",
+        "type": "calitree_eval",
+        "params": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "imagenhub",
+        "source_socket": "raw_dataset",
+        "target": "dataset",
+        "target_socket": "raw_dataset"
+      },
+      {
+        "source": "imagenhub",
+        "source_socket": "raw_labels",
+        "target": "dataset",
+        "target_socket": "raw_labels"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "train",
+        "target_socket": "samples"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "labels",
+        "target": "train",
+        "target_socket": "labels"
+      },
+      {
+        "source": "imagenhub",
+        "source_socket": "raw_labels",
+        "target": "train",
+        "target_socket": "population_labels"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "train",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "optimizer_engine",
+        "source_socket": "engine_config",
+        "target": "train",
+        "target_socket": "optimizer_engine"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "route",
+        "target_socket": "samples"
+      },
+      {
+        "source": "train",
+        "source_socket": "prompt_tree",
+        "target": "route",
+        "target_socket": "prompt_tree"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "route",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "route",
+        "source_socket": "judge_result",
+        "target": "evaluate",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "labels",
+        "target": "evaluate",
+        "target_socket": "labels"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "evaluate",
+        "target_socket": "samples"
+      }
+    ]
+  },
+  "created_at": "2026-08-12T00:00:00Z",
+  "updated_at": "2026-08-12T00:00:00Z"
+}

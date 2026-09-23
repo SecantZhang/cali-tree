@@ -29,6 +29,7 @@ export const CATEGORY_ORDER: string[] = [
 export const SUBCATEGORY_LABELS: Record<string, string> = {
   agent: 'Agent Calibration',
   model: 'Model Calibration',
+  prompt: 'Prompt Calibration',
 }
 
-export const SUBCATEGORY_ORDER: string[] = ['agent', 'model']
+export const SUBCATEGORY_ORDER: string[] = ['agent', 'model', 'prompt']

@@ -24,6 +24,11 @@ const HUMAN_DIMENSIONS = [
   'story_flow_voiceover', 'story_flow_visuals', 'section_placement_opening',
   'section_placement_middle', 'section_placement_closing', 'video_addresses_prompt',
 ]
+const IMAGENHUB_EDITORS = [
+  'CycleDiffusion', 'DiffEdit', 'Imagic', 'InstructPix2Pix', 'MagicBrush',
+  'Pix2PixZero', 'Prompt2prompt', 'SDEdit', 'Text2Live',
+]
+const PUBLIC_IMAGENMUSEUM_EDITORS = IMAGENHUB_EDITORS.filter((editor) => editor !== 'Imagic')
 
 const PREPROCESSING_ARTIFACT_TYPES = [
   'sampled_frames', 'keyframes', 'short_clips', 'asr_transcript', 'ocr_text',
@@ -42,8 +47,14 @@ const SAMPLING_FIELDS: Record<string, ParamField> = {
   // ambiguous between the whole set and a single item.
   full_dataset: { type: 'bool', default: false },
   sampling_mode: {
-    type: 'enum', options: ['unified', 'stratified'], default: 'unified',
+    type: 'enum',
+    options: ['unified', 'stratified', 'split_label_stratified'],
+    default: 'unified',
   },
+  train_sampling_ratio: { type: 'number', default: null, min: 0, max: 1, step: 0.05 },
+  test_sampling_ratio: { type: 'number', default: null, min: 0, max: 1, step: 0.05 },
+  test_group_offset: { type: 'number', default: 0, min: 0, step: 1 },
+  group_by_task: { type: 'bool', default: true },
   use_case_filter: { type: 'list[string]', default: null },
   item_id_pattern: { type: 'string', default: null },
   // Restricts the sampling pool to items with a human label before ratio/mode is applied
@@ -60,6 +71,19 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
   grapenut_source: { projects: { type: 'list[string]', default: null } },
   // No params — loads the whole VE-Bench DB; sample/subset downstream in the Dataset node.
   vebench_source: {},
+  imagenhub_source: {
+    repeat: { type: 'enum', options: ['1', '2', '3'], default: '1' },
+    editors: {
+      type: 'list[enum]', options: IMAGENHUB_EDITORS, default: PUBLIC_IMAGENMUSEUM_EDITORS,
+    },
+  },
+  editinspector_source: {
+    partition: {
+      type: 'enum',
+      default: 'all',
+      options: ['all', 'calibration', 'development', 'confirmation', 'final'],
+    },
+  },
   dataset: {
     ...SAMPLING_FIELDS,
     // How multiple annotators' scores for the same video are combined into `labels`.
@@ -109,6 +133,7 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     temperature: { type: 'number', default: 0.3 },
     max_tokens: { type: 'number', default: 4096, min: 1 },
     concurrency: { type: 'number', default: 1, min: 1 },
+    timeout: { type: 'number', default: 300, min: 1 },
     health_check: { type: 'bool', default: false },
   },
   // A metric's identity (prompt/schema/alignment) is now a wired `judge_spec` from a Judge
@@ -118,12 +143,14 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     preset: { type: 'enum', options: METRIC_PRESETS, default: 'M1' },
     spec_id: { type: 'string', default: 'custom' },
     label: { type: 'string', default: null },
-    modality: { type: 'enum', options: ['text', 'video'], default: 'text' },
+    modality: { type: 'enum', options: ['text', 'image', 'video'], default: 'text' },
     system: { type: 'text', default: null },
     user_template: { type: 'text', default: null },
     expected_fields: { type: 'list[string]', default: null },
     score_path: { type: 'string', default: 'score_1_to_5' },
-    target_dimension: { type: 'enum', options: HUMAN_DIMENSIONS, default: HUMAN_DIMENSIONS[0] },
+    target_dimension: {
+      type: 'enum', options: [...HUMAN_DIMENSIONS, 'satisfaction'], default: HUMAN_DIMENSIONS[0],
+    },
   },
   area_rubric: {
     rubric: {
@@ -202,6 +229,177 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     split_seed: { type: 'number', default: 0, min: 0 },
     bootstrap_repeats: { type: 'number', default: 1000, min: 0 },
   },
+  calitree_train: {
+    embedding_model: { type: 'string', default: '' },
+    prompt_version: {
+      type: 'enum',
+      options: ['calitree_v1', 'calitree_v2', 'calitree_v3', 'calitree_v4'],
+      default: 'calitree_v2',
+    },
+    max_steps: { type: 'number', default: 3, min: 1, max: 10 },
+    merge_acceptance: { type: 'number', default: 0.8, min: 0, max: 1, step: 0.05 },
+    similarity_start: { type: 'number', default: 0.9, min: 0, max: 1, step: 0.05 },
+    similarity_decay: { type: 'number', default: 0.05, min: 0.01, max: 1, step: 0.01 },
+    similarity_floor: { type: 'number', default: 0.7, min: 0, max: 1, step: 0.05 },
+    warm_start: { type: 'bool', default: true },
+    merge_validation_cap: { type: 'number', default: 6, min: 0 },
+    merge_regression_tolerance: {
+      type: 'number', default: 0.05, min: 0, max: 1, step: 0.01,
+    },
+    merge_generalization_floor: {
+      type: 'number', default: 0.8, min: 0, max: 1, step: 0.05,
+    },
+    routing_margin: { type: 'number', default: 0.02, min: 0, max: 1, step: 0.01 },
+    min_routing_support: { type: 'number', default: 2, min: 1 },
+    singleton_exact_threshold: {
+      type: 'number', default: 0.995, min: 0, max: 1, step: 0.001,
+    },
+    global_min_validation_gain: {
+      type: 'number', default: 0, min: 0, max: 1, step: 0.01,
+    },
+    max_merge_attempts: { type: 'number', default: 20, min: 0 },
+    semantic_premerge_levels: { type: 'number', default: 2, min: 0, max: 10 },
+    clustering_algorithm: {
+      type: 'enum', default: 'semantic_complete_link',
+      options: ['semantic_complete_link', 'behavioral_complete_link'],
+    },
+    semantic_similarity_weight: { type: 'number', default: 0.35, min: 0, max: 1, step: 0.05 },
+    behavior_similarity_weight: { type: 'number', default: 0.25, min: 0, max: 1, step: 0.05 },
+    cross_generalization_weight: { type: 'number', default: 0.4, min: 0, max: 1, step: 0.05 },
+    behavioral_probe_cap: { type: 'number', default: 48, min: 1 },
+    cross_generalization_cap: { type: 'number', default: 6, min: 1 },
+    validation_fraction: { type: 'number', default: 0.25, min: 0, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 44, min: 0 },
+    run_baselines: { type: 'bool', default: true },
+    run_conflict_resolver: { type: 'bool', default: true },
+    conflict_min_support: { type: 'number', default: 4, min: 1 },
+    conflict_min_gain: { type: 'number', default: 0, min: 0, max: 1, step: 0.01 },
+  consensus_min_gain: { type: 'number', default: 0, min: 0, max: 1, step: 0.01 },
+  calibration_agreement_filter: {
+    type: 'enum', default: 'all', options: ['all', 'unanimous'],
+  },
+    selective_min_consensus_support: { type: 'number', default: 3, min: 1, max: 3 },
+    selective_editor_min_support: { type: 'number', default: 10, min: 1 },
+    selective_editor_accuracy_threshold: {
+      type: 'number', default: 0.85, min: 0, max: 1, step: 0.01,
+    },
+    editor_prior_threshold: { type: 'number', default: 0.98, min: 0, max: 1, step: 0.01 },
+    editor_prior_min_support: { type: 'number', default: 20, min: 1 },
+    specialization_mode: {
+      type: 'enum',
+      default: 'replace',
+      options: ['replace', 'additive'],
+    },
+    leaf_grouping: {
+      type: 'enum',
+      default: 'task',
+      options: ['task', 'failure_mode', 'per_case'],
+    },
+    change_signal: {
+      type: 'enum',
+      default: 'off',
+      options: ['off', 'all'],
+    },
+  },
+  rubric_lite_train: {
+    rubric_version: {
+      type: 'enum',
+      default: 'rubric_lite_v1',
+      options: [
+        'rubric_lite_v1', 'rubric_lite_v2', 'rubric_lite_v3', 'rubric_lite_v4',
+        'rubric_lite_v5', 'rubric_lite_v6',
+      ],
+    },
+    max_steps: { type: 'number', default: 3, min: 0, max: 10 },
+    feedback_cases_per_bucket: { type: 'number', default: 8, min: 1, max: 50 },
+    max_validation_accuracy_drop: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    ordinal_accuracy_tolerance: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    ordinal_minimum_class_recall: {
+      type: 'number', default: 0.1, min: 0, max: 1, step: 0.05,
+    },
+    selection_objective: {
+      type: 'enum',
+      default: 'macro_f1',
+      options: ['macro_f1', 'accuracy_guarded_partial'],
+    },
+    validation_fraction: { type: 'number', default: 0.25, min: 0.1, max: 0.5, step: 0.05 },
+    split_seed: { type: 'number', default: 44, min: 0 },
+    agreement_filter: {
+      type: 'enum', default: 'unanimous', options: ['all', 'unanimous'],
+    },
+    run_initial_baseline: { type: 'bool', default: true },
+  },
+  rubric_lite_boundary: {
+    enabled: { type: 'bool', default: true },
+    verifier_version: {
+      type: 'enum',
+      default: 'rubric_lite_partial_v2',
+      options: ['rubric_lite_partial_v2', 'rubric_lite_v1'],
+    },
+    minimum_ordinal_score: {
+      type: 'number', default: 50, min: 0, max: 100, step: 5,
+    },
+    eligible_base_labels: {
+      type: 'list[string]',
+      default: ['yes'],
+      options: ['no', 'partial', 'yes'],
+    },
+    decision_policy: {
+      type: 'enum',
+      default: 'replace',
+      options: ['replace', 'partial_only'],
+    },
+    apply_split: {
+      type: 'enum', default: 'all', options: ['all', 'train', 'test'],
+    },
+  },
+  rubric_lite_frozen: {
+    model_version: {
+      type: 'enum',
+      default: 'rubric_lite_v4_imagenhub',
+      options: [
+        'rubric_lite_v4_imagenhub',
+        'rubric_lite_v4_editinspector_selective_v1',
+        'rubric_lite_v4_editinspector_cutpoints_v1',
+        'rubric_lite_v5_core_completion_experimental',
+        'rubric_lite_v6_evidence_ledger_experimental',
+      ],
+    },
+  },
+  rubric_lite_fit: {
+    calibration_mode: {
+      type: 'enum',
+      default: 'min_scalar',
+      options: ['min_scalar', 'two_gate'],
+    },
+    selection_objective: {
+      type: 'enum',
+      default: 'macro_f1',
+      options: ['macro_f1', 'accuracy_guarded_partial'],
+    },
+    minimum_class_recall: {
+      type: 'number', default: 0.1, min: 0, max: 1, step: 0.05,
+    },
+    accuracy_tolerance: {
+      type: 'number', default: 0.01, min: 0, max: 0.2, step: 0.01,
+    },
+    cv_folds: { type: 'number', default: 5, min: 2, max: 10, step: 1 },
+    cv_seed: { type: 'number', default: 44, min: 0, step: 1 },
+    group_by_task: { type: 'bool', default: true },
+  },
+  rubric_lite_apply: {},
+  calitree_judge: {
+    human_review_mode: {
+      type: 'enum',
+      default: 'off',
+      options: ['off', 'selective_policy', 'evidence_policy'],
+    },
+  },
+  calitree_eval: {},
 }
 
 export function defaultParamsFor(nodeType: string): Record<string, unknown> {

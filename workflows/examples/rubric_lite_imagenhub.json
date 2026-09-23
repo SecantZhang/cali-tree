@@ -1,0 +1,113 @@
+{
+  "name": "rubric_lite_imagenhub",
+  "graph": {
+    "nodes": [
+      {
+        "id": "imagenhub",
+        "type": "imagenhub_source",
+        "params": {
+          "repeat": "1",
+          "editors": [
+            "CycleDiffusion",
+            "DiffEdit",
+            "InstructPix2Pix",
+            "MagicBrush",
+            "Pix2PixZero",
+            "Prompt2prompt",
+            "SDEdit",
+            "Text2Live"
+          ]
+        }
+      },
+      {
+        "id": "dataset",
+        "type": "dataset",
+        "params": {
+          "sampling_ratio": 1.0,
+          "full_dataset": false,
+          "sampling_mode": "split_label_stratified",
+          "train_sampling_ratio": 1.0,
+          "test_sampling_ratio": 0.1,
+          "test_group_offset": 0,
+          "group_by_task": true,
+          "require_labels": true,
+          "aggregation_method": "none"
+        }
+      },
+      {
+        "id": "judge_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 1024,
+          "concurrency": 1,
+          "health_check": false
+        }
+      },
+      {
+        "id": "optimizer_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "temperature": 0,
+          "max_tokens": 1024,
+          "concurrency": 1,
+          "health_check": false
+        }
+      },
+      {
+        "id": "train",
+        "type": "rubric_lite_train",
+        "params": {
+          "rubric_version": "rubric_lite_v4",
+          "max_steps": 0,
+          "feedback_cases_per_bucket": 8,
+          "max_validation_accuracy_drop": 0.01,
+          "ordinal_accuracy_tolerance": 0.01,
+          "ordinal_minimum_class_recall": 0.1,
+          "validation_fraction": 0.25,
+          "split_seed": 44,
+          "agreement_filter": "all",
+          "run_initial_baseline": true
+        }
+      },
+      { "id": "judge", "type": "calitree_judge", "params": {} },
+      {
+        "id": "boundary",
+        "type": "rubric_lite_boundary",
+        "params": {
+          "verifier_version": "rubric_lite_partial_v2",
+          "minimum_ordinal_score": 0,
+          "eligible_base_labels": [
+            "yes"
+          ],
+          "decision_policy": "replace",
+          "apply_split": "all"
+        }
+      },
+      { "id": "evaluate", "type": "calitree_eval", "params": {} }
+    ],
+    "edges": [
+      { "source": "imagenhub", "source_socket": "raw_dataset", "target": "dataset", "target_socket": "raw_dataset" },
+      { "source": "imagenhub", "source_socket": "raw_labels", "target": "dataset", "target_socket": "raw_labels" },
+      { "source": "dataset", "source_socket": "samples", "target": "train", "target_socket": "samples" },
+      { "source": "dataset", "source_socket": "labels", "target": "train", "target_socket": "labels" },
+      { "source": "judge_engine", "source_socket": "engine_config", "target": "train", "target_socket": "judge_engine" },
+      { "source": "optimizer_engine", "source_socket": "engine_config", "target": "train", "target_socket": "optimizer_engine" },
+      { "source": "dataset", "source_socket": "samples", "target": "judge", "target_socket": "samples" },
+      { "source": "train", "source_socket": "prompt_tree", "target": "judge", "target_socket": "prompt_tree" },
+      { "source": "judge_engine", "source_socket": "engine_config", "target": "judge", "target_socket": "judge_engine" },
+      { "source": "dataset", "source_socket": "samples", "target": "boundary", "target_socket": "samples" },
+      { "source": "judge", "source_socket": "judge_result", "target": "boundary", "target_socket": "judge_result" },
+      { "source": "judge_engine", "source_socket": "engine_config", "target": "boundary", "target_socket": "judge_engine" },
+      { "source": "boundary", "source_socket": "judge_result", "target": "evaluate", "target_socket": "judge_result" },
+      { "source": "dataset", "source_socket": "labels", "target": "evaluate", "target_socket": "labels" },
+      { "source": "dataset", "source_socket": "samples", "target": "evaluate", "target_socket": "samples" }
+    ]
+  },
+  "created_at": "2026-07-29T00:00:00Z",
+  "updated_at": "2026-07-29T00:00:00Z"
+}

@@ -78,6 +78,39 @@ def test_fan_in_merges_multiple_source_pools(make_ctx):
     assert set(result.outputs["samples"]) == set(peanut) | set(coconut)
 
 
+def test_connected_raw_labels_are_joined_without_loading_legacy_annotations(
+    make_ctx, monkeypatch,
+):
+    raw_labels = {
+        "prj-a::0::peanut": {"target_label": "yes"},
+        "prj-b::0::peanut": {"target_label": "partial"},
+    }
+
+    def legacy_loader_must_not_run(**_kwargs):
+        raise AssertionError("legacy video annotations should not be loaded")
+
+    monkeypatch.setattr(dataset_node, "load_human_annotations", legacy_loader_must_not_run)
+    ctx = make_ctx(inputs={"raw_dataset": _raw_dataset(), "raw_labels": raw_labels})
+    result = DatasetNodeExecutor().run(ctx)
+    assert result.status == "done"
+    assert result.outputs["labels"] == raw_labels
+
+
+def test_raw_label_fan_in_joins_only_sampled_items(make_ctx):
+    raw_labels = [
+        {"prj-a::0::peanut": {"target_label": "yes"}},
+        {"prj-b::0::peanut": {"target_label": "no"}},
+    ]
+    ctx = make_ctx(
+        inputs={"raw_dataset": _raw_dataset(), "raw_labels": raw_labels},
+        params={"item_id_pattern": r"^prj-a::"},
+    )
+    result = DatasetNodeExecutor().run(ctx)
+    assert result.outputs["labels"] == {
+        "prj-a::0::peanut": {"target_label": "yes"},
+    }
+
+
 def test_use_case_filter(make_ctx):
     ctx = make_ctx(inputs={"raw_dataset": _raw_dataset()}, params={"use_case_filter": ["speech-driven"]})
     result = DatasetNodeExecutor().run(ctx)
@@ -144,6 +177,141 @@ def test_sampling_uses_use_case_already_on_each_item_not_a_re_derivation(make_ct
     assert len(dataset) == 2
     use_cases = {item["use_case"] for item in dataset.values()}
     assert use_cases == {"visual montage", "speech-driven"}  # one from each group
+
+
+def test_split_label_stratified_balances_train_and_preserves_test_prevalence(make_ctx):
+    raw_dataset = {}
+    raw_labels = {}
+    # Train is deliberately majority-"no"; the six-case subset should still contain all
+    # three train classes. Test remains prevalence-weighted instead of being balanced.
+    rows = [
+        ("train", "no", 12), ("train", "partial", 3), ("train", "yes", 3),
+        ("test", "no", 60), ("test", "partial", 8), ("test", "yes", 4),
+    ]
+    for split, label, count in rows:
+        for index in range(count):
+            item_id = f"{split}-{label}-{index}::0::peanut"
+            raw_dataset[item_id] = {
+                **_raw_item(item_id),
+                "split": split,
+            }
+            raw_labels[item_id] = {
+                "target_label": label,
+                "split": split,
+            }
+
+    result = DatasetNodeExecutor().run(make_ctx(
+        inputs={"raw_dataset": raw_dataset, "raw_labels": raw_labels},
+        params={
+            "sampling_ratio": 12,
+            "sampling_mode": "split_label_stratified",
+            "require_labels": True,
+        },
+    ))
+
+    assert result.status == "done"
+    selected = result.outputs["samples"]
+    train_labels = [
+        raw_labels[item_id]["target_label"]
+        for item_id in selected
+        if raw_dataset[item_id]["split"] == "train"
+    ]
+    test_labels = [
+        raw_labels[item_id]["target_label"]
+        for item_id in selected
+        if raw_dataset[item_id]["split"] == "test"
+    ]
+    assert sorted(train_labels) == ["no", "partial", "yes"]
+    assert test_labels.count("no") > test_labels.count("partial") >= test_labels.count("yes")
+
+
+def test_split_specific_ratios_keep_complete_task_groups(make_ctx):
+    raw_dataset = {}
+    raw_labels = {}
+    for split, n_tasks in (("train", 3), ("test", 10)):
+        for task_index in range(n_tasks):
+            task_uid = f"{split}-task-{task_index}"
+            for editor_index, editor in enumerate(("A", "B")):
+                item_id = f"{task_uid}::{editor_index}::{editor}"
+                raw_dataset[item_id] = {
+                    **_raw_item(item_id),
+                    "split": split,
+                    "task_uid": task_uid,
+                    "editor": editor,
+                }
+                raw_labels[item_id] = {
+                    "target_label": "no",
+                    "split": split,
+                }
+
+    result = DatasetNodeExecutor().run(make_ctx(
+        inputs={"raw_dataset": raw_dataset, "raw_labels": raw_labels},
+        params={
+            "sampling_mode": "split_label_stratified",
+            "train_sampling_ratio": 1.0,
+            "test_sampling_ratio": 0.2,
+            "group_by_task": True,
+            "require_labels": True,
+        },
+    ))
+
+    selected = result.outputs["samples"]
+    assert result.status == "done"
+    assert result.meta["split_counts"] == {"train": 6, "test": 4}
+    assert result.meta["task_counts"] == {"train": 3, "test": 2}
+    by_task = {}
+    for sample in selected.values():
+        by_task.setdefault(sample["task_uid"], set()).add(sample["editor"])
+    assert all(editors == {"A", "B"} for editors in by_task.values())
+
+
+def test_group_offsets_produce_complementary_heldout_halves(make_ctx):
+    raw_dataset = {}
+    raw_labels = {}
+    for task_index in range(10):
+        task_uid = f"test-task-{task_index}"
+        for editor in ("A", "B"):
+            item_id = f"{task_uid}::0::{editor}"
+            raw_dataset[item_id] = {
+                **_raw_item(item_id),
+                "split": "test",
+                "task_uid": task_uid,
+                "editor": editor,
+            }
+            raw_labels[item_id] = {
+                "target_label": "no",
+                "split": "test",
+            }
+
+    halves = []
+    for offset in (0, 1):
+        result = DatasetNodeExecutor().run(make_ctx(
+            node_id=f"dataset-{offset}",
+            inputs={
+                "raw_dataset": raw_dataset,
+                "raw_labels": raw_labels,
+            },
+            params={
+                "sampling_mode": "split_label_stratified",
+                "test_sampling_ratio": 0.5,
+                "test_group_offset": offset,
+                "group_by_task": True,
+                "require_labels": True,
+            },
+        ))
+        halves.append(set(result.outputs["samples"]))
+
+    assert halves[0].isdisjoint(halves[1])
+    assert halves[0] | halves[1] == set(raw_dataset)
+
+
+def test_split_label_stratified_requires_source_labels(make_ctx):
+    result = DatasetNodeExecutor().run(make_ctx(
+        inputs={"raw_dataset": _raw_dataset()},
+        params={"sampling_ratio": 3, "sampling_mode": "split_label_stratified"},
+    ))
+    assert result.status == "error"
+    assert "raw_labels" in result.error
 
 
 def test_missing_raw_dataset_input_is_a_node_error(make_ctx):

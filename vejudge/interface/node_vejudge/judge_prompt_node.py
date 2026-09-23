@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
-from .judge_spec import PRESET_METRIC_IDS, TARGET_DIMENSIONS, builtin_spec
+from .judge_spec import CUSTOM_TARGET_DIMENSIONS, PRESET_METRIC_IDS, TARGET_DIMENSIONS, builtin_spec
 
 
 @register
@@ -25,13 +25,13 @@ class JudgePromptNodeExecutor(NodeExecutor):
         # Custom-only fields (ignored unless preset == "custom").
         "spec_id": {"type": "string", "default": "custom"},
         "label": {"type": "string", "default": None},
-        "modality": {"type": "enum", "options": ["text", "video"], "default": "text"},
+        "modality": {"type": "enum", "options": ["text", "image", "video"], "default": "text"},
         "system": {"type": "text", "default": None},
         "user_template": {"type": "text", "default": None},
         "expected_fields": {"type": "list[string]", "default": None},
         "score_path": {"type": "string", "default": "score_1_to_5"},
         "target_dimension": {
-            "type": "enum", "options": TARGET_DIMENSIONS, "default": TARGET_DIMENSIONS[0],
+            "type": "enum", "options": CUSTOM_TARGET_DIMENSIONS, "default": TARGET_DIMENSIONS[0],
         },
     }
 

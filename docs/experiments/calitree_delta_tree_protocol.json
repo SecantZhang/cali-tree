@@ -1,0 +1,57 @@
+{
+  "protocol_version": 1,
+  "status": "completed_see_calitree_delta_tree_result.json",
+  "objective": "Test whether an additive delta-tree — specialize failure-mode leaves, compress by accumulating validated deltas into a root that is >= the flat base by construction — beats the flat rubric, and whether a localized source->edited change signal improves the partial boundary.",
+  "frozen_before_final_eval": true,
+  "baseline_preservation": "Cali-Tree v2 is unchanged and is the default (specialization_mode=replace). The delta-tree is opt-in via specialization_mode=additive; Rubric-Lite v4 is also untouched.",
+  "hypotheses": [
+    "H1 (accumulation): with additive leaves + no-regression-vs-base merge guard, the root is the accumulated widest merge and its held-out accuracy is >= the flat base rubric (routed <= flat can no longer happen).",
+    "H2 (failure-mode clustering): grouping leaves by (base-prediction, target) residual signature yields fewer, better-supported leaves and more accepted merges than task grouping.",
+    "H3 (partial signal): attaching the localized change map + descriptor raises partial F1 versus the same tree with change_signal=off."
+  ],
+  "dataset": {
+    "name": "ImagenHub/Text_Guided_Image_Editing",
+    "split_seed": 44,
+    "training_cases": 232,
+    "dev_slice_tasks": 15,
+    "dev_slice_cases": 120,
+    "task_grouping": true,
+    "development_status": "The 120-case dev slice and the 1,200-case held-out are development/ablation data, not untouched confirmation."
+  },
+  "model": {
+    "architecture": "calitree",
+    "specialization_mode": "additive",
+    "leaf_grouping": "failure_mode",
+    "change_signal": "all",
+    "merge_objective": "balanced (no regression vs base on the held-out guard)",
+    "prompt_version": "calitree_v2",
+    "workflow": "workflows/examples/calitree_imagenhub_delta.json"
+  },
+  "engine": {
+    "judge_model": "gpt-4.1-mini",
+    "optimizer_model": "gpt-4.1-mini",
+    "embedding_model": "text-embedding-3-small",
+    "temperature": 0,
+    "max_tokens": 1024,
+    "concurrency": 8
+  },
+  "change_signal_feature": {
+    "preprocessor": "vejudge/preprocessing/localized_change.py (localized-change-v1)",
+    "inputs": "SOURCE + EDITED luminance change map + textual descriptor (changed extent, 3x3 grid location, background-preserved flag)",
+    "deps": "numpy (core) + Pillow (calitree extra); cached by (item_id, source sha, edited sha, config hash, version)",
+    "target_blind": "the change map is computed from source/edited pixels only; it never sees the human label"
+  },
+  "primary_metrics": [
+    "accuracy", "balanced_accuracy", "macro_f1", "ordinal_mae",
+    "per_class_precision_recall_f1", "confusion_matrix",
+    "tree_metrics.root_source", "tree_metrics.compression_ratio",
+    "tree_metrics.n_full_merges", "tree_metrics.n_rejected_merges"
+  ],
+  "advancement_gate": "The delta-root held-out accuracy must be >= the flat base rubric (H1), and the change signal must raise partial F1 by a preregistered margin (H3) before any full-1200 or second-dataset run. Otherwise stop and record the negative result.",
+  "comparison": {
+    "flat_base_rubric_held_out_accuracy": "measured in-run as the base/warm node",
+    "frozen_v2_replace_tree": "specialization_mode=replace, leaf_grouping=task (the 82.83% full-coverage baseline)",
+    "prior_delta_free_dev_run": "logs/exps/calitree-evidence-dev120-v2-exps"
+  },
+  "reserved": "The untouched EditInspector final 391-case partition is not part of this experiment."
+}
