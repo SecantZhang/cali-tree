@@ -72,7 +72,7 @@ def textgrad_update(
             prompt,
             requires_grad=True,
             role_description=(
-                "general ImagenHub Semantic Consistency image-editing rubric that must "
+                "general Semantic Consistency image-editing rubric that must "
                 "classify no/partial/yes and preserve the JSON output contract"
             ),
         )

@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prompt-repair experiment report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f4ef;
+      --surface: #ffffff;
+      --surface-2: #f9f8f4;
+      --ink: #17201b;
+      --muted: #66716a;
+      --border: #d9ddd8;
+      --accent: #155e52;
+      --accent-soft: #dcece7;
+      --good: #177245;
+      --good-soft: #dff2e7;
+      --warn: #9a5b13;
+      --warn-soft: #f8ead7;
+      --bad: #a33838;
+      --bad-soft: #f8e1df;
+      --no: #b44d4d;
+      --partial: #b47a21;
+      --yes: #247859;
+      --invalid: #7f8791;
+      --shadow: 0 8px 24px rgba(25, 39, 31, .08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 18px; min-height: 68px; padding: 12px 22px; color: white; background: #12261f; box-shadow: var(--shadow); }
+    .brand { min-width: 250px; }
+    .brand h1 { margin: 0; font: 650 18px/1.2 Georgia, serif; letter-spacing: .01em; }
+    .brand p { margin: 4px 0 0; color: #bfcfc8; font-size: 12px; }
+    .top-metrics { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+    .top-metric { min-width: 104px; padding: 7px 10px; border: 1px solid #345248; border-radius: 7px; background: #19372d; }
+    .top-metric span { display: block; color: #adc2ba; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
+    .top-metric strong { display: block; margin-top: 1px; font-size: 16px; }
+    .load-label { display: inline-flex; align-items: center; justify-content: center; padding: 8px 11px; border: 1px solid #58736a; border-radius: 6px; color: white; background: transparent; white-space: nowrap; cursor: pointer; }
+    .load-label:hover { background: #25483c; }
+    .load-label input { display: none; }
+    .layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); min-height: calc(100vh - 68px); }
+    .sidebar { position: sticky; top: 68px; height: calc(100vh - 68px); overflow: hidden; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
+    .filters { padding: 15px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    .filters input, .filters select { width: 100%; height: 36px; border: 1px solid var(--border); border-radius: 6px; background: white; color: var(--ink); padding: 0 10px; }
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .case-count { margin: 10px 1px 0; color: var(--muted); font-size: 12px; }
+    .case-list { overflow: auto; flex: 1; }
+    .case-row { width: 100%; padding: 12px 14px; text-align: left; border: 0; border-bottom: 1px solid #eceeea; background: white; color: var(--ink); }
+    .case-row:hover { background: #f5f8f6; }
+    .case-row.selected { border-left: 4px solid var(--accent); padding-left: 10px; background: var(--accent-soft); }
+    .case-title { display: flex; align-items: center; gap: 7px; font-weight: 650; }
+    .case-instruction { margin-top: 5px; color: #38423d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .case-meta { display: flex; gap: 7px; margin-top: 6px; color: var(--muted); font-size: 11px; }
+    .main { min-width: 0; padding: 22px clamp(18px, 3vw, 42px) 80px; }
+    .empty { max-width: 620px; margin: 80px auto; padding: 28px; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface); text-align: center; color: var(--muted); }
+    .case-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .case-head h2 { margin: 0 0 7px; font: 650 clamp(22px, 3vw, 32px)/1.2 Georgia, serif; }
+    .eyebrow { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .idline { max-width: 760px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .score-lockup { min-width: 130px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); text-align: right; }
+    .score-lockup span { display: block; color: var(--muted); font-size: 11px; }
+    .score-lockup strong { font-size: 24px; }
+    .image-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .image-card { overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); }
+    .image-card header { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--border); font-weight: 650; }
+    .image-card img { display: block; width: 100%; height: min(34vw, 380px); object-fit: contain; background: #ecece8; }
+    .image-missing { display: grid; place-items: center; height: 220px; color: var(--muted); background: #ecece8; }
+    .tabbar { display: flex; gap: 3px; overflow-x: auto; border-bottom: 1px solid var(--border); margin-top: 22px; }
+    .tab { border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; color: var(--muted); background: transparent; text-transform: capitalize; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+    .panel { margin-top: 16px; }
+    .section { margin-bottom: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); box-shadow: 0 3px 12px rgba(25, 39, 31, .04); }
+    .section h3 { margin: 0 0 12px; font: 650 18px/1.3 Georgia, serif; }
+    .section h4 { margin: 18px 0 8px; font-size: 13px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .section-head h3 { margin: 0; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 9px; }
+    .metric { padding: 10px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); }
+    .metric span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    .metric strong { display: block; margin-top: 3px; font-size: 17px; overflow-wrap: anywhere; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 99px; font-size: 11px; font-weight: 700; line-height: 1.6; }
+    .badge.no { color: #792d2d; background: #f5dedd; }
+    .badge.partial { color: #704608; background: #f5e7ca; }
+    .badge.yes, .badge.good { color: #145235; background: #dcefe3; }
+    .badge.invalid, .badge.neutral { color: #4e5962; background: #e8ebed; }
+    .badge.bad { color: #7f2828; background: #f5dedd; }
+    .badge.warn { color: #704608; background: #f5e7ca; }
+    .rationale { margin: 9px 0 0; color: #38423d; }
+    .distribution { display: grid; gap: 6px; margin-top: 12px; }
+    .dist-row { display: grid; grid-template-columns: 54px minmax(80px, 1fr) 34px; gap: 8px; align-items: center; }
+    .dist-row > span:first-child { text-transform: capitalize; font-size: 12px; }
+    .track { height: 9px; border-radius: 99px; background: #eceeea; overflow: hidden; }
+    .fill { height: 100%; min-width: 0; }
+    .fill.no { background: var(--no); } .fill.partial { background: var(--partial); } .fill.yes { background: var(--yes); } .fill.invalid { background: var(--invalid); }
+    .timeline { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 11px; }
+    .round-button { flex: 0 0 150px; padding: 9px; text-align: left; border: 1px solid var(--border); border-radius: 7px; color: var(--ink); background: var(--surface-2); }
+    .round-button.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); background: white; }
+    .round-button strong, .round-button small { display: block; }
+    .round-button small { margin-top: 4px; color: var(--muted); }
+    .split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr); gap: 14px; }
+    pre { margin: 0; max-height: 480px; overflow: auto; padding: 13px; border-radius: 7px; color: #dce9e2; background: #17251f; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre.diff { color: #26332c; background: #f3f2ed; border: 1px solid var(--border); }
+    .diff-add { color: #185f3c; background: #e2f2e7; } .diff-del { color: #8c3434; background: #f7e5e3; }
+    details { margin-top: 10px; border-top: 1px solid #eceeea; padding-top: 9px; }
+    summary { color: var(--accent); font-weight: 650; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 9px; font-size: 12px; }
+    th, td { padding: 8px; border-bottom: 1px solid #eceeea; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    td.rationale-cell { min-width: 260px; }
+    .notice { padding: 10px 12px; border-left: 3px solid var(--warn); color: #614215; background: var(--warn-soft); }
+    .drop-active::after { content: "Drop experiment files to load"; position: fixed; inset: 16px; z-index: 99; display: grid; place-items: center; border: 3px dashed var(--accent); border-radius: 16px; color: var(--accent); background: rgba(235, 246, 241, .94); font-size: 22px; font-weight: 700; }
+    .toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; max-width: 460px; padding: 11px 14px; border-radius: 7px; color: white; background: #26332c; box-shadow: var(--shadow); }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      .topbar { position: static; align-items: flex-start; flex-wrap: wrap; }
+      .brand { flex: 1; }
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; max-height: 430px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .split { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .main { padding: 16px 12px 60px; }
+      .image-grid { grid-template-columns: 1fr; }
+      .image-card img { height: 310px; }
+      .case-head { flex-direction: column; }
+      .score-lockup { width: 100%; text-align: left; }
+      .top-metrics { order: 3; flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><h1>Prompt-repair report</h1><p id="run-name"></p></div>
+    <div class="top-metrics" id="top-metrics"></div>
+    <label class="load-label">Load run files<input id="file-input" type="file" accept=".json,.jsonl" multiple></label>
+    <label class="load-label">Load run folder<input id="folder-input" type="file" webkitdirectory multiple></label>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="filters">
+        <input id="search" type="search" placeholder="Search instruction, ID, task, model…">
+        <div class="filter-grid">
+          <select id="target-filter" aria-label="Target label"><option value="">All targets</option><option>no</option><option>partial</option><option>yes</option></select>
+          <select id="status-filter" aria-label="Case status"><option value="">All cases</option><option value="correct">Initially correct</option><option value="wrong">Initially wrong</option><option value="robust">Baseline robust</option><option value="repair">Repair pool</option><option value="accepted">Any repair accepted</option><option value="unrepaired">No repair accepted</option></select>
+        </div>
+        <div class="case-count" id="case-count"></div>
+      </div>
+      <div class="case-list" id="case-list"></div>
+    </aside>
+    <main class="main" id="main"></main>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script id="embedded-report" type="application/json">__PROMPT_REPAIR_REPORT_DATA__</script>
+  <script>
+    (() => {
+      const $ = (selector, parent = document) => parent.querySelector(selector);
+      const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
+      const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+      const pretty = value => JSON.stringify(value ?? {}, null, 2);
+      const pct = value => value == null ? "—" : `${(Number(value) * 100).toFixed(1)}%`;
+      const val = (value, fallback = "—") => value == null || value === "" ? fallback : value;
+      const labelBadge = label => `<span class="badge ${esc(label || "invalid")}">${esc(label || "invalid")}</span>`;
+      const boolBadge = (value, yes = "yes", no = "no") => `<span class="badge ${value ? "good" : "bad"}">${value ? esc(yes) : esc(no)}</span>`;
+      const repairReason = item => {
+        const correct = item.initial?.valid && item.initial?.label === item.target_label;
+        const robust = Boolean(item.robustness?.robust);
+        if (!correct && !robust) return "initial error + unstable";
+        if (!correct) return "initial error";
+        if (!robust) return "unstable";
+        return "not required";
+      };
+      const needsRepair = item => repairReason(item) !== "not required";
+      const acceptedRepair = item => (item.repairs || []).some(trace => trace.accepted);
+
+      let report = JSON.parse($("#embedded-report").textContent);
+      let selectedId = report.cases?.[0]?.item_id || null;
+      let selectedTab = "baseline";
+      let selectedRound = 0;
+
+      function toast(message) {
+        const node = $("#toast");
+        node.textContent = message;
+        node.classList.remove("hidden");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => node.classList.add("hidden"), 4200);
+      }
+
+      function metric(label, value) {
+        return `<div class="top-metric"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+      }
+
+      function renderHeader() {
+        const summary = report.summary || {};
+        const baseline = summary.baseline || {};
+        const structured = report.structured_summary?.cohorts?.accepted_primary || {};
+        const mechanical = report.ablation_summary?.arms?.mechanical_json || {};
+        $("#run-name").textContent = `${report.run_name || "loaded experiment"} · ${summary.model || report.config?.model || "unknown model"}`;
+        $("#top-metrics").innerHTML = [
+          metric("Cases", report.cases?.length || 0),
+          metric("Initial accuracy", pct(baseline.accuracy)),
+          metric("Robust coverage", pct(baseline.robust_coverage)),
+          ...Object.entries(summary.repair || {}).map(([method, row]) => metric(`${method} repaired`, `${row.accepted ?? 0}/${row.eligible ?? 0}`)),
+          ...(structured.n ? [metric("Structured robust", `${structured.robustness_preserved}/${structured.n}`)] : []),
+          ...(mechanical.n ? [metric("Lossless JSON robust", `${mechanical.robust}/${mechanical.n}`)] : [])
+        ].join("");
+      }
+
+      function filteredCases() {
+        const query = $("#search").value.trim().toLowerCase();
+        const target = $("#target-filter").value;
+        const status = $("#status-filter").value;
+        return (report.cases || []).filter(item => {
+          const haystack = [item.item_id, item.task_uid, item.task, item.model, item.instruction].join(" ").toLowerCase();
+          if (query && !haystack.includes(query)) return false;
+          if (target && item.target_label !== target) return false;
+          const correct = item.initial?.valid && item.initial?.label === item.target_label;
+          const robust = Boolean(item.robustness?.robust);
+          if (status === "correct" && !correct) return false;
+          if (status === "wrong" && correct) return false;
+          if (status === "robust" && !robust) return false;
+          if (status === "repair" && !needsRepair(item)) return false;
+          if (status === "accepted" && !acceptedRepair(item)) return false;
+          if (status === "unrepaired" && (!needsRepair(item) || acceptedRepair(item))) return false;
+          return true;
+        });
+      }
+
+      function renderCaseList() {
+        const cases = filteredCases();
+        $("#case-count").textContent = `${cases.length} of ${report.cases?.length || 0} cases`;
+        $("#case-list").innerHTML = cases.map(item => {
+          const correct = item.initial?.valid && item.initial?.label === item.target_label;
+          const status = acceptedRepair(item) ? "repair accepted" : needsRepair(item) ? "repair needed" : "baseline robust";
+          return `<button class="case-row ${item.item_id === selectedId ? "selected" : ""}" data-case-id="${esc(item.item_id)}">
+            <div class="case-title">${labelBadge(item.target_label)} <span>${esc(item.task || "case")}</span></div>
+            <div class="case-instruction">${esc(item.instruction || item.item_id)}</div>
+            <div class="case-meta"><span>${correct ? "✓" : "✕"} init ${esc(item.initial?.label || "invalid")}</span><span>·</span><span>${esc(status)}</span></div>
+          </button>`;
+        }).join("") || `<div class="empty">No cases match these filters.</div>`;
+      }
+
+      function predictionCard(title, prediction, target) {
+        if (!prediction) return `<div class="notice">${esc(title)} was not run.</div>`;
+        const correct = prediction.valid && prediction.label === target;
+        return `<div class="section">
+          <div class="section-head"><h3>${esc(title)}</h3>${boolBadge(correct, "correct", prediction.valid ? "wrong" : "invalid")}</div>
+          <div class="metrics">
+            <div class="metric"><span>Prediction</span><strong>${labelBadge(prediction.label)}</strong></div>
+            <div class="metric"><span>Temperature</span><strong>${esc(val(prediction.temperature))}</strong></div>
+            <div class="metric"><span>Model</span><strong>${esc(val(prediction.model))}</strong></div>
+            <div class="metric"><span>Latency</span><strong>${prediction.latency_seconds == null ? "—" : `${Number(prediction.latency_seconds).toFixed(2)}s`}</strong></div>
+          </div>
+          <p class="rationale">${esc(prediction.rationale || prediction.parse_error || prediction.error || "No rationale recorded.")}</p>
+          <details><summary>Raw call evidence</summary><pre>${esc(pretty(prediction))}</pre></details>
+        </div>`;
+      }
+
+      function distribution(stats) {
+        const counts = stats?.label_distribution || {};
+        const n = Math.max(1, Number(stats?.n) || Object.values(counts).reduce((sum, count) => sum + Number(count || 0), 0) || 1);
+        return `<div class="distribution">${["no", "partial", "yes", "invalid"].map(label => {
+          const count = Number(counts[label] || 0);
+          return `<div class="dist-row"><span>${label}</span><div class="track"><div class="fill ${label}" style="width:${100 * count / n}%"></div></div><strong>${count}</strong></div>`;
+        }).join("")}</div>`;
+      }
+
+      function repeatTable(rows, target) {
+        if (!rows?.length) return `<div class="notice">Repeated predictions were not run because this progression did not pass its preceding gate.</div>`;
+        return `<details><summary>All ${rows.length} repeated predictions</summary><div style="overflow:auto"><table>
+          <thead><tr><th>#</th><th>Prediction</th><th>Correct</th><th>Rationale</th><th>Latency</th></tr></thead>
+          <tbody>${rows.map((row, index) => `<tr><td>${index + 1}</td><td>${labelBadge(row.label)}</td><td>${row.valid && row.label === target ? "✓" : "✕"}</td><td class="rationale-cell">${esc(row.rationale || row.parse_error || row.error || "—")}</td><td>${row.latency_seconds == null ? "—" : `${Number(row.latency_seconds).toFixed(2)}s`}</td></tr>`).join("")}</tbody>
+        </table></div></details><details><summary>Raw repeated-call records</summary><pre>${esc(pretty(rows))}</pre></details>`;
+      }
+
+      function robustnessSection(stats, repeats, target, title = "Repeated-run stability") {
+        stats = stats || {};
+        const interval = stats.wilson_95 || [];
+        return `<div class="section">
+          <div class="section-head"><h3>${esc(title)}</h3>${boolBadge(stats.robust, "robust", "not robust")}</div>
+          <div class="metrics">
+            <div class="metric"><span>Target hits</span><strong>${esc(stats.target_hits ?? 0)}/${esc(stats.n ?? 0)}</strong></div>
+            <div class="metric"><span>Target hit rate</span><strong>${pct(stats.target_hit_rate)}</strong></div>
+            <div class="metric"><span>Modal label</span><strong>${labelBadge(stats.modal_label)}</strong></div>
+            <div class="metric"><span>Wilson 95%</span><strong>${interval.length === 2 ? `${pct(interval[0])}–${pct(interval[1])}` : "—"}</strong></div>
+          </div>
+          ${distribution(stats)}
+          ${repeatTable(repeats, target)}
+        </div>`;
+      }
+
+      function promptSection(title, prompt, diff) {
+        return `<div class="section"><h3>${esc(title)}</h3><pre>${esc(prompt || "Prompt text unavailable")}</pre>
+          ${diff ? `<details><summary>Prompt diff from parent</summary><pre class="diff">${esc(diff)}</pre></details>` : ""}
+        </div>`;
+      }
+
+      function renderBaseline(item) {
+        return `${promptSection("Initial judge prompt", report.seed_prompt, "")}
+          ${predictionCard("Initial prediction", item.initial, item.target_label)}
+          ${robustnessSection(item.robustness, item.repeats, item.target_label, "Baseline repeated-run stability")}`;
+      }
+
+      function roundSummary(round) {
+        const stats = round.robustness || {};
+        return `<button class="round-button ${Number(round.round) === selectedRound ? "active" : ""}" data-round="${esc(round.round)}">
+          <strong>Round ${esc(round.round)} ${round.accepted ? "✓" : ""}</strong>
+          <small>screen: ${esc(round.screen?.label || "invalid")}</small>
+          <small>target: ${esc(stats.target_hits ?? 0)}/${esc(stats.n ?? 0)}</small>
+        </button>`;
+      }
+
+      function renderRound(item, trace, round) {
+        const lint = round.lint || {};
+        const anchors = round.anchors || [];
+        const structured = round.structured_test;
+        const ablation = round.structured_ablation;
+        return `<div class="split">
+          <div>
+            ${promptSection(`Round ${round.round} candidate prompt`, round.candidate_prompt, round.prompt_diff)}
+          </div>
+          <div>
+            <div class="section">
+              <div class="section-head"><h3>Progression gates</h3>${boolBadge(round.accepted, "accepted", "not accepted")}</div>
+              <div class="metrics">
+                <div class="metric"><span>Lint</span><strong>${lint.valid ? "pass" : "fail"}</strong></div>
+                <div class="metric"><span>Screen</span><strong>${labelBadge(round.screen?.label)}</strong></div>
+                <div class="metric"><span>Target hits</span><strong>${esc(round.robustness?.target_hits ?? 0)}/${esc(round.robustness?.n ?? 0)}</strong></div>
+                <div class="metric"><span>Anchors</span><strong>${anchors.length ? `${anchors.filter(anchor => anchor.correct).length}/${anchors.length}` : "not used"}</strong></div>
+              </div>
+              ${lint.errors?.length ? `<p class="notice">Lint: ${esc(lint.errors.join(", "))}</p>` : ""}
+            </div>
+            ${predictionCard("Temperature-0 screen", round.screen, item.target_label)}
+            ${robustnessSection(round.robustness, round.repeats, item.target_label)}
+          </div>
+        </div>
+        <div class="section">
+          <h3>Optimizer evidence</h3>
+          <h4>Feedback supplied to optimizer</h4><pre>${esc(round.feedback || "No feedback recorded")}</pre>
+          <details><summary>Optimizer metadata and lineage</summary><pre>${esc(pretty(round.optimizer))}</pre></details>
+          ${anchors.length ? `<details><summary>Anchor predictions</summary><pre>${esc(pretty(anchors))}</pre></details>` : ""}
+        </div>${structured ? renderStructuredTest(item, structured) : ""}${ablation ? renderAblation(item, ablation) : ""}`;
+      }
+
+      function renderAblation(item, ablation) {
+        const names = ["fresh_natural", "semantic_json", "controlled_prose", "mechanical_json"];
+        return `<div class="section"><h3>Clean representation ablation</h3>
+          <table><thead><tr><th>Representation</th><th>Screen</th><th>Target hits</th><th>Robust</th><th>Hit Δ</th><th>TV distance</th></tr></thead>
+          <tbody><tr><td>Original natural language</td><td>${labelBadge(ablation.original?.screen?.label)}</td><td>${ablation.original?.robustness?.target_hits}/10</td><td>yes</td><td>0</td><td>0.000</td></tr>
+          ${names.map(name => { const arm = ablation.arms?.[name] || {}; const c = arm.comparison || {}; return `<tr><td>${esc(name)}</td><td>${labelBadge(arm.screen?.label)}</td><td>${esc(c.structured_target_hits ?? 0)}/10</td><td>${c.robustness_preserved ? "yes" : "no"}</td><td>${c.target_hit_delta > 0 ? "+" : ""}${esc(val(c.target_hit_delta))}</td><td>${c.total_variation_distance == null ? "—" : Number(c.total_variation_distance).toFixed(3)}</td></tr>`; }).join("")}</tbody></table>
+          ${names.map(name => `<details><summary>${esc(name)} prompt and predictions</summary><pre>${esc(ablation.arms?.[name]?.prompt || "")}</pre>${predictionCard(`${name} screen`, ablation.arms?.[name]?.screen, item.target_label)}${robustnessSection(ablation.arms?.[name]?.robustness, ablation.arms?.[name]?.repeats, item.target_label, `${name} repeated-run stability`)}</details>`).join("")}
+        </div>`;
+      }
+
+      function renderStructuredTest(item, test) {
+        const comparison = test.comparison || {};
+        const extraction = test.extraction || {};
+        return `<div class="section">
+          <div class="section-head"><h3>Structured-decision equivalence</h3>${boolBadge(comparison.robustness_preserved, "robustness preserved", "behavior changed")}</div>
+          <div class="metrics">
+            <div class="metric"><span>Screen label preserved</span><strong>${comparison.screen_label_preserved ? "yes" : "no"}</strong></div>
+            <div class="metric"><span>Structured screen</span><strong>${labelBadge(test.structured_screen?.label)}</strong></div>
+            <div class="metric"><span>Target-hit delta</span><strong>${comparison.target_hit_delta > 0 ? "+" : ""}${esc(val(comparison.target_hit_delta))}</strong></div>
+            <div class="metric"><span>Distribution TV distance</span><strong>${comparison.total_variation_distance == null ? "—" : Number(comparison.total_variation_distance).toFixed(3)}</strong></div>
+          </div>
+          ${extraction.valid ? `<details open><summary>Extracted semantic decisions</summary><pre>${esc(pretty(extraction.spec))}</pre></details>` : `<div class="notice">Extraction failed: ${esc(extraction.error)}</div>`}
+          ${test.structured_prompt ? `<details><summary>Compiled structured prompt</summary><pre>${esc(test.structured_prompt)}</pre></details>` : ""}
+          ${test.structured_screen ? predictionCard("Structured temperature-0 screen", test.structured_screen, item.target_label) : ""}
+          ${test.comparison?.structured_robustness ? robustnessSection(test.comparison.structured_robustness, test.structured_repeats, item.target_label, "Structured repeated-run stability") : ""}
+        </div>`;
+      }
+
+      function renderRepair(item, trace) {
+        const rounds = trace.rounds || [];
+        if (!rounds.length) return `<div class="notice">This repair track has no recorded rounds. Stop reason: ${esc(trace.stop_reason || "unknown")}</div>`;
+        if (!rounds.some(row => Number(row.round) === selectedRound)) selectedRound = Number(rounds[0].round);
+        const round = rounds.find(row => Number(row.round) === selectedRound) || rounds[0];
+        return `<div class="section">
+          <div class="section-head"><h3>${esc(trace.method)} repair track</h3>${boolBadge(trace.accepted, "accepted", "not accepted")}</div>
+          <div class="metrics">
+            <div class="metric"><span>Stop reason</span><strong>${esc(val(trace.stop_reason))}</strong></div>
+            <div class="metric"><span>Repair trigger</span><strong>${esc(val(trace.repair_reason))}</strong></div>
+            <div class="metric"><span>Acceptance mode</span><strong>${esc(val(trace.acceptance_mode))}</strong></div>
+            <div class="metric"><span>Rounds</span><strong>${rounds.length}</strong></div>
+          </div>
+        </div>
+        <div class="timeline">${rounds.map(roundSummary).join("")}</div>
+        ${renderRound(item, trace, round)}
+        ${trace.best_prompt ? `<details class="section"><summary>Final best prompt</summary><pre>${esc(trace.best_prompt)}</pre></details>` : ""}`;
+      }
+
+      function renderCase() {
+        const item = (report.cases || []).find(row => row.item_id === selectedId);
+        if (!item) {
+          $("#main").innerHTML = `<div class="empty">Select a case to inspect its evidence.</div>`;
+          return;
+        }
+        const repairs = item.repairs || [];
+        const validTabs = ["baseline", ...repairs.map(trace => trace.method)];
+        if (!validTabs.includes(selectedTab)) selectedTab = "baseline";
+        const source = item.source_image_url || pathToFileUrl(item.source_image_path);
+        const edited = item.edited_image_url || pathToFileUrl(item.edited_image_path);
+        const tabContent = selectedTab === "baseline"
+          ? renderBaseline(item)
+          : renderRepair(item, repairs.find(trace => trace.method === selectedTab));
+        const metadata = Object.fromEntries(Object.entries(item).filter(([key]) => !["initial", "repeats", "robustness", "repairs"].includes(key)));
+        $("#main").innerHTML = `<div class="case-head">
+          <div><div class="eyebrow">${esc(item.task || "experiment case")} · ${esc(item.model || "unknown model")}</div><h2>${esc(item.instruction || "Untitled case")}</h2><div class="idline">${esc(item.item_id)}</div></div>
+          <div class="score-lockup"><span>Human score / target</span><strong>${esc(val(item.human_score))}</strong><div>${labelBadge(item.target_label)}</div></div>
+        </div>
+        <div class="metrics" style="margin-bottom:16px">
+          <div class="metric"><span>Initial prediction</span><strong>${labelBadge(item.initial?.label)}</strong></div>
+          <div class="metric"><span>Baseline target hits</span><strong>${esc(item.robustness?.target_hits ?? 0)}/${esc(item.robustness?.n ?? 0)}</strong></div>
+          <div class="metric"><span>Repair status</span><strong>${esc(acceptedRepair(item) ? "accepted" : repairReason(item))}</strong></div>
+          <div class="metric"><span>Task UID</span><strong>${esc(val(item.task_uid))}</strong></div>
+        </div>
+        <div class="image-grid">
+          ${imageCard("Source", source, item.source_image_path)}
+          ${imageCard("Edited output", edited, item.edited_image_path)}
+        </div>
+        <div class="tabbar">${validTabs.map(tab => `<button class="tab ${tab === selectedTab ? "active" : ""}" data-tab="${esc(tab)}">${esc(tab)}</button>`).join("")}</div>
+        <div class="panel">${tabContent}</div>
+        <details class="section"><summary>Case metadata</summary><pre>${esc(pretty(metadata))}</pre></details>`;
+      }
+
+      function imageCard(title, url, path) {
+        return `<figure class="image-card"><header><span>${esc(title)}</span><span class="idline">${esc((path || "").split("/").pop())}</span></header>
+          ${url ? `<img src="${esc(url)}" alt="${esc(title)} image" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'image-missing',textContent:'Image could not be loaded'}))">` : `<div class="image-missing">Image path unavailable</div>`}
+        </figure>`;
+      }
+
+      function pathToFileUrl(path) {
+        if (!path || typeof path !== "string") return "";
+        if (/^[a-z]+:/i.test(path)) return path;
+        if (!path.startsWith("/")) return "";
+        return `file://${path.split("/").map((part, index) => index === 0 ? "" : encodeURIComponent(part)).join("/")}`;
+      }
+
+      function renderAll() {
+        renderHeader();
+        renderCaseList();
+        renderCase();
+      }
+
+      function parseJsonl(text) {
+        return text.split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line));
+      }
+
+      async function loadExperimentFiles(fileList) {
+        const files = [...fileList];
+        const byName = name => files.find(file => file.name === name);
+        const payloadFile = files.find(file => /(?:report_data|report_payload)\.json$/.test(file.name));
+        if (payloadFile) {
+          const candidate = JSON.parse(await payloadFile.text());
+          if (candidate.cases) return candidate;
+        }
+        const baselineFile = byName("baseline_predictions.jsonl");
+        if (!baselineFile) throw new Error("Select a compatible run containing baseline_predictions.jsonl");
+        const baselines = parseJsonl(await baselineFile.text());
+        const traceFile = byName("repair_traces.jsonl");
+        const traces = traceFile ? parseJsonl(await traceFile.text()) : [];
+        const structuredFile = byName("structured_decision_results.jsonl");
+        const structuredResults = structuredFile ? parseJsonl(await structuredFile.text()) : [];
+        const ablationFile = byName("structured_ablation_results.jsonl");
+        const ablationResults = ablationFile ? parseJsonl(await ablationFile.text()) : [];
+        const summaryFile = byName("summary.json");
+        const structuredSummaryFile = byName("structured_decision_summary.json");
+        const ablationSummaryFile = byName("structured_ablation_summary.json");
+        const configFile = byName("run_config.json");
+        const manifestFile = byName("sample_manifest.json");
+        const seedFile = files.find(file => file.name === "round-00-seed.txt");
+        const summary = summaryFile ? JSON.parse(await summaryFile.text()) : {};
+        const structuredSummary = structuredSummaryFile ? JSON.parse(await structuredSummaryFile.text()) : {};
+        const ablationSummary = ablationSummaryFile ? JSON.parse(await ablationSummaryFile.text()) : {};
+        const config = configFile ? JSON.parse(await configFile.text()) : {};
+        const manifest = manifestFile ? JSON.parse(await manifestFile.text()) : {};
+        const seedPrompt = seedFile ? await seedFile.text() : "";
+        const grouped = {};
+        const structuredByRound = {};
+        const ablationByRound = {};
+        structuredResults.forEach(row => structuredByRound[`${row.item_id}\u0000${row.method}\u0000${row.round}`] = row);
+        ablationResults.forEach(row => ablationByRound[`${row.item_id}\u0000${row.method}\u0000${row.round}`] = row);
+        traces.forEach(trace => (grouped[trace.item_id] ||= []).push(trace));
+        baselines.forEach(item => {
+          item.repairs = grouped[item.item_id] || [];
+          item.repairs.forEach(trace => {
+            let parent = seedPrompt;
+            (trace.rounds || []).forEach(round => {
+              round.prompt_diff ||= simpleDiff(parent, round.candidate_prompt || parent);
+              round.structured_test ||= structuredByRound[`${trace.item_id}\u0000${trace.method}\u0000${round.round}`];
+              round.structured_ablation ||= ablationByRound[`${trace.item_id}\u0000${trace.method}\u0000${round.round}`];
+              parent = round.candidate_prompt || parent;
+            });
+            trace.best_prompt ||= parent;
+          });
+        });
+        return {
+          schema_version: 1, report_type: "prompt_repair_experiment",
+          run_name: baselineFile.webkitRelativePath?.split("/")[0] || "loaded experiment",
+          summary, structured_summary: structuredSummary, ablation_summary: ablationSummary, config, manifest,
+          seed_prompt: seedPrompt, cases: baselines
+        };
+      }
+
+      function simpleDiff(before, after) {
+        if (before === after) return "(unchanged)";
+        const a = String(before || "").split("\n");
+        const b = String(after || "").split("\n");
+        return ["--- parent", "+++ candidate", ...a.map(line => `- ${line}`), ...b.map(line => `+ ${line}`)].join("\n");
+      }
+
+      async function handleFiles(files) {
+        try {
+          const loaded = await loadExperimentFiles(files);
+          if (!Array.isArray(loaded.cases)) throw new Error("Loaded report does not contain a cases array");
+          report = loaded;
+          selectedId = report.cases[0]?.item_id || null;
+          selectedTab = "baseline";
+          selectedRound = 0;
+          renderAll();
+          toast(`Loaded ${report.cases.length} cases`);
+        } catch (error) {
+          toast(`Could not load experiment: ${error.message}`);
+        }
+      }
+
+      $("#case-list").addEventListener("click", event => {
+        const button = event.target.closest("[data-case-id]");
+        if (!button) return;
+        selectedId = button.dataset.caseId;
+        selectedTab = "baseline";
+        selectedRound = 0;
+        renderCaseList();
+        renderCase();
+        window.scrollTo({top: 0, behavior: "smooth"});
+      });
+      $("#main").addEventListener("click", event => {
+        const tab = event.target.closest("[data-tab]");
+        if (tab) { selectedTab = tab.dataset.tab; selectedRound = 0; renderCase(); return; }
+        const round = event.target.closest("[data-round]");
+        if (round) { selectedRound = Number(round.dataset.round); renderCase(); }
+      });
+      ["#search", "#target-filter", "#status-filter"].forEach(selector => {
+        $(selector).addEventListener(selector === "#search" ? "input" : "change", renderCaseList);
+      });
+      $("#file-input").addEventListener("change", event => handleFiles(event.target.files));
+      $("#folder-input").addEventListener("change", event => handleFiles(event.target.files));
+      let dragDepth = 0;
+      document.addEventListener("dragenter", event => { event.preventDefault(); dragDepth += 1; document.body.classList.add("drop-active"); });
+      document.addEventListener("dragover", event => event.preventDefault());
+      document.addEventListener("dragleave", () => { dragDepth -= 1; if (dragDepth <= 0) document.body.classList.remove("drop-active"); });
+      document.addEventListener("drop", event => { event.preventDefault(); dragDepth = 0; document.body.classList.remove("drop-active"); handleFiles(event.dataTransfer.files); });
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

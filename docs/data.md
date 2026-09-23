@@ -487,6 +487,28 @@ Note: VEFX-Bench was evaluated but **not** ingested — its public release is so
 instructions + a reward *model* (no released human scores or edited outputs), so it isn't a
 human-scored calibration set.
 
+### AURORA-Bench (public image-editing calibration track)
+
+`AURORA_BENCH_ROOT` (default `data/aurora/bench/`) contains the official AURORA-Bench
+human-rating release: **400 source-image/instruction tasks × five editing models = 2,000
+human-scored outputs**, balanced across eight task types (`ag`, `clevr`, `emu`, `epic`,
+`kubric`, `magicbrush`, `something`, `whatsup`). Run `./run/setup_aurora_bench.sh` to create:
+
+```
+source/human_ratings.json       # pinned official aggregate ratings
+human_ratings/<task>/...        # source and generated images
+metadata.jsonl                  # stable item/task IDs and local paths
+splits/seed_{42,43,44}.json     # 80/320 task-grouped train/test splits
+manifest.json                   # source and per-file SHA-256 provenance
+```
+
+The `human_score` is the official mean on `[0,2]`, where the underlying human choices mean
+`0=none`, `1=partial`, and `2=full`. Raw judgments are not included in the public artifact.
+`dl_aurora.AuroraBenchLoader` retains the fractional target and also emits `target_score` /
+`target_label` using fixed half-point boundaries for three-class experiments. The canonical
+item ID is `<source-prompt task UID>::<model>`; splitting on the task UID prevents the five
+outputs for the same prompt from leaking across calibration and evaluation.
+
 ---
 
 ## 1. Source data — `data/<project>/`

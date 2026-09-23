@@ -128,7 +128,7 @@ class LMEngine(ABC):
         if self.history is not None:
             self.history.record(
                 engine=self.name,
-                model=chosen_model,
+                model=result.model if result else chosen_model,
                 prompt=(system + "\n\n" + prompt) if system else prompt,
                 response=content,
                 media_inputs=media_inputs,
@@ -145,11 +145,13 @@ class LMEngine(ABC):
 
         out: dict[str, Any] = {
             "content": content,
-            "model": chosen_model,
+            "model": result.model,  # type: ignore[union-attr]
             "engine": self.name,
             "promptTokens": result.prompt_tokens,  # type: ignore[union-attr]
             "completionTokens": result.completion_tokens,  # type: ignore[union-attr]
             "totalTokens": result.total_tokens,  # type: ignore[union-attr]
+            "latencySeconds": result.latency_s,  # type: ignore[union-attr]
+            "endpointHost": result.endpoint_host,  # type: ignore[union-attr]
         }
         if schema is not None:
             try:
