@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-VALID_MODES = {"unified", "stratified"}
+VALID_MODES = {"unified", "stratified", "split_label_stratified"}
 
 
 def apply_filters(
@@ -62,6 +62,153 @@ def _proportional_allocation(group_sizes: list[int], total: int) -> list[int]:
     return [min(b, g) for b, g in zip(base, group_sizes)]
 
 
+def _balanced_allocation(group_sizes: list[int], total: int) -> list[int]:
+    """Allocate as evenly as possible across non-empty groups, respecting capacities."""
+    quotas = [0] * len(group_sizes)
+    remaining = min(max(0, total), sum(group_sizes))
+    while remaining:
+        progressed = False
+        for index in sorted(range(len(group_sizes)), key=lambda i: (quotas[i], i)):
+            if quotas[index] >= group_sizes[index]:
+                continue
+            quotas[index] += 1
+            remaining -= 1
+            progressed = True
+            if remaining == 0:
+                break
+        if not progressed:
+            break
+    return quotas
+
+
+def select_split_label_items(
+    items: list[str],
+    *,
+    split_lookup: dict[str, str],
+    label_lookup: dict[str, str],
+    ratio: float = 1.0,
+    count: Optional[int] = None,
+    split_ratios: Optional[dict[str, float]] = None,
+    group_lookup: Optional[dict[str, str]] = None,
+    split_group_offsets: Optional[dict[str, int]] = None,
+) -> list[str]:
+    """Select a deterministic calibration subset with balanced training labels.
+
+    By default the total train/test allocation follows the source corpus. Callers can
+    instead provide independent ``split_ratios`` (for example all official training data
+    and 10% of held-out data). When ``group_lookup`` is supplied, ratios are applied to
+    groups and every item in a selected group is retained; this prevents editor outputs
+    sharing one source image/instruction from being partially sampled.
+
+    In the legacy item-level path, training cases are allocated evenly across labels while
+    held-out cases retain source prevalence. Grouped selection preserves whole groups, so
+    exact item-level label quotas are intentionally subordinate to leakage safety.
+    """
+    ordered = sorted(items)
+    if split_ratios is not None:
+        selected: list[str] = []
+        by_split: dict[str, list[str]] = {}
+        for item_id in ordered:
+            by_split.setdefault(
+                split_lookup.get(item_id, "unknown"), []
+            ).append(item_id)
+        for split in sorted(
+            by_split,
+            key=lambda value: (
+                value != "train", value != "test", value,
+            ),
+        ):
+            split_items = by_split[split]
+            split_ratio = float(split_ratios.get(split, ratio))
+            if group_lookup:
+                groups: dict[str, list[str]] = {}
+                for item_id in split_items:
+                    groups.setdefault(
+                        group_lookup.get(item_id, item_id), []
+                    ).append(item_id)
+                group_ids = sorted(groups)
+                offset = int(
+                    (split_group_offsets or {}).get(split, 0)
+                ) % len(group_ids)
+                rotated_group_ids = (
+                    group_ids[offset:] + group_ids[:offset]
+                )
+                target_groups = _target_count(
+                    len(group_ids), split_ratio
+                )
+                selected_group_ids = [
+                    rotated_group_ids[index]
+                    for index in _evenly_spaced_indices(
+                        len(group_ids), target_groups
+                    )
+                ]
+                for group_id in selected_group_ids:
+                    selected.extend(groups[group_id])
+            else:
+                target_items = _target_count(
+                    len(split_items), split_ratio
+                )
+                selected.extend(
+                    split_items[index]
+                    for index in _evenly_spaced_indices(
+                        len(split_items), target_items
+                    )
+                )
+        return sorted(selected)
+
+    target = (
+        max(0, min(int(count), len(ordered)))
+        if count is not None
+        else _target_count(len(ordered), ratio)
+    )
+    if target == 0:
+        return []
+
+    by_split: dict[str, list[str]] = {}
+    for item_id in ordered:
+        by_split.setdefault(split_lookup.get(item_id, "unknown"), []).append(item_id)
+    split_keys = sorted(by_split, key=lambda value: (value != "train", value != "test", value))
+    split_quotas = _proportional_allocation(
+        [len(by_split[key]) for key in split_keys], target
+    )
+
+    if "train" in by_split and target >= 3:
+        train_index = split_keys.index("train")
+        train_labels = {
+            label_lookup[item_id]
+            for item_id in by_split["train"]
+            if label_lookup.get(item_id)
+        }
+        required = min(len(train_labels), len(by_split["train"]), target)
+        while split_quotas[train_index] < required:
+            donors = [
+                index for index, quota in enumerate(split_quotas)
+                if index != train_index and quota > 0
+            ]
+            if not donors:
+                break
+            donor = max(donors, key=lambda index: (split_quotas[index], -index))
+            split_quotas[donor] -= 1
+            split_quotas[train_index] += 1
+
+    selected: list[str] = []
+    for split, split_quota in zip(split_keys, split_quotas):
+        grouped: dict[str, list[str]] = {}
+        for item_id in by_split[split]:
+            grouped.setdefault(label_lookup.get(item_id, "unknown"), []).append(item_id)
+        labels = sorted(grouped)
+        sizes = [len(grouped[label]) for label in labels]
+        quotas = (
+            _balanced_allocation(sizes, split_quota)
+            if split == "train"
+            else _proportional_allocation(sizes, split_quota)
+        )
+        for label, quota in zip(labels, quotas):
+            group = grouped[label]
+            selected.extend(group[index] for index in _evenly_spaced_indices(len(group), quota))
+    return sorted(selected)
+
+
 def select_items(
     items: list[str],
     *,
@@ -81,6 +228,8 @@ def select_items(
     - ``"stratified"``: group by ``use_case_lookup`` (item id -> use_case, missing ->
       ``"unknown"``), allocate the target count proportionally across groups, then
       evenly-spaced selection within each group.
+    - ``"split_label_stratified"`` is handled by :func:`select_split_label_items` because
+      it needs label metadata in addition to the generic use-case lookup.
     """
     if mode not in VALID_MODES:
         raise ValueError(f"Unknown sampling mode '{mode}'. Options: {sorted(VALID_MODES)}")
@@ -97,7 +246,12 @@ def select_items(
         idx = _evenly_spaced_indices(len(ordered), target)
         return [ordered[i] for i in idx]
 
-    # stratified
+    if mode == "split_label_stratified":
+        raise ValueError(
+            "split_label_stratified requires select_split_label_items with labels"
+        )
+
+    # use-case stratified
     lookup = use_case_lookup or {}
     groups: dict[str, list[str]] = {}
     for item in ordered:

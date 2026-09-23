@@ -1,0 +1,87 @@
+{
+  "protocol_version": "rubric-lite-judge-ab-v1",
+  "status": "preregistered",
+  "registered_at": "2026-07-29T14:43:54-07:00",
+  "hypothesis": "A stronger vision judge improves partial-class signal while retaining the one-rubric, two-cutpoint architecture.",
+  "dataset": {
+    "name": "EditInspector",
+    "partition": "development",
+    "n_cases": 80,
+    "label_counts": {
+      "no": 6,
+      "partial": 5,
+      "yes": 69
+    },
+    "sorted_item_id_sha256": "0d0df9d188a2426cd0bbc43a88b94dc13cd84256868e0e24783e88fb521f7125",
+    "sorted_item_target_sha256": "f2e6f214a95870ea7d1f291f4e87a86157c9c5f8583008e1be7e7b51b5a6b7f9"
+  },
+  "invariants": {
+    "prompt_version": "rubric_lite_v4",
+    "prompt_sha256": "4278c2fa094860a6349e60e62fe9d9ae65d6d406fef2c3556ed5a580b9844d61",
+    "source_before_edited": true,
+    "temperature": 0,
+    "max_tokens": 512,
+    "boundary_verifier": false,
+    "optimizer_calls": 0,
+    "embedding_calls": 0,
+    "editor_features": false,
+    "instruction_features_in_calibrator": false
+  },
+  "arms": {
+    "baseline": {
+      "engine_kind": "gpt",
+      "model": "gpt-4.1-mini",
+      "existing_run": "logs/exps/260729-12:59:08-editinspector-rubric-lite-exps",
+      "out_of_fold_metrics": {
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.6865,
+        "macro_f1": 0.59,
+        "partial_precision": 0.5,
+        "partial_recall": 0.4,
+        "partial_f1": 0.4444
+      }
+    },
+    "candidate": {
+      "engine_kind": "gpt",
+      "model": "gpt-4.1",
+      "planned_primary_calls": 80,
+      "planned_max_completion_tokens": 40960,
+      "estimated_total_tokens_from_baseline": 183519
+    }
+  },
+  "calibration": {
+    "feature": "minimum_visible_evidence_score",
+    "model": "two_global_cutpoints",
+    "selection_objective": "macro_f1",
+    "minimum_class_recall": 0.1,
+    "folds": 5,
+    "seed": 44,
+    "fit_uses_editor_identity": false,
+    "fit_uses_instruction_text": false
+  },
+  "advancement_rule": {
+    "candidate_partial_f1_minimum_delta": 0.05,
+    "candidate_accuracy_minimum": 0.78,
+    "candidate_balanced_accuracy_minimum": 0.6665,
+    "all_conditions_required": true,
+    "next_partition_if_passed": "confirmation",
+    "stop_if_failed": true
+  },
+  "reporting": {
+    "primary_metrics": [
+      "accuracy",
+      "balanced_accuracy",
+      "macro_f1",
+      "partial_precision",
+      "partial_recall",
+      "partial_f1"
+    ],
+    "secondary_metrics": [
+      "confusion_matrix",
+      "prediction_distribution",
+      "prediction_expected_rater_agreement",
+      "per_human_agreement_bucket"
+    ],
+    "paired_unit": "item_id"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "objective": "Run the uncommitted codex/calitree-implementation worktree's evidence-based referral (calitree_v3_evidence prompt + fixed-rule evidence_policy) live on the same 120-case dev slice as this worktree's v2 baseline, for a direct accuracy/referral comparison.",
+  "worktrees_compared": {
+    "mine": "/Users/zzhang/Documents/vejudge/.claude/worktrees/calitree-goal-plan-1940df (branch claude/calitree-goal-plan-1940df)",
+    "codex": "/Users/zzhang/Documents/vejudge/.claude/worktrees/calitree-implementation (branch codex/calitree-implementation, uncommitted)"
+  },
+  "run_dirs": {
+    "mine_v2_evidence_policy": "logs/exps/calitree-evidence-dev120-v2-exps",
+    "codex_v3_evidence_evidence_policy": "../calitree-implementation/logs/exps/codex-devslice-evidence-live-exps"
+  },
+  "engine": {"judge_model": "gpt-4.1-mini", "embedding_model": "text-embedding-3-small", "temperature": 0, "concurrency": 8},
+  "config": {"specialization_mode": "replace (v2, both runs)", "leaf_grouping": "task (both runs)"},
+  "prompt_diff": "Byte-identical across all 5 prompt files (initial_rubric.txt, extract_components.txt, merge_prompts.txt, gradient_feedback.txt, conflict_resolver.txt) except one appended block in initial_rubric.txt asking the model to also self-report conditions_visible/evidence_contradictory/edit_incomplete_vs_undeterminable in the same JSON response. Verified by direct diff.",
+  "test_split_n120": {
+    "mine_v2": {"accuracy": 0.8083, "balanced_accuracy": 0.3612, "macro_f1": 0.3726, "ordinal_mae": 0.125, "partial_precision": 0.3333, "partial_recall": 0.1429, "partial_f1": 0.20},
+    "codex_v3_evidence": {"accuracy": 0.8167, "balanced_accuracy": 0.4707, "macro_f1": 0.4211, "ordinal_mae": 0.1125, "partial_precision": 0.20, "partial_recall": 0.0714, "partial_f1": 0.1053}
+  },
+  "referral_metric3_overall_n352": {
+    "mine": {"n_referred": 0, "review_rate": 0.0, "precision": null, "recall": 0.0, "error_capture_recall": 0.0},
+    "codex": {"n_referred": 2, "review_rate": 0.0057, "precision": 0.0, "recall": 0.0, "error_capture_recall": 0.0159}
+  },
+  "global_selection_guard": {
+    "note": "Both runs independently rejected TextGrad's global warm-start rewrite in favor of the plain seed prompt, because the rewrite scored worse on held-out balanced validation accuracy.",
+    "mine": {"selected": "initial", "textgrad_validation_balanced": 0.5597, "initial_validation_balanced": 0.6449},
+    "codex": {"selected": "initial", "textgrad_validation_balanced": 0.6636, "initial_validation_balanced": 0.6781}
+  },
+  "actual_root_fallback_rate_n352": {
+    "mine_reported": 0.5511,
+    "codex_reported_metric": 0.0,
+    "codex_verified_by_direct_count": 0.4659,
+    "bug_found": "Codex's _routing_inference_metrics computes root_ids from a `tree` argument that is None at eval time (calitree_eval has no prompt_tree input socket), so root_ids is always an empty set and the fallback_to_root_rate check never fires, silently reporting 0.0 regardless of the true rate. Same root cause makes tree_metrics.overall.structure always null. Verified by directly counting routed_node == 'global:initial' in the train report's predictions dict: 164/352 = 46.59%."
+  },
+  "leaf_merge_optimization_divergence": {
+    "note": "TextGrad leaf specialization and merge synthesis DID rewrite prompt text substantially in both runs (verified: all 22/22 leaves in my run have prompt text different from the seed template). This is real optimizer output, not identical to the seed. However, since both runs' global_selection guard rejected the rewritten warm-start prompt, the majority-case classifier (the global root, ~47-55% of cases) reverted to the literal unmodified seed text in both systems, so roughly half the accuracy difference above is attributable to the one prompt-text difference (plus noise), and the other half (routed-to-leaf/merged-branch cases) reflects independent, stochastic TextGrad rewrites rather than a controlled comparison."
+  },
+  "tree_stats_comparison": {
+    "mine_v2": {"leaves": 22, "accepted_merges": 7, "rejected_merges": 13, "promoted": 10, "specialized_roots": 25},
+    "codex_v3_evidence": {"leaves": 22, "accepted_merges": 4, "rejected_merges": 16, "promoted": 5, "specialized_roots": 23}
+  },
+  "bugs_found_in_codex_worktree": [
+    "tree_metrics.overall.structure is always null in a live calitree_eval run because the eval node never receives prompt_tree (same as fallback_to_root_rate bug above).",
+    "fallback_to_root_rate always reports 0.0 for the same reason, contradicting the true rate (46.6% verified by direct count)."
+  ],
+  "conclusion": "Not a clean architecture A/B: the tree-building algorithm (CaliTreeBuilder) is identical code in both worktrees, run in the same replace mode. The measured differences trace to (a) one appended prompt paragraph affecting ~half the cases via the seed fallback, and (b) independent stochastic TextGrad optimizer output for the other half. Codex's richer self-reported referral signal fires marginally more than my structural signal (2 vs 0 of 352) but neither is a working referral policy at this scale. This is a third independent data point (with the delta-tree and two-gate results) that TextGrad's global rewrite does not survive its own validation guard."
+}

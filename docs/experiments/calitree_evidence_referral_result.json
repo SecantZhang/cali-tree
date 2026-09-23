@@ -1,0 +1,79 @@
+{
+  "protocol": "docs/experiments/calitree_evidence_referral_protocol.json",
+  "status": "completed_negative_for_referral_measurement_suite_validated",
+  "run_dir": "logs/exps/calitree-evidence-dev120-v2-exps",
+  "coverage": "120-case development slice (15 held-out tasks, 8 editors) + 232 official training cases",
+  "engine": {
+    "judge_model": "gpt-4.1-mini",
+    "optimizer_model": "gpt-4.1-mini",
+    "embedding_model": "text-embedding-3-small",
+    "temperature": 0,
+    "concurrency": 8
+  },
+  "usage": {
+    "judge_calls": 2835,
+    "optimizer_calls": 161,
+    "embedding_calls": 11,
+    "prompt_tokens": 4445576,
+    "completion_tokens": 290686,
+    "total_tokens": 4736262,
+    "route_new_judge_calls": 0,
+    "route_cache_hits": 352,
+    "note": "A first run made 176 warm-start judge calls before failing on a missing textgrad==0.1.8 install; those were reused via --checkpoint-from and not repaid."
+  },
+  "metric_1_full_coverage": {
+    "overall_352": {
+      "accuracy": 0.8267,
+      "balanced_accuracy": 0.4625,
+      "macro_f1": 0.4683,
+      "ordinal_mae": 0.1094,
+      "partial_precision": 0.4667,
+      "partial_recall": 0.1591,
+      "partial_f1": 0.2373
+    },
+    "test_120": {
+      "accuracy": 0.8083,
+      "balanced_accuracy": 0.3612,
+      "macro_f1": 0.3726,
+      "ordinal_mae": 0.125,
+      "partial_precision": 0.3333,
+      "partial_recall": 0.1429,
+      "partial_f1": 0.2,
+      "confusion": {
+        "no": {"no": 95, "partial": 3, "yes": 3},
+        "partial": {"no": 7, "partial": 2, "yes": 5},
+        "yes": {"no": 4, "partial": 1, "yes": 0}
+      }
+    }
+  },
+  "metric_3_evidence_referral": {
+    "fitted_policy": {"version": "evidence-referral-v1", "rule": "routing", "min_route_support": 1, "coverage_floor": 0.5},
+    "n_referred": 0,
+    "review_rate": 0.0,
+    "n_disputed": 74,
+    "consensus_referral_recall": 0.0,
+    "consensus_referral_precision": null,
+    "consensus_referral_f1": null,
+    "finding": "The three target-blind evidence signals fire too rarely on this data to produce a useful referral: three-way consensus ties occur in ~0.6% of training cases and none were disputed; the routed node's similarity clears its threshold so low_route_similarity never triggers; and unsupported_route at support>=1 never triggers. Under the 0.5 coverage floor the fit degenerates to zero abstention. This is a genuine negative result for the current evidence-signal design, not a pipeline error."
+  },
+  "comparison_editor_reliability_selective_policy": {
+    "test_120_coverage": 0.65,
+    "test_120_accepted_accuracy": 0.9615,
+    "note": "The existing consensus + editor-reliability selective_policy remains the stronger referral for this dataset; evidence_policy as defined does not beat it here."
+  },
+  "tree_metrics": {
+    "n_leaves": 22,
+    "n_full_merges": 2,
+    "n_partial_merges": 5,
+    "n_rejected_merges": 13,
+    "n_promoted_leaves": 10,
+    "n_final_nodes": 40,
+    "compression_ratio": 0.55,
+    "specialized_roots": 25,
+    "root_accuracy": 0.8214,
+    "root_coverage_note": "Reported root_coverage is relative to leaf-assigned (fit) cases and can exceed 1 when the global root also covers held-in validation cases; it is a diagnostic, not a bounded fraction.",
+    "mean_route_depth": 0.6023,
+    "fallback_to_root_rate": 0.5511
+  },
+  "conclusion": "The measurement suite (ordinal MAE, consensus-referral precision/recall/F1, tree-compression + routing metrics) and the evidence_policy wiring run correctly end-to-end on live gpt-4.1-mini. On this development slice the evidence-based referral does not fire and does not improve on the editor-reliability selective policy; richer or more frequently-firing target-blind signals (e.g., consensus support bands, a partial-specific evidence field, or a lower similarity margin) are the next thing to try. Cali-Tree v2 full-coverage accuracy and the reserved untouched partitions are unaffected."
+}

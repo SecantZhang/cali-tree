@@ -75,6 +75,28 @@ class Handler(BaseHTTPRequestHandler):
         pass  # quiet — the E2E orchestrator captures stdout/stderr itself
 
     def do_POST(self) -> None:
+        if self.path == "/embeddings":
+            length = int(self.headers.get("Content-Length", 0))
+            request = json.loads(self.rfile.read(length) or b"{}")
+            inputs = request.get("input") or []
+            body = json.dumps({
+                "data": [
+                    {
+                        "object": "embedding",
+                        "index": index,
+                        # Deterministic, non-zero vectors keep cosine routing meaningful.
+                        "embedding": [1.0, float((sum(map(ord, text)) % 7) + 1) / 10.0],
+                    }
+                    for index, text in enumerate(inputs)
+                ],
+                "usage": {"prompt_tokens": len(inputs) * 4, "total_tokens": len(inputs) * 4},
+            }).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path != "/chat/completions":
             self.send_response(404)
             self.end_headers()

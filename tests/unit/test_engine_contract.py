@@ -239,3 +239,64 @@ def test_failover_uses_mirror_when_primary_fails(monkeypatch):
     # primary is retried (max_retries+1 = 3 times) before falling over to the mirror.
     assert calls.count("https://primary/chat/completions") == 3
     assert calls[-1] == "https://mirror/chat/completions"
+
+
+def test_429_fails_over_immediately_when_a_mirror_exists(monkeypatch):
+    import requests
+
+    calls = []
+
+    class Resp:
+        def __init__(self, status):
+            self.status_code = status
+            self.headers = {"Retry-After": "30"} if status == 429 else {}
+            self.text = "rate limited" if status == 429 else ""
+
+        def json(self):
+            return {
+                "choices": [{"message": {"content": "ok"}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            }
+
+    def fake_post(url, **kwargs):
+        calls.append(url)
+        return Resp(429 if "primary" in url else 200)
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    monkeypatch.setattr(openai_compat.time, "sleep", lambda s: None)
+    result = openai_compat.chat_completion(
+        endpoints=["https://primary", "https://mirror"],
+        token="t",
+        model="m",
+        messages=[{"role": "user", "content": "hi"}],
+        max_retries=4,
+    )
+    assert result.content == "ok"
+    assert calls == ["https://primary/chat/completions", "https://mirror/chat/completions"]
+
+
+def test_embeddings_preserve_input_order_and_usage(monkeypatch):
+    import requests
+
+    class Resp:
+        status_code = 200
+        headers: dict = {}
+        text = ""
+
+        def json(self):
+            # Deliberately reversed: the adapter must restore API index order.
+            return {
+                "data": [
+                    {"index": 1, "embedding": [0, 1]},
+                    {"index": 0, "embedding": [1, 0]},
+                ],
+                "usage": {"prompt_tokens": 7, "total_tokens": 7},
+            }
+
+    monkeypatch.setattr(requests, "post", lambda *_args, **_kwargs: Resp())
+    result = openai_compat.embeddings(
+        endpoints=["https://primary"], token="t", model="embed", inputs=["a", "b"]
+    )
+    assert result.vectors == [[1.0, 0.0], [0.0, 1.0]]
+    assert result.prompt_tokens == result.total_tokens == 7
+    assert result.endpoint_host == "primary"

@@ -1,0 +1,529 @@
+import { useMemo, useState } from 'react'
+import { mediaUrl } from '../../../api/media'
+import { useActiveRunStore } from '../../../store/activeTab'
+import type { VeNode } from '../../../store/graphStore'
+
+interface TreeNode {
+  id: string
+  level: number
+  status: string
+  children: string[]
+  covered_ids: string[]
+  validation_accuracy: number
+  prompt: string
+  components: Record<string, string[]>
+}
+
+interface MetricBlock {
+  n?: number
+  accuracy?: number | null
+  balanced_accuracy?: number | null
+  per_editor?: Record<string, { n: number; accuracy: number }>
+  confusion?: Record<string, Record<string, number>>
+  human_agreement?: Record<string, MetricBlock>
+  human_label_reliability?: ReliabilitySummary
+}
+
+interface ReliabilitySummary {
+  n?: number
+  unanimous_fraction?: number
+  target_majority_support_fraction?: number
+  mean_label_entropy_bits?: number
+  modal_rater_agreement_ceiling?: number
+  prediction_expected_rater_agreement?: number
+  per_target?: Record<string, ReliabilitySummary>
+}
+
+interface ConsensusCalibrator {
+  version?: string
+  levels?: string[]
+  min_support?: number
+  rules?: Record<string, {
+    n?: number
+    label?: string
+    gain?: number
+    base_accuracy?: number
+    rule_accuracy?: number
+  }>
+  selection?: {
+    baseline_accuracy?: number | null
+    baseline_balanced_accuracy?: number | null
+    selected_accuracy?: number | null
+    selected_balanced_accuracy?: number | null
+    selected_levels?: string[]
+    selected_min_support?: number
+  }
+}
+
+interface SelectiveMetric {
+  n_total?: number
+  n_accepted?: number
+  n_abstained?: number
+  n_needs_human?: number
+  coverage?: number
+  review_rate?: number
+  error_capture_rate?: number | null
+  partial_review_rate?: number | null
+  system_accuracy_with_perfect_human_review?: number
+  decision_distribution?: Record<string, number>
+  minimum_support?: number
+  accepted?: MetricBlock
+  policy?: {
+    version?: string
+    editor_accuracy_threshold?: number
+    editor_min_support?: number
+    active_editors?: string[]
+  }
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  leaf: '#7dd3fc',
+  accepted: '#86efac',
+  partial: '#fde68a',
+  promoted: '#c4b5fd',
+  rejected: '#fca5a5',
+  global: '#f0abfc',
+  global_rubric: '#86efac',
+}
+
+function AccuracyCard({ title, value }: { title: string; value?: MetricBlock }) {
+  return (
+    <div className="calitree-stat-card">
+      <span>{title}</span>
+      <strong>{value?.accuracy == null ? '—' : `${(value.accuracy * 100).toFixed(1)}%`}</strong>
+      <small>
+        balanced {value?.balanced_accuracy == null
+          ? '—'
+          : `${(value.balanced_accuracy * 100).toFixed(1)}%`}
+        {' · '}n={value?.n ?? 0}
+      </small>
+    </div>
+  )
+}
+
+function MetricDetails({ metric }: { metric?: MetricBlock }) {
+  if (!metric) return null
+  const labels = ['no', 'partial', 'yes']
+  const distribution = (metric as MetricBlock & {
+    prediction_distribution?: Record<string, number>
+  }).prediction_distribution ?? {}
+  const reliability = metric.human_label_reliability
+  const reliabilityRows = reliability
+    ? [['overall', reliability] as const, ...Object.entries(reliability.per_target ?? {})]
+    : []
+  const percent = (value?: number) => (
+    value == null ? '—' : `${(value * 100).toFixed(1)}%`
+  )
+  return (
+    <div className="calitree-metric-details">
+      <table className="schema-table" aria-label="Cali-Tree confusion matrix">
+        <thead>
+          <tr><th>human \ predicted</th>{labels.map((label) => <th key={label}>{label}</th>)}</tr>
+        </thead>
+        <tbody>
+          {labels.map((target) => (
+            <tr key={target}>
+              <td>{target}</td>
+              {labels.map((prediction) => (
+                <td key={prediction}>{metric.confusion?.[target]?.[prediction] ?? 0}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="calitree-distribution">
+        {labels.map((label) => <span key={label}>{label}: {distribution[label] ?? 0}</span>)}
+      </div>
+      <div className="calitree-distribution" aria-label="Accuracy by human agreement">
+        {Object.entries(metric.human_agreement ?? {}).map(([bucket, row]) => (
+          <span key={bucket}>
+            {bucket}: {row.accuracy == null ? '—' : `${(row.accuracy * 100).toFixed(1)}%`}
+            {' '}(n={row.n ?? 0})
+          </span>
+        ))}
+      </div>
+      {reliabilityRows.length > 0 && (
+        <table className="schema-table" aria-label="Human label reliability">
+          <thead>
+            <tr>
+              <th>target</th><th>n</th><th>unanimous</th><th>majority</th>
+              <th>entropy</th><th>modal ceiling</th><th>judge↔rater</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reliabilityRows.map(([label, row]) => (
+              <tr key={label}>
+                <td>{label}</td>
+                <td>{row.n ?? 0}</td>
+                <td>{percent(row.unanimous_fraction)}</td>
+                <td>{percent(row.target_majority_support_fraction)}</td>
+                <td>{row.mean_label_entropy_bits?.toFixed(2) ?? '—'}</td>
+                <td>{percent(row.modal_rater_agreement_ceiling)}</td>
+                <td>{percent(row.prediction_expected_rater_agreement)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <table className="schema-table" aria-label="Cali-Tree per-editor accuracy">
+        <tbody>
+          {Object.entries(metric.per_editor ?? {}).map(([editor, row]) => (
+            <tr key={editor}>
+              <td>{editor}</td><td>{(row.accuracy * 100).toFixed(1)}%</td><td>n={row.n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function PromptTree({
+  tree, selected, onSelect,
+}: {
+  tree: Record<string, unknown>
+  selected: string | null
+  onSelect: (id: string) => void
+}) {
+  const nodes = (tree.nodes ?? {}) as Record<string, TreeNode>
+  const values = Object.values(nodes)
+  const levels = new Map<number, TreeNode[]>()
+  for (const node of values) {
+    const list = levels.get(node.level ?? 0) ?? []
+    list.push(node)
+    levels.set(node.level ?? 0, list)
+  }
+  return (
+    <div className="calitree-tree" aria-label="Cali-Tree hierarchy">
+      {[...levels.entries()].sort(([a], [b]) => b - a).map(([level, levelNodes]) => (
+        <div className="calitree-level" key={level}>
+          <span className="calitree-level-label">L{level}</span>
+          {levelNodes.sort((a, b) => a.id.localeCompare(b.id)).map((node) => (
+            <button
+              key={node.id}
+              className={`calitree-tree-node${selected === node.id ? ' selected' : ''}`}
+              style={{ borderColor: STATUS_COLORS[node.status] ?? 'var(--border)' }}
+              onClick={() => onSelect(node.id)}
+              title={node.id}
+            >
+              <strong>{node.status}</strong>
+              <span>{node.covered_ids.length} cases</span>
+              <small>{(node.validation_accuracy * 100).toFixed(0)}%</small>
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function CaliTreeWorkbench({ node }: { node: VeNode }) {
+  const lastResult = useActiveRunStore((s) => s.lastNodeResults[node.id])
+  const outputs = lastResult?.outputs as Record<string, unknown> | undefined
+  const tree = (outputs?.prompt_tree ?? {}) as Record<string, unknown>
+  const report = (outputs?.calitree_report ?? {}) as Record<string, any>
+  const isRubricLite = report.architecture === 'rubric_lite'
+  const calibrated = (report.rubric_lite ?? report.calitree) as {
+    train?: MetricBlock
+    test?: MetricBlock
+  } | undefined
+  const nodes = (tree.nodes ?? {}) as Record<string, TreeNode>
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
+  const [selectedCase, setSelectedCase] = useState<string | null>(null)
+  const cases = (report.cases ?? {}) as Record<string, Record<string, unknown>>
+  const predictions = (report.predictions ?? {}) as Record<string, Record<string, unknown>>
+  const calibrator = (report.consensus_calibrator
+    ?? report.conflict_policy?.consensus_calibrator
+    ?? {}) as ConsensusCalibrator
+  const selectiveTest = (report.selective?.test ?? {}) as SelectiveMetric
+  const hasSelectiveTest = (selectiveTest.n_total ?? 0) > 0
+  const ordinalCalibration = (report.ordinal_calibration ?? {}) as {
+    feature?: string
+    uses_editor_identity?: boolean
+    uses_instruction_features?: boolean
+    fit?: {
+      n?: number
+      max_accuracy?: number | null
+      minimum_class_recall?: number
+      metrics?: MetricBlock
+      thresholds?: { no_partial?: number; partial_yes?: number }
+    }
+    validation?: MetricBlock
+    deployment?: {
+      n?: number
+      max_accuracy?: number | null
+      minimum_class_recall?: number
+      metrics?: MetricBlock
+      thresholds?: { no_partial?: number; partial_yes?: number }
+    }
+  }
+  const calibrationRules = Object.entries(calibrator.rules ?? {})
+  const caseIds = useMemo(() => Object.keys(cases).sort(), [cases])
+  const runningAccuracy = useMemo(() => {
+    let correct = 0
+    return caseIds.map((id, index) => {
+      correct += Number(cases[id]?.target_label === predictions[id]?.label)
+      return { id, accuracy: correct / (index + 1) }
+    })
+  }, [caseIds, cases, predictions])
+  const caseId = selectedCase && cases[selectedCase] ? selectedCase : caseIds[0]
+  const selected = selectedNode ? nodes[selectedNode] : undefined
+
+  if (!lastResult) {
+    return <p className="empty-hint">Run calibration training to inspect its rubric and metrics.</p>
+  }
+
+  return (
+    <div className="calitree-workbench">
+      <div className="calitree-stats">
+        <AccuracyCard title="Initial · train" value={(report.initial_baseline ?? report.initial)?.train} />
+        <AccuracyCard title="Initial · test" value={(report.initial_baseline ?? report.initial)?.test} />
+        {!isRubricLite && <AccuracyCard title="TextGrad · train" value={report.textgrad?.train} />}
+        {!isRubricLite && <AccuracyCard title="TextGrad · test" value={report.textgrad?.test} />}
+        <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · train`} value={calibrated?.train} />
+        <AccuracyCard title={`${isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'} · test`} value={calibrated?.test} />
+        {hasSelectiveTest && <AccuracyCard title="Auto-decided · test" value={selectiveTest.accepted} />}
+      </div>
+      {hasSelectiveTest && <div className="calitree-node-detail" aria-label="Selective calibration summary">
+        <strong>Human-review operating point</strong>
+        <div>
+          coverage {
+            selectiveTest.coverage == null
+              ? '—'
+              : `${(selectiveTest.coverage * 100).toFixed(1)}%`
+          } · accepted {selectiveTest.n_accepted ?? 0}/{selectiveTest.n_total ?? 0}
+          {' · '}needs human {
+            selectiveTest.n_needs_human ?? selectiveTest.n_abstained ?? 0
+          }
+        </div>
+        <div>
+          error capture {
+            selectiveTest.error_capture_rate == null
+              ? '—'
+              : `${(selectiveTest.error_capture_rate * 100).toFixed(1)}%`
+          } · partial cases sent to human {
+            selectiveTest.partial_review_rate == null
+              ? '—'
+              : `${(selectiveTest.partial_review_rate * 100).toFixed(1)}%`
+          } · perfect-review system ceiling {
+            selectiveTest.system_accuracy_with_perfect_human_review == null
+              ? '—'
+              : `${(selectiveTest.system_accuracy_with_perfect_human_review * 100).toFixed(1)}%`
+          }
+        </div>
+        {selectiveTest.policy?.active_editors && (
+          <div>
+            active editors {selectiveTest.policy.active_editors.join(', ') || '—'}
+            {' · '}training accuracy threshold {
+              selectiveTest.policy.editor_accuracy_threshold == null
+                ? '—'
+                : `${(selectiveTest.policy.editor_accuracy_threshold * 100).toFixed(0)}%`
+            } · editor support ≥ {selectiveTest.policy.editor_min_support ?? '—'}
+            {' · '}minimum consensus support {selectiveTest.minimum_support ?? 3}
+          </div>
+        )}
+      </div>}
+      <section className="calitree-two-column">
+        <div>
+          <h3>Test diagnostics</h3>
+          <MetricDetails metric={calibrated?.test} />
+        </div>
+        <div>
+          <h3>Running accuracy</h3>
+          <div className="calitree-running-accuracy">
+            {runningAccuracy.map((point) => (
+              <div key={point.id} title={point.id}>
+                <span style={{ width: `${point.accuracy * 100}%` }} />
+                <small>{(point.accuracy * 100).toFixed(0)}%</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {!isRubricLite && <section>
+        <h3>Training-learned consensus calibration</h3>
+        <div className="calitree-node-detail">
+          <strong>{calibrator.version ?? 'not fitted'}</strong>
+          <div>
+            Internal validation: {
+              calibrator.selection?.baseline_accuracy == null
+                ? '—'
+                : `${(calibrator.selection.baseline_accuracy * 100).toFixed(1)}%`
+            } → {
+              calibrator.selection?.selected_accuracy == null
+                ? '—'
+                : `${(calibrator.selection.selected_accuracy * 100).toFixed(1)}%`
+            }
+          </div>
+          <div>
+            Selected hierarchy: {
+              calibrator.selection?.selected_levels?.join(' → ')
+              || calibrator.levels?.join(' → ')
+              || 'consensus only'
+            } · minimum support {
+              calibrator.selection?.selected_min_support
+              ?? calibrator.min_support
+              ?? '—'
+            } · {calibrationRules.length} deployed rules
+          </div>
+          {calibrationRules.length > 0 && (
+            <table className="schema-table" aria-label="Consensus calibration rules">
+              <thead>
+                <tr><th>Rule</th><th>Label</th><th>Support</th><th>Gain</th></tr>
+              </thead>
+              <tbody>
+                {calibrationRules.map(([rule, value]) => (
+                  <tr key={rule}>
+                    <td>{rule}</td>
+                    <td>{value.label ?? '—'}</td>
+                    <td>{value.n ?? 0}</td>
+                    <td>{value.gain == null ? '—' : `${(value.gain * 100).toFixed(1)} pp`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>}
+
+      {isRubricLite && (
+        <section>
+          <h3>Validation-guarded rubric learning</h3>
+          <div className="calitree-node-detail">
+            <strong>{String(report.version ?? 'rubric-lite-v1')}</strong>
+            <div>
+              Selected step {String(report.selection?.selected_step ?? 0)} · validation accuracy {
+                report.selection?.selected_validation_accuracy == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_accuracy) * 100).toFixed(1)}%`
+              }
+            </div>
+            <div>
+              partial precision {
+                report.selection?.selected_validation_partial_precision == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_partial_precision) * 100).toFixed(1)}%`
+              } · recall {
+                report.selection?.selected_validation_partial_recall == null
+                  ? '—'
+                  : `${(Number(report.selection.selected_validation_partial_recall) * 100).toFixed(1)}%`
+              } · F1 {
+                report.selection?.selected_validation_partial_f1 == null
+                  ? '—'
+                : `${(Number(report.selection.selected_validation_partial_f1) * 100).toFixed(1)}%`
+              }
+            </div>
+            {ordinalCalibration.deployment?.thresholds && (
+              <>
+                <div>
+                  Global score cutpoints: no &lt; {
+                    Number(ordinalCalibration.deployment.thresholds.no_partial).toFixed(1)
+                  } · partial &lt; {
+                    Number(ordinalCalibration.deployment.thresholds.partial_yes).toFixed(1)
+                  } · yes above
+                </div>
+                <div>
+                  Fit n={ordinalCalibration.fit?.n ?? 0} · internal validation {
+                    ordinalCalibration.validation?.accuracy == null
+                      ? '—'
+                      : `${(ordinalCalibration.validation.accuracy * 100).toFixed(1)}%`
+                  } · refit n={ordinalCalibration.deployment.n ?? 0}
+                </div>
+                <div>
+                  Feature: {ordinalCalibration.feature ?? 'minimum visible-evidence score'}
+                  {' · '}class recall floor {
+                    ordinalCalibration.deployment.minimum_class_recall == null
+                      ? '—'
+                      : `${(ordinalCalibration.deployment.minimum_class_recall * 100).toFixed(0)}%`
+                  }
+                  {' · '}no editor/task/instruction calibration features
+                </div>
+              </>
+            )}
+            <div>No leaves · no embeddings · no merges · no editor prior · one judge call per case</div>
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h3>{isRubricLite ? 'Learned global rubric' : 'Prompt hierarchy'}</h3>
+        <PromptTree tree={tree} selected={selectedNode} onSelect={setSelectedNode} />
+        {selected && (
+          <div className="calitree-node-detail">
+            <strong>{selected.id}</strong>
+            <div>{selected.status} · {selected.covered_ids.length} cases · {(selected.validation_accuracy * 100).toFixed(1)}%</div>
+            {Object.entries(selected.components ?? {}).map(([kind, values]) => (
+              <div key={kind}><b>{kind}:</b> {values.join(' · ') || '—'}</div>
+            ))}
+            <details><summary>Prompt</summary><pre>{selected.prompt}</pre></details>
+          </div>
+        )}
+      </section>
+
+      <section className="calitree-two-column">
+        <div>
+          <h3>Timeline</h3>
+          <ol className="calitree-timeline">
+            {(report.timeline ?? []).map((event: Record<string, unknown>, index: number) => (
+              <li key={`${String(event.node_id)}-${index}`}>
+                <strong>{String(event.kind)}</strong> · {String(event.node_id)}
+                {event.accuracy != null && ` · ${(Number(event.accuracy) * 100).toFixed(0)}%`}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div>
+          <h3>Usage</h3>
+          <pre className="json-preview">{JSON.stringify(report.usage ?? {}, null, 2)}</pre>
+          <div>Optimizer completion-token budget: {Number(report.optimizer_completion_token_budget ?? 0).toLocaleString()}</div>
+        </div>
+      </section>
+
+      <section>
+        <h3>Cases</h3>
+        <div className="secondary-split">
+          <ul className="dataset-item-list secondary-item-list">
+            {caseIds.map((id) => (
+              <li key={id} className={id === caseId ? 'active' : ''} onClick={() => setSelectedCase(id)}>
+                {id} · {String(cases[id].target_label)} → {
+                  String(predictions[id]?.decision_label ?? predictions[id]?.label ?? '—')
+                }
+              </li>
+            ))}
+          </ul>
+          {caseId && (
+            <div className="item-preview">
+              <h4>{caseId}</h4>
+              <div><strong>{String(cases[caseId].split)}</strong> · {String(cases[caseId].editor)}</div>
+              <p>{String(cases[caseId].instruction)}</p>
+              <div className="calitree-image-pair">
+                <figure>
+                  <img src={mediaUrl(String(cases[caseId].source_image_path))} alt="Source" />
+                  <figcaption>Source</figcaption>
+                </figure>
+                <figure>
+                  <img src={mediaUrl(String(cases[caseId].edited_image_path))} alt="Edited" />
+                  <figcaption>Edited</figcaption>
+                </figure>
+              </div>
+              <div><strong>Human:</strong> {String(cases[caseId].target_label)}</div>
+              <div><strong>{isRubricLite ? 'Rubric-Lite' : 'Cali-Tree'}:</strong> {String(predictions[caseId]?.label ?? '—')}</div>
+              {Boolean(predictions[caseId]?.decision_label) && (
+                <div>
+                  <strong>Deployment decision:</strong>{' '}
+                  {String(predictions[caseId].decision_label)}
+                  {predictions[caseId]?.review_reason
+                    ? ` · ${String(predictions[caseId].review_reason)}`
+                    : ''}
+                </div>
+              )}
+              <div><strong>Route:</strong> {String(predictions[caseId]?.routed_node ?? '—')}</div>
+              <p>{String(predictions[caseId]?.rationale ?? '')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}

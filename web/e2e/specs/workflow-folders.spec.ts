@@ -20,7 +20,10 @@ test('workflow folders save, browse, load, and delete nested workflows', async (
   await expect(row).toHaveAttribute('title', workflowPath)
 
   await row.getByRole('button', { name: 'Load' }).click()
-  await expect(page.locator('.tab-item', { hasText: workflowPath })).toBeVisible()
+  const matchingTabs = page.locator('.tab-item', { hasText: workflowPath })
+  // Saving names the current tab; loading intentionally opens an independent second copy.
+  await expect(matchingTabs).toHaveCount(2)
+  await expect(matchingTabs.last()).toHaveClass(/active/)
 
   await page.getByRole('button', { name: 'Workflows', exact: true }).click()
   await folder

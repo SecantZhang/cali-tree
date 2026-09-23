@@ -10,9 +10,23 @@ from .node_calibration.cl_adversarial_node import ClAdversarialNodeExecutor
 from .node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
 from .node_calibration.cl_semantic_tree_node import ClSemanticTreeNodeExecutor
 from .node_calibration.edit_aware_calibration_node import EditAwareCalibrationNodeExecutor
+from .node_calibration.calitree_nodes import (
+    CaliTreeEvalNodeExecutor,
+    CaliTreeJudgeNodeExecutor,
+    CaliTreeTrainNodeExecutor,
+)
+from .node_calibration.gepa_nodes import GepaFrozenNodeExecutor
+from .node_calibration.rubric_lite_nodes import (
+    RubricLiteApplyNodeExecutor,
+    RubricLiteFitNodeExecutor,
+    RubricLiteFrozenNodeExecutor,
+    RubricLiteTrainNodeExecutor,
+)
 from .node_db.coconut_source_node import CoconutSourceNodeExecutor
 from .node_db.dataset_node import DatasetNodeExecutor
+from .node_db.editinspector_source_node import EditInspectorSourceNodeExecutor
 from .node_db.grapenut_source_node import GrapenutSourceNodeExecutor
+from .node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
 from .node_db.peanut_source_node import PeanutSourceNodeExecutor
 from .node_db.unit_labels_node import UnitLabelsNodeExecutor
 from .node_db.vebench_source_node import VeBenchSourceNodeExecutor
@@ -33,6 +47,8 @@ __all__ = [
     "CoconutSourceNodeExecutor",
     "GrapenutSourceNodeExecutor",
     "VeBenchSourceNodeExecutor",
+    "ImagenHubSourceNodeExecutor",
+    "EditInspectorSourceNodeExecutor",
     "DatasetNodeExecutor",
     "UnitLabelsNodeExecutor",
     "PreprocessingNodeExecutor",
@@ -50,4 +66,12 @@ __all__ = [
     "ClRuleTreeNodeExecutor",
     "ClSemanticTreeNodeExecutor",
     "EditAwareCalibrationNodeExecutor",
+    "CaliTreeTrainNodeExecutor",
+    "CaliTreeJudgeNodeExecutor",
+    "CaliTreeEvalNodeExecutor",
+    "RubricLiteTrainNodeExecutor",
+    "RubricLiteFrozenNodeExecutor",
+    "RubricLiteFitNodeExecutor",
+    "GepaFrozenNodeExecutor",
+    "RubricLiteApplyNodeExecutor",
 ]

@@ -7,6 +7,8 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   coconut_source: 'Coconut Source',
   grapenut_source: 'Grapenut Source',
   vebench_source: 'VE-Bench Source',
+  imagenhub_source: 'ImagenHub Source',
+  editinspector_source: 'EditInspector Source',
   dataset: 'Dataset',
   preprocessing: 'Preprocessing',
   unit_labels: 'Human Unit Labels',
@@ -24,6 +26,14 @@ export const NODE_TITLE_FOR_TYPE: Record<string, string> = {
   cl_rule_tree: 'Rule/Tree Calibration',
   cl_semantic_tree: 'Semantic Tree Calibration',
   edit_aware_calibration: 'Edit-Aware Calibration',
+  calitree_train: 'Cali-Tree Train',
+  calitree_judge: 'Cali-Tree Judge',
+  calitree_eval: 'Cali-Tree Eval',
+  rubric_lite_train: 'Rubric-Lite Train',
+  rubric_lite_boundary: 'Partial Boundary Verifier',
+  rubric_lite_frozen: 'Frozen Rubric-Lite',
+  rubric_lite_fit: 'Rubric-Lite Fit',
+  rubric_lite_apply: 'Rubric-Lite Apply',
 }
 
 export function nodeTitle(type: string | undefined): string {
