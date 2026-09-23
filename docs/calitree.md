@@ -116,6 +116,36 @@ The source material is:
 Semantic Consistency (SC) is the target. The median of the three raters maps `0`, `0.5`, and
 `1` to `no`, `partial`, and `yes`; Perceptual Quality (PQ) remains attached as provenance.
 
+### AURORA-Bench calibration track
+
+[AURORA-Bench](https://github.com/McGill-NLP/AURORA) provides 400 source-image/instruction
+pairs spanning eight editing tasks, outputs from five models, and an aggregate human score
+for each of the resulting 2,000 edits. Materialize the official December 2024 human-rating
+release with:
+
+```bash
+./run/setup_aurora_bench.sh
+```
+
+The setup downloads the official ratings JSON and image archive, checks both against pinned
+SHA-256 digests, safely extracts the images, and writes a per-file manifest. It creates three
+task-grouped splits (seeds 42/43/44), each with 80 source-prompt tasks for calibration and 320
+for held-out evaluation. All five model outputs for a source-prompt pair remain together,
+giving 400 train and 1,600 test outputs. Override the location with
+`VEJUDGE_AURORA_BENCH_ROOT`.
+
+AURORA's underlying judgment scale is already the desired ordinal scale: `0=none`,
+`1=partial`, `2=full`. The public JSON, however, exposes only the **mean of repeated human
+judgments**, so its values are fractional and individual votes cannot be reconstructed. The
+loader preserves this continuous `[0,2]` value as `human_score`. For compatibility with the
+existing three-class Cali-Tree nodes it additionally applies fixed, predeclared cutoffs:
+`<0.5 → no`, `[0.5,1.5) → partial`, and `≥1.5 → yes`. The continuous target should be used for
+regression/calibration metrics; the binned target is for ordinal classification experiments.
+
+Use `AuroraBenchLoader`, optionally filtering its five models or eight task types. The
+official sources are the [paper](https://arxiv.org/abs/2407.03471) and the
+[AURORA repository](https://github.com/McGill-NLP/AURORA#human-ratings).
+
 An independent zero-shot validation track uses the public
 [EditInspector benchmark](https://github.com/editinspector/EditInspector), pinned to commit
 `e18cd6b6b80311d8514787618c2a6cbebff563ef`. Its 783 MagicBrush edits have three human

@@ -1,3 +1,10 @@
+## 260909-10:18:45 — Add reproducible AURORA-Bench calibration dataset
+- Type: feature
+- Scope: AURORA dataset loader/setup, configuration, tests, and calibration/data documentation
+- What: Added pinned, resumable materialization of 2,000 official human-rated AURORA-Bench outputs, preserved the aggregate 0–2 score, and added task-grouped 80/320 train/test splits plus an optional fixed three-class view.
+- Why: Enable a fast second image-domain experiment for aligning model judgments with the human none/partial/full scale.
+- Details: logs/updates/details/260909-10:18:45-updates.md
+
 ## 260902-22:51:09 — Pilot-first Cali-Tree safety guards
 - Type: fix
 - Scope: Cali-Tree builder/parser/metrics, LM engine transport/config, ImagenHub runner, UI schema, tests, docs

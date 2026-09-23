@@ -23,6 +23,8 @@ for you; the free ones never do. When unsure what a run will cost, use
 |---|---|---|
 | `setup_env.sh` | no | **Run once.** Create `.venv` and install dev/interface/video Python deps. |
 | `setup_imagenhub.sh` | no gateway calls (downloads public data) | Materialize and hash the 179-task ImagenHub + eight publicly available editor outputs with resumable downloads. See `docs/calitree.md`. |
+| `setup_aurora_bench.sh` | no gateway calls (downloads public data) | Materialize and hash AURORA-Bench's 2,000 human-rated outputs (400 prompts × five editors), then write task-grouped 20/80 calibration splits. |
+| `run_aurora_prompt_repair.sh` | no by default; yes only with explicit `--live` | Sample a task-disjoint, label-balanced AURORA set; measure `gpt-5.4-mini` repeat stability; and independently repair incorrect/unstable cases with TextGrad and GEPA. |
 | `setup_editinspector.sh` | no gateway calls (downloads public data) | Materialize pinned, nested EditInspector development/calibration/final partitions with resumable image downloads and SHA-256 manifest. |
 | `run_editinspector_rubric_lite.sh` | no by default; yes only with explicit `--live` | Dry-run or execute the frozen Rubric-Lite external workflow. Live runs also require an explicit `--model`; supports partition selection, verifier disablement, and checkpoint seeding. |
 | `run_imagenhub_rubric_lite.sh` | no by default; yes only with explicit `--live` | Dry-run or execute frozen Rubric-Lite v4 on all 1,200 ImagenHub held-out cases. Supports compatible checkpoint seeding and reports the exact remaining live-call count. |
@@ -52,6 +54,58 @@ for you; the free ones never do. When unsure what a run will cost, use
 
 Iterating on prompts/alignment? Prefer `run_text_only.sh` or
 `run_quick_subset.sh --limit 1` to keep cost down.
+
+## AURORA individual prompt repair
+
+Prepare a free, deterministic 100-case sample and inspect the upper-bound call count:
+
+```bash
+./run/run_aurora_prompt_repair.sh all
+```
+
+The command prints its run directory. Set up the isolated GEPA dependency once, then
+resume that exact directory for the staged live baseline and repair run:
+
+```bash
+./run/aurora_prompt_repair/setup_gepa_venv.sh
+./run/run_aurora_prompt_repair.sh all --live --run-dir <run-dir> --resume
+```
+
+The defaults are the CaliTree v2 rubric verbatim, `gpt-5.4-mini`, seed 44, 10 fresh
+temperature-0.3 repeats, a 7/10 empirical-stability threshold, five repair rounds,
+and both independent optimizer tracks. Use `sample`, `baseline`, `repair`, or `report`
+instead of `all` to run one resumable stage. Outputs include the sample and clean
+1,500-output holdout manifests, raw predictions, optimizer traces, prompt files/diffs,
+per-case reports, and JSON/CSV/Markdown summaries. Live runs display a baseline call bar
+and a repair-track bar with the active method, case, round, and gate; pass `--no-progress`
+when redirecting output to a system that supplies its own progress display.
+
+The `report` phase also writes a standalone `report.html`. It includes all sampled cases,
+source/edited images, baseline calls, and complete TextGrad/GEPA prompt progressions with
+screen and repeated predictions. Open it directly in a browser. To generate or refresh the
+same report for another compatible experiment directory without rerunning metrics:
+
+```bash
+python -m run.aurora_prompt_report logs/exps/<run-dir>
+```
+
+The page can also load another run interactively: select or drop its
+`baseline_predictions.jsonl`, optional `repair_traces.jsonl`, `summary.json`,
+`run_config.json`, and `sample_manifest.json` files. Selecting the entire run folder also
+loads its seed prompt when present.
+
+To test whether optimized natural-language rubrics retain their behavior after conversion
+to structured semantic decisions, run the checkpointed equivalence stage:
+
+```bash
+python -m run.aurora_structured_decision_test \
+  --run-dir logs/exps/<completed-prompt-repair-run> --live --resume
+```
+
+It evaluates every screen-correct progression, treating accepted robust prompts as the
+primary cohort. The regenerated HTML nests the extracted decision JSON, compiled prompt,
+screen prediction, ten-repeat distribution, and preservation statistics under its original
+prompt round.
 
 ## Parallelism
 

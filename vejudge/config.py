@@ -40,6 +40,9 @@ VEBENCH_ROOT: Path = _env_path(
 IMAGENHUB_ROOT: Path = _env_path(
     "VEJUDGE_IMAGENHUB_ROOT", DATA_ROOT / "imagenhub" / "text_guided_ie"
 )
+AURORA_BENCH_ROOT: Path = _env_path(
+    "VEJUDGE_AURORA_BENCH_ROOT", DATA_ROOT / "aurora" / "bench"
+)
 EDITINSPECTOR_ROOT: Path = _env_path(
     "VEJUDGE_EDITINSPECTOR_ROOT", DATA_ROOT / "editinspector"
 )

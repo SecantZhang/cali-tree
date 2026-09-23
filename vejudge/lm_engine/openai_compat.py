@@ -158,7 +158,10 @@ def chat_completion(
                 total_tokens=usage.get("total_tokens", 0),
                 endpoint_host=host,
                 latency_s=latency,
-                model=model,
+                # OpenAI-compatible gateways may resolve a moving alias to a dated
+                # snapshot. Preserve the identifier returned by the service so
+                # experiments can report the model that actually handled the call.
+                model=str(data.get("model") or model),
             )
 
     raise RuntimeError(
