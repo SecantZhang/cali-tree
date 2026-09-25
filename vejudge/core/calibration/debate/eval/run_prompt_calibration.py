@@ -190,7 +190,6 @@ def _build_live_engines(metric: str, env_raw: Optional[str]):
     from .....database.dl_peanut_eval.loader import PeanutEvalLoader
     from .....lm_engine import get_engine, load_creds
 
-    creds = load_creds(env_raw_path=Path(env_raw)) if env_raw else load_creds()
     # One engine for everything: the debate/extraction/aggregation calls are text (the
     # turn runner never attaches media), the feature-extraction judge call attaches the
     # video — same engine, media decided by the caller. Using the metric's own modality
@@ -198,6 +197,7 @@ def _build_live_engines(metric: str, env_raw: Optional[str]):
     # depending on a separate gpt deployment on the gateway. (Judge and proxy share a
     # model here — acceptable for this feasibility pass; note it as a self-bias caveat.)
     kind = "gemini" if JUDGE_METRICS[metric].modality == "video" else "gpt"
+    creds = load_creds(env_raw_path=Path(env_raw)) if env_raw else load_creds(engine=kind)
     engine = get_engine(kind, creds=creds)
     return engine, engine, PeanutEvalLoader(model="peanut")
 

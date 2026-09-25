@@ -210,6 +210,7 @@ def test_live_judge_repeat_ids_are_fresh_but_same_id_resumes(monkeypatch, tmp_pa
     calls = []
 
     class _Creds:
+        provider = "openai"
         endpoints = ["https://example.invalid"]
         token = "secret"
 
@@ -225,7 +226,7 @@ def test_live_judge_repeat_ids_are_fresh_but_same_id_resumes(monkeypatch, tmp_pa
             model="gpt-5.4-mini-2026-03-17",
         )
 
-    monkeypatch.setattr("run.aurora_prompt_repair.load_creds", lambda: _Creds())
+    monkeypatch.setattr("run.aurora_prompt_repair.load_creds", lambda **kwargs: _Creds())
     monkeypatch.setattr(openai_compat, "chat_completion", fake_completion)
     source = tmp_path / "source.png"
     edited = tmp_path / "edited.png"

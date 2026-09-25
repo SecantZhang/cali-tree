@@ -22,6 +22,7 @@ from typing import Any, Optional
 import requests
 
 from .creds import load_creds
+from .provider_api import chat_request
 from .gate import LiveCallNotAllowed, require_live
 
 _RL_HINTS = ("ratelimit", "rate-limit", "retry", "remaining", "reset", "limit")
@@ -32,17 +33,10 @@ def _is_rate_header(name: str) -> bool:
     return any(h in n for h in _RL_HINTS)
 
 
-def _one_call(url: str, token: str, model: str, timeout: int) -> dict[str, Any]:
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": "Reply with OK"}],
-        "max_tokens": 2,
-        "temperature": 0,
-    }
-    headers = {
-        "Content-Type": "application/json; charset=UTF-8",
-        "Authorization": f"Bearer {token}",
-    }
+def _one_call(base: str, token: str, model: str, timeout: int, provider: Optional[str] = None) -> dict[str, Any]:
+    url, payload, headers, _ = chat_request(
+        base, token, model, [{"role": "user", "content": "Reply with OK"}], 32, 1, provider
+    )
     t0 = time.time()
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
@@ -65,11 +59,11 @@ def _one_call(url: str, token: str, model: str, timeout: int) -> dict[str, Any]:
         }
 
 
-def _run_level(url: str, token: str, model: str, n: int, timeout: int) -> dict[str, Any]:
+def _run_level(url: str, token: str, model: str, n: int, timeout: int, provider: Optional[str] = None) -> dict[str, Any]:
     t0 = time.time()
     results: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=n) as ex:
-        futs = [ex.submit(_one_call, url, token, model, timeout) for _ in range(n)]
+        futs = [ex.submit(_one_call, url, token, model, timeout, provider) for _ in range(n)]
         for f in as_completed(futs):
             results.append(f.result())
     wall = time.time() - t0
@@ -105,15 +99,15 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     from .. import config
 
-    creds = load_creds()
-    url = creds.endpoints[0].rstrip("/") + "/chat/completions"
     model = args.model or config.DEFAULT_TEXT_MODEL
+    creds = load_creds(model=model)
+    url = creds.endpoints[0]
     levels = [int(x) for x in args.levels.split(",") if x.strip()]
 
     print(f"Probing {url}\n  model={model}  levels={levels}\n")
 
     # One warm-up call to surface any rate-limit headers the gateway advertises.
-    warm = _one_call(url, creds.token, model, args.timeout)
+    warm = _one_call(url, creds.token, model, args.timeout, creds.provider)
     print(f"warm-up: status={warm['status']} latency={warm['latency']:.2f}s")
     if warm.get("headers"):
         print("  rate-limit headers:")
@@ -127,7 +121,7 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"{'rps':>6} {'p50':>6} {'max':>6}")
     prev_p50: Optional[float] = None
     for n in levels:
-        r = _run_level(url, creds.token, model, n, args.timeout)
+        r = _run_level(url, creds.token, model, n, args.timeout, creds.provider)
         print(f"{r['concurrency']:>5} {r['ok']:>4} {r['rate_limited']:>4} "
               f"{r['errors']:>4} {r['wall_s']:>7} {str(r['throughput_rps']):>6} "
               f"{str(r['lat_p50']):>6} {str(r['lat_max']):>6}")

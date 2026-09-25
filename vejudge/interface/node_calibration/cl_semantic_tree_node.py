@@ -171,7 +171,10 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         critic_engine = get_engine(
             critic_config.get("engine_kind") or _DEFAULT_ENGINE_KIND.get(
                 JUDGE_METRICS[metric_id].modality, "gpt"),
-            history=ctx.run.history, model=critic_config.get("model"), creds=load_creds(),
+            history=ctx.run.history, model=critic_config.get("model"),
+            creds=load_creds(
+                engine=critic_config.get("engine_kind") or _DEFAULT_ENGINE_KIND.get(JUDGE_METRICS[metric_id].modality, "gpt")
+            ),
             max_tokens=int(critic_config.get("max_tokens") or 4096), **temp_kw,
         )
 
@@ -574,7 +577,10 @@ class ClSemanticTreeNodeExecutor(CalibrationFitterNode):
         ) else "gpt"
         critic_engine = get_engine(
             critic_config.get("engine_kind") or default_kind,
-            history=ctx.run.history, model=critic_config.get("model"), creds=load_creds(),
+            history=ctx.run.history, model=critic_config.get("model"),
+            creds=load_creds(
+                engine=critic_config.get("engine_kind") or default_kind
+            ),
             max_tokens=int(critic_config.get("max_tokens") or 4096), **temp_kw,
         )
         concurrency = max(1, int(critic_config.get("concurrency") or 1))

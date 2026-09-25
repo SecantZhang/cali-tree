@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .creds import PlutoCreds, load_creds
+from .creds import ProviderCreds, PlutoCreds, load_creds
 from .gate import LiveCallNotAllowed, live_allowed, require_live
 from .lm_claude import ClaudeEngine
 from .lm_deepseek import DeepseekEngine
@@ -52,6 +52,7 @@ __all__ = [
     "DeepseekEngine",
     "LlamaEngine",
     "KimiEngine",
+    "ProviderCreds",
     "PlutoCreds",
     "load_creds",
     "get_engine",

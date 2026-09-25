@@ -84,7 +84,7 @@ def _inputs(dataset, judge_result, *, labels=None, **eng):
 def fake_creds(monkeypatch):
     monkeypatch.setattr(
         cl_adversarial_node, "load_creds",
-        lambda: PlutoCreds(token="sk-test", base_url="https://primary"),
+        lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
 
 

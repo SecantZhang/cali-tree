@@ -212,7 +212,7 @@ def lint_spec(
 
 class SpecProposer:
     def __init__(self, args, checkpoint):
-        self.args, self.checkpoint, self.creds = args, checkpoint, load_creds()
+        self.args, self.checkpoint, self.creds = args, checkpoint, load_creds(model=args.model)
 
     def propose(self, case_key: str, round_index: int, spec: dict[str, Any], feedback: str) -> dict[str, Any]:
         key = f"atomic-robustness::proposal::{case_key}::{round_index}::{prompt_digest(json.dumps(spec, sort_keys=True) + feedback)}"
@@ -224,7 +224,7 @@ class SpecProposer:
         )}]
         try:
             result = openai_compat.chat_completion(
-                endpoints=self.creds.endpoints, token=self.creds.token,
+                provider=self.creds.provider, endpoints=self.creds.endpoints, token=self.creds.token,
                 model=self.args.model, messages=messages, max_tokens=3072,
                 temperature=0.0, timeout=self.args.timeout, max_retries=4,
             )

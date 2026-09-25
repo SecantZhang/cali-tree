@@ -107,7 +107,10 @@ class JudgeNodeExecutor(NodeExecutor):
         engine = get_engine(
             engine_config.get("engine_kind") or _DEFAULT_ENGINE_KIND.get(modality, "gpt"),
             history=ctx.run.history,
-            model=engine_config.get("model"), creds=load_creds(),
+            model=engine_config.get("model"),
+            creds=load_creds(
+                engine=engine_config.get("engine_kind") or _DEFAULT_ENGINE_KIND.get(modality, "gpt")
+            ),
             max_tokens=int(engine_config.get("max_tokens") or 4096), **temp_kw,
         )
 

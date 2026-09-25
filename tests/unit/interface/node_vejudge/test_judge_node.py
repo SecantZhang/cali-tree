@@ -55,7 +55,7 @@ def _custom_spec(**overrides):
 @pytest.fixture(autouse=True)
 def fake_creds(monkeypatch):
     monkeypatch.setattr(
-        judge_node, "load_creds", lambda: PlutoCreds(token="sk-test", base_url="https://primary")
+        judge_node, "load_creds", lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary")
     )
 
 

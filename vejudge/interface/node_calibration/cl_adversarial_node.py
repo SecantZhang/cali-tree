@@ -381,7 +381,10 @@ class ClAdversarialNodeExecutor(CalibrationProducerNode):
             return get_engine(
                 engine_config.get("engine_kind") or default_kind,
                 history=ctx.run.history,
-                model=engine_config.get("model"), creds=load_creds(),
+                model=engine_config.get("model"),
+                creds=load_creds(
+                    engine=engine_config.get("engine_kind") or default_kind
+                ),
                 max_tokens=int(engine_config.get("max_tokens") or 4096), **temp_kw,
             )
 

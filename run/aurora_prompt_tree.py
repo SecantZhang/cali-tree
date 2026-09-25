@@ -240,7 +240,7 @@ def write_markdown_summary(
 class InstructionDecomposer:
     def __init__(self, model: str, timeout: int, checkpoint: CheckpointStore):
         self.model, self.timeout, self.checkpoint = model, timeout, checkpoint
-        self.creds = load_creds()
+        self.creds = load_creds(model=model)
 
     def decompose(self, item_id: str, instruction: str) -> dict[str, Any]:
         key = f"prompt-tree::decompose::{item_id}::{prompt_digest(DECOMPOSER_SYSTEM + instruction)}"
@@ -248,7 +248,7 @@ class InstructionDecomposer:
             row = dict(self.checkpoint.get(key)); row["checkpoint_hit"] = True; return row
         try:
             result = openai_compat.chat_completion(
-                endpoints=self.creds.endpoints, token=self.creds.token, model=self.model,
+                provider=self.creds.provider, endpoints=self.creds.endpoints, token=self.creds.token, model=self.model,
                 messages=[{"role": "system", "content": DECOMPOSER_SYSTEM},
                           {"role": "user", "content": instruction}],
                 max_tokens=768, temperature=0.0, timeout=self.timeout, max_retries=4,

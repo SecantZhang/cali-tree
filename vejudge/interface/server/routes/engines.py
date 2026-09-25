@@ -27,7 +27,7 @@ def health_check(body: EngineHealthCheckIn) -> EngineHealthCheckOut:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
-        creds = load_creds()
+        creds = load_creds(engine=body.engine_kind)
     except RuntimeError as e:
         # No credentials configured at all — a clear 400 rather than a 500 stack trace.
         raise HTTPException(status_code=400, detail=str(e)) from e

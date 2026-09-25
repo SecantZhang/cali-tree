@@ -23,6 +23,13 @@ Reference material lives in `docs/` to keep this file focused on conventions:
 
 ---
 
+## Provider configuration
+
+Official OpenAI (`OPENAI_API_KEY`) and Gemini (`GEMINI_API_KEY` or `GOOGLE_API_KEY`)
+are the default. See `docs/providers.md`; its credential and endpoint rules supersede
+historical Pluto gateway descriptions below. Old proxy configuration is opt-in only.
+Do not make live API calls during tests.
+
 ## Running the Benchmark
 
 Use the wrapper scripts in `run/` (each passes extra flags through to the CLI; see

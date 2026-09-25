@@ -86,7 +86,7 @@ def _inputs(items, fms_by_item):
 @pytest.fixture(autouse=True)
 def _fake_engine(monkeypatch):
     monkeypatch.setattr(cl_semantic_tree_node, "load_creds",
-                        lambda: PlutoCreds(token="sk-test", base_url="https://x"))
+                        lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://x"))
     monkeypatch.setattr(cl_semantic_tree_node, "get_engine", lambda *a, **k: _ScriptedCritic())
 
 

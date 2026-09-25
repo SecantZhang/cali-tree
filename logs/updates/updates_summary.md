@@ -1,3 +1,52 @@
+## 260925-17:57:00 — Publish current repository snapshot
+- Type: chore
+- Scope: repository-wide pending source, tests, experiments, documentation, provider configuration, and update log
+- What: Prepared the current repository state for publication to the requested GitHub repository while keeping credentials and generated data ignored.
+- Why: Preserve and share the current implementation snapshot.
+- Details: logs/updates/details/260925-17:57:00-updates.md
+
+## 260924-18:59:23 — Fifty-case repeated GEPA comparison
+- Type: experiment
+- Scope: 50-case runner, parallel resume orchestrator, AURORA assets, report, and verification record
+- What: Compared single-draw and repeated-feedback GEPA repair with five proposals and 15 final repeats on 50 distinct tasks. Final accuracy was 475/750 versus 472/750, with no established repeated-repair gain.
+- Why: Test whether repeated-feedback prompt optimization scales beyond the ten-case pilot.
+- Details: logs/updates/details/260924-18:59:23-updates.md
+
+## 260924-11:28:16 — Focused robustness challenger
+- Type: feature
+- Scope: GEPA worker feedback, focused experiment runner, tests, docs
+- What: Contrastive candidate generation and multi-batch selection on C08/C05, with matched ten-case final evaluation.
+- Why: Improve robustness and accuracy over the completed single-draw GEPA result.
+- Details: logs/updates/details/260924-11:28:16-updates.md
+
+## 260924-09:37:00 — Repeated-evaluation GEPA per-case repair pilot
+- Type: feature
+- Scope: standalone experiment runner, opt-in GEPA worker, offline tests, experiment docs
+- What: Compare single-draw and repeated-feedback repairs on ten frozen cases with isolated final evaluation.
+- Why: Test whether repeated correctness and confirmation improve known-case prompt reliability.
+- Details: logs/updates/details/260924-09:37:00-updates.md
+
+## 260923-21:43:52 — Ten-case GPT-6-Luna model comparison
+- Type: feature
+- Scope: standalone experiment runner, offline tests, experiment report and logs
+- What: Completed 1,870 fresh generations across seven repeated-judgment arms on the same ten cases; compared direct judging, fixed conditions, regenerated conditions and grouped learned trees.
+- Why: Test whether a model upgrade improves the observed judge robustness failures.
+- Details: logs/updates/details/260923-21:43:52-updates.md
+
+## 260923-20:00:01 — Audit condition-tree assumptions on ten AURORA cases
+- Type: feature
+- Scope: retrospective experiment runner, statistical tests, assumption report, visual audit, experiment artifacts
+- What: Evaluated ten diverse cases using saved repeated judgments and new grouped tree fits; found unstable leaves, missing criteria, conflicting shared features, and weak held-category transfer.
+- Why: Test the proposed decomposition and generalization assumptions before expanding the learned-tree system.
+- Details: logs/updates/details/260923-20:00:01-updates.md
+
+## 260923-10:44:26 — Switch to official OpenAI and Gemini APIs
+- Type: feature
+- Scope: LM credentials/transports, experiment and graph clients, settings UI, tests, documentation
+- What: Added separate official-provider keys and native Gemini requests; legacy proxy settings are opt-in only.
+- Why: Remove the dependency on the user's former company endpoint.
+- Details: logs/updates/details/260923-10:44:26-updates.md
+
 ## 260909-10:18:45 — Add reproducible AURORA-Bench calibration dataset
 - Type: feature
 - Scope: AURORA dataset loader/setup, configuration, tests, and calibration/data documentation

@@ -27,7 +27,7 @@ from ...database.dl_human_annotations import (
 )
 from ...database.dl_peanut_eval import PeanutEvalLoader
 from ...database.dl_peanut_eval.loader import use_case_for
-from ...lm_engine import get_engine, load_creds, require_live
+from ...lm_engine import get_engine, require_live
 from ...logging.exp_logger import ExperimentRun, make_exp_run
 from ...postprocessing.align import build_aligned_rows, derive_overall
 from ...workflow import JudgeEngines
@@ -134,25 +134,34 @@ class HumanGapBenchmark(BenchmarkRunner):
         # Real (billable) gateway calls require explicit authorization.
         require_live(self.allow_live, context=f"Benchmark over {len(items)} item(s)")
 
-        # Load creds once (avoids a lazy race when engines are shared across threads).
-        creds = load_creds()
-        # Probe endpoints and prefer a working one (skip the primary if it's down).
-        if self.health_check and len(creds.default_endpoints) > 1:
-            from ...lm_engine.health import reorder_creds_by_health
-
-            reorder_creds_by_health(creds, model=self.text_model, logger=log)
+        # Each provider has its own credentials; engines resolve them lazily so a
+        # text-only run never requires a Gemini key (and vice versa).
         # Only pass temperature when set, so None keeps the engine default (0.3).
         temp_kw = {} if self.temperature is None else {"temperature": self.temperature}
         engines = JudgeEngines(
             text=get_engine(
                 self.text_engine_kind, history=run.history, model=self.text_model,
-                creds=creds, **temp_kw,
+                **temp_kw,
             ),
             video=get_engine(
                 self.video_engine_kind, history=run.history, model=self.video_model,
-                creds=creds, **temp_kw,
+                **temp_kw,
             ),
         )
+
+        if self.health_check:
+            from ...lm_engine.health import reorder_creds_by_health
+            # Official APIs have one endpoint; only legacy mirrors need probing.
+            if self.judges:
+                active = [JUDGE_MODALITY[j] for j in self.judges]
+            else:
+                active = list(JUDGE_MODALITY.values())
+            for engine, modality in ((engines.text, "text"), (engines.video, "video")):
+                if modality == "video" and self.skip_video:
+                    continue
+                if modality in active:
+                    if len(engine.creds.default_endpoints) > 1:
+                        reorder_creds_by_health(engine.creds, model=engine.model, logger=log)
 
         # Pre-load samples sequentially (cheap local file I/O) so the worker threads
         # only do network calls.

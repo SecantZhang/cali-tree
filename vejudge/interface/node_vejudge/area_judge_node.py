@@ -101,7 +101,10 @@ class AreaJudgeNodeExecutor(NodeExecutor):
         }
         engine = get_engine(
             engine_config.get("engine_kind") or "gemini",
-            history=ctx.run.history, model=engine_config.get("model"), creds=load_creds(),
+            history=ctx.run.history, model=engine_config.get("model"),
+            creds=load_creds(
+                engine=engine_config.get("engine_kind") or "gemini"
+            ),
             max_tokens=int(engine_config.get("max_tokens") or 4096), **temp_kw,
         )
         provenance = {

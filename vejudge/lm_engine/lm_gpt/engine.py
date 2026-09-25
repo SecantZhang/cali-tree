@@ -1,4 +1,4 @@
-"""GPT engine (text judges) via the Pluto OpenAI-compatible gateway."""
+"""GPT engine (text judges) via the official OpenAI API."""
 
 from __future__ import annotations
 

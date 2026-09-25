@@ -1,9 +1,4 @@
-"""Shared OpenAI-compatible ``/chat/completions`` transport with endpoint failover.
-
-The Pluto gateway is OpenAI-compatible: text and video both go through
-``/chat/completions``; video is sent as a base64 ``data:video/mp4`` image_url part.
-This module is provider-agnostic — engines build the ``messages`` and pick the model.
-"""
+"""Shared retrying transport for OpenAI-compatible and native Gemini APIs."""
 
 from __future__ import annotations
 
@@ -15,6 +10,8 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 import requests
+
+from .provider_api import chat_request, chat_response
 
 
 @dataclass
@@ -90,6 +87,7 @@ def chat_completion(
     temperature: float = 0.3,
     timeout: int = 300,
     max_retries: int = 4,
+    provider: Optional[str] = None,
 ) -> ChatResult:
     """POST to the first reachable endpoint, falling over to the rest in order.
 
@@ -99,20 +97,11 @@ def chat_completion(
     it is the only endpoint. Non-retryable responses (e.g. 400/401/404) fall over
     immediately. Raises only if all endpoints fail.
     """
-    payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
-    headers = {
-        "Content-Type": "application/json; charset=UTF-8",
-        "Authorization": f"Bearer {token}",
-    }
-
     errors: list[str] = []
     for endpoint_index, base in enumerate(endpoints):
-        url = base.rstrip("/") + "/chat/completions"
+        url, payload, headers, dialect = chat_request(
+            base, token, model, messages, max_tokens, temperature, provider
+        )
         host = urlparse(url).netloc
         for attempt in range(max_retries + 1):
             t0 = time.time()
@@ -144,25 +133,9 @@ def chat_completion(
                 break  # non-retryable -> next endpoint
 
             data = resp.json()
-            choices = data.get("choices") or []
-            content: Optional[str] = None
-            if choices and isinstance(choices[0], dict):
-                msg = choices[0].get("message") or {}
-                if isinstance(msg, dict):
-                    content = msg.get("content")
-            usage = data.get("usage") or {}
-            return ChatResult(
-                content=content,
-                prompt_tokens=usage.get("prompt_tokens", 0),
-                completion_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-                endpoint_host=host,
-                latency_s=latency,
-                # OpenAI-compatible gateways may resolve a moving alias to a dated
-                # snapshot. Preserve the identifier returned by the service so
-                # experiments can report the model that actually handled the call.
-                model=str(data.get("model") or model),
-            )
+            content, prompt_tokens, completion_tokens, total_tokens, returned_model = chat_response(data, dialect, model)
+            return ChatResult(content, prompt_tokens, completion_tokens, total_tokens,
+                              host, latency, returned_model)
 
     raise RuntimeError(
         "All chat/completions endpoints failed:\n  " + "\n  ".join(errors)

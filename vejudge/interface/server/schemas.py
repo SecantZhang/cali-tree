@@ -188,7 +188,8 @@ def utcnow_iso() -> str:
 
 class CredentialsIn(BaseModel):
     token: str
-    base_url: str
+    base_url: str = ""
+    provider: str = "openai"
     mirror_url: Optional[str] = None
 
 

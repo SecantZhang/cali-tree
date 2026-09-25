@@ -1,7 +1,6 @@
 """Gemini engine (video-capable) — the default judge engine.
 
-Routes through the Pluto OpenAI-compatible gateway; video is sent as a base64
-``data:video/mp4`` part by the shared transport.
+Uses the official Gemini GenerateContent API with inline image/video parts.
 """
 
 from __future__ import annotations

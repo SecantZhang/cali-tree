@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ApiError } from '../../api/client'
+import type { ApiProvider } from '../../api/settings'
 import { clearCredentials, fetchCredentialsStatus, saveCredentials } from '../../api/settings'
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -12,26 +13,25 @@ const SOURCE_LABEL: Record<string, string> = {
 
 export function CredentialsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
+  const [provider, setProvider] = useState<ApiProvider>('openai')
   const { data: status } = useQuery({
-    queryKey: ['credentialsStatus'],
-    queryFn: fetchCredentialsStatus,
+    queryKey: ['credentialsStatus', provider],
+    queryFn: () => fetchCredentialsStatus(provider),
     enabled: open,
   })
   const [token, setToken] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
-  const [mirrorUrl, setMirrorUrl] = useState('')
   const [showToken, setShowToken] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const saveMutation = useMutation({
-    mutationFn: () => saveCredentials(token, baseUrl, mirrorUrl || undefined),
+    mutationFn: () => saveCredentials(token, baseUrl, undefined, provider),
     onSuccess: () => {
       setToken('')
       queryClient.invalidateQueries({ queryKey: ['credentialsStatus'] })
     },
   })
   const clearMutation = useMutation({
-    mutationFn: clearCredentials,
+    mutationFn: () => clearCredentials(provider),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['credentialsStatus'] }),
   })
 
@@ -45,13 +45,21 @@ export function CredentialsModal({ open, onClose }: { open: boolean; onClose: ()
           <button onClick={onClose}>Close</button>
         </div>
         <div className="modal-body credentials-body">
+          <div className="param-row">
+            <label className="param-label" htmlFor="api-provider">Provider</label>
+            <select id="api-provider" value={provider} disabled={saveMutation.isPending || clearMutation.isPending}
+              onChange={(e) => { setProvider(e.target.value as ApiProvider); setToken(''); setBaseUrl(''); setShowToken(false); saveMutation.reset() }}>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
           <p className="empty-hint">
             Currently using: {status ? SOURCE_LABEL[status.source] : '…'}
             {status?.base_url ? ` (${status.base_url})` : ''}
           </p>
           <p className="empty-hint">
             Saved to a local file on this machine (gitignored, never committed) and read by
-            the backend for every Judge Node call — never sent anywhere else.
+            the backend only for calls to the selected provider. Keys are never returned to the browser.
           </p>
 
           <div className="param-row">
@@ -79,22 +87,10 @@ export function CredentialsModal({ open, onClose }: { open: boolean; onClose: ()
             />
           </div>
 
-          {!showAdvanced && (
-            <button type="button" onClick={() => setShowAdvanced(true)}>
-              Advanced (mirror URL)
-            </button>
-          )}
-          {showAdvanced && (
-            <div className="param-row">
-              <label className="param-label">Mirror URL (optional)</label>
-              <input
-                type="text"
-                value={mirrorUrl}
-                onChange={(e) => setMirrorUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-          )}
+          <p className="empty-hint">
+            Leave Base URL blank to use {provider === 'openai' ? 'https://api.openai.com/v1' : 'https://generativelanguage.googleapis.com/v1beta'}.
+            {' '}Save a separate key for each provider. Existing proxy settings are ignored by default.
+          </p>
 
           {saveMutation.isError && (
             <p className="rationale-error">
@@ -107,7 +103,7 @@ export function CredentialsModal({ open, onClose }: { open: boolean; onClose: ()
           <div className="credentials-actions">
             <button
               className="btn-primary"
-              disabled={!token || !baseUrl || saveMutation.isPending}
+              disabled={!token.trim() || saveMutation.isPending}
               onClick={() => saveMutation.mutate()}
             >
               Save

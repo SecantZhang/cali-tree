@@ -54,7 +54,7 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 class Extractor:
     def __init__(self, args, checkpoint, history):
         self.args, self.checkpoint, self.history = args, checkpoint, history
-        self.creds = load_creds()
+        self.creds = load_creds(model=args.extractor_model)
 
     def extract(self, prompt: str) -> dict[str, Any]:
         digest = prompt_digest(prompt)
@@ -66,7 +66,7 @@ class Extractor:
         for attempt in range(3):
             try:
                 result = openai_compat.chat_completion(
-                    endpoints=self.creds.endpoints, token=self.creds.token,
+                    provider=self.creds.provider, endpoints=self.creds.endpoints, token=self.creds.token,
                     model=self.args.extractor_model, messages=messages, max_tokens=2048,
                     temperature=0.0, timeout=self.args.timeout, max_retries=4,
                 )

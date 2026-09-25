@@ -8,6 +8,11 @@ from vejudge.lm_engine.creds import _parse_env_raw, load_creds
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "env_raw_sample.txt"
 
 
+@pytest.fixture(autouse=True)
+def legacy_mode(monkeypatch):
+    monkeypatch.setenv("VEJUDGE_PROVIDER", "legacy")
+
+
 def _clean_env(monkeypatch):
     for var in (
         "CHAT_GPT_API_KEY",
@@ -64,10 +69,10 @@ def test_manual_creds_take_precedence_over_env_and_file(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAI_COMPAT_BASE_URL", "https://env.example.com/")
     creds_file = tmp_path / "creds.json"
     creds_mod.save_manual_creds(
-        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file
+        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file, provider="legacy"
     )
     creds, source = creds_mod.load_creds_with_source(
-        env_raw_path=FIXTURE, credentials_file=creds_file
+        env_raw_path=FIXTURE, credentials_file=creds_file, provider="legacy"
     )
     assert source == "manual"
     assert creds.token == "sk-manual-token"
@@ -77,13 +82,13 @@ def test_manual_creds_take_precedence_over_env_and_file(monkeypatch, tmp_path):
 def test_save_manual_creds_persists_across_a_simulated_restart(tmp_path):
     creds_file = tmp_path / "creds.json"
     creds_mod.save_manual_creds(
-        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file
+        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file, provider="legacy"
     )
     # A fresh process has no in-memory cache — drop this test's cache entry to simulate
     # that, then confirm load_creds_with_source reads the persisted file from disk.
-    del creds_mod._manual_cache[str(creds_file)]
+    # Credentials are read from disk on every resolution.
 
-    creds, source = creds_mod.load_creds_with_source(credentials_file=creds_file)
+    creds, source = creds_mod.load_creds_with_source(credentials_file=creds_file, provider="legacy")
     assert source == "manual"
     assert creds.token == "sk-manual-token"
     assert creds.base_url == "https://manual.example.com/"
@@ -94,13 +99,13 @@ def test_clear_manual_creds_reverts_to_next_precedence(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAI_COMPAT_BASE_URL", "https://env.example.com/")
     creds_file = tmp_path / "creds.json"
     creds_mod.save_manual_creds(
-        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file
+        "sk-manual-token", "https://manual.example.com/", credentials_file=creds_file, provider="legacy"
     )
-    creds_mod.clear_manual_creds(credentials_file=creds_file)
+    creds_mod.clear_manual_creds(credentials_file=creds_file, provider="legacy")
     assert not creds_file.exists()
 
     creds, source = creds_mod.load_creds_with_source(
-        env_raw_path=FIXTURE, credentials_file=creds_file
+        env_raw_path=FIXTURE, credentials_file=creds_file, provider="legacy"
     )
     assert source == "env"
     assert creds.token == "sk-env-token-123456"
@@ -109,6 +114,6 @@ def test_clear_manual_creds_reverts_to_next_precedence(monkeypatch, tmp_path):
 def test_save_manual_creds_rejects_empty_token_or_base_url(tmp_path):
     creds_file = tmp_path / "creds.json"
     with pytest.raises(ValueError):
-        creds_mod.save_manual_creds("", "https://x.example.com/", credentials_file=creds_file)
+        creds_mod.save_manual_creds("", "https://x.example.com/", credentials_file=creds_file, provider="legacy")
     with pytest.raises(ValueError):
-        creds_mod.save_manual_creds("sk-token", "", credentials_file=creds_file)
+        creds_mod.save_manual_creds("sk-token", "", credentials_file=creds_file, provider="legacy")

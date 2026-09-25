@@ -48,8 +48,8 @@ EDITINSPECTOR_ROOT: Path = _env_path(
 )
 ENV_RAW_PATH: Path = _env_path("VEJUDGE_ENV_RAW", REPO_ROOT / ".env-raw")
 # Credentials entered manually via the interface's Settings modal — takes top precedence
-# over env vars/.env-raw (see lm_engine/creds.py) since explicit UI input beats ambient
-# config. Gitignored, same spirit as .env-raw.
+# over provider-specific env vars (see lm_engine/creds.py). Old unscoped settings and
+# .env-raw are used only in explicit legacy mode.
 CREDENTIALS_FILE: Path = _env_path(
     "VEJUDGE_CREDENTIALS_FILE", PROJECT_ROOT / ".interface_credentials.json"
 )

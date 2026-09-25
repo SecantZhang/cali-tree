@@ -6,22 +6,28 @@ export interface CredentialsStatus {
   base_url: string | null
 }
 
-export function fetchCredentialsStatus(): Promise<CredentialsStatus> {
-  return api.get('/api/settings/credentials')
+export type ApiProvider = 'openai' | 'gemini'
+
+const credentialPath = (provider: ApiProvider) => '/api/settings/credentials' + (provider === 'openai' ? '' : `?provider=${provider}`)
+
+export function fetchCredentialsStatus(provider: ApiProvider = 'openai'): Promise<CredentialsStatus> {
+  return api.get(credentialPath(provider))
 }
 
 export function saveCredentials(
   token: string,
   baseUrl: string,
   mirrorUrl?: string,
+  provider: ApiProvider = 'openai',
 ): Promise<CredentialsStatus> {
   return api.post('/api/settings/credentials', {
     token,
+    provider,
     base_url: baseUrl,
     mirror_url: mirrorUrl || undefined,
   })
 }
 
-export function clearCredentials(): Promise<CredentialsStatus> {
-  return api.delete('/api/settings/credentials')
+export function clearCredentials(provider: ApiProvider = 'openai'): Promise<CredentialsStatus> {
+  return api.delete(credentialPath(provider))
 }

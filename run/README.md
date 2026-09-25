@@ -1,3 +1,8 @@
+> Provider migration: configure `OPENAI_API_KEY` and/or `GEMINI_API_KEY` in your shell,
+> project `.env`, or the interface. Scripts named `gateway`/`endpoints` now use official
+> provider settings by default. See [providers](../docs/providers.md). Historical run
+> instructions and results below retain their original model IDs.
+
 # `run/` — benchmark run scripts
 
 Convenience wrappers around the VEJudge CLIs. Each script resolves the project dir,
@@ -25,6 +30,7 @@ for you; the free ones never do. When unsure what a run will cost, use
 | `setup_imagenhub.sh` | no gateway calls (downloads public data) | Materialize and hash the 179-task ImagenHub + eight publicly available editor outputs with resumable downloads. See `docs/calitree.md`. |
 | `setup_aurora_bench.sh` | no gateway calls (downloads public data) | Materialize and hash AURORA-Bench's 2,000 human-rated outputs (400 prompts × five editors), then write task-grouped 20/80 calibration splits. |
 | `run_aurora_prompt_repair.sh` | no by default; yes only with explicit `--live` | Sample a task-disjoint, label-balanced AURORA set; measure `gpt-5.4-mini` repeat stability; and independently repair incorrect/unstable cases with TextGrad and GEPA. |
+| `robust_prompt_repair_50.py` / `robust_prompt_repair_50_parallel.py` | no by default; yes only with explicit `--live` | Compare single-draw and repeated-evaluation GEPA repair on 50 task-disjoint AURORA test cases, with 15 frozen-prompt final judgments per case and arm. See `docs/experiments/robust_prompt_repair_50.md`. |
 | `setup_editinspector.sh` | no gateway calls (downloads public data) | Materialize pinned, nested EditInspector development/calibration/final partitions with resumable image downloads and SHA-256 manifest. |
 | `run_editinspector_rubric_lite.sh` | no by default; yes only with explicit `--live` | Dry-run or execute the frozen Rubric-Lite external workflow. Live runs also require an explicit `--model`; supports partition selection, verifier disablement, and checkpoint seeding. |
 | `run_imagenhub_rubric_lite.sh` | no by default; yes only with explicit `--live` | Dry-run or execute frozen Rubric-Lite v4 on all 1,200 ImagenHub held-out cases. Supports compatible checkpoint seeding and reports the exact remaining live-call count. |

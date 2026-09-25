@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -23,6 +24,10 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 import requests
+
+# This worker runs in an isolated GEPA environment with requests available.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "vejudge" / "lm_engine"))
+from provider_api import chat_request
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
@@ -79,17 +84,11 @@ class PlutoClient:
         max_retries: int = 4,
         timeout: int = 300,
     ) -> tuple[str, dict[str, int]]:
-        payload = {
-            "model": model, "messages": messages,
-            "max_tokens": max_tokens, "temperature": temperature,
-        }
-        headers = {
-            "Content-Type": "application/json; charset=UTF-8",
-            "Authorization": f"Bearer {self.token}",
-        }
         errors: list[str] = []
         for base in self.endpoints:
-            url = base.rstrip("/") + "/chat/completions"
+            url, payload, headers, _ = chat_request(
+                base, self.token, model, messages, max_tokens, temperature
+            )
             host = urlparse(url).netloc
             for attempt in range(max_retries + 1):
                 try:
