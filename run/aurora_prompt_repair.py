@@ -111,7 +111,7 @@ class LiveJudge:
         self.history = history
         self.max_tokens = max_tokens
         self.timeout = timeout
-        self.creds = load_creds()
+        self.creds = load_creds(model=model)
 
     def judge(
         self,
@@ -147,7 +147,7 @@ class LiveJudge:
         ]
         try:
             result = openai_compat.chat_completion(
-                endpoints=self.creds.endpoints,
+                provider=self.creds.provider, endpoints=self.creds.endpoints,
                 token=self.creds.token,
                 model=self.model,
                 messages=messages,
@@ -227,7 +227,7 @@ class TextGradProposer:
         self.engine = get_engine(
             "gpt",
             model=model,
-            creds=load_creds(),
+            creds=load_creds(model=model),
             history=history,
             max_tokens=max_tokens,
             temperature=0.0,
@@ -284,7 +284,7 @@ class GepaProposer:
         self.python_path = python_path
         self.run_dir = run_dir
         self.timeout = timeout
-        self.creds = load_creds()
+        self.creds = load_creds(model=model)
 
     def validate(self) -> None:
         if not self.python_path.is_file():
@@ -331,6 +331,7 @@ class GepaProposer:
         environment.update(
             {
                 "AURORA_GEPA_TOKEN": self.creds.token,
+                "AURORA_GEPA_PROVIDER": self.creds.provider,
                 "AURORA_GEPA_ENDPOINTS": json.dumps(self.creds.endpoints),
             }
         )

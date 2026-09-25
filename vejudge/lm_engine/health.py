@@ -18,26 +18,19 @@ from typing import Any, Optional
 import requests
 
 from .. import config
+from .provider_api import chat_request
 from .creds import PlutoCreds, load_creds
 from .gate import LiveCallNotAllowed, require_live
 
 
 def check_endpoint(
-    base_url: str, token: str, *, model: Optional[str] = None, timeout: int = 20
+    base_url: str, token: str, *, model: Optional[str] = None, timeout: int = 20, provider: Optional[str] = None
 ) -> dict[str, Any]:
     """Probe one endpoint with a minimal chat completion. Returns a status dict."""
     model = model or config.DEFAULT_TEXT_MODEL
-    url = base_url.rstrip("/") + "/chat/completions"
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": "ping"}],
-        "max_tokens": 1,
-        "temperature": 0,
-    }
-    headers = {
-        "Content-Type": "application/json; charset=UTF-8",
-        "Authorization": f"Bearer {token}",
-    }
+    url, payload, headers, _ = chat_request(
+        base_url, token, model, [{"role": "user", "content": "ping"}], 32, 1, provider
+    )
     t0 = time.time()
     try:
         r = requests.post(url, json=payload, headers=headers, timeout=timeout)
@@ -67,8 +60,11 @@ def healthy_order(
     Healthy endpoints keep their relative order; unhealthy ones are kept as last resort
     (so a wholly-down gateway still gets attempted rather than yielding an empty list).
     """
+    model = model or (
+        config.DEFAULT_VIDEO_MODEL if creds.provider == "gemini" else config.DEFAULT_TEXT_MODEL
+    )
     results = [
-        check_endpoint(ep, creds.token, model=model, timeout=timeout)
+        check_endpoint(ep, creds.token, model=model, timeout=timeout, provider=creds.provider)
         for ep in creds.default_endpoints
     ]
     healthy = [r["url"] for r in results if r["ok"]]
@@ -114,7 +110,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"Refused: {e}", file=sys.stderr)
         return 2
 
-    creds = load_creds()
+    creds = load_creds(model=args.model)
     _, results = healthy_order(creds, model=args.model, timeout=args.timeout)
     print(f"{'endpoint':<60} {'status':>7} {'latency':>8}  health")
     for r in results:

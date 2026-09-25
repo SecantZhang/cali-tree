@@ -28,7 +28,7 @@ def test_health_check_returns_endpoint_results(client, monkeypatch):
     # gating + serialization, not the network probe (that's health.py's own concern).
     monkeypatch.setattr(
         "vejudge.interface.server.routes.engines.load_creds",
-        lambda: PlutoCreds(token="sk-test", base_url="https://primary"),
+        lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
     fake_results = [
         {"url": "https://primary", "ok": True, "status": 200, "latency": 0.05, "error": None},
@@ -51,7 +51,7 @@ def test_health_check_returns_endpoint_results(client, monkeypatch):
 
 
 def test_health_check_400_when_no_credentials(client, monkeypatch):
-    def _raise():
+    def _raise(**kwargs):
         raise RuntimeError("No credentials configured")
 
     monkeypatch.setattr(

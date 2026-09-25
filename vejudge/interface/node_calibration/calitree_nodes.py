@@ -1666,7 +1666,7 @@ def _engine_from(config: dict[str, Any], ctx: NodeRunContext) -> Any:
         raise ValueError("Cali-Tree requires an explicitly configured engine model")
     temperature = config.get("temperature")
     kwargs: dict[str, Any] = {} if temperature is None else {"temperature": temperature}
-    creds = load_creds()
+    creds = load_creds(engine=config.get("engine_kind") or "gpt")
     if bool(config.get("health_check")):
         reorder_creds_by_health(
             creds,
@@ -2329,9 +2329,12 @@ class _CaliTreeRuntime:
         ]
         missing_indices = [index for index, value in enumerate(vectors) if value is None]
         if missing_indices:
+            embedding_creds = load_creds(model=self.embedding_model)
+            if embedding_creds.provider == "gemini":
+                raise ValueError("CaliTree embeddings require an OpenAI text-embedding model; native Gemini embeddings are not supported")
             result = openai_compat.embeddings(
-                endpoints=self.judge_engine.creds.endpoints,
-                token=self.judge_engine.creds.token,
+                endpoints=embedding_creds.endpoints,
+                token=embedding_creds.token,
                 model=self.embedding_model,
                 inputs=[texts[index] for index in missing_indices],
             )

@@ -8,7 +8,7 @@ test.describe('manual credentials', () => {
     await page.goto('/')
     await waitForPaletteLoaded(page)
 
-    // global-setup.ts always sets CHAT_GPT_API_KEY/OPENAI_COMPAT_BASE_URL (pointed at the
+    // global-setup.ts always sets OPENAI_API_KEY/OPENAI_BASE_URL (pointed at the
     // mock gateway) for this backend process, so the baseline is "environment variables",
     // not "not configured" — this test proves the manual override takes precedence over
     // that, and that clearing it correctly falls back to those env vars, not to "none".
@@ -29,6 +29,20 @@ test.describe('manual credentials', () => {
     await modal.getByPlaceholder('https://...').fill('https://manual.e2e.example.com/')
     await modal.getByRole('button', { name: 'Save' }).click()
 
+    await expect(modal.getByText('Currently using: a manually entered credential')).toBeVisible()
+    await expect(modal.getByText('https://manual.e2e.example.com/')).toBeVisible()
+
+    // Gemini has its own status/key. Saving or clearing it cannot replace OpenAI.
+    await modal.getByLabel('Provider').selectOption('gemini')
+    await expect(modal.getByPlaceholder('sk-...')).toHaveValue('')
+    await expect(modal.getByText('Currently using: environment variables')).toBeVisible()
+    await modal.getByPlaceholder('sk-...').fill('gemini-e2e-manual-token')
+    await modal.getByRole('button', { name: 'Save' }).click()
+    await expect(modal.getByText('Currently using: a manually entered credential')).toBeVisible()
+    await expect(modal.getByText('Currently using:', { exact: false })).toContainText('generativelanguage.googleapis.com')
+    await modal.getByRole('button', { name: 'Clear' }).click()
+    await expect(modal.getByText('Currently using: environment variables')).toBeVisible()
+    await modal.getByLabel('Provider').selectOption('openai')
     await expect(modal.getByText('Currently using: a manually entered credential')).toBeVisible()
     await expect(modal.getByText('https://manual.e2e.example.com/')).toBeVisible()
 

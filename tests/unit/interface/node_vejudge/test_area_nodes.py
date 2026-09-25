@@ -66,7 +66,7 @@ def test_area_judge_dry_run_counts_selected_units(tmp_path, make_ctx):
 def test_evidence_hash_invalidates_unit_checkpoint(tmp_path, make_ctx, monkeypatch):
     engine = FakeEngine()
     monkeypatch.setattr(area_judge_node, "get_engine", lambda *args, **kwargs: engine)
-    monkeypatch.setattr(area_judge_node, "load_creds", lambda: object())
+    monkeypatch.setattr(area_judge_node, "load_creds", lambda **kwargs: object())
     ctx = make_ctx(inputs=_inputs(tmp_path, "a"), dry_run=False, allow_live=True)
     first = AreaJudgeNodeExecutor().run(ctx)
     assert first.outputs["area_judge_result"]["item"]["units"][0]["valid"] is True

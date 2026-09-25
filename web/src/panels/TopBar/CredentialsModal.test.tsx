@@ -8,7 +8,7 @@ let lastPostBody: unknown = null
 let deleteCalled = false
 
 function mockJsonFor(url: string, init?: RequestInit): unknown {
-  if (url.endsWith('/api/settings/credentials')) {
+  if (url.includes('/api/settings/credentials')) {
     if (init?.method === 'POST') {
       lastPostBody = JSON.parse(init.body as string)
       statusResponse = { configured: true, source: 'manual', base_url: lastPostBody && (lastPostBody as { base_url: string }).base_url }
@@ -85,9 +85,24 @@ describe('CredentialsModal', () => {
     await screen.findByText(/Currently using: a manually entered credential/)
     expect(lastPostBody).toEqual({
       token: 'sk-test-token',
+      provider: 'openai',
       base_url: 'https://gateway.example.com/',
       mirror_url: undefined,
     })
+  })
+
+  it('switching providers clears unsaved secrets and saves Gemini independently', async () => {
+    renderModal()
+    await screen.findByText(/Currently using: nothing/)
+    fireEvent.change(screen.getByPlaceholderText('sk-...'), { target: { value: 'openai-unsaved' } })
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'gemini' } })
+    expect(screen.getByPlaceholderText('sk-...')).toHaveValue('')
+    expect(screen.getByText(/generativelanguage.googleapis.com/)).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText('sk-...'), { target: { value: 'gemini-key' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByText(/Currently using: a manually entered credential/)
+    expect(lastPostBody).toEqual({ token: 'gemini-key', provider: 'gemini', base_url: '' })
+    expect(screen.getByPlaceholderText('sk-...')).toHaveValue('')
   })
 
   it('the token input is masked by default and can be revealed', () => {
@@ -98,13 +113,13 @@ describe('CredentialsModal', () => {
     expect(input.type).toBe('text')
   })
 
-  it('Save stays disabled until both token and base URL are filled in', () => {
+  it('Save requires a token; the provider supplies a default base URL', () => {
     renderModal()
     const saveButton = screen.getByRole('button', { name: 'Save' })
     expect(saveButton).toBeDisabled()
 
     fireEvent.change(screen.getByPlaceholderText('sk-...'), { target: { value: 'sk-x' } })
-    expect(saveButton).toBeDisabled()
+    expect(saveButton).not.toBeDisabled()
 
     fireEvent.change(screen.getByPlaceholderText('https://...'), {
       target: { value: 'https://gateway.example.com/' },

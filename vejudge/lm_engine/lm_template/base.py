@@ -53,7 +53,7 @@ class LMEngine(ABC):
     @property
     def creds(self) -> PlutoCreds:
         if self._creds is None:
-            self._creds = load_creds()
+            self._creds = load_creds(engine=self.name)
         return self._creds
 
     # --- message assembly -----------------------------------------------------
@@ -120,6 +120,7 @@ class LMEngine(ABC):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 timeout=self.timeout,
+                provider=self.creds.provider,
             )
         except Exception as e:  # noqa: BLE001 - logged & surfaced to caller
             error = f"{type(e).__name__}: {e}"

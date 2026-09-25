@@ -99,8 +99,11 @@ export default async function globalSetup(): Promise<void> {
         VEJUDGE_LOGS_ROOT: path.join(tmpDir, 'logs'),
         VEJUDGE_EVIDENCE_ROOT: path.join(tmpDir, 'evidence'),
         VEJUDGE_CREDENTIALS_FILE: path.join(tmpDir, 'interface_credentials.json'),
-        OPENAI_COMPAT_BASE_URL: `http://127.0.0.1:${gateway.port}`,
-        CHAT_GPT_API_KEY: 'sk-e2e-fake',
+        OPENAI_BASE_URL: `http://127.0.0.1:${gateway.port}`,
+        OPENAI_API_KEY: 'sk-e2e-fake',
+        GEMINI_API_KEY: 'gemini-e2e-fake',
+        GEMINI_BASE_URL: `http://127.0.0.1:${gateway.port}`,
+        VEJUDGE_PROVIDER: '',
       },
     },
   )

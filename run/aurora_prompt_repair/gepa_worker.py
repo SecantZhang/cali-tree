@@ -19,6 +19,10 @@ from urllib.parse import urlparse
 
 import requests
 
+# This worker runs in an isolated GEPA environment with requests available.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "vejudge" / "lm_engine"))
+from provider_api import chat_request, chat_response
+
 LABELS = ("no", "partial", "yes")
 RETRYABLE = {408, 409, 429, 500, 502, 503, 504}
 
@@ -76,19 +80,12 @@ class Client:
         timeout: int,
         call_type: str,
     ) -> tuple[str, dict[str, Any]]:
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-        }
-        headers = {
-            "Content-Type": "application/json; charset=UTF-8",
-            "Authorization": f"Bearer {self.token}",
-        }
         errors: list[str] = []
         for endpoint_index, base in enumerate(self.endpoints):
-            url = base.rstrip("/") + "/chat/completions"
+            url, payload, headers, dialect = chat_request(
+                base, self.token, model, messages, max_tokens, temperature,
+                os.environ.get("AURORA_GEPA_PROVIDER")
+            )
             host = urlparse(url).netloc
             for attempt in range(5):
                 started = time.time()
@@ -121,17 +118,13 @@ class Client:
                     errors.append(f"{host}: HTTP {response.status_code} {response.text[:500]}")
                     break
                 data = response.json()
-                choices = data.get("choices") or []
-                content = ""
-                if choices and isinstance(choices[0], dict):
-                    content = str((choices[0].get("message") or {}).get("content") or "")
-                raw_usage = data.get("usage") or {}
+                content, pt, ct, tt, returned_model = chat_response(data, dialect, model)
                 call = {
                     "call_type": call_type,
-                    "model": str(data.get("model") or model),
-                    "prompt_tokens": int(raw_usage.get("prompt_tokens") or 0),
-                    "completion_tokens": int(raw_usage.get("completion_tokens") or 0),
-                    "total_tokens": int(raw_usage.get("total_tokens") or 0),
+                    "model": returned_model,
+                    "prompt_tokens": pt,
+                    "completion_tokens": ct,
+                    "total_tokens": tt,
                     "latency_seconds": latency,
                     "endpoint_host": host,
                 }
@@ -314,11 +307,90 @@ def run(request: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def run_repeated_rpc(request: dict[str, Any]) -> dict[str, Any]:
+    """One official GEPA mutation; parent owns independent draws and checkpoints.
+
+    Opt-in JSON-lines RPC keeps the legacy single-request worker unchanged. No
+    credentials are needed in this subprocess; all calls pass through the parent.
+    """
+    import gepa
+    from gepa.core.adapter import EvaluationBatch
+    from gepa.utils.stop_condition import MaxCandidateProposalsStopper
+
+    wire = sys.stdout
+    events, failures = [], []
+    reflection_started = False
+
+    def rpc(kind, **payload):
+        event = {"event": kind, "index": len(events), **payload}
+        events.append(event)
+        wire.write(json.dumps(event) + "\n")
+        wire.flush()
+        reply = json.loads(sys.stdin.readline())
+        if "error" in reply:
+            failures.append(reply["error"])
+            raise RuntimeError(reply["error"])
+        return reply["result"]
+
+    evaluations = []
+
+    class RepeatedAdapter:
+        propose_new_texts = None
+
+        def evaluate(self, batch, candidate, capture_traces=False):
+            result = rpc("evaluate", prompt=candidate["system_prompt"],
+                         capture_traces=capture_traces)
+            evaluations.append({"prompt": candidate["system_prompt"],
+                                "after_reflection": reflection_started,
+                                "capture_traces": capture_traces, **result})
+            return EvaluationBatch(outputs=[result], scores=[result["accuracy"]],
+                                   trajectories=[result] if capture_traces else None)
+
+        def make_reflective_dataset(self, candidate, eval_batch, components_to_update):
+            records = [{"Inputs": {"instruction": request["instruction"]},
+                        "Generated Outputs": row["draws"],
+                        "Feedback": row["feedback"] + (
+                            "\nContrastive correction: " + request["coaching"]
+                            if request.get("coaching") else "")}
+                       for row in eval_batch.trajectories or []]
+            return {name: records for name in components_to_update}
+
+    def reflect(prompt):
+        nonlocal reflection_started
+        reflection_started = True
+        return rpc("reflect", messages=prompt if isinstance(prompt, list) else
+                   [{"role": "user", "content": str(prompt)}])
+
+    with contextlib.redirect_stdout(sys.stderr):
+        result = gepa.optimize(
+            seed_candidate={"system_prompt": request["prompt"]},
+            trainset=[{"case_id": request["case_id"]}],
+            valset=[{"case_id": request["case_id"]}],
+            adapter=RepeatedAdapter(), reflection_lm=reflect,
+            candidate_selection_strategy="current_best", skip_perfect_score=False,
+            reflection_minibatch_size=1, use_merge=False,
+            stop_callbacks=MaxCandidateProposalsStopper(1),
+            seed=request["seed"], track_best_outputs=True,
+            display_progress_bar=False, cache_evaluation=False,
+            raise_on_exception=True,
+        )
+    if failures:
+        raise RuntimeError(failures[0])
+    parent = next((e for e in evaluations if e["capture_traces"] and
+                   not e["after_reflection"]), None)
+    child = next((e for e in evaluations if e["after_reflection"]), None)
+    return {"prompt": child["prompt"] if child else request["prompt"],
+            "parent_evaluation": parent, "candidate_evaluation": child,
+            "num_candidates": result.num_candidates,
+            "evaluations": evaluations, "event": "done"}
+
+
 def main() -> int:
     line = sys.stdin.readline()
     try:
         request = json.loads(line)
-        response = run(request)
+        response = (run_repeated_rpc(request) if request.get("mode") == "repeated_rpc"
+                    else run(request))
     except Exception as exc:
         response = {
             "error": f"{type(exc).__name__}: {exc}",

@@ -97,13 +97,20 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if self.path != "/chat/completions":
+        gemini = self.path.startswith("/models/") and self.path.endswith(":generateContent")
+        if self.path != "/chat/completions" and not gemini:
             self.send_response(404)
             self.end_headers()
             return
 
         length = int(self.headers.get("Content-Length", 0))
         request = json.loads(self.rfile.read(length) or b"{}")
+        if gemini:
+            request["messages"] = [
+                {"role": "system", "content": "\n".join(p.get("text", "") for p in request.get("systemInstruction", {}).get("parts", []))},
+                *[{"role": c["role"], "content": c["parts"]} for c in request.get("contents", [])],
+            ]
+            request["temperature"] = request.get("generationConfig", {}).get("temperature")
         messages = request.get("messages") or []
         system = str((messages[0] if messages else {}).get("content") or "")
         content = MOCK_SEMANTIC_SUMMARY if "distill an adversarial" in system else MOCK_JUDGE_CONTENT
@@ -122,10 +129,14 @@ class Handler(BaseHTTPRequestHandler):
             delay = RESPONSE_DELAY_S
         time.sleep(delay)
 
-        body = json.dumps({
+        response = {
             "choices": [{"message": {"content": json.dumps(content)}}],
             "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-        }).encode("utf-8")
+        }
+        if gemini:
+            response = {"candidates": [{"content": {"parts": [{"text": json.dumps(content)}]}}],
+                        "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30}}
+        body = json.dumps(response).encode("utf-8")
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

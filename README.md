@@ -16,14 +16,28 @@ pip install -e ".[dev,interface,video]"
 
 ## Credentials
 
-The LLM judges call the Adobe **Pluto** OpenAI-compatible gateway. Credentials are read
-from the repo-root `.env-raw` automatically, or from env vars (which take precedence):
+The judge clients use the **official OpenAI and Google Gemini APIs** directly.
+Configure either or both providers with environment variables:
 
 ```bash
-export CHAT_GPT_API_KEY=sk-...
-export OPENAI_COMPAT_BASE_URL=https://.../   # primary endpoint
-export LLM_PROXY_MIRROR_URL=https://.../      # optional failover
+export OPENAI_API_KEY="your-openai-key"
+export GEMINI_API_KEY="your-google-ai-studio-key"
 ```
+
+Alternatively, copy `.env.example` to `.env` in this project, or open **Settings → API
+Credentials** in the web interface and save a separate key for each provider. The default
+URLs are `https://api.openai.com/v1` and
+`https://generativelanguage.googleapis.com/v1beta`; no company endpoint is needed.
+`GOOGLE_API_KEY` is accepted as an alias for `GEMINI_API_KEY`.
+
+The `gpt` engine uses OpenAI; `gemini` uses Google's native GenerateContent API, including
+image/video inputs. AURORA judge and optimizer clients infer the provider from their model
+IDs. Tree embeddings use their own model's credentials (OpenAI for `text-embedding-*`).
+Existing experiment model IDs and historical results are unchanged.
+
+Old proxy env vars, unscoped saved credentials, and `.env-raw` are **ignored by default**.
+See [provider configuration](docs/providers.md) for resolution rules, model compatibility,
+media limits, endpoint overrides, and explicit legacy mode.
 
 ## Quickstart
 
@@ -34,7 +48,7 @@ pytest tests/unit -q
 # 2) Estimate cost without calling the gateway (no auth needed)
 vejudge-bench --dry-run --models peanut --projects prj-paris-2025
 
-# 3) Smoke-test the gateway with one tiny call (real call -> needs --live)
+# 3) Smoke-test OpenAI with one tiny call (real call -> needs --live)
 vejudge-smoke --engine gpt --text "reply with the single word OK" --live
 
 # 4) Run the gap benchmark on a tiny subset (real video judge calls -> needs --live)
@@ -72,7 +86,7 @@ recursively mirrors these folders; save a graph as `folder/name` to organize it 
 
 ## What it does
 
-1. **lm_engine** (`vejudge/lm_engine/`) — reusable engines over the Pluto gateway
+1. **lm_engine** (`vejudge/lm_engine/`) — reusable engines over the official provider APIs
    (`generate(prompt, media_inputs, schema) -> dict`), Gemini default for video, GPT for
    text, with endpoint failover and per-call history logging.
 2. **judges** (`vejudge/core/`) — the 6 metrics M1–M6 (assembly/render failure, prompt

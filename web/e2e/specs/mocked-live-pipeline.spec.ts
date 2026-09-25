@@ -8,8 +8,8 @@ const { PEANUT_SOURCE, DATASET, LM_ENGINE, PROMPT, JUDGE, EVAL } = PIPELINE_IDS
 const MOCK_REASONING =
   'Mock gateway response for E2E testing. This is not a real judge call. Score is fixed at 3/5 for determinism.'
 
-test.describe('mocked live pipeline', () => {
-  test('runs the real Judge Node HTTP path against a mock gateway and shows real scores + a real MAE', async ({
+for (const engineKind of ['gpt', 'gemini']) {
+  test(`${engineKind}: runs the real Judge Node HTTP path against a mock gateway and shows real scores + a real MAE`, async ({
     page,
   }) => {
     await page.goto('/')
@@ -46,6 +46,8 @@ test.describe('mocked live pipeline', () => {
     await judgeNode.getByRole('button', { name: 'Collapse node' }).click()
 
     await wirePipeline(page)
+    await expect(page.getByTestId(`rf__edge-${LM_ENGINE}:engine_config->${JUDGE}:engine_config`)).toHaveCount(1)
+    await lmEngineNode.locator('.param-row', { hasText: 'engine_kind' }).locator('select').selectOption(engineKind)
     await expect(page.getByTestId(`rf__edge-${DATASET}:samples->${JUDGE}:samples`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${PROMPT}:judge_spec->${JUDGE}:judge_spec`)).toHaveCount(1)
     await expect(page.getByTestId(`rf__edge-${JUDGE}:judge_result->${EVAL}:judge_result`)).toHaveCount(1)
@@ -149,4 +151,4 @@ test.describe('mocked live pipeline', () => {
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(evalModal).toHaveCount(0)
   })
-})
+}

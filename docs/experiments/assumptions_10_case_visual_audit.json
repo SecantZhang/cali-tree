@@ -1,0 +1,78 @@
+{
+  "reviewer": "Codex visual and text inspection",
+  "independent_human_annotations": false,
+  "blinded": false,
+  "limitations": "The reviewer saw benchmark labels and model outputs. These notes document observable counterexamples and ambiguity; they are not human concept gold labels and must not be used as an oracle-feature benchmark.",
+  "cases": [
+    {
+      "case_id": "C01",
+      "observation": "The edited image contains a hand holding a yellow vessel near the pot. The pot contents and surrounding object appearances also change.",
+      "decomposition_audit": "Grasp and movement-toward-pot are represented separately. The shared preservation label does not distinguish incidental appearance variation from changes material to this instruction.",
+      "policy_audit": "The optimized rubric permits ordinary appearance changes and prefers yes when the core action succeeds in a recognizable scene. The fixed tree instead always downgrades a partial preservation result. The source prompt also says not to use instruction text while asking whether the requested change is satisfied: an internal ambiguity copied into the structured spec.",
+      "assumptions_implicated": [1, 3, 4, 5]
+    },
+    {
+      "case_id": "C02",
+      "observation": "A yellow ball is added to the left of the yellow cylinder, on or immediately above a green cylinder. Whether its appearance qualifies as tiny and metallic is more ambiguous.",
+      "decomposition_audit": "The core check already includes tiny, yellow, metal, and left-of. Separate modifier checks repeat tiny, yellow, and metal. This is overlapping decomposition; a modifier failure can enter both the core and modifier routes.",
+      "policy_audit": "Some rationales demand adjacency although the instruction specifies only left-of. This is an extra condition. The shared structured spec also introduces an exception to the original scene-replacement rule.",
+      "assumptions_implicated": [2, 3]
+    },
+    {
+      "case_id": "C03",
+      "observation": "The foreground car becomes a red sports car. A background car also changes to a red sports car and the foreground viewpoint/shape changes.",
+      "decomposition_audit": "Sports-car identity and red color are explicit, stable checks. The target edit itself necessarily changes object identity and geometry, so preservation needs a scope/relevance definition.",
+      "policy_audit": "The optimized rubric explicitly tolerates changed exact appearance, viewpoint, or placement when the semantic goal is met. The generic preservation downgrade is therefore a different scoring policy. All target checks return yes in every repeat, while preservation alternates between yes and partial.",
+      "assumptions_implicated": [1, 3, 4, 5]
+    },
+    {
+      "case_id": "C04",
+      "observation": "The source and edited images depict essentially the same street scene with appearance/geometry differences. The request supplies no explicit definition or reference for conceptual art.",
+      "decomposition_audit": "The single requirement restates the whole instruction as conceptual-art style; the broad subjective judgment has not actually been decomposed into observable criteria.",
+      "policy_audit": "Presence says no in all ten calls, while strict fidelity says partial in all ten calls. Stability does not imply the two evaluators operationalize the condition consistently. The structured tie rules omit the original exception for requests that are themselves superficial changes.",
+      "assumptions_implicated": [1, 2, 3]
+    },
+    {
+      "case_id": "C05",
+      "observation": "The pillow remains visibly on the floor to the right of the chair in the edited image, with a gap from the chair legs.",
+      "decomposition_audit": "The focused under-the-armchair relation captures the instruction, yet presence alternates between no and partial. Some global judgments describe it as under the chair despite the visible placement.",
+      "policy_audit": "The structured policy adds an 'unless every condition still has recognizable evidence' exception to scene replacement. That exception is absent from the original seed rubric. This textual change is not established as the cause of this case's spatial error.",
+      "assumptions_implicated": [2, 3]
+    },
+    {
+      "case_id": "C06",
+      "observation": "The person remains bent forward in both images; posture and clothing change, but a fully upright standing state is not visible.",
+      "decomposition_audit": "Standing upright is an observable interpretation of the requested endpoint. Static before/after images cannot establish the full temporal action; endpoint versus progress needs an explicit convention.",
+      "policy_audit": "The shared structured extraction contains the same added scene-preservation exception as C02 and C05. The focused condition is mostly stable here but not perfect across repeats.",
+      "assumptions_implicated": [1, 2, 3]
+    },
+    {
+      "case_id": "C07",
+      "observation": "The white keyboard area becomes dark and keyboard-like, with additional geometry changes. The original laptop on the right also changes substantially.",
+      "decomposition_audit": "The sole target check captures black color but does not explicitly check that the target retains keyboard identity and appropriate geometry. The broad preservation check partly absorbs this distinction.",
+      "policy_audit": "Target checks are yes and preservation is partial in all ten repeats. These shared values also occur for human-yes C01, showing that preservation severity/relevance is compressed too aggressively for a shared rule.",
+      "assumptions_implicated": [2, 4, 5]
+    },
+    {
+      "case_id": "C08",
+      "observation": "Two separated candles become three lit candles in a different arrangement/setting with added text. The resulting candles are close together.",
+      "decomposition_audit": "Closeness is checked, but the original candle identities/count are not separate requirements. A broad preservation score is the only place these differences can influence the tree.",
+      "policy_audit": "The natural prompt returns no ten times, semantic JSON returns yes nine times, and the fixed leaf tree returns partial nine times against the benchmark partial target. Agreement with the original prompt would not establish correctness on this example.",
+      "assumptions_implicated": [1, 2, 4, 5]
+    },
+    {
+      "case_id": "C09",
+      "observation": "The small gray cylinder visible behind the large cyan cube in the source is no longer visible as a cylinder. The large cyan cube and a separate cyan cylinder also disappear or change, leaving gray geometry in the central region.",
+      "decomposition_audit": "The target absence check is explicit and stable. A single partial preservation label loses which and how many non-target objects changed and their significance.",
+      "policy_audit": "Some global rationales incorrectly describe the rest of the scene as preserved; others correctly identify substantial non-target changes. Both independent target leaves are stable, illustrating that not every subtask is unreliable.",
+      "assumptions_implicated": [3, 4, 5]
+    },
+    {
+      "case_id": "C10",
+      "observation": "The edited bus roof shows several cat-like figures rather than one clearly isolated added cat. Their scale and details are also imperfect.",
+      "decomposition_audit": "The fixed decomposition checks cat-on-bus and smallness but has no explicit count/duplication check. The optimized rubric specifically treats singular/plural quantity and duplication as score-relevant, so a criterion in that rubric was lost. This does not assume that every natural-language 'a cat' request universally requires exactly one cat.",
+      "policy_audit": "The semantic policy retains the explicit count rule and gives partial in nine of ten calls; the natural prompt gives partial only twice. The fixed tree catches the problem inconsistently through general fidelity/preservation leaves.",
+      "assumptions_implicated": [2, 3, 4]
+    }
+  ]
+}

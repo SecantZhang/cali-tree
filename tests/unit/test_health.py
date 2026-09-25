@@ -8,7 +8,7 @@ def _creds():
 
 def test_healthy_order_prefers_working(monkeypatch):
     # primary down, mirror up
-    def fake_check(url, token, *, model=None, timeout=20):
+    def fake_check(url, token, *, model=None, timeout=20, provider=None):
         ok = "mirror" in url
         return {"url": url.rstrip("/"), "ok": ok, "status": 200 if ok else 503,
                 "latency": 0.1, "error": None if ok else "down"}
@@ -20,7 +20,7 @@ def test_healthy_order_prefers_working(monkeypatch):
 
 
 def test_reorder_sets_preferred(monkeypatch):
-    def fake_check(url, token, *, model=None, timeout=20):
+    def fake_check(url, token, *, model=None, timeout=20, provider=None):
         ok = "mirror" in url
         return {"url": url.rstrip("/"), "ok": ok, "status": 200 if ok else 503,
                 "latency": 0.1, "error": None if ok else "down"}
@@ -32,7 +32,7 @@ def test_reorder_sets_preferred(monkeypatch):
 
 
 def test_all_down_keeps_all(monkeypatch):
-    def fake_check(url, token, *, model=None, timeout=20):
+    def fake_check(url, token, *, model=None, timeout=20, provider=None):
         return {"url": url.rstrip("/"), "ok": False, "status": 503,
                 "latency": 0.1, "error": "down"}
 

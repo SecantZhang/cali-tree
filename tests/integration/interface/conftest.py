@@ -73,7 +73,7 @@ def fake_engine(monkeypatch):
 
     monkeypatch.setattr(
         "vejudge.interface.node_vejudge.judge_node.load_creds",
-        lambda: PlutoCreds(token="sk-test", base_url="https://primary"),
+        lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
 
     def fake_chat(**kwargs):

@@ -140,7 +140,7 @@ def _build_live(metric: str, model: str, env_raw: Optional[str] = None):
     from .....lm_engine import get_engine, load_creds
 
     kind = "gemini" if JUDGE_METRICS[metric].modality == "video" else "gpt"
-    creds = load_creds(env_raw_path=Path(env_raw)) if env_raw else load_creds()
+    creds = load_creds(env_raw_path=Path(env_raw)) if env_raw else load_creds(engine=kind)
     engine = get_engine(kind, creds=creds)
     return engine, PeanutEvalLoader(model=model)
 

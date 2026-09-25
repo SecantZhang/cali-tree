@@ -25,8 +25,11 @@ export function SettingsMenu() {
   const panOnScroll = usePrefsStore((s) => s.panOnScroll)
   const setPanOnScroll = usePrefsStore((s) => s.setPanOnScroll)
   const { data: credentialsStatus } = useQuery({
-    queryKey: ['credentialsStatus'],
-    queryFn: fetchCredentialsStatus,
+    queryKey: ['credentialsStatus', 'summary'],
+    queryFn: async () => {
+      const statuses = await Promise.all([fetchCredentialsStatus('openai'), fetchCredentialsStatus('gemini')])
+      return { configured: statuses.some((status) => status.configured) }
+    },
   })
 
   useEffect(() => {
