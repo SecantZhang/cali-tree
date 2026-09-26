@@ -1,4 +1,4 @@
-from vejudge.benchmark.human_gap.runner import all_calls_failed
+from critical.benchmark.human_gap.runner import all_calls_failed
 
 
 def test_all_failed_detected():

@@ -15,7 +15,7 @@ export function AreaJudgeNode({ id, data, selected }: NodeProps) {
   ] as const
   return (
     <SimpleParamNode id={id} data={d} selected={selected} title="Area Judge"
-      color="var(--node-vejudge)" schema={NODE_PARAM_SCHEMAS.area_judge}
+      color="var(--node-critical)" schema={NODE_PARAM_SCHEMAS.area_judge}
       socketZoneHeight={90} summaryLine={() => 'one call per selected unit'}
       sockets={<>
         {inputs.map(([name, color], index) => <SocketHandle key={name} kind="target"

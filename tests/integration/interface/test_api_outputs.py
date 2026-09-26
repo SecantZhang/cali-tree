@@ -7,8 +7,8 @@ import time
 
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
+import critical.config as config
+from critical.interface.server.app import create_app
 
 
 def _wait_for_run(client, run_id, timeout=5.0):
@@ -28,7 +28,7 @@ def test_node_outputs_serialize_over_http(
     monkeypatch.setattr(config, "WORKFLOWS_ROOT", tmp_path / "workflows")
     client = TestClient(create_app())
 
-    from vejudge.interface.server.schemas import from_graph_spec
+    from critical.interface.server.schemas import from_graph_spec
 
     body = {
         "graph": from_graph_spec(quick_eval_graph).model_dump(),

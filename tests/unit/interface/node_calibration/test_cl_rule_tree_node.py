@@ -2,11 +2,11 @@ import json
 
 import pytest
 
-from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
-from vejudge.interface.node_calibration import cl_rule_tree_node
-from vejudge.interface.node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
-from vejudge.interface.node_calibration.evaluation_support import stable_holdout_split
-from vejudge.lm_engine.creds import PlutoCreds
+from critical.database.dl_human_annotations.aggregate import AggregatedHumanRecord
+from critical.interface.node_calibration import cl_rule_tree_node
+from critical.interface.node_calibration.cl_rule_tree_node import ClRuleTreeNodeExecutor
+from critical.interface.node_calibration.evaluation_support import stable_holdout_split
+from critical.lm_engine.creds import PlutoCreds
 
 
 class _ScriptedCritic:

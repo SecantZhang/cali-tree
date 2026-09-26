@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Optimize one flat Cali-Tree judge prompt with GEPA, as an independent baseline.
 
-Runs in the isolated `.venv-gepa` (Python 3.11+) -- imports nothing from `vejudge`. Reads
+Runs in the isolated `.venv-gepa` (Python 3.11+) -- imports nothing from `critical`. Reads
 `.creds.json` (Stage 2) and `dataset_export.json` (Stage 1), both produced by the main venv.
 Task-side judging is multimodal (SOURCE+EDITED images), which GEPA's built-in text-only
 `task_lm` cannot express, so this supplies a custom `GEPAAdapter`. Reflection is text-only and
@@ -26,13 +26,13 @@ from urllib.parse import urlparse
 import requests
 
 # This worker runs in an isolated GEPA environment with requests available.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "vejudge" / "lm_engine"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "critical" / "lm_engine"))
 from provider_api import chat_request
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 SEED_PROMPT_PATH = (
-    REPO_ROOT / "vejudge" / "core" / "prompts" / "templates" / "calitree_v2" / "initial_rubric.txt"
+    REPO_ROOT / "critical" / "core" / "prompts" / "templates" / "calitree_v2" / "initial_rubric.txt"
 )
 CREDS_PATH = HERE / ".creds.json"
 DATASET_PATH = HERE / "dataset_export.json"
@@ -51,7 +51,7 @@ def _image_data_uri(path: str) -> str:
 
 
 def _parse_json_object(content: str) -> dict[str, Any]:
-    """Mirrors vejudge.core.judge.parse.parse_json_object -- strips markdown fences."""
+    """Mirrors critical.core.judge.parse.parse_json_object -- strips markdown fences."""
     text = (content or "").strip()
     if text.startswith("```"):
         lines = text.split("\n")
@@ -66,8 +66,8 @@ def _parse_json_object(content: str) -> dict[str, Any]:
 class PlutoClient:
     """Minimal OpenAI-compatible chat client with endpoint failover + retry.
 
-    Mirrors the request/response shape of vejudge/lm_engine/openai_compat.py's
-    `chat_completion`, reimplemented standalone since this venv can't import vejudge.
+    Mirrors the request/response shape of critical/lm_engine/openai_compat.py's
+    `chat_completion`, reimplemented standalone since this venv can't import critical.
     """
 
     def __init__(self, endpoints: list[str], token: str) -> None:
@@ -145,7 +145,7 @@ class PlutoLanguageModel:
         return content
 
 
-class VEJudgeGEPAAdapter:
+class CriticalGEPAAdapter:
     """GEPAAdapter for the flat Cali-Tree judge: evaluate() makes the real multimodal call."""
 
     # GEPAAdapter is a Protocol with a default `propose_new_texts = None` class attribute;
@@ -244,7 +244,7 @@ def main() -> int:
 
     usage: dict[str, int] = {}
     client = PlutoClient(creds["endpoints"], creds["token"])
-    adapter = VEJudgeGEPAAdapter(client, model="gpt-4.1-mini", usage=usage, concurrency=8)
+    adapter = CriticalGEPAAdapter(client, model="gpt-4.1-mini", usage=usage, concurrency=8)
     reflection_lm = PlutoLanguageModel(client, model="gpt-4.1-mini", usage=usage)
 
     import gepa

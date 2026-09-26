@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from vejudge.experiments.prompt_repair_report import build_report_payload, write_html_report
+from critical.experiments.prompt_repair_report import build_report_payload, write_html_report
 
 
 def _write_jsonl(path: Path, rows):

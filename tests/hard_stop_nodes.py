@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from vejudge.interface.server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
+from critical.interface.server.registry import NodeExecutor, NodeRunContext, NodeRunResult, register
 
 
 class HardStopSlowNode(NodeExecutor):
@@ -75,7 +75,7 @@ _EXECUTORS = (
 
 
 def register_worker_nodes() -> None:
-    from vejudge.interface.server.registry import NODE_EXECUTORS
+    from critical.interface.server.registry import NODE_EXECUTORS
 
     for executor in _EXECUTORS:
         if executor.node_type not in NODE_EXECUTORS:

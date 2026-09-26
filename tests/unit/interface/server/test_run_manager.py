@@ -1,7 +1,7 @@
 import json
 
-from vejudge.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
-from vejudge.interface.server.run_manager import start_run
+from critical.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
+from critical.interface.server.run_manager import start_run
 
 
 def _graph():

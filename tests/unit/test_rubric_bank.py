@@ -1,4 +1,4 @@
-from vejudge.core.calibration.debate.eval.rubric_bank import (
+from critical.core.calibration.debate.eval.rubric_bank import (
     combine_with_debate_bank,
     rubric_questions,
 )

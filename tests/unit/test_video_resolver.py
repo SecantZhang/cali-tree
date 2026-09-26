@@ -1,7 +1,7 @@
 """Video resolver against a synthetic rendered-output tree."""
 
-import vejudge.config as config
-from vejudge.database.dl_peanut_eval import video_resolver
+import critical.config as config
+from critical.database.dl_peanut_eval import video_resolver
 
 
 def _build_tree(root):

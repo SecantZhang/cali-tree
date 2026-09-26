@@ -1,8 +1,8 @@
 import pytest
 
-from vejudge.database.dl_human_annotations.loader import HumanAnnotationRecord
-from vejudge.interface.node_db import dataset_node
-from vejudge.interface.node_db.dataset_node import DatasetNodeExecutor
+from critical.database.dl_human_annotations.loader import HumanAnnotationRecord
+from critical.interface.node_db import dataset_node
+from critical.interface.node_db.dataset_node import DatasetNodeExecutor
 
 
 def _raw_item(item_id, use_case="visual montage"):

@@ -1,7 +1,7 @@
 import pytest
 
-from vejudge.core.calibration import DecisionTreeCalibrator
-from vejudge.core.calibration.base import Calibrator
+from critical.core.calibration import DecisionTreeCalibrator
+from critical.core.calibration.base import Calibrator
 
 
 def test_is_a_calibrator_with_fit_predict_metadata():

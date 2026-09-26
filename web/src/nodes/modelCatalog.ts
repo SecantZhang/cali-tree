@@ -1,5 +1,5 @@
 // Model catalog grouped by provider-accurate engine_kind, mirroring the backend's
-// `_ENGINES` registry (vejudge/lm_engine/__init__.py) — the model string itself is never
+// `_ENGINES` registry (critical/lm_engine/__init__.py) — the model string itself is never
 // validated by the backend (pure pass-through to the gateway), so this list exists purely
 // to drive the LM Engine Node's model dropdown, scoped to whichever engine_kind is
 // currently selected.

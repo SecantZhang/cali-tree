@@ -12,15 +12,15 @@ from typing import Any, Optional
 from tqdm.auto import tqdm
 
 from run.aurora_prompt_repair import LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.experiments.aurora_prompt_repair import robustness_stats
-from vejudge.experiments.prompt_repair_report import write_html_report
-from vejudge.experiments.structured_decision_test import (
+from critical.checkpoint import CheckpointStore
+from critical.experiments.aurora_prompt_repair import robustness_stats
+from critical.experiments.prompt_repair_report import write_html_report
+from critical.experiments.structured_decision_test import (
     compare_behavior, compile_controlled_prose_prompt, compile_mechanical_json_prompt,
     select_candidate_rounds,
 )
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.llm_history import LLMHistoryWriter
+from critical.lm_engine.gate import require_live
+from critical.logging.llm_history import LLMHistoryWriter
 
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:

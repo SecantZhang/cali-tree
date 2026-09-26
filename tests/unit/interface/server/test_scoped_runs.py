@@ -5,8 +5,8 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
+import critical.config as config
+from critical.interface.server.app import create_app
 
 
 @pytest.fixture

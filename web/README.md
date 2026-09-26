@@ -1,11 +1,11 @@
-# VEJudge Interface — web
+# Criti-Cal Interface — web
 
-React frontend for the ComfyUI-style node-graph interface (`../vejudge/interface/interface.md`).
+React frontend for the ComfyUI-style node-graph interface (`../critical/interface/interface.md`).
 Only 3 of the 8 planned node types are implemented — Dataset, Judge, Eval — matching the
 backend's current scope (see `docs/architecture.md`'s Interface API section).
 
 npm-managed and **not part of the Python package** (`pyproject.toml`'s
-`include=["vejudge*"]` already excludes it — no packaging changes needed here).
+`include=["critical*"]` already excludes it — no packaging changes needed here).
 
 ## Dev setup
 

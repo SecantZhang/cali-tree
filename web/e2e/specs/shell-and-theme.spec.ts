@@ -5,7 +5,7 @@ test.describe('app shell and theme', () => {
   test('loads the 4-pane shell against the real backend', async ({ page }) => {
     await page.goto('/')
 
-    await expect(page.getByText('VEJudge Interface')).toBeVisible()
+    await expect(page.getByText('Criti-Cal Interface')).toBeVisible()
     // The palette only shows real entries once GET /api/nodes has returned from the
     // real backend — proves the frontend build + backend + fixture wiring all work.
     await waitForPaletteLoaded(page)

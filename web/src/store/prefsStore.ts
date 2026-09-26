@@ -57,6 +57,6 @@ export const usePrefsStore = create<PrefsState>()(
       setModalHeight: (h) => set({ modalHeight: clamp(h, MODAL_HEIGHT_MIN, MODAL_HEIGHT_MAX) }),
       setPanOnScroll: (v) => set({ panOnScroll: v }),
     }),
-    { name: 'vejudge-panel-prefs' },
+    { name: 'critical-panel-prefs' },
   ),
 )

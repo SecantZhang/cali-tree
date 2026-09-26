@@ -1,8 +1,8 @@
-# VEJudge — Video Editing Judge
+# Criti-Cal — Video Editing Judge
 
 ## Project Purpose
 
-VEJudge is a calibrated LLM/VLM-as-a-judge pipeline for video editing outputs. Given source assets, a user edit instruction, and the final edited video, the system predicts a human-aligned quality score and produces a grounded, structured rationale. The core challenge is not video generation — it is evaluation: making a multimodal judge reliable, human-aligned, cost-efficient, and usable at scale.
+Criti-Cal is a calibrated LLM/VLM-as-a-judge pipeline for video editing outputs. Given source assets, a user edit instruction, and the final edited video, the system predicts a human-aligned quality score and produces a grounded, structured rationale. The core challenge is not video generation — it is evaluation: making a multimodal judge reliable, human-aligned, cost-efficient, and usable at scale.
 
 The main research objective is **calibration** — mapping raw judge outputs to human evaluator scores with high agreement, low bias, and interpretable failure modes.
 
@@ -47,7 +47,7 @@ Cheaper iteration: `run/run_text_only.sh` (text judges, no video upload) or
 `run/run_quick_subset.sh --limit 1` (full pipeline, tiny subset).
 
 **Robustness:** `run/run_base_benchmark_robust.sh` sweeps a temperature × repeats grid
-(`vejudge-robust`; `vejudge-bench` also takes `--temperature`) and reports judge
+(`criti-cal-robust`; `criti-cal-bench` also takes `--temperature`) and reports judge
 self-consistency + bootstrap CIs to separate judge sampling variance from small-n
 correlation noise. The default grid is ~20 full runs (~3.5 h) — dry-run first, run in
 background. Outputs go to `logs/exps/<ts>-robust/`.
@@ -65,21 +65,21 @@ the proxy, which this recovers. Use `run/probe_endpoint.sh` to (re)measure the g
 **Endpoint health:** the primary endpoint is intermittently down (401/connection reset). Each
 benchmark probes both endpoints first and **prefers a working one** (skipping a dead primary)
 via `PlutoCreds.preferred`; failover stays the safety net. Disable with `--no-health-check`;
-check manually with `run/check_endpoints.sh` (`vejudge.lm_engine.health`).
+check manually with `run/check_endpoints.sh` (`critical.lm_engine.health`).
 
 **Progress:** a real benchmark shows a `tqdm` progress bar over judge tasks (current
 item + judge, running count). To keep the bar readable, per-item/per-judge INFO logging is
 routed to `run.log` rather than the console.
 
 **Resume (`--continue`):** every run checkpoints each successful judge call to
-`<run_dir>/judge_results.jsonl` (generic `vejudge.checkpoint.CheckpointStore`). `vejudge-bench
---continue [PATH]` / `vejudge-robust --continue [PATH]` re-open a run (default: the most
+`<run_dir>/judge_results.jsonl` (generic `critical.checkpoint.CheckpointStore`). `criti-cal-bench
+--continue [PATH]` / `criti-cal-robust --continue [PATH]` re-open a run (default: the most
 recent of that kind) and redo only the missing units — single runs skip done `(item, judge)`
 pairs; the grid skips complete cells and resumes a half-finished cell's checkpoint. Checkpoints
 are run-scoped (repeats stay independent); failed calls aren't checkpointed, so they retry.
 
-**Call gating:** real (billable) gateway calls require `--live` (or `VEJUDGE_ALLOW_LIVE=1`).
-`vejudge-bench` refuses a non-dry-run without it; `vejudge-smoke` refuses outright. Dry-runs,
+**Call gating:** real (billable) gateway calls require `--live` (or `CRITICAL_ALLOW_LIVE=1`).
+`criti-cal-bench` refuses a non-dry-run without it; `criti-cal-smoke` refuses outright. Dry-runs,
 item matching, and the test suite never call out. Always `estimate_cost.sh` before a real run —
 the base run is the slow/expensive path because video judges base64-upload each rendered MP4.
 
@@ -90,7 +90,7 @@ see `docs/benchmark.md` for the result schema.
 
 ## Testing the Interface (End-to-End)
 
-`vejudge/interface/` (FastAPI backend + `web/` React frontend) has three layers of test
+`critical/interface/` (FastAPI backend + `web/` React frontend) has three layers of test
 coverage, and only the third drives a real browser:
 
 - `pytest tests/unit tests/integration` — backend logic, mocked engines, no browser.
@@ -126,7 +126,7 @@ Node HTTP path against the mock gateway, asserting real scores and a real MAE �
 "complete pipeline" test), and `error-path` (an unwired Judge Node's real backend error
 message reaching the UI).
 
-**Enforcement:** any change touching `vejudge/interface/` or `web/` should run this suite
+**Enforcement:** any change touching `critical/interface/` or `web/` should run this suite
 before the change is considered done — see the Updates logging rules below.
 
 ---
@@ -149,7 +149,7 @@ Every module family (database loaders, LM engines, preprocessors) has an abstrac
 - Supported artifact types: sampled frames, keyframes, short clips, ASR transcript, OCR text, captions, shot boundaries, audio event labels, blur/flicker metrics.
 - The `eval/` subdir holds scripts that measure preprocessing quality (e.g., keyframe coverage, transcript WER).
 
-### Judge (`vejudge/judge`)
+### Judge (`critical/judge`)
 
 - Validates all LM outputs: JSON validity, score ranges (1–5), required fields, non-empty rationale.
 - Invalid or missing fields are flagged, not silently defaulted.
@@ -159,7 +159,7 @@ Every module family (database loaders, LM engines, preprocessors) has an abstrac
   ```
   The cap prevents catastrophic segments from being hidden by many good ones.
 
-### Calibration (`vejudge/calibration`)
+### Calibration (`critical/calibration`)
 
 - Default first baseline: linear regression over judge sub-scores + per-category bias term.
 - Always trained on data disjoint from the held-out test set.
@@ -172,7 +172,7 @@ Every module family (database loaders, LM engines, preprocessors) has an abstrac
     + w4*temporal_consistency + w5*visual_quality + category_bias[edit_category]
   ```
 
-### Prompts (`vejudge/prompts/`)
+### Prompts (`critical/prompts/`)
 
 - Templates are versioned files, not inline strings. Every experiment records prompt name + version.
 - Absolute multi-dimensional scoring is the default template.
@@ -190,7 +190,7 @@ Every module family (database loaders, LM engines, preprocessors) has an abstrac
   that's needed — the schema shows and **auto-reflects** future socket changes with no frontend
   edit. Timing comes from `NodeRunResult.meta` stamped centrally by the executor. New node types
   get all of this with no extra code. See the "Node anatomy" convention in
-  `vejudge/interface/interface.md`; only add per-node code for a bespoke **Details** tab.
+  `critical/interface/interface.md`; only add per-node code for a bespoke **Details** tab.
 
 ---
 
@@ -244,6 +244,6 @@ Lives in `logs/updates/`. Every change a coding agent makes to the codebase writ
 - `updates_summary.md` is an **index**, not a store: keep the full record in the detail file, one block per update in the summary.
 - Never reuse a timestamp id; never overwrite an existing detail file or summary block.
 - Append newest entries at the top of `updates_summary.md` so the latest state is visible first.
-- Any update touching `vejudge/interface/` or `web/` must run the End-to-End suite (see
+- Any update touching `critical/interface/` or `web/` must run the End-to-End suite (see
   "Testing the Interface (End-to-End)" above) and note the result in that update's
   Verification section — pytest and vitest alone cannot see real CSS/CORS/click bugs.

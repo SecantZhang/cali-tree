@@ -1,5 +1,5 @@
-from vejudge.core.calibration.debate.retrieval import RetrievedNote
-from vejudge.core.calibration.debate.schema import (
+from critical.core.calibration.debate.retrieval import RetrievedNote
+from critical.core.calibration.debate.schema import (
     DebateTranscript,
     DebateTurn,
     DebateVerdict,

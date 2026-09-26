@@ -16,7 +16,7 @@ export function TopBar({ leftPanelCollapsed, onToggleLeftPanel }: TopBarProps) {
         <button onClick={onToggleLeftPanel} title="Toggle left panel">
           {leftPanelCollapsed ? '»' : '«'}
         </button>
-        <strong>VEJudge Interface</strong>
+        <strong>Criti-Cal Interface</strong>
         <button
           onClick={() => activeGraphStore().getState().autoLayoutNodes()}
           disabled={nodeCount === 0}

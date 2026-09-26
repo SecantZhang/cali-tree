@@ -24,4 +24,4 @@ cd "$PROJECT_DIR"
 export PYTHONWARNINGS="ignore"
 
 # --live authorizes the real call (this script exists specifically to make it).
-python -m vejudge.lm_engine --engine gpt --text "Reply with the single word OK." --live "$@"
+python -m critical.lm_engine --engine gpt --text "Reply with the single word OK." --live "$@"

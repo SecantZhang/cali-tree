@@ -1,4 +1,4 @@
-# VEJudge Research Notes
+# Criti-Cal Research Notes
 
 ## Judge Input Strategies
 
@@ -61,7 +61,7 @@ Always report per-category results. A judge can look strong overall while failin
 
 ## Related work & baselines to beat (prior-art positioning)
 
-The vejudge method — **human-grounded adversarial debate → extract semantic rubrics →
+The critical method — **human-grounded adversarial debate → extract semantic rubrics →
 interpretable (semantic/ontology) tree calibration**, for an **MLLM video judge** — sits in
 an *active* 2025–26 area. It is a novel *synthesis/mechanism* choice, not an empty problem;
 the framing must be "does debate extract better rubrics, and does a semantic tree calibrate

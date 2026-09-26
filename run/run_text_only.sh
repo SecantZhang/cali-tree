@@ -24,7 +24,7 @@ cd "$PROJECT_DIR"
 export PYTHONWARNINGS="ignore"
 
 # --skip-video drops M2/M4/M5/M6; --judges M1,M3 keeps only the text judges.
-python -m vejudge.benchmark.cli \
+python -m critical.benchmark.cli \
   --models peanut \
   --judges M1,M3 \
   --skip-video \

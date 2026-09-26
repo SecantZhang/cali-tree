@@ -3,15 +3,15 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
+import critical.config as config
+from critical.interface.server.app import create_app
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CREDENTIALS_FILE", tmp_path / "creds.json")
     for var in (
-        "OPENAI_API_KEY", "OPENAI_BASE_URL", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_BASE_URL", "VEJUDGE_PROVIDER",
+        "OPENAI_API_KEY", "OPENAI_BASE_URL", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_BASE_URL", "CRITICAL_PROVIDER",
         "CHAT_GPT_API_KEY", "AZURE_OPENAI_API_KEY",
         "OPENAI_COMPAT_BASE_URL", "LLM_PROXY_BASE_URL", "LLM_PROXY_MIRROR_URL",
     ):

@@ -2,7 +2,7 @@
 
 Stands in for the real Pluto gateway so the "full pipeline" Playwright spec exercises the
 real Judge Node HTTP code path (real request, real parsing/validation/checkpointing) at
-zero cost. Mirrors ``vejudge/lm_engine/openai_compat.py``'s exact request/response shape:
+zero cost. Mirrors ``critical/lm_engine/openai_compat.py``'s exact request/response shape:
 POST ``/chat/completions`` -> ``{choices: [{message: {content}}], usage: {...}}``.
 """
 
@@ -24,7 +24,7 @@ CALIBRATED_JUDGE_DELAY_S = 1.5
 
 # A single combined response body whose keys are the union of every M1-M6 schema PLUS the
 # D1 (judge-agent debate turn)/D2 (human-proxy debate turn) schemas, so it validates cleanly
-# (per vejudge/core/judge/validate.py's required-field/score-range/non-empty-rationale
+# (per critical/core/judge/validate.py's required-field/score-range/non-empty-rationale
 # checks) no matter which metric or debate role a test graph exercises.
 MOCK_JUDGE_CONTENT = {
     "score_1_to_5": 3,

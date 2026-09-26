@@ -42,7 +42,7 @@ export PYTHONWARNINGS="ignore"
 #   --concurrency 8        : text judges (cheap, fast; gateway allows ~16)
 #   --video-concurrency 4  : video judges (bandwidth/memory-bound -> keep modest)
 # Override either by passing your own value after this script (the later value wins).
-python -m vejudge.benchmark.cli \
+python -m critical.benchmark.cli \
   --models peanut \
   --concurrency 8 \
   --video-concurrency 4 \

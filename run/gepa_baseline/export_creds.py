@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Export gateway credentials for the isolated .venv-gepa process to consume.
 
-Runs in the main venv (reuses vejudge.lm_engine.load_creds' full resolution order: manual
+Runs in the main venv (reuses critical.lm_engine.load_creds' full resolution order: manual
 override -> env vars -> .env-raw). Writes a SECRET, gitignored, mode-600 local file. Never
 logs or prints the token. The isolated GEPA process reads this file and never needs
-`vejudge` importable.
+`critical` importable.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 import os
 from pathlib import Path
 
-from vejudge.lm_engine import load_creds
+from critical.lm_engine import load_creds
 
 OUTPUT = Path(__file__).resolve().parent / ".creds.json"
 

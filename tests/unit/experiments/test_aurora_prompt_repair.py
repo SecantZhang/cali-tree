@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 
 from run.aurora_prompt_repair import DEFAULT_PROMPT_PATH, Experiment, LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.lm_engine import openai_compat
-from vejudge.logging.llm_history import LLMHistoryWriter
-from vejudge.experiments.aurora_prompt_repair import (
+from critical.checkpoint import CheckpointStore
+from critical.lm_engine import openai_compat
+from critical.logging.llm_history import LLMHistoryWriter
+from critical.experiments.aurora_prompt_repair import (
     LABELS,
     baseline_summary,
     build_balanced_sample,

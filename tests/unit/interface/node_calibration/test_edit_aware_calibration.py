@@ -1,5 +1,5 @@
-from vejudge.interface.node_calibration import edit_aware_calibration_node
-from vejudge.interface.node_calibration.edit_aware_calibration_node import (
+from critical.interface.node_calibration import edit_aware_calibration_node
+from critical.interface.node_calibration.edit_aware_calibration_node import (
     EditAwareCalibrationNodeExecutor,
 )
 

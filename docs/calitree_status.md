@@ -74,7 +74,7 @@ SOURCE + EDITED + instruction
 | Cali-Tree **flat**, `architecture=rubric_lite` on `calitree_train` | **Tested — confirmed positive** | One global node, no embeddings/leaves/clustering/merges/routing, running the exact same three-way consensus + editor-prior + selective-policy code as v2. Reproduces v2's full-1,200 numbers within 0.1–3pp on every full-coverage metric and matches the selective headline: 93.14% @ 63.17% coverage vs v2's 92.87% @ 64.25% (`calitree_flat_selective_result.json`). This is the "first confirming experiment" below, now closed. |
 | Cali-Tree **delta-tree**, `specialization_mode=additive` | **Tested — negative (closed)** | Opt-in redesign: additive specialization accumulates validated deltas into a root, leaves cluster by failure mode, localized change signal targets `partial`. Dev-slice result: mechanism converges (beats flat) but the coverage-selected root abandoned `partial` (F1 0.0). **Fixed with `root_objective=balanced` and re-validated at full 1,200-case scale: partial F1 recovers to 0.21 (bug confirmed fixed), but the fixed tree still loses to frozen v2 on every metric** (acc −0.6pp, balanced −4.3pp, partial recall −10.4pp; `calitree_delta_tree_result.json`). Closes the investigation: additive specialization is not an improvement over v2's consensus/editor-prior machinery at scale. v2 replace mode is the default and stays frozen. |
 
-### Prompt template versions — `vejudge/core/prompts/templates/`
+### Prompt template versions — `critical/core/prompts/templates/`
 
 Two independent naming lines share a `vN` suffix; do not conflate them. `calitree_vN` are the
 *tree* prompt bundles; `rubric_lite_vN` are the *flat* rubric prompts.
@@ -93,7 +93,10 @@ Two independent naming lines share a `vN` suffix; do not conflate them. `calitre
 | `rubric_lite_v5` | flat | Negative control | Core-completion; failed development gate. |
 | `rubric_lite_v6` | flat | Negative control | Evidence ledger; failed stage-1 gate. |
 
-### Frozen artifacts — `vejudge/core/calibration/artifacts/`
+### Frozen artifacts
+
+Rubric-Lite artifacts live in `critical/core/calibration/artifacts/`. The GEPA artifact
+lives in `critical/core/optimization/prompt/gepa/artifacts/`.
 
 | Artifact | Status | Note |
 |---|---|---|

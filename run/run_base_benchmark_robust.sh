@@ -45,7 +45,7 @@ export PYTHONWARNINGS="ignore"
 
 # Defaults: full 4x5 grid, text conc 8 / video conc 4, real calls (--live).
 # A user-supplied flag in "$@" overrides the matching default (later value wins).
-python -m vejudge.benchmark.robust \
+python -m critical.benchmark.robust \
   --temperatures 0.0,0.3,0.7,1.0 \
   --repeats 5 \
   --concurrency 8 \

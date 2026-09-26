@@ -17,8 +17,8 @@ import random
 from pathlib import Path
 from typing import Any, Iterable
 
-from vejudge import config
-from vejudge.database.dl_editinspector import (
+from critical import config
+from critical.database.dl_editinspector import (
     EDITINSPECTOR_REVISION,
     accuracy_level_label,
 )

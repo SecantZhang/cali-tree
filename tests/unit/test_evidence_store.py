@@ -1,6 +1,6 @@
 import json
 
-from vejudge.evidence import ArtifactRef, EvaluationUnit, EvidenceManifest, LocalEvidenceStore
+from critical.evidence import ArtifactRef, EvaluationUnit, EvidenceManifest, LocalEvidenceStore
 
 
 def _manifest(artifact):

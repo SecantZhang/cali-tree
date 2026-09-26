@@ -2,7 +2,7 @@
 # =============================================================================
 # setup_env.sh — one-time environment setup
 # =============================================================================
-# Creates a local virtualenv and installs VEJudge (editable) + dev deps.
+# Creates a local virtualenv and installs Criti-Cal (editable) + dev deps.
 # Run this ONCE before any other script in this folder.
 #
 #   ./run/setup_env.sh
@@ -27,7 +27,7 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-echo "Upgrading pip and installing vejudge (editable) + dev/interface/video deps ..."
+echo "Upgrading pip and installing criti-cal (editable) + dev/interface/video deps ..."
 python -m pip install --quiet --upgrade pip
 python -m pip install --quiet -e ".[dev,interface,video]"
 

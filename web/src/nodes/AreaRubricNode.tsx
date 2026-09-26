@@ -9,7 +9,7 @@ export function AreaRubricNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
   return (
     <SimpleParamNode id={id} data={d} selected={selected} title="Area Rubric Spec"
-      color="var(--node-vejudge)" schema={NODE_PARAM_SCHEMAS.area_rubric}
+      color="var(--node-critical)" schema={NODE_PARAM_SCHEMAS.area_rubric}
       summaryLine={(p) => String(p.rubric || 'transition_smoothness')}
       sockets={<SocketHandle kind="source" id="area_rubric_spec" label="area_rubric_spec"
         top={socketTop(0, 1)} color={SOCKET_COLORS.area_rubric_spec} />}

@@ -1,6 +1,6 @@
 import csv
 
-from vejudge.benchmark import robust
+from critical.benchmark import robust
 
 
 def test_bootstrap_brackets_point_estimate():

@@ -90,7 +90,7 @@ export function JudgeSecondaryTab({ node }: { node: VeNode }) {
               <XAxis dataKey="score" label={{ value: 'score_1_to_5', position: 'insideBottom', offset: -2 }} fontSize={11} />
               <YAxis allowDecimals={false} fontSize={11} width={24} />
               <Tooltip />
-              <Bar dataKey="count" fill="var(--node-vejudge)" />
+              <Bar dataKey="count" fill="var(--node-critical)" />
             </BarChart>
           </ResponsiveContainer>
         </div>

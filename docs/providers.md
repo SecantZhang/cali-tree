@@ -26,7 +26,7 @@ not `/v1beta/openai`. No implicit mirror or cross-provider key fallback is used.
 Graph engines route by engine kind. AURORA standalone judge/optimizer clients route
 by model prefix (`gpt-*`, `o1/o3/o4`, `text-embedding-*`, `gemini-*`). Set the model
 in the workflow/CLI as before; no historical workflow or prompt is rewritten.
-Unknown standalone model IDs need an explicit `VEJUDGE_PROVIDER=openai|gemini` override.
+Unknown standalone model IDs need an explicit `CRITICAL_PROVIDER=openai|gemini` override.
 That override applies process-wide, so leave it unset for mixed-provider workflows.
 
 OpenAI uses Chat Completions with `max_completion_tokens`. GPT-5.1/5.2/5.4 sampling
@@ -61,8 +61,8 @@ responses/local mock servers and do not contact paid model APIs.
 After adding your keys, explicitly authorize one small call:
 
 ```bash
-.venv/bin/python -m vejudge.lm_engine --engine gpt --model gpt-4.1-mini --live
-.venv/bin/python -m vejudge.lm_engine --engine gemini --model gemini-2.5-flash --live
+.venv/bin/python -m critical.lm_engine --engine gpt --model gpt-4.1-mini --live
+.venv/bin/python -m critical.lm_engine --engine gemini --model gemini-2.5-flash --live
 ```
 
 ## Historical proxy configuration
@@ -70,7 +70,7 @@ After adding your keys, explicitly authorize one small call:
 Old `CHAT_GPT_API_KEY`, `AZURE_OPENAI_API_KEY`, `OPENAI_COMPAT_BASE_URL`,
 `LLM_PROXY_BASE_URL`, `LLM_PROXY_MIRROR_URL`, unscoped saved credentials, and `.env-raw`
 are ignored by default. To intentionally reproduce an old proxy environment, explicitly
-set `VEJUDGE_PROVIDER=legacy`. Supplying an `env_raw_path` argument in Python also opts
+set `CRITICAL_PROVIDER=legacy`. Supplying an `env_raw_path` argument in Python also opts
 into legacy mode. Direct keys are never combined with those legacy endpoints.
 
 ## API references

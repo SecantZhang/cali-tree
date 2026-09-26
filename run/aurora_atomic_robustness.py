@@ -14,18 +14,18 @@ from typing import Any, Optional
 from tqdm.auto import tqdm
 
 from run.aurora_prompt_repair import LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.experiments.aurora_prompt_repair import prompt_digest, robustness_stats
-from vejudge.experiments.prompt_repair_report import write_html_report
-from vejudge.experiments.structured_decision_test import (
+from critical.checkpoint import CheckpointStore
+from critical.experiments.aurora_prompt_repair import prompt_digest, robustness_stats
+from critical.experiments.prompt_repair_report import write_html_report
+from critical.experiments.structured_decision_test import (
     compile_alternate_prose_prompt,
     compile_controlled_prose_prompt,
     parse_decision_spec,
     select_candidate_rounds,
 )
-from vejudge.lm_engine import load_creds, openai_compat
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.llm_history import LLMHistoryWriter
+from critical.lm_engine import load_creds, openai_compat
+from critical.lm_engine.gate import require_live
+from critical.logging.llm_history import LLMHistoryWriter
 
 
 PROPOSER_SYSTEM = """You improve a reusable, case-agnostic atomic decision specification
@@ -110,7 +110,7 @@ def select_pilot_candidates(
 
 def _discover_data_root(run_dir: Path) -> Optional[Path]:
     for parent in (run_dir, *run_dir.parents):
-        if parent.name == "vejudge" and parent.parent.name == "data":
+        if parent.name in {"vejudge", "critical"} and parent.parent.name == "data":
             candidate = parent / "datasets" / "hidden-claude" / "main"
             if candidate.is_dir():
                 return candidate
@@ -121,14 +121,14 @@ def _remap_case_paths(case: dict[str, Any], data_root: Optional[Path]) -> dict[s
     if data_root is None:
         return case
     remapped = dict(case)
-    marker = "/vejudge/.claude/data/"
     for key in ("source_image_path", "edited_image_path"):
         original = str(remapped.get(key) or "")
-        if marker not in original:
-            continue
-        replacement = data_root / original.split(marker, 1)[1]
-        if replacement.is_file():
-            remapped[key] = str(replacement)
+        for marker in ("/vejudge/.claude/data/", "/critical/.claude/data/"):
+            if marker in original:
+                replacement = data_root / original.split(marker, 1)[1]
+                if replacement.is_file():
+                    remapped[key] = str(replacement)
+                break
     return remapped
 
 

@@ -1,3 +1,24 @@
+## 260925-20:59:47 — Add PyCharm unit test launcher
+- Type: chore
+- Scope: .run/All Unit Tests.run.xml
+- What: Added a shared PyCharm pytest configuration targeting the complete tests/unit directory.
+- Why: Make the full unit suite runnable from PyCharm with the project interpreter.
+- Details: logs/updates/details/260925-20:59:47-updates.md
+
+## 260925-20:18:14 — Align README with current code architecture
+- Type: docs
+- Scope: README.md
+- What: Replaced the narrow component list with a package map covering calibration, prompt optimization, evidence, interface, benchmarking, and evaluation; fixed install and interface documentation paths.
+- Why: Make the README match the refactored Criti-Cal source tree and the benchmark CLI's present scope.
+- Details: logs/updates/details/260925-20:18:14-updates.md
+
+## 260925-20:05:27 — Rename project and organize prompt optimization
+- Type: refactor
+- Scope: Python package, prompt optimizers, interface, scripts, workflows, tests, metadata, and current documentation
+- What: Renamed the distribution to criti-cal and package to critical; split CaliTree into components; moved TextGrad and GEPA frozen artifact logic under core/optimization/prompt.
+- Why: Give each prompt optimization strategy a clear home and make the project name consistent.
+- Details: logs/updates/details/260925-20:05:27-updates.md
+
 ## 260925-17:57:00 — Publish current repository snapshot
 - Type: chore
 - Scope: repository-wide pending source, tests, experiments, documentation, provider configuration, and update log

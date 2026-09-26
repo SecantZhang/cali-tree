@@ -1,6 +1,6 @@
-from vejudge.core.area.aggregate import aggregate_area_results
-from vejudge.core.area.selection import select_units
-from vejudge.core.calibration.unit_affine import (
+from critical.core.area.aggregate import aggregate_area_results
+from critical.core.area.selection import select_units
+from critical.core.calibration.unit_affine import (
     calibrate_area_result_units,
     fit_unit_calibrators,
 )

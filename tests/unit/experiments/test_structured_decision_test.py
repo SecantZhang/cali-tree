@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from vejudge.experiments.structured_decision_test import (
+from critical.experiments.structured_decision_test import (
     compare_behavior, compile_alternate_prose_prompt, compile_controlled_prose_prompt, compile_mechanical_json_prompt,
     compile_structured_prompt, parse_decision_spec,
     select_candidate_rounds, summarize,

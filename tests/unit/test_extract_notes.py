@@ -1,6 +1,6 @@
 import json
 
-from vejudge.database.dl_peanut_eval.extract_notes import extract_peanut_assembly_from_notes
+from critical.database.dl_peanut_eval.extract_notes import extract_peanut_assembly_from_notes
 
 
 def _write(tmp_path, obj):

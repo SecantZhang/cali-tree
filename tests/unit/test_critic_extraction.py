@@ -2,7 +2,7 @@
 
 import json
 
-from vejudge.core.calibration.debate.eval.critic_extraction import (
+from critical.core.calibration.debate.eval.critic_extraction import (
     build_critic_prompt,
     extract_critic_features,
 )

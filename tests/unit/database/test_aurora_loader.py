@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from vejudge.database.dl_aurora import (
+from critical.database.dl_aurora import (
     AURORA_MODELS,
     AuroraBenchLoader,
     build_split_manifest,

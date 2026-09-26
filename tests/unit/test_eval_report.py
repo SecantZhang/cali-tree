@@ -1,4 +1,4 @@
-from vejudge.core.eval.report import per_dimension_agreement
+from critical.core.eval.report import per_dimension_agreement
 
 
 def _rows():

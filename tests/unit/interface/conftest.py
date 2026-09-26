@@ -1,8 +1,8 @@
 import pytest
 
-from vejudge.checkpoint import CheckpointStore
-from vejudge.interface.server.registry import NodeRunContext
-from vejudge.logging.exp_logger import make_exp_run
+from critical.checkpoint import CheckpointStore
+from critical.interface.server.registry import NodeRunContext
+from critical.logging.exp_logger import make_exp_run
 
 
 @pytest.fixture

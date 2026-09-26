@@ -1,5 +1,5 @@
-from vejudge.core.judge.validate import validate_judge_output
-from vejudge.core.prompts import d1_judge_debate, d2_human_proxy_debate
+from critical.core.judge.validate import validate_judge_output
+from critical.core.prompts import d1_judge_debate, d2_human_proxy_debate
 
 
 def _sample():
@@ -104,7 +104,7 @@ def test_d2_build_uses_one_immutable_disagreement_profile():
 
 def test_d2_schema_is_compatible_with_the_shared_judge_output_validator():
     # Regression test: an earlier draft named this field "critique_lines", which the
-    # shared vejudge.core.judge.validate.validate_judge_output rationale check doesn't
+    # shared critical.core.judge.validate.validate_judge_output rationale check doesn't
     # recognize (it only special-cases "reasoning_lines", matching every M1-M6 judge) --
     # every well-formed human-proxy response was silently flagged "empty_rationale".
     # This asserts a schema-conformant response actually validates as OK.

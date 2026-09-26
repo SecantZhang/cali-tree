@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from vejudge.core.calibration.debate.calibrated_result import _TENDENCY
-from vejudge.core.calibration.debate.schema import DebateTranscript, DebateTurn
-from vejudge.core.calibration.debate.semantic_summary import (
+from critical.core.calibration.debate.calibrated_result import _TENDENCY
+from critical.core.calibration.debate.schema import DebateTranscript, DebateTurn
+from critical.core.calibration.debate.semantic_summary import (
     SemanticSummary,
     llm_summary,
     render_summary,

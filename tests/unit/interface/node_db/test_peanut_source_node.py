@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-import vejudge.config as config
-from vejudge.database.dl_peanut_eval.loader import _use_cases
-from vejudge.interface.node_db.peanut_source_node import PeanutSourceNodeExecutor
+import critical.config as config
+from critical.database.dl_peanut_eval.loader import _use_cases
+from critical.interface.node_db.peanut_source_node import PeanutSourceNodeExecutor
 
 PROJECTS = {
     "prj-a": ("visual montage", 2),  # (use_case, n_prompts)
@@ -108,7 +108,7 @@ def test_coconut_source_loads_its_own_model(peanut_fixture, make_ctx):
     # A coconut render tree (ordinal 001/002 -> prompt 0/1) for prj-a, reusing the same
     # source project. The distinct Coconut Source node loads only coconut, keyed by
     # model-namespaced item ids (no collision with the peanut items).
-    from vejudge.interface.node_db.coconut_source_node import CoconutSourceNodeExecutor
+    from critical.interface.node_db.coconut_source_node import CoconutSourceNodeExecutor
 
     rendered_root = config.RENDERED_ROOT
     for run in ("001", "002"):

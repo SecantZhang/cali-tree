@@ -1,6 +1,6 @@
 import pytest
 
-from vejudge.core.calibration.calitree import (
+from critical.core.optimization.prompt.calitree import (
     CaliTreeBuilder,
     CaliTreeNode,
     classification_metrics,
@@ -832,7 +832,7 @@ def test_metrics_count_missing_predictions_as_invalid_errors():
 
 
 def test_ordinal_mae_ignores_unknown_labels():
-    from vejudge.core.calibration.calitree import ordinal_absolute_error
+    from critical.core.optimization.prompt.calitree import ordinal_absolute_error
 
     assert ordinal_absolute_error("no", "yes") == 1.0
     assert ordinal_absolute_error("partial", "yes") == 0.5

@@ -2,10 +2,10 @@
 
 import pytest
 
-from vejudge.lm_engine import openai_compat
-from vejudge.lm_engine.creds import PlutoCreds
-from vejudge.lm_engine.lm_gemini import GeminiEngine
-from vejudge.lm_engine.lm_gpt import GptEngine
+from critical.lm_engine import openai_compat
+from critical.lm_engine.creds import PlutoCreds
+from critical.lm_engine.lm_gemini import GeminiEngine
+from critical.lm_engine.lm_gpt import GptEngine
 
 
 def _creds():

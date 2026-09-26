@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from vejudge import config
-from vejudge.lm_engine import get_engine, openai_compat
-from vejudge.lm_engine.creds import DEFAULT_URLS, load_creds, load_creds_with_source, save_manual_creds, clear_manual_creds
+from critical import config
+from critical.lm_engine import get_engine, openai_compat
+from critical.lm_engine.creds import DEFAULT_URLS, load_creds, load_creds_with_source, save_manual_creds, clear_manual_creds
 
 
 @pytest.fixture(autouse=True)
@@ -14,7 +14,7 @@ def isolated_credentials(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(config, "CREDENTIALS_FILE", tmp_path / "credentials.json")
     monkeypatch.setattr(config, "ENV_RAW_PATH", tmp_path / ".env-raw")
-    for key in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_BASE_URL", "VEJUDGE_PROVIDER", "CHAT_GPT_API_KEY", "OPENAI_COMPAT_BASE_URL", "LLM_PROXY_MIRROR_URL"):
+    for key in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_BASE_URL", "CRITICAL_PROVIDER", "CHAT_GPT_API_KEY", "OPENAI_COMPAT_BASE_URL", "LLM_PROXY_MIRROR_URL"):
         monkeypatch.delenv(key, raising=False)
 
 
@@ -139,7 +139,7 @@ def test_gemini_blocked_response_is_error(monkeypatch):
 
 
 def test_health_check_uses_native_gemini(monkeypatch):
-    from vejudge.lm_engine.health import healthy_order
+    from critical.lm_engine.health import healthy_order
     monkeypatch.setenv("GEMINI_API_KEY", "gm")
     calls = fake_http(monkeypatch, {})
     _, results = healthy_order(load_creds(engine="gemini"))
@@ -148,7 +148,7 @@ def test_health_check_uses_native_gemini(monkeypatch):
 
 
 def test_aurora_judge_and_gepa_worker_use_gemini(monkeypatch):
-    from vejudge.checkpoint import CheckpointStore
+    from critical.checkpoint import CheckpointStore
     from run.aurora_prompt_repair import LiveJudge
     monkeypatch.setenv("GEMINI_API_KEY", "gm")
     judge = LiveJudge(model="gemini-2.5-flash", checkpoint=CheckpointStore(config.PROJECT_ROOT / "checkpoint.jsonl"), history=None, max_tokens=40, timeout=10)
@@ -167,14 +167,14 @@ def test_aurora_judge_and_gepa_worker_use_gemini(monkeypatch):
 
 
 def test_gemini_concurrency_probe_uses_provider_payload(monkeypatch):
-    from vejudge.lm_engine.probe import _one_call
+    from critical.lm_engine.probe import _one_call
     calls = fake_http(monkeypatch, {})
     assert _one_call(DEFAULT_URLS['gemini'], 'gm', 'gemini-2.5-flash', 10, 'gemini')['ok']
     assert calls[0][0].endswith(':generateContent')
 
 
 def test_gemini_retries_without_falling_back_to_openai(monkeypatch):
-    from vejudge.lm_engine import openai_compat
+    from critical.lm_engine import openai_compat
     monkeypatch.setenv('GEMINI_API_KEY', 'gm')
     monkeypatch.setenv('OPENAI_API_KEY', 'oa')
     calls = []
@@ -196,7 +196,7 @@ def test_gemini_retries_without_falling_back_to_openai(monkeypatch):
 
 
 def test_gemini_inline_size_limit_is_explicit():
-    from vejudge.lm_engine.provider_api import chat_request
+    from critical.lm_engine.provider_api import chat_request
     with pytest.raises(ValueError, match='shorter clips'):
         chat_request(DEFAULT_URLS['gemini'], 'gm', 'gemini-2.5-pro', [{'role': 'user', 'content': [
             {'type': 'image_url', 'image_url': {'url': 'data:video/mp4;base64,' + 'A' * 19_000_001}}
@@ -206,8 +206,8 @@ def test_gemini_inline_size_limit_is_explicit():
 def test_gemini_judge_uses_separate_openai_embedding_credentials(monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import Mock
-    from vejudge.checkpoint import CheckpointStore
-    from vejudge.interface.node_calibration.calitree_nodes import _CaliTreeRuntime
+    from critical.checkpoint import CheckpointStore
+    from critical.interface.node_calibration.calitree_nodes import _CaliTreeRuntime
     monkeypatch.setenv('OPENAI_API_KEY', 'embedding-key')
     monkeypatch.setenv('GEMINI_API_KEY', 'judge-key')
     calls = fake_http(monkeypatch, {'data': [{'index': 0, 'embedding': [1.0, 0.5]}], 'usage': {'prompt_tokens': 4, 'total_tokens': 4}})

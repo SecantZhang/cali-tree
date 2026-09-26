@@ -10,7 +10,7 @@ export function CaliTreeJudgeNode({ id, data, selected }: NodeProps) {
   return (
     <SimpleParamNode
       id={id} data={d} selected={selected}
-      title="Cali-Tree Judge" color="var(--node-vejudge)"
+      title="Cali-Tree Judge" color="var(--node-critical)"
       schema={NODE_PARAM_SCHEMAS.calitree_judge}
       sockets={
         <>

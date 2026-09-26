@@ -1,4 +1,4 @@
-from vejudge.core.calibration.rubric_lite import (
+from critical.core.calibration.rubric_lite import (
     RubricLiteLearner,
     apply_ordinal_thresholds,
     apply_two_gate,

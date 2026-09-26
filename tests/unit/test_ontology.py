@@ -2,10 +2,10 @@
 guard the assembly (no drift from the taxonomy) and the importance semantics the semantic
 tree relies on."""
 
-from vejudge.core.calibration import ontology as o
-from vejudge.core.calibration.debate.calibrated_result import _TENDENCY
-from vejudge.core.prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
-from vejudge.database.dl_human_annotations import HUMAN_DIMENSIONS
+from critical.core.calibration import ontology as o
+from critical.core.calibration.debate.calibrated_result import _TENDENCY
+from critical.core.prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
+from critical.database.dl_human_annotations import HUMAN_DIMENSIONS
 
 
 def test_concepts_cover_the_taxonomy_exactly():

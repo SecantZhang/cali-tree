@@ -1,7 +1,7 @@
-# VEJudge Data Description
+# Criti-Cal Data Description
 
-VEJudge draws on **two** locations in the research repo. Neither is committed (both are
-git-ignored); paths are configurable via env vars in `vejudge/config.py`.
+Criti-Cal draws on **two** locations in the research repo. Neither is committed (both are
+git-ignored); paths are configurable via env vars in `critical/config.py`.
 
 ---
 
@@ -16,9 +16,9 @@ yet (~17 matched items). Limitations are listed in `benchmark.md § Scope & limi
 
 #### Architecture: one `Judge` class, six prompts, two model backends
 
-All six judges share a single generic runner (`vejudge/core/judge/base_judge.py` — `Judge`
+All six judges share a single generic runner (`critical/core/judge/base_judge.py` — `Judge`
 class parametrized by `metric_id`). The per-metric variation lives entirely in the versioned
-prompt module (`vejudge/core/prompts/m{n}_*.py`). There is **no separate judge class per
+prompt module (`critical/core/prompts/m{n}_*.py`). There is **no separate judge class per
 metric**.
 
 ```
@@ -30,7 +30,7 @@ Judge(metric_id, engine)
   └─ validate_judge_output(parsed, required_fields)  →  flags / valid bool
 ```
 
-**Engine routing** (`vejudge/workflow/pipeline.py`, `JudgeEngines.for_metric()`): the
+**Engine routing** (`critical/workflow/pipeline.py`, `JudgeEngines.for_metric()`): the
 pipeline holds two engines — one text, one video — and dispatches each metric to the right
 one based on `JudgeMetric.modality`:
 
@@ -46,7 +46,7 @@ transport (`openai_compat.py`), and the `llm-histories.log` recorder.
 
 #### Metric-by-metric details
 
-Rubric source: `vejudge/core/rubric/definitions.py`. Prompt source: `vejudge/core/prompts/`.
+Rubric source: `critical/core/rubric/definitions.py`. Prompt source: `critical/core/prompts/`.
 
 | Code | Name | Component | Engine | Output type | Output schema |
 |---|---|---|---|---|---|
@@ -435,8 +435,8 @@ reasoning_lines: 2-3 sentences summarizing the biggest AV concerns (or lack ther
 
 | Location | Default path | What it holds |
 |---|---|---|
-| **Source data** | `data/` (`VEJUDGE_DATA_ROOT`) | Per-project source clips, transcripts, captions, edit instructions. |
-| **Evaluation data** | `evaluation/` (`VEJUDGE_EVALUATION_ROOT`) | Rendered model outputs + human annotations of those outputs. |
+| **Source data** | `data/` (`CRITICAL_DATA_ROOT`) | Per-project source clips, transcripts, captions, edit instructions. |
+| **Evaluation data** | `evaluation/` (`CRITICAL_EVALUATION_ROOT`) | Rendered model outputs + human annotations of those outputs. |
 
 The benchmark joins the two: it judges a **rendered output video** (from `evaluation/`)
 against the **edit instruction + source material** (from `data/`), then compares the judge
@@ -531,7 +531,7 @@ generating or restyling footage.
 
 **Project categories** come from `data/use_cases_config.json`:
 `{project: {a_roll_files, b_roll_files, use_case}}` where `use_case ∈ {visual montage,
-speech-driven, voiceover-heavy}`. VEJudge uses `use_case` as the per-category breakdown key.
+speech-driven, voiceover-heavy}`. Criti-Cal uses `use_case` as the per-category breakdown key.
 
 There are **no human scores in `data/`** — those live in `evaluation/` (below).
 
@@ -580,7 +580,7 @@ timestamp, metric_complete, annotation`.
 Plus free-text (`other_anomalies`, `*_note`), emotion tags, per-metric time/difficulty,
 optional `timestamp_annotations[]`, and `_complete` (only ~29% of files are complete).
 Multiple annotators per item are **averaged** per dimension (empty strings dropped); see
-`vejudge/database/dl_human_annotations/aggregate.py`.
+`critical/database/dl_human_annotations/aggregate.py`.
 
 ---
 

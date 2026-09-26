@@ -1,8 +1,8 @@
 """Gap computation + report schema, with no network and no real data."""
 
-from vejudge.benchmark.human_gap.runner import HumanGapBenchmark
-from vejudge.benchmark.report import generate_gap_report
-from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
+from critical.benchmark.human_gap.runner import HumanGapBenchmark
+from critical.benchmark.report import generate_gap_report
+from critical.database.dl_human_annotations.aggregate import AggregatedHumanRecord
 
 
 def _synthetic_rows():

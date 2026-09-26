@@ -5,9 +5,9 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
-from vejudge.lm_engine import openai_compat
+import critical.config as config
+from critical.interface.server.app import create_app
+from critical.lm_engine import openai_compat
 
 
 @pytest.fixture
@@ -343,8 +343,8 @@ def test_workflow_runs_listing_reflects_a_resumes_final_status_not_the_original(
     # ORIGINAL run_id's own in-memory handle never learns the resume finished "done"; it's
     # frozen at "stopped" forever. The listing must not report that stale value.
     import tests.hard_stop_nodes as hard_stop_nodes
-    from vejudge.interface.server.registry import NODE_EXECUTORS
-    from vejudge.interface.server.run_registry import REGISTRY
+    from critical.interface.server.registry import NODE_EXECUTORS
+    from critical.interface.server.run_registry import REGISTRY
 
     hard_stop_nodes.register_worker_nodes()
     old_imports = list(REGISTRY.worker_imports)

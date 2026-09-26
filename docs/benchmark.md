@@ -1,4 +1,4 @@
-# VEJudge Benchmark Pipeline
+# Criti-Cal Benchmark Pipeline
 
 The benchmark measures the **agreement gap between human annotators and LLM/VLM judges**
 on AI-edited videos. It runs the judges on the same rendered outputs humans rated, aligns
@@ -34,8 +34,8 @@ See `data.md` for the inputs and `architecture.md` for the package layout.
                    (gap_result.json, aligned_pairs.csv, gap_report.xlsx/chart)
 ```
 
-Driver: `vejudge/benchmark/human_gap/runner.py` (`HumanGapBenchmark`), exposed as the
-`vejudge-bench` CLI.
+Driver: `critical/benchmark/human_gap/runner.py` (`HumanGapBenchmark`), exposed as the
+`criti-cal-bench` CLI.
 
 1. **Match.** Load + aggregate human annotations (filtered to the model), enumerate
    judge-able items from the rendered-output tree, take the intersection, apply `--limit`.
@@ -50,7 +50,7 @@ Driver: `vejudge/benchmark/human_gap/runner.py` (`HumanGapBenchmark`), exposed a
 5. **Report + log.** Write everything to a timestamped experiment run dir.
 
 The per-item and per-judge views can be (re)built for any past run without gateway calls:
-`python -m vejudge.benchmark.per_item logs/exps/<run>-exps` (reads `aligned_pairs.csv`,
+`python -m critical.benchmark.per_item logs/exps/<run>-exps` (reads `aligned_pairs.csv`,
 writes `per_item_gap.csv` + `per_judge_gap.csv` + `per_judge_summary.csv`, and prints both a
 per-video and a per-judge table). The per-item means average over the 9 human dimensions, so
 they over-weight M5 (which backs 5 of them); the **per-judge-signal** view counts each judge
@@ -75,24 +75,24 @@ flight, and the running aligned-pair count). Per-item/per-judge INFO detail goes
 | `section_placement_opening/middle/closing` | M5 `score_1_to_5` |
 | `overall_ranking` (pairwise) | `derive_overall` = mean(M3, M4, M5, M6 overall) |
 
-Defined in `vejudge/postprocessing/align.py`.
+Defined in `critical/postprocessing/align.py`.
 
 ---
 
 ## Running it
 
-Real (billable) gateway calls are **gated**: pass `--live` or set `VEJUDGE_ALLOW_LIVE=1`.
+Real (billable) gateway calls are **gated**: pass `--live` or set `CRITICAL_ALLOW_LIVE=1`.
 Without authorization, the benchmark refuses unless `--dry-run` is set.
 
 ```bash
 # Estimate scope/cost — no gateway calls, no auth needed
-vejudge-bench --dry-run --models peanut --projects prj-paris-2025
+criti-cal-bench --dry-run --models peanut --projects prj-paris-2025
 
 # Real run on a tiny subset (requires --live)
-vejudge-bench --limit 2 --models peanut --projects prj-paris-2025 --judges M3,M5,M6 --live
+criti-cal-bench --limit 2 --models peanut --projects prj-paris-2025 --judges M3,M5,M6 --live
 
 # Text-only (cheap; no video upload)
-vejudge-bench --projects prj-paris-2025 --judges M1,M3 --skip-video --live
+criti-cal-bench --projects prj-paris-2025 --judges M1,M3 --skip-video --live
 ```
 
 | Flag | Purpose |
@@ -125,7 +125,7 @@ Measured gateway limits (via `run/probe_endpoint.sh`, a LiteLLM v3 proxy):
 
 **Endpoint health:** the primary endpoint is intermittently down (returns 401 / connection
 reset). Before running, each benchmark probes both endpoints with one tiny call each and
-reorders to a **working endpoint first** (`vejudge.lm_engine.health`; opt out with
+reorders to a **working endpoint first** (`critical.lm_engine.health`; opt out with
 `--no-health-check`); the per-call failover remains the safety net. Check manually with
 `run/check_endpoints.sh`.
 
@@ -179,12 +179,12 @@ Written to `logs/exps/<YYMMDD-HH:MM:SS>-exps/` (Experiments logging convention):
 
 ---
 
-## Robustness grid (`vejudge-robust`)
+## Robustness grid (`criti-cal-robust`)
 
 To separate **judge sampling randomness** from **small-n correlation noise**, the robustness
 harness sweeps a grid of sampling **temperature** (rows) × **repeats** (columns), running the
-full base benchmark per cell (`vejudge.benchmark.robust`; wrapper `run/run_base_benchmark_robust.sh`).
-`vejudge-bench` itself gained `--temperature`.
+full base benchmark per cell (`critical.benchmark.robust`; wrapper `run/run_base_benchmark_robust.sh`).
+`criti-cal-bench` itself gained `--temperature`.
 
 Per temperature × judge signal it reports (`robust_summary.csv`):
 - `human_spearman_mean` / `human_spearman_std` — how the human-agreement Spearman moves across repeats
@@ -210,15 +210,15 @@ full per-cell artifacts). Gated by `--live`; `--dry-run` estimates cost.
 ## Resuming interrupted runs (`--continue`)
 
 Long runs can drop partway when the gateway is unstable. Every run **checkpoints each
-completed judge call** to `<run_dir>/judge_results.jsonl` (generic `vejudge.checkpoint.
+completed judge call** to `<run_dir>/judge_results.jsonl` (generic `critical.checkpoint.
 CheckpointStore`), persisting only successful calls. `--continue [PATH]` re-opens a run and
 reuses those, redoing only the missing units:
 
 ```bash
-vejudge-bench --continue                      # resume the most recent benchmark run
-vejudge-bench --continue logs/exps/<ts>-exps  # a specific run
-vejudge-robust --continue                     # resume the most recent grid
-vejudge-robust --continue <dir> --dry-run     # show how many cells remain (no calls)
+criti-cal-bench --continue                      # resume the most recent benchmark run
+criti-cal-bench --continue logs/exps/<ts>-exps  # a specific run
+criti-cal-robust --continue                     # resume the most recent grid
+criti-cal-robust --continue <dir> --dry-run     # show how many cells remain (no calls)
 ```
 
 - For a single run, resume skips already-judged `(item, judge)` pairs and only calls the

@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-from vejudge.experiments.prompt_repair_report import write_html_report
+from critical.experiments.prompt_repair_report import write_html_report
 
 
 def build_parser() -> argparse.ArgumentParser:

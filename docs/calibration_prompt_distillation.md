@@ -12,7 +12,7 @@ the entire debate reasoning trace, verbatim** (`render_optimized_prompt_addendum
 `verdict.reasoning_trace`, which concatenates the original rationale + every round's
 human-proxy critique + every round's judge response). Measured on a real grounded run
 (`logs/exps/260714-09:57:04`, 7 items, M5), via
-`vejudge/core/calibration/debate/eval/measure_prompt_verbosity.py`:
+`critical/core/calibration/debate/eval/measure_prompt_verbosity.py`:
 
 | item | old words |
 |---|---|
@@ -158,7 +158,7 @@ Judge node, distinct from the per-item `calibration` one).
   (modes + direction + item-independence), and a taxonomy-key-sync guard.
 - `web`: `tsc -b` clean; vitest 103 passed.
 - E2E **not** run in this exploration worktree: it launches the backend via
-  `python -m vejudge.interface.server`, which resolves to the main checkout's editable
+  `python -m critical.interface.server`, which resolves to the main checkout's editable
   install rather than this worktree's code, and bootstrapping a worktree `.venv` +
   Chromium is disproportionate for exploration. The `OPTIMIZED_PROMPT_MARKER` in
   `web/e2e/specs/cl-adversarial.spec.ts` was updated to the new confirmed-case wording;
@@ -233,7 +233,7 @@ carry no signal at n=6.
 - **n=6 caveat stands**: even with good features, a fitted tree at this size is directional
   only; a larger labeled set (≤13 M5 peanut items available) is needed for a real read.
 
-Reproduce: `python -m vejudge.core.calibration.debate.eval.run_prompt_calibration
+Reproduce: `python -m critical.core.calibration.debate.eval.run_prompt_calibration
 logs/exps/260714-09:57:04-exps --metric M5 --env-raw <path> --live`.
 
 ---

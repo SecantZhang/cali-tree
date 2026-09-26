@@ -59,7 +59,7 @@ export function NodesTab() {
       // the node where you release it on the canvas (GraphCanvas onDrop reads this payload).
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData('application/vejudge-node', n.type)
+        e.dataTransfer.setData('application/critical-node', n.type)
         e.dataTransfer.effectAllowed = 'move'
       }}
       onClick={() => handleAdd(n.type)}
@@ -111,7 +111,7 @@ export function NodesTab() {
 
   if (isLoading) return <p className="empty-hint">Loading node palette…</p>
   if (isError || !data) {
-    return <p className="empty-hint">Could not reach the backend. Is vejudge-interface running?</p>
+    return <p className="empty-hint">Could not reach the backend. Is criti-cal-interface running?</p>
   }
 
   const byCategory = new Map<string, NodeTypeOut[]>()

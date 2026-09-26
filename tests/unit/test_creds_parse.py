@@ -2,15 +2,15 @@ from pathlib import Path
 
 import pytest
 
-from vejudge.lm_engine import creds as creds_mod
-from vejudge.lm_engine.creds import _parse_env_raw, load_creds
+from critical.lm_engine import creds as creds_mod
+from critical.lm_engine.creds import _parse_env_raw, load_creds
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "env_raw_sample.txt"
 
 
 @pytest.fixture(autouse=True)
 def legacy_mode(monkeypatch):
-    monkeypatch.setenv("VEJUDGE_PROVIDER", "legacy")
+    monkeypatch.setenv("CRITICAL_PROVIDER", "legacy")
 
 
 def _clean_env(monkeypatch):

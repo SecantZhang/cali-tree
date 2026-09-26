@@ -2,11 +2,11 @@
 
 import json
 
-import vejudge.config as config
-from vejudge.database.dl_human_annotations.aggregate import aggregate_annotations
-from vejudge.database.dl_human_annotations.loader import load_human_annotations
-from vejudge.database.dl_vebench import VeBenchLoader, materialize_vebench_labels
-from vejudge.database.dl_vebench.loader import _labels
+import critical.config as config
+from critical.database.dl_human_annotations.aggregate import aggregate_annotations
+from critical.database.dl_human_annotations.loader import load_human_annotations
+from critical.database.dl_vebench import VeBenchLoader, materialize_vebench_labels
+from critical.database.dl_vebench.loader import _labels
 
 
 def _build(root):

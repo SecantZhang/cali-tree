@@ -1,7 +1,7 @@
 """fit_and_evaluate comparator coverage and the semantic-calibrator extension hook."""
 
-from vejudge.core.calibration import SemanticDecisionTreeCalibrator
-from vejudge.core.calibration.debate.eval.rule_fit import fit_and_evaluate
+from critical.core.calibration import SemanticDecisionTreeCalibrator
+from critical.core.calibration.debate.eval.rule_fit import fit_and_evaluate
 
 _IDS = [f"i{k}" for k in range(6)]
 _BASES = {i: 2.0 for i in _IDS}

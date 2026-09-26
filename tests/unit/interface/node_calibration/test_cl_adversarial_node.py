@@ -2,15 +2,15 @@ import json
 
 import pytest
 
-from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
-from vejudge.interface.node_calibration import cl_adversarial_node
-from vejudge.interface.node_calibration.cl_adversarial_node import (
+from critical.database.dl_human_annotations.aggregate import AggregatedHumanRecord
+from critical.interface.node_calibration import cl_adversarial_node
+from critical.interface.node_calibration.cl_adversarial_node import (
     ClAdversarialNodeExecutor,
     _resolve_human_context,
 )
-from vejudge.interface.node_calibration._concurrent_debate import DEBATE_CHECKPOINT_VERSION
-from vejudge.lm_engine import openai_compat
-from vejudge.lm_engine.creds import PlutoCreds
+from critical.interface.node_calibration._concurrent_debate import DEBATE_CHECKPOINT_VERSION
+from critical.lm_engine import openai_compat
+from critical.lm_engine.creds import PlutoCreds
 
 # A superset response satisfying D1's and D2's debate-turn schemas at once —
 # validate_judge_output only checks for the presence of each schema's required keys.
@@ -612,7 +612,7 @@ def test_human_scores_and_gap_survive_a_disk_reload(monkeypatch, make_ctx):
     # CheckpointStore pointed at the same file (not ctx.checkpoint, which shares the
     # live in-memory dict reference and would false-positive-pass even with the bug
     # present) is what actually proves the merge happens before the write.
-    from vejudge.checkpoint import CheckpointStore
+    from critical.checkpoint import CheckpointStore
 
     monkeypatch.setattr(openai_compat, "chat_completion", lambda **k: _fake_chat_result())
 

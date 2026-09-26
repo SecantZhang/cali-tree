@@ -1,4 +1,4 @@
-# VEJudge Evaluation Rubric & Data Schemas
+# Criti-Cal Evaluation Rubric & Data Schemas
 
 ## Key Data Schemas
 

@@ -21,11 +21,11 @@ const NODE_TYPES = [
     output_sockets: { samples: 'samples' }, param_schema: {},
   },
   {
-    type: 'judge_prompt', category: 'node_vejudge', input_sockets: {},
+    type: 'judge_prompt', category: 'node_critical', input_sockets: {},
     output_sockets: { judge_spec: 'judge_spec' }, param_schema: {},
   },
   {
-    type: 'judge', category: 'node_vejudge',
+    type: 'judge', category: 'node_critical',
     input_sockets: { samples: 'samples', engine_config: 'engine_config', judge_spec: 'judge_spec' },
     output_sockets: { judge_result: 'judge_result' }, param_schema: {},
   },
@@ -112,7 +112,7 @@ function renderApp() {
 describe('App shell', () => {
   it('renders the 4-pane layout', async () => {
     renderApp()
-    expect(screen.getByText('VEJudge Interface')).toBeInTheDocument()
+    expect(screen.getByText('Criti-Cal Interface')).toBeInTheDocument()
     expect(await screen.findByText('dataset')).toBeInTheDocument() // node palette item
     expect(screen.getByText('Select a node to inspect its parameters.')).toBeInTheDocument()
     expect(screen.getByText('Run a graph to see live logs here.')).toBeInTheDocument()

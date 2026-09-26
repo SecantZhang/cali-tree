@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from vejudge.interface.node_calibration.gepa_nodes import (
+from critical.interface.node_calibration.gepa_nodes import (
     ARTIFACT_ROOT,
     GepaFrozenNodeExecutor,
 )
@@ -40,7 +40,7 @@ def test_gepa_frozen_rejects_unknown_model_version(make_ctx):
 
 def test_gepa_frozen_errors_cleanly_on_missing_artifact(make_ctx, monkeypatch, tmp_path):
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.gepa_nodes.ARTIFACT_ROOT", tmp_path
+        "critical.interface.node_calibration.gepa_nodes.ARTIFACT_ROOT", tmp_path
     )
     result = GepaFrozenNodeExecutor().run(make_ctx(
         params={"model_version": "gepa_v1_imagenhub"},
@@ -56,7 +56,7 @@ def test_gepa_frozen_errors_cleanly_on_empty_prompt(make_ctx, monkeypatch, tmp_p
         json.dumps({"prompt": "   "}), encoding="utf-8"
     )
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.gepa_nodes.ARTIFACT_ROOT", tmp_path
+        "critical.interface.node_calibration.gepa_nodes.ARTIFACT_ROOT", tmp_path
     )
     result = GepaFrozenNodeExecutor().run(make_ctx(
         params={"model_version": "gepa_v1_imagenhub"},

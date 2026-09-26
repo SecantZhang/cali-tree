@@ -26,7 +26,7 @@ export function JudgePromptNode({ id, data, selected }: NodeProps) {
       data={d}
       selected={selected}
       title="Judge Prompt"
-      color="var(--node-vejudge)"
+      color="var(--node-critical)"
       schema={visibleSchema}
       summaryLine={(p) => `metric: ${p.preset ?? 'M1'}`}
       sockets={

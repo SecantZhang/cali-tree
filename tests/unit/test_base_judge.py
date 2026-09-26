@@ -1,7 +1,7 @@
-from vejudge.core.judge.base_judge import Judge
-from vejudge.lm_engine import openai_compat
-from vejudge.lm_engine.creds import PlutoCreds
-from vejudge.lm_engine.lm_gpt.engine import GptEngine
+from critical.core.judge.base_judge import Judge
+from critical.lm_engine import openai_compat
+from critical.lm_engine.creds import PlutoCreds
+from critical.lm_engine.lm_gpt.engine import GptEngine
 
 
 def _sample(item_id="prj-x::0::peanut"):

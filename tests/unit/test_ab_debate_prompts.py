@@ -2,19 +2,19 @@
 
 import json
 
-from vejudge.core.calibration.debate.eval import feature_extraction as fe
-from vejudge.core.calibration.debate.eval.ab_debate import (
+from critical.core.calibration.debate.eval import feature_extraction as fe
+from critical.core.calibration.debate.eval.ab_debate import (
     build_judge_ab,
     build_proxy_ab,
     direction_word,
     run_ab_debate,
 )
-from vejudge.core.calibration.debate.eval.feature_extraction import (
+from critical.core.calibration.debate.eval.feature_extraction import (
     build_decision_extra_context,
     extract_features,
 )
-from vejudge.core.calibration.debate.eval.question_bank import build_question_bank
-from vejudge.core.calibration.debate.eval.rule_extraction import extract_candidate_questions
+from critical.core.calibration.debate.eval.question_bank import build_question_bank
+from critical.core.calibration.debate.eval.rule_extraction import extract_candidate_questions
 
 
 class _ScriptedEngine:

@@ -23,4 +23,4 @@ cd "$PROJECT_DIR"
 export PYTHONWARNINGS="ignore"
 
 # --dry-run is the key flag; everything after is passed straight through.
-python -m vejudge.benchmark.cli --dry-run --models peanut "$@"
+python -m critical.benchmark.cli --dry-run --models peanut "$@"

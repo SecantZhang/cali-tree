@@ -1,5 +1,5 @@
-from vejudge.interface.node_preprocessing import edit_decomposition_node
-from vejudge.interface.node_preprocessing.edit_decomposition_node import (
+from critical.interface.node_preprocessing import edit_decomposition_node
+from critical.interface.node_preprocessing.edit_decomposition_node import (
     EditDecompositionNodeExecutor,
 )
 

@@ -1,4 +1,4 @@
-from vejudge.core.eval.rater_agreement import inter_rater_agreement
+from critical.core.eval.rater_agreement import inter_rater_agreement
 
 
 def test_perfect_agreement_is_zero_spread():

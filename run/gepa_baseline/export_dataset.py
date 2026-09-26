@@ -14,11 +14,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from vejudge.interface.node_calibration.calitree_nodes import _calibration_split, _target
-from vejudge.interface.server.executor import GraphExecutionEngine
-from vejudge.interface.server.schemas import GraphIn, to_graph_spec
-from vejudge.checkpoint import CheckpointStore
-from vejudge.logging.exp_logger import make_exp_run
+from critical.interface.node_calibration.calitree_nodes import _calibration_split, _target
+from critical.interface.server.executor import GraphExecutionEngine
+from critical.interface.server.schemas import GraphIn, to_graph_spec
+from critical.checkpoint import CheckpointStore
+from critical.logging.exp_logger import make_exp_run
 
 WORKFLOW = (
     Path(__file__).resolve().parents[2]

@@ -1,6 +1,6 @@
 import json
 
-from vejudge.core.calibration.debate.eval.concept_tagging import tag_questions_to_concepts
+from critical.core.calibration.debate.eval.concept_tagging import tag_questions_to_concepts
 
 _BANK = [
     {"question": "Does the judge over- or under-score by edit category?", "raises_score_when": "no"},

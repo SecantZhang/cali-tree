@@ -7,7 +7,7 @@ export type NodeTypeName =
   | 'cl_rule_tree' | 'cl_semantic_tree'
 
 // `page.getByText('dataset')` is a case-insensitive substring match by default, which
-// also matches unrelated static UI text ("Datasets" tab label, "VEJudge" title) —
+// also matches unrelated static UI text ("Datasets" tab label, "Criti-Cal" title) —
 // scoping to the actual palette item first avoids that false-positive class of bug.
 // Uses an exact (anchored) match: 'judge' would otherwise substring-match 'judge_prompt'.
 export function paletteItem(page: Page, nodeType: NodeTypeName): Locator {

@@ -6,7 +6,7 @@ import pytest
 PIL = pytest.importorskip("PIL")
 from PIL import Image  # noqa: E402
 
-from vejudge.preprocessing.localized_change import (  # noqa: E402
+from critical.preprocessing.localized_change import (  # noqa: E402
     LocalizedChangeConfig,
     LocalizedChangePreprocessor,
 )

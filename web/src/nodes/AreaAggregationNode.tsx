@@ -9,7 +9,7 @@ export function AreaAggregationNode({ id, data, selected }: NodeProps) {
   const d = data as VeNodeData
   return (
     <SimpleParamNode id={id} data={d} selected={selected} title="Area Aggregation"
-      color="var(--node-vejudge)" schema={NODE_PARAM_SCHEMAS.area_aggregation}
+      color="var(--node-critical)" schema={NODE_PARAM_SCHEMAS.area_aggregation}
       staticBody={<div className="rf-node-param">weighted aggregate + severe cap</div>}
       sockets={<>
         <SocketHandle kind="target" id="area_judge_result" label="area_judge_result"

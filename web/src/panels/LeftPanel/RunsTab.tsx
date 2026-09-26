@@ -26,7 +26,7 @@ export function RunsTab() {
 
   if (isLoading) return <p className="empty-hint">Loading runs…</p>
   if (isError || !data) {
-    return <p className="empty-hint">Could not reach the backend. Is vejudge-interface running?</p>
+    return <p className="empty-hint">Could not reach the backend. Is criti-cal-interface running?</p>
   }
   if (data.length === 0) return <p className="empty-hint">No past runs found under logs/exps.</p>
 

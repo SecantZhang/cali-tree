@@ -40,7 +40,7 @@ describe('prefsStore', () => {
 
   it('persists to localStorage under its own key', () => {
     usePrefsStore.getState().setLeftWidth(333)
-    const raw = localStorage.getItem('vejudge-panel-prefs')
+    const raw = localStorage.getItem('critical-panel-prefs')
     expect(raw).toBeTruthy()
     const parsed = JSON.parse(raw as string)
     expect(parsed.state.leftWidth).toBe(333)

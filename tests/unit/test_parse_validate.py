@@ -1,5 +1,5 @@
-from vejudge.core.judge.parse import parse_json_object
-from vejudge.core.judge.validate import validate_judge_output
+from critical.core.judge.parse import parse_json_object
+from critical.core.judge.validate import validate_judge_output
 
 
 def test_parse_strips_fences():

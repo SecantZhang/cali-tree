@@ -1,5 +1,5 @@
 // Static mirror of the backend's param_schema dicts (node_db/node_preprocessing/
-// node_vejudge/node_eval executors). Drives the Inspector's schema-driven form. Keep in
+// node_critical/node_eval executors). Drives the Inspector's schema-driven form. Keep in
 // sync with the backend; task-11-era work may switch this to be fetched live from
 // GET /api/nodes.
 
@@ -15,7 +15,7 @@ export interface ParamField {
   step?: number
 }
 
-// M1-M6 built-in metric presets on the Judge Prompt node (vejudge/core/rubric/
+// M1-M6 built-in metric presets on the Judge Prompt node (critical/core/rubric/
 // definitions.py), plus a "custom" free-text mode.
 const METRIC_PRESETS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'custom']
 // The human dimensions a custom judge may target (dl_human_annotations HUMAN_DIMENSIONS).

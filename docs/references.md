@@ -1,4 +1,4 @@
-# VEJudge References
+# Criti-Cal References
 
 ## Background reading (this repo)
 

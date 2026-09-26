@@ -1,10 +1,10 @@
 import pytest
 
-from vejudge.core.calibration import (
+from critical.core.calibration import (
     PromptRoutedSemanticTreeCalibrator,
     SemanticDecisionTreeCalibrator,
 )
-from vejudge.core.calibration.base import Calibrator
+from critical.core.calibration.base import Calibrator
 
 
 def test_is_a_calibrator():

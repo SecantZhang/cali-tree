@@ -1,6 +1,6 @@
 import pytest
 
-from vejudge.interface.server.registry import (
+from critical.interface.server.registry import (
     NODE_EXECUTORS,
     NodeExecutor,
     NodeRunContext,
@@ -62,8 +62,8 @@ def test_node_type_infos_reflects_registered_sockets():
 
 
 def test_calibration_nodes_carry_their_role_subcategory_and_share_its_socket_contract():
-    import vejudge.interface.node_types  # noqa: F401 - import side effect
-    from vejudge.interface.node_calibration._templates import (
+    import critical.interface.node_types  # noqa: F401 - import side effect
+    from critical.interface.node_calibration._templates import (
         CalibrationFitterNode,
         CalibrationProducerNode,
     )
@@ -82,14 +82,14 @@ def test_calibration_nodes_carry_their_role_subcategory_and_share_its_socket_con
 
 
 def test_non_subcategorized_nodes_default_to_none():
-    import vejudge.interface.node_types  # noqa: F401 - import side effect
+    import critical.interface.node_types  # noqa: F401 - import side effect
 
     assert NODE_EXECUTORS["judge"].subcategory is None
     assert NODE_EXECUTORS["eval"].subcategory is None
 
 
 def test_only_the_in_scope_node_types_are_registered():
-    import vejudge.interface.node_types  # noqa: F401 - import side effect
+    import critical.interface.node_types  # noqa: F401 - import side effect
 
     real_types = {t for t in NODE_EXECUTORS if not t.startswith("__fake")}
     assert real_types == {

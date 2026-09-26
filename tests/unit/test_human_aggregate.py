@@ -1,5 +1,5 @@
-from vejudge.database.dl_human_annotations.aggregate import aggregate_annotations
-from vejudge.database.dl_human_annotations.loader import HumanAnnotationRecord
+from critical.database.dl_human_annotations.aggregate import aggregate_annotations
+from critical.database.dl_human_annotations.loader import HumanAnnotationRecord
 
 
 def _rec(annotator, slot, scores, complete=True, ranking=None):

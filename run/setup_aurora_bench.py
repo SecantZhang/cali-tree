@@ -19,8 +19,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
 from run.setup_imagenhub import download, sha256
-from vejudge import config
-from vejudge.database.dl_aurora import (
+from critical import config
+from critical.database.dl_aurora import (
     AURORA_MODELS,
     AURORA_TASKS,
     SPLIT_SEEDS,

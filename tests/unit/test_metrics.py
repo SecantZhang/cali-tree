@@ -1,6 +1,6 @@
 import pytest
 
-from vejudge.core.eval import metrics as M
+from critical.core.eval import metrics as M
 
 
 def test_spearman_perfect_monotonic():

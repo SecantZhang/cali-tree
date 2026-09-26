@@ -8,7 +8,7 @@ from run.setup_editinspector import (
     build_manifest,
     select_rows,
 )
-from vejudge.database.dl_editinspector import (
+from critical.database.dl_editinspector import (
     EDITINSPECTOR_REVISION,
     EditInspectorLoader,
     accuracy_level_label,

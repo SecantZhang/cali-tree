@@ -3,7 +3,7 @@
 
 The GEPA optimization itself runs offline in the isolated `.venv-gepa` (see
 `run/gepa_baseline/optimize.py`); this script only evaluates its already-committed artifact
-(`vejudge/core/calibration/artifacts/gepa_v1_imagenhub.json`) through the ordinary
+(`critical/core/optimization/prompt/gepa/artifacts/gepa_v1_imagenhub.json`) through the ordinary
 `gepa_frozen -> calitree_judge -> calitree_eval` graph, exactly like the other baselines this
 project reports (Initial rubric, Global TextGrad, Cali-Tree v2). Dry-run is the default and
 makes zero gateway calls.
@@ -17,11 +17,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from vejudge import config
-from vejudge.checkpoint import CheckpointStore
-from vejudge.interface.server.executor import GraphExecutionEngine
-from vejudge.interface.server.schemas import GraphIn, to_graph_spec
-from vejudge.logging.exp_logger import make_exp_run
+from critical import config
+from critical.checkpoint import CheckpointStore
+from critical.interface.server.executor import GraphExecutionEngine
+from critical.interface.server.schemas import GraphIn, to_graph_spec
+from critical.logging.exp_logger import make_exp_run
 
 DEFAULT_WORKFLOW = (
     Path(__file__).resolve().parents[1]

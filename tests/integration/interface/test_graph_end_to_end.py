@@ -2,15 +2,15 @@
 `labels` output, joined by item id against its own sampled items, also feeding Eval), no
 network, no HTTP.
 
-Proves the graph engine's wiring against real vejudge modules (loaders, judge prompt
+Proves the graph engine's wiring against real critical modules (loaders, judge prompt
 building/parsing, alignment, metrics) before any FastAPI layer exists. The only thing
 mocked is the LM engine's HTTP transport, per CLAUDE.md's testing convention.
 """
 
 import json
 
-from vejudge.interface.server.executor import GraphExecutionEngine
-from vejudge.interface.server.run_manager import start_run
+from critical.interface.server.executor import GraphExecutionEngine
+from critical.interface.server.run_manager import start_run
 
 
 def test_graph_end_to_end(tmp_path, fixture_tree, fake_engine, quick_eval_graph):

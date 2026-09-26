@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from vejudge.database.unit_annotations import load_unit_annotations
+from critical.database.unit_annotations import load_unit_annotations
 
 
 def test_unit_annotation_loader_validates_and_normalizes(tmp_path):

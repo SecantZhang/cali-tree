@@ -1,4 +1,4 @@
-from vejudge.checkpoint import CheckpointStore
+from critical.checkpoint import CheckpointStore
 
 
 def test_put_get_has(tmp_path):

@@ -1,9 +1,9 @@
 import json
 import logging
 
-from vejudge.benchmark import robust
-from vejudge.benchmark.human_gap import HumanGapBenchmark
-from vejudge.checkpoint import CheckpointStore
+from critical.benchmark import robust
+from critical.benchmark.human_gap import HumanGapBenchmark
+from critical.checkpoint import CheckpointStore
 
 
 def _make_cell_dir(root, name, complete):
@@ -36,7 +36,7 @@ def test_scan_complete_cells(tmp_path):
 
 
 def test_find_last_robust_dir(tmp_path, monkeypatch):
-    import vejudge.config as cfg
+    import critical.config as cfg
     monkeypatch.setattr(cfg, "LOGS_ROOT", tmp_path)
     (tmp_path / "exps").mkdir()
     (tmp_path / "exps" / "260101-00:00:00-robust").mkdir()

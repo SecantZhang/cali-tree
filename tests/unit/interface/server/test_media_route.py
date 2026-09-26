@@ -3,9 +3,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
-from vejudge.interface.server.routes import media
+import critical.config as config
+from critical.interface.server.app import create_app
+from critical.interface.server.routes import media
 
 
 @pytest.fixture

@@ -23,9 +23,9 @@ from run.assumptions_pilot import distribution, features, fit_trees, save
 from run.aurora_prompt_tree import (DECOMPOSER_SYSTEM, PRESERVATION_LEAF,
     aggregate_tree, combine_requirement_leaves, compile_requirement_leaf,
     compile_fidelity_leaf, parse_requirements)
-from vejudge.experiments.aurora_prompt_repair import parse_judgment
-from vejudge.lm_engine import load_creds, openai_compat
-from vejudge.lm_engine.gate import require_live
+from critical.experiments.aurora_prompt_repair import parse_judgment
+from critical.lm_engine import load_creds, openai_compat
+from critical.lm_engine.gate import require_live
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'logs/exps/260923-20:00:01-exps/selected_records.json'

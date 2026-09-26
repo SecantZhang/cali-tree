@@ -3,8 +3,8 @@ The peanut path is covered by test_video_resolver.py and must be unaffected."""
 
 import logging
 
-import vejudge.config as config
-from vejudge.database.dl_peanut_eval import video_resolver as vr
+import critical.config as config
+from critical.database.dl_peanut_eval import video_resolver as vr
 
 
 def _coconut(root, runs=("001", "002", "003")):

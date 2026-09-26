@@ -1,4 +1,4 @@
-// Static mirror of the backend's socket shapes (vejudge/interface/server/registry.py's
+// Static mirror of the backend's socket shapes (critical/interface/server/registry.py's
 // NODE_EXECUTORS).
 
 export type SocketType =
@@ -15,15 +15,15 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   samples: 'var(--node-db)',
   labels: 'var(--node-db)',
   engine_config: 'var(--node-lm-engine)',
-  judge_spec: 'var(--node-vejudge)',
-  judge_result: 'var(--node-vejudge)',
+  judge_spec: 'var(--node-critical)',
+  judge_result: 'var(--node-critical)',
   metrics_report: 'var(--node-eval)',
   calibration_results: 'var(--node-calibration)',
   general_calibration: 'var(--node-calibration)',
   judge_rule: 'var(--node-calibration)',
   evidence_bundle: 'var(--node-preprocessing)',
-  area_rubric_spec: 'var(--node-vejudge)',
-  area_judge_result: 'var(--node-vejudge)',
+  area_rubric_spec: 'var(--node-critical)',
+  area_judge_result: 'var(--node-critical)',
   decomposition_features: 'var(--node-calibration)',
   unit_labels: 'var(--node-db)',
   active_labeling_report: 'var(--node-calibration)',

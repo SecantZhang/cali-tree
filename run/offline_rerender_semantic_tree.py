@@ -21,12 +21,12 @@ from types import SimpleNamespace
 # another checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from vejudge.checkpoint import CheckpointStore
-from vejudge.interface.node_calibration import cl_semantic_tree_node as semantic_module
-from vejudge.interface.node_calibration.cl_semantic_tree_node import ClSemanticTreeNodeExecutor
-from vejudge.interface.node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
-from vejudge.interface.server.registry import NodeRunContext
-from vejudge.logging.exp_logger import make_exp_run
+from critical.checkpoint import CheckpointStore
+from critical.interface.node_calibration import cl_semantic_tree_node as semantic_module
+from critical.interface.node_calibration.cl_semantic_tree_node import ClSemanticTreeNodeExecutor
+from critical.interface.node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
+from critical.interface.server.registry import NodeRunContext
+from critical.logging.exp_logger import make_exp_run
 
 
 class _NoCallEngine:
@@ -88,7 +88,7 @@ def main() -> None:
     semantic_module.require_live = lambda *args, **kwargs: None
     semantic_module.load_creds = lambda: None
     semantic_module.get_engine = lambda *args, **kwargs: _NoCallEngine()
-    with tempfile.TemporaryDirectory(prefix="vejudge-semantic-rerender-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="critical-semantic-rerender-") as temp_dir:
         run = make_exp_run(run_dir=Path(temp_dir))
         context = NodeRunContext(
             node_id=args.node_id,

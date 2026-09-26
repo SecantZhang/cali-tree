@@ -29,13 +29,13 @@ export PYTHONWARNINGS="ignore"
 # Worktrees commonly share the parent repository's virtualenv instead of containing
 # their own .venv. Pass the interpreter selected by the caller/shell to Playwright's
 # Node-based global setup rather than reconstructing a worktree-local path there.
-if [ -z "${VEJUDGE_E2E_PYTHON:-}" ]; then
+if [ -z "${CRITICAL_E2E_PYTHON:-}" ]; then
   COMMON_GIT_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
   SHARED_REPO_DIR="$(dirname "$COMMON_GIT_DIR")"
   if [ -x "$SHARED_REPO_DIR/.venv/bin/python3" ]; then
-    export VEJUDGE_E2E_PYTHON="$SHARED_REPO_DIR/.venv/bin/python3"
+    export CRITICAL_E2E_PYTHON="$SHARED_REPO_DIR/.venv/bin/python3"
   else
-    export VEJUDGE_E2E_PYTHON="$(command -v python3)"
+    export CRITICAL_E2E_PYTHON="$(command -v python3)"
   fi
 fi
 

@@ -3,8 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import vejudge.config as config
-from vejudge.interface.server.app import create_app
+import critical.config as config
+from critical.interface.server.app import create_app
 
 
 @pytest.fixture
@@ -22,12 +22,12 @@ def test_health_check_refuses_without_allow_live(client):
 
 
 def test_health_check_returns_endpoint_results(client, monkeypatch):
-    from vejudge.lm_engine.creds import PlutoCreds
+    from critical.lm_engine.creds import PlutoCreds
 
     # Stub creds + the actual probe so no real HTTP happens — we're testing the route's
     # gating + serialization, not the network probe (that's health.py's own concern).
     monkeypatch.setattr(
-        "vejudge.interface.server.routes.engines.load_creds",
+        "critical.interface.server.routes.engines.load_creds",
         lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
     fake_results = [
@@ -35,7 +35,7 @@ def test_health_check_returns_endpoint_results(client, monkeypatch):
         {"url": "https://mirror", "ok": False, "status": 503, "latency": 0.2, "error": "down"},
     ]
     monkeypatch.setattr(
-        "vejudge.interface.server.routes.engines.health.healthy_order",
+        "critical.interface.server.routes.engines.health.healthy_order",
         lambda creds, model=None: (["https://primary", "https://mirror"], fake_results),
     )
 
@@ -55,7 +55,7 @@ def test_health_check_400_when_no_credentials(client, monkeypatch):
         raise RuntimeError("No credentials configured")
 
     monkeypatch.setattr(
-        "vejudge.interface.server.routes.engines.load_creds", _raise
+        "critical.interface.server.routes.engines.load_creds", _raise
     )
     resp = client.post(
         "/api/engines/health-check", json={"engine_kind": "gpt", "allow_live": True}

@@ -70,7 +70,7 @@ for (const engineKind of ['gpt', 'gemini']) {
     }
 
     // Peanut Source secondary tab: selecting an item renders a real <video> pointed at
-    // the path-confined GET /api/media route (vejudge/interface/server/routes/media.py) —
+    // the path-confined GET /api/media route (critical/interface/server/routes/media.py) —
     // the fixture's placeholder .mp4 won't actually decode in a real player, but this
     // proves the src URL is built and the item's real video path reaches it end to end.
     await peanutSourceNode.dblclick()

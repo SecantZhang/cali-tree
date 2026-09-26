@@ -273,16 +273,16 @@ export function GraphCanvas() {
         onNodeContextMenu={openNodeMenu}
         onPaneContextMenu={openAddGroupMenu}
         onPaneClick={() => { selectNode(null); setMenu(null) }}
-        // Palette drag-and-drop: NodesTab items set 'application/vejudge-node' to the node
+        // Palette drag-and-drop: NodesTab items set 'application/critical-node' to the node
         // type; drop it here to add the node where released (screen→flow coords via rfRef).
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('application/vejudge-node')) {
+          if (e.dataTransfer.types.includes('application/critical-node')) {
             e.preventDefault()
             e.dataTransfer.dropEffect = 'move'
           }
         }}
         onDrop={(e) => {
-          const type = e.dataTransfer.getData('application/vejudge-node')
+          const type = e.dataTransfer.getData('application/critical-node')
           if (!type) return
           e.preventDefault()
           const pos = rfRef.current?.screenToFlowPosition({ x: e.clientX, y: e.clientY })

@@ -15,8 +15,8 @@ from pathlib import Path
 
 import requests
 
-from vejudge import config
-from vejudge.database.dl_imagenhub import EDITORS, IMAGENMUSEUM_EDITORS, build_split_manifest
+from critical import config
+from critical.database.dl_imagenhub import EDITORS, IMAGENMUSEUM_EDITORS, build_split_manifest
 
 RATINGS_BASE = (
     "https://raw.githubusercontent.com/TIGER-AI-Lab/ImagenHub/refs/heads/main/"

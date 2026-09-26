@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-python_bin="${VEJUDGE_PYTHON:-$repo_dir/.venv/bin/python}"
+python_bin="${CRITICAL_PYTHON:-$repo_dir/.venv/bin/python}"
 if [[ ! -x "$python_bin" ]]; then
   python_bin=python3
 fi

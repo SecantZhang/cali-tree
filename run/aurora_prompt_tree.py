@@ -20,12 +20,12 @@ from run.aurora_atomic_robustness import (
     select_pilot_candidates,
 )
 from run.aurora_prompt_repair import LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.experiments.aurora_prompt_repair import prompt_digest, robustness_stats
-from vejudge.experiments.structured_decision_test import select_candidate_rounds
-from vejudge.lm_engine import load_creds, openai_compat
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.llm_history import LLMHistoryWriter
+from critical.checkpoint import CheckpointStore
+from critical.experiments.aurora_prompt_repair import prompt_digest, robustness_stats
+from critical.experiments.structured_decision_test import select_candidate_rounds
+from critical.lm_engine import load_creds, openai_compat
+from critical.lm_engine.gate import require_live
+from critical.logging.llm_history import LLMHistoryWriter
 
 
 DECOMPOSER_SYSTEM = """Decompose one image-edit instruction into independent, visually

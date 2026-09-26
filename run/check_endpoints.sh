@@ -20,4 +20,4 @@ cd "$PROJECT_DIR"
 [ -f .venv/bin/activate ] && source .venv/bin/activate
 export PYTHONWARNINGS="ignore"
 
-python -m vejudge.lm_engine.health --live "$@"
+python -m critical.lm_engine.health --live "$@"

@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from vejudge.core.calibration.debate import runner as debate_runner_module
-from vejudge.core.calibration.debate.registry import debate_prompt_versions, make_debate
-from vejudge.core.calibration.debate.retrieval import RetrievedNote
-from vejudge.core.calibration.debate.runner import DebateConfig
+from critical.core.calibration.debate import runner as debate_runner_module
+from critical.core.calibration.debate.registry import debate_prompt_versions, make_debate
+from critical.core.calibration.debate.retrieval import RetrievedNote
+from critical.core.calibration.debate.runner import DebateConfig
 
 
 class _ScriptedEngine:

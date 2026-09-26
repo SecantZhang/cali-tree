@@ -11,7 +11,7 @@ import multiprocessing
 
 import pytest
 
-from vejudge.interface.server.run_registry import REGISTRY
+from critical.interface.server.run_registry import REGISTRY
 
 
 @pytest.fixture(autouse=True)

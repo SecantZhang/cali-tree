@@ -20,11 +20,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from vejudge import config
-from vejudge.checkpoint import CheckpointStore
-from vejudge.core.calibration.textgrad_adapter import textgrad_update
-from vejudge.database.dl_aurora import AuroraBenchLoader
-from vejudge.experiments.aurora_prompt_repair import (
+from critical import config
+from critical.checkpoint import CheckpointStore
+from critical.core.optimization.prompt.textgrad import textgrad_update
+from critical.database.dl_aurora import AuroraBenchLoader
+from critical.experiments.aurora_prompt_repair import (
     LABELS,
     baseline_summary,
     build_balanced_sample,
@@ -38,17 +38,17 @@ from vejudge.experiments.aurora_prompt_repair import (
     robustness_stats,
     select_anchors,
 )
-from vejudge.experiments.prompt_repair_report import write_html_report
-from vejudge.lm_engine import get_engine, load_creds
-from vejudge.lm_engine import openai_compat
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.exp_logger import make_exp_run
+from critical.experiments.prompt_repair_report import write_html_report
+from critical.lm_engine import get_engine, load_creds
+from critical.lm_engine import openai_compat
+from critical.lm_engine.gate import require_live
+from critical.logging.exp_logger import make_exp_run
 from tqdm.auto import tqdm
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROMPT_PATH = (
     REPO_ROOT
-    / "vejudge"
+    / "critical"
     / "core"
     / "prompts"
     / "templates"

@@ -18,11 +18,11 @@ import numpy as np
 from run.robust_prompt_repair_pilot import (
     ROOT, WORKER, CallStore, Pilot, digest, metrics, save,
 )
-from vejudge.lm_engine.gate import require_live
+from critical.lm_engine.gate import require_live
 
 
 SOURCE = ROOT / 'logs/exps/aurora-prompt-repair/clean_holdout_manifest.json'
-RUBRIC = ROOT / 'vejudge/core/prompts/templates/calitree_v2/initial_rubric.txt'
+RUBRIC = ROOT / 'critical/core/prompts/templates/calitree_v2/initial_rubric.txt'
 DATA = ROOT / 'data/aurora/bench'
 ARMS = ('single', 'repeated')
 

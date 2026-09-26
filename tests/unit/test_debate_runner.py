@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from vejudge.core.calibration.debate.runner import DebateConfig, DebateRunner
+from critical.core.calibration.debate.runner import DebateConfig, DebateRunner
 
 
 class _ScriptedEngine:

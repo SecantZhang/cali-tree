@@ -40,7 +40,7 @@ export function WorkflowsTab() {
 
   if (isLoading) return <p className="empty-hint">Loading workflows…</p>
   if (isError || !data) {
-    return <p className="empty-hint">Could not reach the backend. Is vejudge-interface running?</p>
+    return <p className="empty-hint">Could not reach the backend. Is criti-cal-interface running?</p>
   }
 
   const tree = buildWorkflowTree(data)

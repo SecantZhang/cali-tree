@@ -1,4 +1,4 @@
-// Thin fetch wrapper for the vejudge-interface backend (see interface.md's Run
+// Thin fetch wrapper for the criti-cal-interface backend (see interface.md's Run
 // controls section). Base URL is dev-server-configurable via VITE_API_BASE_URL so the
 // two local processes (Vite + uvicorn) can run on different ports.
 

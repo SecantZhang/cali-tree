@@ -12,16 +12,16 @@ from typing import Any, Optional
 from tqdm.auto import tqdm
 
 from run.aurora_prompt_repair import LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.experiments.aurora_prompt_repair import prompt_digest
-from vejudge.experiments.prompt_repair_report import write_html_report
-from vejudge.experiments.structured_decision_test import (
+from critical.checkpoint import CheckpointStore
+from critical.experiments.aurora_prompt_repair import prompt_digest
+from critical.experiments.prompt_repair_report import write_html_report
+from critical.experiments.structured_decision_test import (
     compare_behavior, compile_structured_prompt, parse_decision_spec,
     select_candidate_rounds, summarize,
 )
-from vejudge.lm_engine import load_creds, openai_compat
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.llm_history import LLMHistoryWriter
+from critical.lm_engine import load_creds, openai_compat
+from critical.lm_engine.gate import require_live
+from critical.logging.llm_history import LLMHistoryWriter
 
 
 EXTRACTION_SYSTEM = """Convert a natural-language vision-judge rubric into a compact,

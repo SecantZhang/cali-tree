@@ -2,13 +2,13 @@
 they must (a) never crash on a partial/invalid verdict and (b) stay concise — a
 distilled lesson, not the full transcript dump the old version embedded."""
 
-from vejudge.core.calibration.debate.calibrated_result import (
+from critical.core.calibration.debate.calibrated_result import (
     _TENDENCY,
     render_corpus_calibration_prompt,
     render_optimized_prompt_addendum,
 )
-from vejudge.core.prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
-from vejudge.core.calibration.debate.schema import DebateTranscript, DebateTurn, DebateVerdict
+from critical.core.prompts.d2_human_proxy_debate import FAILURE_MODE_TAXONOMY
+from critical.core.calibration.debate.schema import DebateTranscript, DebateTurn, DebateVerdict
 
 
 def _proxy_turn(reasoning_lines, round_no=1):

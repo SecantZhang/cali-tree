@@ -13,11 +13,11 @@ from tqdm.auto import tqdm
 
 from run.aurora_atomic_robustness import _discover_data_root, _jsonl, _remap_case_paths, _write_jsonl
 from run.aurora_prompt_repair import LiveJudge
-from vejudge.checkpoint import CheckpointStore
-from vejudge.experiments.aurora_prompt_repair import robustness_stats
-from vejudge.experiments.structured_decision_test import select_candidate_rounds
-from vejudge.lm_engine.gate import require_live
-from vejudge.logging.llm_history import LLMHistoryWriter
+from critical.checkpoint import CheckpointStore
+from critical.experiments.aurora_prompt_repair import robustness_stats
+from critical.experiments.structured_decision_test import select_candidate_rounds
+from critical.lm_engine.gate import require_live
+from critical.logging.llm_history import LLMHistoryWriter
 
 
 LABELS = ("no", "partial", "yes")

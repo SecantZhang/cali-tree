@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from vejudge.preprocessing.edit_decomposition import (
+from critical.preprocessing.edit_decomposition import (
     EditDecompositionConfig,
     EditDecompositionPreprocessor,
     _sequence_ranges,
     parse_otio_timeline,
     reconcile_boundaries,
 )
-from vejudge.evidence import LocalEvidenceStore
+from critical.evidence import LocalEvidenceStore
 
 
 def _rt(value, rate=10):

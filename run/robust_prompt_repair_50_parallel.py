@@ -15,7 +15,7 @@ from run.robust_prompt_repair_pilot import (
 from run.robust_prompt_repair_50 import (
     FiftyPilot, prepare_cases, write_report,
 )
-from vejudge.lm_engine.gate import require_live
+from critical.lm_engine.gate import require_live
 
 
 class ParallelFiftyPilot(FiftyPilot):

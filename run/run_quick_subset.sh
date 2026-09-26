@@ -26,7 +26,7 @@ cd "$PROJECT_DIR"
 export PYTHONWARNINGS="ignore"
 
 # --limit caps the number of items (the cost guardrail). Override via "$@".
-python -m vejudge.benchmark.cli \
+python -m critical.benchmark.cli \
   --models peanut \
   --judges M3,M5,M6 \
   --limit 2 \

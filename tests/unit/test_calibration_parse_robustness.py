@@ -5,10 +5,10 @@ call): several helpers called `parse_json_object` outside their try/except, so a
 nondeterministic malformed response killed the whole run instead of yielding an empty
 result. Each helper is exercised here with an engine that returns invalid JSON."""
 
-from vejudge.core.calibration.debate.eval.concept_tagging import tag_questions_to_concepts
-from vejudge.core.calibration.debate.eval.critic_extraction import extract_critic_features
-from vejudge.core.calibration.debate.eval.question_bank import build_question_bank
-from vejudge.core.calibration.debate.eval.rule_extraction import extract_candidate_questions
+from critical.core.calibration.debate.eval.concept_tagging import tag_questions_to_concepts
+from critical.core.calibration.debate.eval.critic_extraction import extract_critic_features
+from critical.core.calibration.debate.eval.question_bank import build_question_bank
+from critical.core.calibration.debate.eval.rule_extraction import extract_candidate_questions
 
 
 class _MalformedEngine:

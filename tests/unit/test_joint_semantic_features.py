@@ -1,6 +1,6 @@
 import pytest
 
-from vejudge.core.calibration.debate.eval.joint_features import (
+from critical.core.calibration.debate.eval.joint_features import (
     build_joint_feature_rows,
     build_joint_observations,
     group_calibration_variants,

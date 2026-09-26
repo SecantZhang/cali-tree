@@ -1,7 +1,7 @@
 import pytest
 
-from vejudge.core.calibration.debate.eval.rule_fit import fit_and_evaluate
-from vejudge.interface.node_calibration.evaluation_support import (
+from critical.core.calibration.debate.eval.rule_fit import fit_and_evaluate
+from critical.interface.node_calibration.evaluation_support import (
     build_observations,
     filter_constant_questions,
     impute_missing_semantic_values,

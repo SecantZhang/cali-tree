@@ -1,9 +1,9 @@
 // Static field reference for the two data shapes a Dataset node emits: the per-item
 // `samples` payload (a `JudgeSample`-shaped dict, built by
-// vejudge/database/dl_peanut_eval/curate.py::curate_sample) and the joined human `labels`
-// payload (an aggregated annotation record, vejudge/database/dl_human_annotations/
+// critical/database/dl_peanut_eval/curate.py::curate_sample) and the joined human `labels`
+// payload (an aggregated annotation record, critical/database/dl_human_annotations/
 // aggregate.py::AggregatedHumanRecord). This is UI reference copy, mirroring the field
-// lists documented in vejudge/interface/interface.md — it is NOT introspected from the
+// lists documented in critical/interface/interface.md — it is NOT introspected from the
 // backend at runtime, so keep it in sync with those two source shapes by hand if they change.
 
 export interface SchemaField {

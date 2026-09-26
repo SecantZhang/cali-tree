@@ -1,5 +1,5 @@
-from vejudge.core.calibration.debate.retrieval import find_similar_human_note
-from vejudge.database.dl_human_annotations.loader import HumanAnnotationRecord
+from critical.core.calibration.debate.retrieval import find_similar_human_note
+from critical.database.dl_human_annotations.loader import HumanAnnotationRecord
 
 
 def _rec(item_suffix, annotation, project="prj-x"):

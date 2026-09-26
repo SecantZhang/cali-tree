@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 export type Theme = 'light' | 'dark'
 
-const STORAGE_KEY = 'vejudge.theme'
+const STORAGE_KEY = 'critical.theme'
 
 interface ThemeContextValue {
   theme: Theme

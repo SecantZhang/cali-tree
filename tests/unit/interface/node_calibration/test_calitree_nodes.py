@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from vejudge.interface.node_calibration.calitree_nodes import (
+from critical.interface.node_calibration.calitree_nodes import (
     CaliTreeEvalNodeExecutor,
     CaliTreeJudgeNodeExecutor,
     CaliTreeTrainNodeExecutor,
@@ -39,11 +39,11 @@ from vejudge.interface.node_calibration.calitree_nodes import (
     _semantic_edit_type,
     _tree_metrics,
 )
-from vejudge.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
-from vejudge.interface.node_db.editinspector_source_node import (
+from critical.interface.node_db.imagenhub_source_node import ImagenHubSourceNodeExecutor
+from critical.interface.node_db.editinspector_source_node import (
     EditInspectorSourceNodeExecutor,
 )
-from vejudge.interface.node_calibration.rubric_lite_nodes import (
+from critical.interface.node_calibration.rubric_lite_nodes import (
     RubricLiteApplyNodeExecutor,
     RubricLiteBoundaryNodeExecutor,
     RubricLiteFitNodeExecutor,
@@ -69,7 +69,7 @@ def test_imagenhub_source_dry_run_needs_no_dataset_or_download(
     make_ctx, monkeypatch
 ):
     monkeypatch.setattr(
-        "vejudge.interface.node_db.imagenhub_source_node.ImagenHubLoader.load_all",
+        "critical.interface.node_db.imagenhub_source_node.ImagenHubLoader.load_all",
         lambda _self: (_ for _ in ()).throw(FileNotFoundError("not installed")),
     )
     result = ImagenHubSourceNodeExecutor().run(make_ctx(params={"editors": ["SDEdit"]}))
@@ -93,7 +93,7 @@ def test_imagenhub_source_dry_run_uses_local_records_for_exact_planning(
         for item_id in samples
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_db.imagenhub_source_node.ImagenHubLoader.load_all",
+        "critical.interface.node_db.imagenhub_source_node.ImagenHubLoader.load_all",
         lambda _self: (samples, labels),
     )
     result = ImagenHubSourceNodeExecutor().run(
@@ -120,7 +120,7 @@ def test_editinspector_source_filters_frozen_confirmation_partition(
         for item_id in samples
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_db.editinspector_source_node.EditInspectorLoader.load_all",
+        "critical.interface.node_db.editinspector_source_node.EditInspectorLoader.load_all",
         lambda _self: (samples, labels),
     )
 
@@ -1141,7 +1141,7 @@ def test_calitree_evidence_policy_requires_a_persisted_policy_before_calls(
         return object()
 
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         engine_from,
     )
     result = CaliTreeJudgeNodeExecutor().run(make_ctx(
@@ -1180,7 +1180,7 @@ def test_calitree_evidence_policy_refers_only_indeterminate_cases(
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1684,7 +1684,7 @@ def test_routed_judge_reuses_matching_training_prediction_cache(make_ctx, monkey
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1744,7 +1744,7 @@ def test_routed_judge_predicts_context_then_runs_supported_leaf(make_ctx, monkey
     calls = []
 
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1803,7 +1803,7 @@ def test_rubric_lite_judge_routes_single_root_without_embedding(make_ctx, monkey
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1853,7 +1853,7 @@ def test_rubric_lite_judge_applies_global_ordinal_cutpoints(
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1917,7 +1917,7 @@ def test_rubric_lite_judge_persists_perfect_evidence_selection(
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -1990,7 +1990,7 @@ def test_human_review_mode_requires_a_persisted_policy_before_calls(
         return object()
 
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.calitree_nodes._engine_from",
+        "critical.interface.node_calibration.calitree_nodes._engine_from",
         engine_from,
     )
     result = CaliTreeJudgeNodeExecutor().run(make_ctx(
@@ -2031,7 +2031,7 @@ def test_rubric_lite_boundary_overrides_only_partial_verifier_label(
         )
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.rubric_lite_nodes._engine_from",
+        "critical.interface.node_calibration.rubric_lite_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(
@@ -2104,7 +2104,7 @@ def test_rubric_lite_boundary_can_replace_only_selected_base_label(
         },
     }
     monkeypatch.setattr(
-        "vejudge.interface.node_calibration.rubric_lite_nodes._engine_from",
+        "critical.interface.node_calibration.rubric_lite_nodes._engine_from",
         lambda _config, _ctx: object(),
     )
     monkeypatch.setattr(

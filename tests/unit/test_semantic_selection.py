@@ -1,4 +1,4 @@
-from vejudge.core.calibration.debate.eval.semantic_selection import (
+from critical.core.calibration.debate.eval.semantic_selection import (
     select_semantic_tree_config,
 )
 

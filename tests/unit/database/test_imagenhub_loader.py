@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from vejudge.database.dl_imagenhub.loader import (
+from critical.database.dl_imagenhub.loader import (
     EDITORS,
     ImagenHubLoader,
     _parse_rating,

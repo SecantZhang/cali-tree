@@ -16,11 +16,11 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from vejudge import config
-from vejudge.checkpoint import CheckpointStore
-from vejudge.interface.server.executor import GraphExecutionEngine
-from vejudge.interface.server.schemas import GraphIn, to_graph_spec
-from vejudge.logging.exp_logger import make_exp_run
+from critical import config
+from critical.checkpoint import CheckpointStore
+from critical.interface.server.executor import GraphExecutionEngine
+from critical.interface.server.schemas import GraphIn, to_graph_spec
+from critical.logging.exp_logger import make_exp_run
 
 DEFAULT_WORKFLOW = (
     Path(__file__).resolve().parents[1]

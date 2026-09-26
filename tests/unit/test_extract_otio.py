@@ -1,6 +1,6 @@
 import json
 
-from vejudge.database.dl_peanut_eval.extract_otio import extract_assembly_from_otio
+from critical.database.dl_peanut_eval.extract_otio import extract_assembly_from_otio
 
 _OTIO = {
     "OTIO_SCHEMA": "Timeline.1",

@@ -2,7 +2,7 @@
 a standalone comparison, and derives the held-out (LOO) verdict from it. Pure display — no
 gateway calls, no dry-run/--live gating."""
 
-from vejudge.interface.node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
+from critical.interface.node_eval.cl_rule_eval_node import ClRuleEvalNodeExecutor
 
 
 _UNSET = object()

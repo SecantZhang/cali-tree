@@ -1,5 +1,5 @@
-from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
-from vejudge.interface.node_eval.eval_node import EvalNodeExecutor
+from critical.database.dl_human_annotations.aggregate import AggregatedHumanRecord
+from critical.interface.node_eval.eval_node import EvalNodeExecutor
 
 
 def _labels(dim="video_addresses_prompt"):

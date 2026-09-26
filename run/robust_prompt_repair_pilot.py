@@ -18,8 +18,8 @@ import time
 
 import numpy as np
 from openai import OpenAI, APIConnectionError, APITimeoutError, APIStatusError
-from vejudge.lm_engine import load_creds, openai_compat
-from vejudge.lm_engine.gate import require_live
+from critical.lm_engine import load_creds, openai_compat
+from critical.lm_engine.gate import require_live
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'logs/exps/260923-20:00:01-exps/selected_records.json'

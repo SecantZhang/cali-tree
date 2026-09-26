@@ -1,8 +1,8 @@
 import pytest
 
-from vejudge.interface.server.executor import GraphExecutionEngine
-from vejudge.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
-from vejudge.interface.server.registry import (
+from critical.interface.server.executor import GraphExecutionEngine
+from critical.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
+from critical.interface.server.registry import (
     NODE_EXECUTORS,
     NodeExecutor,
     NodeRunContext,

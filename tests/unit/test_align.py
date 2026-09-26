@@ -1,5 +1,5 @@
-from vejudge.database.dl_human_annotations.aggregate import AggregatedHumanRecord
-from vejudge.postprocessing.align import (
+from critical.database.dl_human_annotations.aggregate import AggregatedHumanRecord
+from critical.postprocessing.align import (
     ALIGNMENT,
     build_aligned_rows,
     derive_overall,

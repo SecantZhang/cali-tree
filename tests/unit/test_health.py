@@ -1,5 +1,5 @@
-from vejudge.lm_engine import health
-from vejudge.lm_engine.creds import PlutoCreds
+from critical.lm_engine import health
+from critical.lm_engine.creds import PlutoCreds
 
 
 def _creds():

@@ -2,7 +2,7 @@
 
 import pytest
 
-from vejudge.lm_engine import (
+from critical.lm_engine import (
     ClaudeEngine,
     DeepseekEngine,
     GeminiEngine,

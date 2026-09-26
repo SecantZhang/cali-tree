@@ -1,6 +1,6 @@
 import pytest
 
-from vejudge.interface.server.graph import (
+from critical.interface.server.graph import (
     EdgeSpec,
     GraphError,
     GraphSpec,

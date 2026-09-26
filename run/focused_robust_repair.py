@@ -18,7 +18,7 @@ from run.robust_prompt_repair_pilot import (
     ROOT, ARMS, CallStore, Pilot, candidate_issue, correct, digest, judge_request,
     load_cases, save,
 )
-from vejudge.lm_engine.gate import require_live
+from critical.lm_engine.gate import require_live
 
 PRIOR = ROOT / 'logs/exps/260924-09:37:00-exps/frozen_prompts.json'
 FOCUS = ('C08', 'C05')

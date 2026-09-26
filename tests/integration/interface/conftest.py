@@ -5,8 +5,8 @@ import multiprocessing
 import pytest
 
 from tests.e2e_fixture import build as build_fixture_tree
-from vejudge.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
-from vejudge.interface.server.run_registry import REGISTRY
+from critical.interface.server.graph import EdgeSpec, GraphSpec, NodeSpec
+from critical.interface.server.run_registry import REGISTRY
 
 
 @pytest.fixture(autouse=True)
@@ -47,8 +47,8 @@ def _graph():
 
 @pytest.fixture
 def fixture_tree(tmp_path, monkeypatch):
-    import vejudge.config as config
-    from vejudge.database.dl_peanut_eval.loader import _use_cases
+    import critical.config as config
+    from critical.database.dl_peanut_eval.loader import _use_cases
 
     paths = build_fixture_tree(tmp_path)
     monkeypatch.setattr(config, "DATA_ROOT", paths.data_root)
@@ -68,11 +68,11 @@ def quick_eval_graph():
 
 @pytest.fixture
 def fake_engine(monkeypatch):
-    from vejudge.lm_engine import openai_compat
-    from vejudge.lm_engine.creds import PlutoCreds
+    from critical.lm_engine import openai_compat
+    from critical.lm_engine.creds import PlutoCreds
 
     monkeypatch.setattr(
-        "vejudge.interface.node_vejudge.judge_node.load_creds",
+        "critical.interface.node_critical.judge_node.load_creds",
         lambda **kwargs: PlutoCreds(token="sk-test", base_url="https://primary"),
     )
 

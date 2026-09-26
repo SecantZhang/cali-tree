@@ -13,7 +13,7 @@ export function JudgeNode({ id, data, selected }: NodeProps) {
       data={d}
       selected={selected}
       title="Judge"
-      color="var(--node-vejudge)"
+      color="var(--node-critical)"
       schema={NODE_PARAM_SCHEMAS.judge}
       summaryLine={(p) => `batch: ${p.batch_size ?? 1}`}
       // 5 target sockets — widen the zone so handles stay separable (see NodeChrome).

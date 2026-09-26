@@ -2,7 +2,7 @@
 SRCC/PLCC/KRCC + human ceiling + a verdict against the published VE-Bench baselines. Pure
 display — no gateway calls."""
 
-from vejudge.interface.node_eval.alignment_report_node import (
+from critical.interface.node_eval.alignment_report_node import (
     VEBENCH_BASELINES,
     AlignmentReportNodeExecutor,
 )

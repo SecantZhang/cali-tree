@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '../..')
-const PYTHON = process.env.VEJUDGE_E2E_PYTHON ?? path.join(REPO_ROOT, '.venv/bin/python3')
+const PYTHON = process.env.CRITICAL_E2E_PYTHON ?? path.join(REPO_ROOT, '.venv/bin/python3')
 
 // The frontend's API base URL is baked in at build time (Vite inlines
 // import.meta.env.VITE_API_BASE_URL), so the backend MUST run on the exact port that
@@ -77,33 +77,33 @@ function startMockGateway(): Promise<{ pid: number; port: number }> {
 }
 
 export default async function globalSetup(): Promise<void> {
-  const tmpDir = mkdtempSync(path.join(tmpdir(), 'vejudge-e2e-'))
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'critical-e2e-'))
 
   const fixture = await buildFixtureTree(tmpDir)
   const gateway = await startMockGateway()
 
   const backend = spawn(
     PYTHON,
-    ['-m', 'vejudge.interface.server', '--port', String(BACKEND_PORT)],
+    ['-m', 'critical.interface.server', '--port', String(BACKEND_PORT)],
     {
       cwd: REPO_ROOT,
       env: {
         ...process.env,
-        VEJUDGE_DATA_ROOT: fixture.data_root,
-        VEJUDGE_RENDERED_ROOT: fixture.rendered_root,
-        VEJUDGE_HUMAN_ANNOTATIONS_ROOT: fixture.annotations_root,
-        VEJUDGE_USE_CASES_CONFIG: fixture.use_cases_path,
-        VEJUDGE_VEBENCH_ROOT: fixture.vebench_root,
+        CRITICAL_DATA_ROOT: fixture.data_root,
+        CRITICAL_RENDERED_ROOT: fixture.rendered_root,
+        CRITICAL_HUMAN_ANNOTATIONS_ROOT: fixture.annotations_root,
+        CRITICAL_USE_CASES_CONFIG: fixture.use_cases_path,
+        CRITICAL_VEBENCH_ROOT: fixture.vebench_root,
         // Scratch areas — never the real repo's logs/, workflows/, or credentials file.
-        VEJUDGE_WORKFLOWS_ROOT: path.join(tmpDir, 'workflows'),
-        VEJUDGE_LOGS_ROOT: path.join(tmpDir, 'logs'),
-        VEJUDGE_EVIDENCE_ROOT: path.join(tmpDir, 'evidence'),
-        VEJUDGE_CREDENTIALS_FILE: path.join(tmpDir, 'interface_credentials.json'),
+        CRITICAL_WORKFLOWS_ROOT: path.join(tmpDir, 'workflows'),
+        CRITICAL_LOGS_ROOT: path.join(tmpDir, 'logs'),
+        CRITICAL_EVIDENCE_ROOT: path.join(tmpDir, 'evidence'),
+        CRITICAL_CREDENTIALS_FILE: path.join(tmpDir, 'interface_credentials.json'),
         OPENAI_BASE_URL: `http://127.0.0.1:${gateway.port}`,
         OPENAI_API_KEY: 'sk-e2e-fake',
         GEMINI_API_KEY: 'gemini-e2e-fake',
         GEMINI_BASE_URL: `http://127.0.0.1:${gateway.port}`,
-        VEJUDGE_PROVIDER: '',
+        CRITICAL_PROVIDER: '',
       },
     },
   )

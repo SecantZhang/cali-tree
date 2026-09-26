@@ -1,7 +1,7 @@
 import sys
 from types import ModuleType
 
-from vejudge.core.calibration.textgrad_adapter import textgrad_update
+from critical.core.optimization.prompt.textgrad import textgrad_update
 
 
 class _Engine:

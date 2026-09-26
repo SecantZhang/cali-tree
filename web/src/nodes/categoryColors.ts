@@ -2,7 +2,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   node_db: 'var(--node-db)',
   node_lm_engine: 'var(--node-lm-engine)',
   node_preprocessing: 'var(--node-preprocessing)',
-  node_vejudge: 'var(--node-vejudge)',
+  node_critical: 'var(--node-critical)',
   node_eval: 'var(--node-eval)',
   node_calibration: 'var(--node-calibration)',
 }
@@ -13,13 +13,13 @@ export const CATEGORY_LABELS: Record<string, string> = {
   node_db: 'Data',
   node_lm_engine: 'LM Engine',
   node_preprocessing: 'Preprocessing',
-  node_vejudge: 'Judge',
+  node_critical: 'Judge',
   node_eval: 'Eval',
   node_calibration: 'Calibration',
 }
 
 export const CATEGORY_ORDER: string[] = [
-  'node_db', 'node_lm_engine', 'node_preprocessing', 'node_vejudge', 'node_eval',
+  'node_db', 'node_lm_engine', 'node_preprocessing', 'node_critical', 'node_eval',
   'node_calibration',
 ]
 

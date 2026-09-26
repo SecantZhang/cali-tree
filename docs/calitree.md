@@ -10,7 +10,7 @@
 > default pending a larger confirmation.
 
 This implementation translates the five-page *Cali-Tree: Hierarchical Calibration for VLM
-Judges* demo paper into VEJudge's workflow system. The paper specifies the construction
+Judges* demo paper into Criti-Cal's workflow system. The paper specifies the construction
 stages and the 179-task, three-repeat evaluation, but not its exact clustering thresholds,
 merge acceptance threshold, optimizer step limit, routing rule, split manifests, or original
 Gemma checkpoint. Those values are therefore explicit, versioned configuration rather than
@@ -104,7 +104,7 @@ Imagic assets, but the cited public repository contains no Imagic output directo
 
 Setup also writes task-grouped splits for seeds 42, 43, and 44. Each split contains 29
 training tasks and 150 test tasks; all eight public outputs for a task stay together, giving
-232 train and 1,200 test cases (1,432 total). Set `VEJUDGE_IMAGENHUB_ROOT` to use a
+232 train and 1,200 test cases (1,432 total). Set `CRITICAL_IMAGENHUB_ROOT` to use a
 non-default location.
 
 The source material is:
@@ -132,7 +132,7 @@ SHA-256 digests, safely extracts the images, and writes a per-file manifest. It 
 task-grouped splits (seeds 42/43/44), each with 80 source-prompt tasks for calibration and 320
 for held-out evaluation. All five model outputs for a source-prompt pair remain together,
 giving 400 train and 1,600 test outputs. Override the location with
-`VEJUDGE_AURORA_BENCH_ROOT`.
+`CRITICAL_AURORA_BENCH_ROOT`.
 
 AURORA's underlying judgment scale is already the desired ordinal scale: `0=none`,
 `1=partial`, `2=full`. The public JSON, however, exposes only the **mean of repeated human
@@ -157,7 +157,7 @@ accuracy field normally treats levels 2 and 3 as accurate.
 Materialize a deterministic class-stratified subset with:
 
 ```bash
-VEJUDGE_EDITINSPECTOR_ROOT=/path/to/editinspector \
+CRITICAL_EDITINSPECTOR_ROOT=/path/to/editinspector \
   ./run/setup_editinspector.sh --ratio 0.1 --seed 44
 ```
 
@@ -202,14 +202,14 @@ training node reports expected calls and the optimizer completion-token budget.
 
 ## Algorithm defaults
 
-Prompt templates live under `vejudge/core/prompts/templates/calitree_v1/` through
+Prompt templates live under `critical/core/prompts/templates/calitree_v1/` through
 `calitree_v4/`; v2 is the default and separates the ImagenHub Semantic Consistency target
 from standalone Perceptual Quality. V3's four-field decomposition and v4's single
 fulfillment field remain explicit experimental alternatives after underperforming v2 in
 small live comparisons. Leaf prompts use
 official `textgrad==0.1.8` for at most three updates, stopping early when correct or when the
 shared completion-token cap is exhausted. TextGrad's own optimizer prompt is supplied by the
-pinned package; VEJudge versions the task-specific gradient context and output constraints.
+pinned package; Criti-Cal versions the task-specific gradient context and output constraints.
 
 The `split_label_stratified` sampling mode preserves the official train/test boundary and
 exposes independent train/test sampling ratios. With `group_by_task=true`, sampling is by
@@ -812,7 +812,7 @@ remains one rubric call plus two cutpoints, while the evaluator now makes label 
 explicit instead of hiding it behind one accuracy number.
 
 The frozen artifact is
-`vejudge/core/calibration/artifacts/rubric_lite_v4_editinspector_cutpoints_v1.json`.
+`critical/core/calibration/artifacts/rubric_lite_v4_editinspector_cutpoints_v1.json`.
 `rubric_lite_fit` learns and reports the same two values generically;
 `rubric_lite_apply` applies them without a model call. The fully wired fit/apply graph is
 `workflows/examples/rubric_lite_editinspector_calibrated.json`. For the pending final

@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 import requests
 
 # This worker runs in an isolated GEPA environment with requests available.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "vejudge" / "lm_engine"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "critical" / "lm_engine"))
 from provider_api import chat_request, chat_response
 
 LABELS = ("no", "partial", "yes")

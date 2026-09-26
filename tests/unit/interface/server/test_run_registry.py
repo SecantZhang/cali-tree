@@ -2,11 +2,11 @@ import time
 
 import pytest
 
-import vejudge.config as config
-from vejudge.checkpoint import CheckpointStore
-from vejudge.interface.server.graph import GraphSpec, NodeSpec
-from vejudge.interface.server.run_manager import start_run
-from vejudge.interface.server.run_registry import RunRegistry
+import critical.config as config
+from critical.checkpoint import CheckpointStore
+from critical.interface.server.graph import GraphSpec, NodeSpec
+from critical.interface.server.run_manager import start_run
+from critical.interface.server.run_registry import RunRegistry
 
 
 @pytest.fixture(autouse=True)
