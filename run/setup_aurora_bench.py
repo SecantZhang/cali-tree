@@ -20,6 +20,7 @@ from typing import Any, Iterable
 
 from run.setup_imagenhub import download, sha256
 from critical import config
+from critical.database.dl_aurora.assets import materialize_output_panel
 from critical.database.dl_aurora import (
     AURORA_MODELS,
     AURORA_TASKS,
@@ -190,6 +191,11 @@ def build_manifest(
         "task_types": list(AURORA_TASKS),
         "model_counts": dict(sorted(model_counts.items())),
         "task_type_counts": dict(sorted(task_counts.items())),
+        "image_normalization": {
+            "source_left_output_right_items": sum("image_normalization" in row for row in rows),
+            "raw_assets_preserved": True,
+            "lossless_rgb_crop": True,
+        },
         "human_score_scale": {
             "minimum": 0.0,
             "maximum": 2.0,
@@ -246,6 +252,10 @@ def main() -> int:
         extract_archive(archive_path, root)
         asset_paths = validate_assets(root, rows)
 
+    # The pinned release stores source-left/output-right composites for three
+    # Something-Something editors. Preserve the archive and expose only output.
+    rows = [materialize_output_panel(root, row) for row in rows]
+    asset_paths = sorted(set(asset_paths) | set(validate_assets(root, rows)))
     metadata_path = root / "metadata.jsonl"
     metadata_path.write_text(
         "".join(

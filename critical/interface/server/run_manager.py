@@ -57,8 +57,8 @@ def count_checkpointed(run_dir: Path) -> int:
 
 
 # Outputs whose collections exceed this are stored as a summary marker (not in full) in
-# run_results.json, to keep run dirs bounded (a raw_dataset can be 1,000+ items). Matches the
-# UI's own large-value summarization — full post-hoc inspection of huge outputs isn't a goal.
+# run_results.json, to keep the index small. Full values are stored separately as
+# immutable managed artifacts so scoped reruns and restarts retain their input data.
 _MAX_INLINE = 50
 
 
@@ -73,14 +73,18 @@ def _summarize_value(value: Any) -> Any:
 def save_run_results(run: ExperimentRun, node_results: dict[str, Any], order: list[str]) -> None:
     """Persist the unified per-node results (status/error/meta/outputs) + execution order at
     run end, so a past run reconstructs faithfully from disk (see reconstruct_node_results).
-    Large outputs are summarized to bound run-dir growth."""
+    The index summarizes large outputs; managed artifacts retain their full data."""
+    from .artifacts import save_artifact
+    full_refs = {nid: save_artifact(run, nid, "node_result", {
+        "status": result.status, "error": result.error, "meta": result.meta, "outputs": result.outputs,
+    }) for nid, result in node_results.items()}
     run.write_json(
         "run_results.json",
         {
             "order": order,
             "node_results": {
                 nid: {
-                    "status": r.status, "error": r.error, "meta": r.meta,
+                    "status": r.status, "error": r.error, "meta": {**r.meta, "full_result_ref": full_refs[nid]},
                     "outputs": {k: _summarize_value(v) for k, v in (r.outputs or {}).items()},
                 }
                 for nid, r in node_results.items()
@@ -105,6 +109,16 @@ def reconstruct_node_results(run_dir: Path) -> dict[str, Any]:
     """
     saved = load_run_results(run_dir)
     if saved:
+        from .artifacts import load_artifact
+        for nid, row in saved.get("node_results", {}).items():
+            reference = row.get("meta", {}).get("full_result_ref")
+            if reference:
+                try:
+                    saved["node_results"][nid] = load_artifact(reference)
+                except ValueError:
+                    # Historical summarized results remain inspectable; reuse is
+                    # checked separately before executing a seeded workflow.
+                    pass
         return saved
 
     graph = load_workflow_graph(run_dir) or {"nodes": [], "edges": []}

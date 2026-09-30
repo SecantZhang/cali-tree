@@ -4,6 +4,7 @@ import type { VeNode } from '../../../store/graphStore'
 import { JudgeSamplePreview } from './JudgeSamplePreview'
 
 export function ImagenHubSourceSecondaryTab({ node }: { node: VeNode }) {
+  const aurora = node.type === 'aurora_source'
   const lastResult = useActiveRunStore((s) => s.lastNodeResults[node.id])
   const outputs = lastResult?.outputs as Record<string, unknown> | undefined
   const samples = (outputs?.raw_dataset ?? {}) as Record<string, Record<string, unknown>>
@@ -16,12 +17,12 @@ export function ImagenHubSourceSecondaryTab({ node }: { node: VeNode }) {
   return (
     <div>
       <div className="secondary-summary">
-        <div><strong>Loader:</strong> ImagenHub text-guided image editing</div>
+        <div><strong>Loader:</strong> {aurora ? 'AURORA image editing' : 'ImagenHub text-guided image editing'}</div>
         <div><strong>Repeat:</strong> {String(meta?.repeat ?? node.data.params.repeat ?? 1)}</div>
         <div><strong>Items:</strong> {String(meta?.n_items ?? ids.length)}</div>
         {ids.length === 0 && (
           <p className="meta-warning">
-            No materialized data. Run <code>./run/setup_imagenhub.sh</code>, then execute this node.
+            No materialized data. Run <code>{aurora ? './run/setup_aurora_bench.sh' : './run/setup_imagenhub.sh'}</code>, then execute this node.
           </p>
         )}
       </div>

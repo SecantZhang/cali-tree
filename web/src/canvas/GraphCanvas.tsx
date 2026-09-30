@@ -36,6 +36,7 @@ import { AreaAggregationNode } from '../nodes/AreaAggregationNode'
 import { EditAwareCalibrationNode } from '../nodes/EditAwareCalibrationNode'
 import { ImagenHubSourceNode } from '../nodes/ImagenHubSourceNode'
 import { EditInspectorSourceNode } from '../nodes/EditInspectorSourceNode'
+import { CaliTreeManualNode } from '../nodes/CaliTreeManualNode'
 import { CaliTreeTrainNode } from '../nodes/CaliTreeTrainNode'
 import { CaliTreeJudgeNode } from '../nodes/CaliTreeJudgeNode'
 import { CaliTreeEvalNode } from '../nodes/CaliTreeEvalNode'
@@ -76,6 +77,10 @@ const NODE_TYPES = {
   cl_rule_tree: ClRuleTreeNode,
   cl_semantic_tree: ClSemanticTreeNode,
   edit_aware_calibration: EditAwareCalibrationNode,
+  aurora_source: CaliTreeManualNode,
+  calitree_partition: CaliTreeManualNode,
+  calitree_leaf: CaliTreeManualNode,
+  calitree_merge: CaliTreeManualNode,
   calitree_train: CaliTreeTrainNode,
   calitree_judge: CaliTreeJudgeNode,
   calitree_eval: CaliTreeEvalNode,

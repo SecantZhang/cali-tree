@@ -75,3 +75,8 @@ __all__ = [
     "GepaFrozenNodeExecutor",
     "RubricLiteApplyNodeExecutor",
 ]
+
+from .node_db.aurora_source_node import AuroraSourceNodeExecutor
+from .node_calibration.calitree_manual_nodes import (  # noqa: F401
+    CaliTreePartitionNodeExecutor, CaliTreeLeafNodeExecutor, CaliTreeMergeNodeExecutor,
+)

@@ -11,6 +11,37 @@ function node() {
 }
 
 describe('CaliTreeWorkbench', () => {
+  it('displays multi-child counts and portable decision artifacts', () => {
+    const n = node()
+    activeRunStore().getState().setLastNodeResults({
+      [n.id]: { status: 'done', error: null, meta: {}, outputs: {
+        prompt_tree: {
+          version: 'calitree-modular-v1',
+          nodes: { parent: {
+            id: 'parent', level: 2, status: 'accepted', children: ['a', 'b', 'c'],
+            covered_ids: ['case'], validation_accuracy: 1, prompt: 'parent rubric', components: {},
+          } },
+          artifacts: {
+            nodes: { parent: { scope_ids: ['case', 'residual'], served_ids: ['case'],
+              policy_ref: 'hash', evaluation_refs: { case: 'evaluation' },
+              strategy_manifest: { optimizer: 'gepa', decomposition: 'two_way' },
+              provenance: { children: ['a', 'b', 'c'] } } },
+            policies: { hash: { payload: { ordered_rules: ['visible change'] } } },
+            evaluations: { evaluation: { plan: { edits: ['color'] }, checks: ['color'],
+              trace: { matched_rule: 'all satisfied' } } },
+          },
+        }, calitree_report: {},
+      } },
+    })
+    render(<CaliTreeWorkbench node={n} />)
+    expect(screen.getByText('3 children')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('parent'))
+    expect(screen.getByRole('region', { name: 'Modular node artifacts' }))
+      .toHaveTextContent('3 children · scope 2 · served 1')
+    expect(screen.getByText('Resolved strategies').parentElement).toHaveTextContent('gepa')
+    expect(screen.getByText('Compiled decision policy').parentElement).toHaveTextContent('visible change')
+    expect(screen.getByText('Instruction plans, checks, and traces').parentElement).toHaveTextContent('all satisfied')
+  })
   it('renders hierarchy selection, metrics, progress, and image cases', () => {
     const n = node()
     activeRunStore().getState().setLastNodeResults({

@@ -63,6 +63,238 @@ const SAMPLING_FIELDS: Record<string, ParamField> = {
 }
 
 export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
+  aurora_source: {
+  "repeat": {
+    "type": "enum",
+    "options": [
+      "1",
+      "2",
+      "3"
+    ],
+    "default": "1"
+  },
+  "tasks": {
+    "type": "list[string]",
+    "options": [
+      "ag",
+      "clevr",
+      "emu",
+      "epic",
+      "kubric",
+      "magicbrush",
+      "something",
+      "whatsup"
+    ],
+    "default": [
+      "ag",
+      "clevr",
+      "emu",
+      "epic",
+      "kubric",
+      "magicbrush",
+      "something",
+      "whatsup"
+    ]
+  },
+  "models": {
+    "type": "list[string]",
+    "options": [
+      "finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+      "genhowto",
+      "instruct-pix2pix-00-22000",
+      "magic_reproduce_epoch=47-step=12999",
+      "mgie"
+    ],
+    "default": [
+      "finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+      "genhowto",
+      "instruct-pix2pix-00-22000",
+      "magic_reproduce_epoch=47-step=12999",
+      "mgie"
+    ]
+  }
+},
+  calitree_partition: {
+  "validation_fraction": {
+    "type": "number",
+    "default": 0.25,
+    "min": 0.01,
+    "max": 0.99
+  },
+  "seed": {
+    "type": "number",
+    "default": 44
+  }
+},
+  calitree_leaf: {
+  "initial_prompt": {
+    "type": "text",
+    "default": ""
+  },
+  "output_mode": {
+    "type": "enum",
+    "default": "raw_prompt",
+    "options": [
+      "raw_prompt",
+      "decision_sets",
+      "both"
+    ]
+  },
+  "run_until": {
+    "type": "enum",
+    "default": "validation",
+    "options": [
+      "optimization",
+      "compilation",
+      "instruction_decomposition",
+      "evidence_checks",
+      "aggregation",
+      "validation"
+    ]
+  },
+  "optimizer_plan": {
+    "type": "enum",
+    "default": "textgrad",
+    "options": [
+      "textgrad",
+      "gepa",
+      "textgrad_then_gepa",
+      "gepa_then_textgrad",
+      "best_of_both",
+      "evaluate_only"
+    ]
+  },
+  "optimization_evaluator": {
+    "type": "enum",
+    "default": "raw_prompt",
+    "options": [
+      "raw_prompt",
+      "decomposed"
+    ]
+  },
+  "decomposition_strategy": {
+    "type": "enum",
+    "default": "two_way_vision",
+    "options": [
+      "two_way_vision",
+      "two_way"
+    ]
+  },
+  "max_steps": {
+    "type": "number",
+    "default": 3,
+    "min": 0
+  },
+  "optimizer_token_budget": {
+    "type": "number",
+    "default": 60000,
+    "min": 0
+  },
+  "gepa_python": {
+    "type": "string",
+    "default": ""
+  },
+  "selected_ids": {
+    "type": "list[string]",
+    "default": []
+  }
+},
+  calitree_merge: {
+  "initial_prompt": {
+    "type": "text",
+    "default": ""
+  },
+  "output_mode": {
+    "type": "enum",
+    "default": "raw_prompt",
+    "options": [
+      "raw_prompt",
+      "decision_sets",
+      "both"
+    ]
+  },
+  "run_until": {
+    "type": "enum",
+    "default": "validation",
+    "options": [
+      "synthesis",
+      "refinement",
+      "compilation",
+      "instruction_decomposition",
+      "evidence_checks",
+      "aggregation",
+      "validation"
+    ]
+  },
+  "optimizer_plan": {
+    "type": "enum",
+    "default": "textgrad",
+    "options": [
+      "textgrad",
+      "gepa",
+      "textgrad_then_gepa",
+      "gepa_then_textgrad",
+      "best_of_both",
+      "evaluate_only"
+    ]
+  },
+  "optimization_evaluator": {
+    "type": "enum",
+    "default": "raw_prompt",
+    "options": [
+      "raw_prompt",
+      "decomposed"
+    ]
+  },
+  "decomposition_strategy": {
+    "type": "enum",
+    "default": "two_way_vision",
+    "options": [
+      "two_way_vision",
+      "two_way"
+    ]
+  },
+  "max_steps": {
+    "type": "number",
+    "default": 3,
+    "min": 0
+  },
+  "optimizer_token_budget": {
+    "type": "number",
+    "default": 60000,
+    "min": 0
+  },
+  "gepa_python": {
+    "type": "string",
+    "default": ""
+  },
+  "merge_strategy": {
+    "type": "enum",
+    "default": "joint",
+    "options": [
+      "joint",
+      "concatenate"
+    ]
+  },
+  "merge_acceptance": {
+    "type": "number",
+    "default": 0.8,
+    "min": 0,
+    "max": 1
+  },
+  "merge_generalization_floor": {
+    "type": "number",
+    "default": 0.8,
+    "min": 0,
+    "max": 1
+  },
+  "merge_regression_tolerance": {
+    "type": "number",
+    "default": 0.05,
+    "min": 0,
+    "max": 1
+  }
+},
   // One source node per model (Peanut/Coconut/Grapenut); wire several into one Dataset
   // node (its raw_dataset is a fan-in socket) to calibrate across models. Each loads its
   // own model; `projects` optionally restricts to a subset.
@@ -230,6 +462,15 @@ export const NODE_PARAM_SCHEMAS: Record<string, Record<string, ParamField>> = {
     bootstrap_repeats: { type: 'number', default: 1000, min: 0 },
   },
   calitree_train: {
+    modular_mode: { type: 'bool', default: false },
+    optimizer_plan: {
+      type: 'enum', default: 'textgrad',
+      options: ['textgrad', 'gepa', 'textgrad_then_gepa', 'gepa_then_textgrad', 'best_of_both', 'evaluate_only'],
+    },
+    decomposition_strategy: { type: 'enum', default: 'two_way', options: ['two_way', 'two_way_vision'] },
+    merge_strategy: { type: 'enum', default: 'prompt_synthesis', options: ['prompt_synthesis', 'concatenate'] },
+    max_merge_children: { type: 'number', default: 2, min: 2, step: 1 },
+    gepa_python: { type: 'string', default: '' },
     embedding_model: { type: 'string', default: '' },
     prompt_version: {
       type: 'enum',

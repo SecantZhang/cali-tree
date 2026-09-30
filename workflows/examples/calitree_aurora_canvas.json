@@ -1,0 +1,257 @@
+{
+  "name": "calitree_aurora_canvas",
+  "graph": {
+    "nodes": [
+      {
+        "id": "aurora",
+        "type": "aurora_source",
+        "params": {
+          "repeat": "1"
+        }
+      },
+      {
+        "id": "dataset",
+        "type": "dataset",
+        "params": {
+          "full_dataset": true,
+          "require_labels": true
+        }
+      },
+      {
+        "id": "partition",
+        "type": "calitree_partition",
+        "params": {
+          "validation_fraction": 0.25,
+          "seed": 44
+        }
+      },
+      {
+        "id": "judge_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "max_tokens": 4096,
+          "health_check": false
+        }
+      },
+      {
+        "id": "optimizer_engine",
+        "type": "lm_engine",
+        "params": {
+          "engine_kind": "gpt",
+          "model": "",
+          "max_tokens": 4096,
+          "health_check": false
+        }
+      },
+      {
+        "id": "leaf1",
+        "type": "calitree_leaf",
+        "params": {
+          "selected_ids": [],
+          "output_mode": "raw_prompt",
+          "run_until": "optimization",
+          "optimizer_plan": "textgrad",
+          "decomposition_strategy": "two_way_vision"
+        }
+      },
+      {
+        "id": "leaf2",
+        "type": "calitree_leaf",
+        "params": {
+          "selected_ids": [],
+          "output_mode": "raw_prompt",
+          "run_until": "optimization",
+          "optimizer_plan": "textgrad",
+          "decomposition_strategy": "two_way_vision"
+        }
+      },
+      {
+        "id": "leaf3",
+        "type": "calitree_leaf",
+        "params": {
+          "selected_ids": [],
+          "output_mode": "raw_prompt",
+          "run_until": "optimization",
+          "optimizer_plan": "textgrad",
+          "decomposition_strategy": "two_way_vision"
+        }
+      },
+      {
+        "id": "merge",
+        "type": "calitree_merge",
+        "params": {
+          "output_mode": "decision_sets",
+          "run_until": "validation",
+          "merge_strategy": "joint",
+          "decomposition_strategy": "two_way_vision"
+        }
+      },
+      {
+        "id": "judge",
+        "type": "calitree_judge",
+        "params": {}
+      },
+      {
+        "id": "eval",
+        "type": "calitree_eval",
+        "params": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "aurora",
+        "source_socket": "raw_dataset",
+        "target": "dataset",
+        "target_socket": "raw_dataset"
+      },
+      {
+        "source": "aurora",
+        "source_socket": "raw_labels",
+        "target": "dataset",
+        "target_socket": "raw_labels"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "samples",
+        "target": "partition",
+        "target_socket": "samples"
+      },
+      {
+        "source": "dataset",
+        "source_socket": "labels",
+        "target": "partition",
+        "target_socket": "labels"
+      },
+      {
+        "source": "partition",
+        "source_socket": "partition",
+        "target": "leaf1",
+        "target_socket": "partition"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "leaf1",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "optimizer_engine",
+        "source_socket": "engine_config",
+        "target": "leaf1",
+        "target_socket": "optimizer_engine"
+      },
+      {
+        "source": "partition",
+        "source_socket": "partition",
+        "target": "leaf2",
+        "target_socket": "partition"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "leaf2",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "optimizer_engine",
+        "source_socket": "engine_config",
+        "target": "leaf2",
+        "target_socket": "optimizer_engine"
+      },
+      {
+        "source": "partition",
+        "source_socket": "partition",
+        "target": "leaf3",
+        "target_socket": "partition"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "leaf3",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "optimizer_engine",
+        "source_socket": "engine_config",
+        "target": "leaf3",
+        "target_socket": "optimizer_engine"
+      },
+      {
+        "source": "partition",
+        "source_socket": "partition",
+        "target": "merge",
+        "target_socket": "partition"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "merge",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "optimizer_engine",
+        "source_socket": "engine_config",
+        "target": "merge",
+        "target_socket": "optimizer_engine"
+      },
+      {
+        "source": "leaf1",
+        "source_socket": "node",
+        "target": "merge",
+        "target_socket": "children"
+      },
+      {
+        "source": "leaf2",
+        "source_socket": "node",
+        "target": "merge",
+        "target_socket": "children"
+      },
+      {
+        "source": "leaf3",
+        "source_socket": "node",
+        "target": "merge",
+        "target_socket": "children"
+      },
+      {
+        "source": "partition",
+        "source_socket": "test_samples",
+        "target": "judge",
+        "target_socket": "samples"
+      },
+      {
+        "source": "merge",
+        "source_socket": "node",
+        "target": "judge",
+        "target_socket": "calitree_node"
+      },
+      {
+        "source": "judge_engine",
+        "source_socket": "engine_config",
+        "target": "judge",
+        "target_socket": "judge_engine"
+      },
+      {
+        "source": "judge",
+        "source_socket": "judge_result",
+        "target": "eval",
+        "target_socket": "judge_result"
+      },
+      {
+        "source": "partition",
+        "source_socket": "test_samples",
+        "target": "eval",
+        "target_socket": "samples"
+      },
+      {
+        "source": "partition",
+        "source_socket": "test_labels",
+        "target": "eval",
+        "target_socket": "labels"
+      }
+    ]
+  },
+  "created_at": "2026-09-27T00:00:00Z",
+  "updated_at": "2026-09-27T00:00:00Z"
+}

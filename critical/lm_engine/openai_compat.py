@@ -23,6 +23,8 @@ class ChatResult:
     endpoint_host: str
     latency_s: float
     model: str
+    finish_reason: Optional[str] = None
+    refusal: Optional[str] = None
 
 
 @dataclass
@@ -87,7 +89,9 @@ def chat_completion(
     temperature: float = 0.3,
     timeout: int = 300,
     max_retries: int = 4,
+    max_http_attempts: Optional[int] = None,
     provider: Optional[str] = None,
+    response_format: Optional[dict[str, Any]] = None,
 ) -> ChatResult:
     """POST to the first reachable endpoint, falling over to the rest in order.
 
@@ -95,22 +99,34 @@ def chat_completion(
     — are retried on the *same* endpoint up to ``max_retries`` times. A 429 falls through
     to a configured mirror immediately, but retains the same-endpoint retry behavior when
     it is the only endpoint. Non-retryable responses (e.g. 400/401/404) fall over
-    immediately. Raises only if all endpoints fail.
+    immediately. ``max_http_attempts`` optionally caps all POST attempts across
+    retries and endpoints; exhaustion stops without sleeping or using a mirror.
+    None preserves the existing retry policy. Raises if no attempt succeeds.
     """
+    if max_http_attempts is not None and (type(max_http_attempts) is not int or max_http_attempts < 1):
+        raise ValueError("max_http_attempts must be a positive integer or None")
     errors: list[str] = []
+    attempts = 0
     for endpoint_index, base in enumerate(endpoints):
+        if max_http_attempts is not None and attempts >= max_http_attempts:
+            break
         url, payload, headers, dialect = chat_request(
-            base, token, model, messages, max_tokens, temperature, provider
+            base, token, model, messages, max_tokens, temperature, provider, response_format
         )
         host = urlparse(url).netloc
         for attempt in range(max_retries + 1):
+            if max_http_attempts is not None and attempts >= max_http_attempts:
+                break
+            attempts += 1
+            may_retry = max_http_attempts is None or attempts < max_http_attempts
             t0 = time.time()
             try:
-                resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+                transport_options = {"allow_redirects": False} if max_http_attempts is not None else {}
+                resp = requests.post(url, json=payload, headers=headers, timeout=timeout, **transport_options)
                 latency = time.time() - t0
             except requests.RequestException as e:  # connection reset / read timeout
                 errors.append(f"{host}: {type(e).__name__}: {e}")
-                if attempt < max_retries:
+                if attempt < max_retries and may_retry:
                     time.sleep(_retry_after_seconds(None, attempt))
                     continue
                 break  # exhausted -> next endpoint
@@ -123,19 +139,21 @@ def chat_completion(
                 if resp.status_code == 429 and endpoint_index < len(endpoints) - 1:
                     errors.append(f"{host}: HTTP 429 {resp.text[:300]}")
                     break
-                if attempt < max_retries:
+                if attempt < max_retries and may_retry:
                     time.sleep(_retry_after_seconds(resp, attempt))
                     continue
                 errors.append(f"{host}: HTTP {resp.status_code} {resp.text[:300]}")
                 break  # exhausted -> next endpoint
-            if resp.status_code >= 400:
+            if resp.status_code >= 400 or (max_http_attempts is not None and resp.status_code >= 300):
                 errors.append(f"{host}: HTTP {resp.status_code} {resp.text[:500]}")
                 break  # non-retryable -> next endpoint
 
             data = resp.json()
             content, prompt_tokens, completion_tokens, total_tokens, returned_model = chat_response(data, dialect, model)
+            choice = (data.get("choices") or [{}])[0] if dialect != "gemini" else {}
             return ChatResult(content, prompt_tokens, completion_tokens, total_tokens,
-                              host, latency, returned_model)
+                              host, latency, returned_model, choice.get("finish_reason"),
+                              (choice.get("message") or {}).get("refusal"))
 
     raise RuntimeError(
         "All chat/completions endpoints failed:\n  " + "\n  ".join(errors)

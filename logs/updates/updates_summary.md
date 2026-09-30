@@ -1,3 +1,59 @@
+## 260930-13:18:26 — Publish current CaliTree progress
+- Type: chore
+- Scope: modular CaliTree, canvas, research runners/reports and project setup
+- What: Prepare accumulated progress and compact experiment exports for commit and push on calitree-development.
+- Why: Preserve the user's current implementation and research checkpoint in GitHub.
+- Details: [logs/updates/details/260930-13:18:26-updates.md](details/260930-13:18:26-updates.md)
+
+## 260930-11:18:02 — Five-repeat CaliTree agreement with eight-worker continuation
+- Type: feature
+- Scope: bounded observation runners/tests, experiment reports and CaliTree assumptions
+- What: Completed three additional draws on 50 fixed cases; added shared-budget concurrency eight and audited 60%/80%/100% agreement.
+- Why: Measure per-case repeatability while preserving prior draws, failures and the simple decomposition method.
+- Details: [logs/updates/details/260930-11:18:02-updates.md](details/260930-11:18:02-updates.md)
+
+## 260929-22:30:00 — Fifty-case Luna observation expansion
+- Type: feature
+- Scope: bounded experiment driver/tests, per-case reports, CaliTree assumptions
+- What: Completed the approved 50-case study: 19 compilations and 224 observation attempts, with full failure accounting and case/condition exports.
+- Why: Measure fresh repeatability across a broader task mix without changing the decomposition algorithm or treating labels as gold.
+- Details: [logs/updates/details/260929-22:30:00-updates.md](details/260929-22:30:00-updates.md)
+
+## 260929-22:13:40 — Approved Luna reliability pilot and audit
+- Type: docs
+- Scope: CaliTree experiment results, assumptions and per-case observation audit
+- What: Recorded 13 successful condition measurements, one transport failure and four unexecuted calls; fresh-reliability screen did not pass.
+- Why: Separate repeated visible observations, categorical-state reliability and provisional label agreement without case-specific repairs.
+- Details: [logs/updates/details/260929-22:13:40-updates.md](details/260929-22:13:40-updates.md)
+
+## 260929-22:08:43 — Luna fresh-observation reliability prototype
+- Type: feature
+- Scope: CaliTree experiment runner/tests, provider sampling adapter, assumption/protocol documentation
+- What: Prepared a bounded three-case, three-repeat frozen-criteria pilot; offline checks pass, live transfer awaits explicit approval.
+- Why: Test fresh casewise observation reliability without special-case machinery, using the user's requested low-cost model.
+- Details: [logs/updates/details/260929-22:08:43-updates.md](details/260929-22:08:43-updates.md)
+
+## 260926-19:36:34 — Restart decomposition research around individual-case accuracy
+- Type: feature
+- Scope: tests/unit/calitree/casewise_fitting.py; versioned casefit templates; tests; reports; README
+- What: Restart decomposition research around individual-case accuracy; real-model results and full case histories recorded.
+- Why: Improve decomposed prompt agreement with human labels under the user’s current research criterion.
+- Details: logs/updates/details/260926-19:36:34-updates.md
+
+## 260926-19:36:33 — Opt-in strict structured output and observation diagnostics
+- Type: fix
+- Scope: critical/lm_engine; tests/unit/test_structured_output.py; CaliTree research reports
+- What: Opt-in strict structured output and observation diagnostics; real-model results and full case histories recorded.
+- Why: Improve decomposed prompt agreement with human labels under the user’s current research criterion.
+- Details: logs/updates/details/260926-19:36:33-updates.md
+
+## 260926-18:13:32 — Validate and integrate opt-in visual CaliTree decomposition
+- Type: feature
+- Scope: CaliTree decomposition, versioned templates, unit contracts, AURORA validation fixture and reports
+- What: Added an opt-in image-backed grading strategy with optional visual calibration and exact replay of 192 recorded arms; frozen unseen-source validation scores 28/32 versus 26/32 for the existing intent strategy.
+- Why: Test the promising development method on untouched sources and make it usable through the established module pattern, while preserving defaults and reporting remaining mismatches.
+- Details: logs/updates/details/260926-18:13:32-updates.md
+
 ## 260925-20:59:47 — Add PyCharm unit test launcher
 - Type: chore
 - Scope: .run/All Unit Tests.run.xml

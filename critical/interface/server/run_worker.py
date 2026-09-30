@@ -63,6 +63,7 @@ def run_graph_worker(
             target_node_id=job.get("target_node_id"),
             seed_results=job.get("seed_results"),
             seed_node_ids=job.get("seed_node_ids"),
+            stage_requests=job.get("stage_requests"),
         )
         result = engine.execute()
     except BaseException as exc:  # process boundary: always give the parent a result

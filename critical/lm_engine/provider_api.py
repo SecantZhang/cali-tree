@@ -18,15 +18,20 @@ def api_provider(base: str, provider: Optional[str] = None) -> str:
 
 
 def chat_request(base: str, token: str, model: str, messages: list[dict[str, Any]],
-                 max_tokens: int, temperature: float, provider: Optional[str] = None):
+                 max_tokens: int, temperature: float, provider: Optional[str] = None,
+                 response_format: Optional[dict[str, Any]] = None):
     """Return URL, payload, headers, and response dialect for one completion."""
     dialect = api_provider(base, provider)
+    if response_format is not None and dialect != "openai":
+        raise ValueError("Strict structured output is supported only by the official OpenAI adapter; it cannot silently fall back to advisory JSON")
     headers = {"Content-Type": "application/json; charset=UTF-8"}
     if dialect != "gemini":
         payload = {"model": model, "messages": messages, "temperature": temperature}
+        if response_format is not None:
+            payload["response_format"] = response_format
         payload["max_completion_tokens" if dialect == "openai" else "max_tokens"] = max_tokens
         # These GPT versions allow sampling temperature with reasoning disabled.
-        if dialect == "openai" and re.match(r"^gpt-5\.(?:1|2|4)(?:-(?:mini|nano))?(?:-\d{4}-\d{2}-\d{2})?$", model):
+        if dialect == "openai" and (model == "gpt-6-luna" or re.match(r"^gpt-5\.(?:1|2|4)(?:-(?:mini|nano))?(?:-\d{4}-\d{2}-\d{2})?$", model)):
             payload["reasoning_effort"] = "none"
         elif dialect == "openai" and (model.startswith(("o1", "o3", "o4")) or model.startswith("gpt-5")):
             # Do not silently discard a requested experimental temperature.

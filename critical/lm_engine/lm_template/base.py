@@ -41,6 +41,7 @@ class LMEngine(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.3,
         timeout: int = 300,
+        max_http_attempts: Optional[int] = None,
     ) -> None:
         self.model = model or self.default_model
         self._creds = creds
@@ -48,6 +49,9 @@ class LMEngine(ABC):
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.timeout = timeout
+        if max_http_attempts is not None and (type(max_http_attempts) is not int or max_http_attempts < 1):
+            raise ValueError("max_http_attempts must be a positive integer or None")
+        self.max_http_attempts = max_http_attempts
 
     # --- lazy creds so constructing an engine never hits the filesystem -------
     @property
@@ -99,13 +103,27 @@ class LMEngine(ABC):
         *,
         system: Optional[str] = None,
         model: Optional[str] = None,
+        strict_schema: bool = False,
     ) -> dict[str, Any]:
         """Run one completion. Returns content + token usage (+ parsed JSON if ``schema``).
 
-        ``schema`` is advisory: when provided, the engine attempts to ``json.loads`` the
+        By default ``schema`` is advisory: the engine attempts to ``json.loads`` the
         response and returns it under ``parsed`` (None on failure). Strict validation is
-        the judge layer's job.
+        the judge layer's job. With ``strict_schema=True``, a nonempty object JSON Schema
+        is sent as an OpenAI strict response format. Refusals and truncation still need
+        caller handling, and semantic validation remains the judge layer's job.
         """
+        response_options = {}
+        if self.max_http_attempts is not None:
+            response_options["max_http_attempts"] = self.max_http_attempts
+        if strict_schema:
+            if not isinstance(schema, dict) or schema.get("type") != "object" or not schema.get("properties"):
+                raise ValueError("strict_schema requires a nonempty object JSON Schema")
+            response_options["response_format"] = {
+                "type": "json_schema", "json_schema": {
+                    "name": "critical_output", "strict": True, "schema": schema,
+                },
+            }
         chosen_model = model or self.model
         messages = self._build_messages(prompt, media_inputs, system)
 
@@ -121,6 +139,7 @@ class LMEngine(ABC):
                 temperature=self.temperature,
                 timeout=self.timeout,
                 provider=self.creds.provider,
+                **response_options,
             )
         except Exception as e:  # noqa: BLE001 - logged & surfaced to caller
             error = f"{type(e).__name__}: {e}"
@@ -139,6 +158,9 @@ class LMEngine(ABC):
                 latency_s=result.latency_s if result else None,
                 endpoint=result.endpoint_host if result else None,
                 error=error,
+                extra={**response_options,
+                       **({"finish_reason": result.finish_reason} if result and result.finish_reason is not None else {}),
+                       **({"refusal": result.refusal} if result and result.refusal is not None else {})},
             )
 
         if error is not None:
@@ -159,4 +181,8 @@ class LMEngine(ABC):
                 out["parsed"] = json.loads(content) if content else None
             except (json.JSONDecodeError, TypeError):
                 out["parsed"] = None
+        if result.finish_reason is not None:
+            out["finishReason"] = result.finish_reason
+        if result.refusal is not None:
+            out["refusal"] = result.refusal
         return out

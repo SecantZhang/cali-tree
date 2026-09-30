@@ -92,7 +92,7 @@ def fake_http(monkeypatch, response):
     return calls
 
 
-@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5.4-mini"])
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5.4-mini", "gpt-6-luna"])
 def test_openai_endpoint_auth_images_token_limit(monkeypatch, tmp_path, model):
     monkeypatch.setenv("OPENAI_API_KEY", "oa-key")
     calls = fake_http(monkeypatch, {"model": model + "-snapshot", "choices": [{"message": {"content": '{"label":"yes"}'}}], "usage": {"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6}})
@@ -105,7 +105,7 @@ def test_openai_endpoint_auth_images_token_limit(monkeypatch, tmp_path, model):
     assert call["json"]["max_completion_tokens"] == 4096
     assert "max_tokens" not in call["json"]
     assert call["json"]["messages"][1]["content"][1]["image_url"]["url"].startswith("data:image/jpeg;")
-    if model == "gpt-5.4-mini":
+    if model in {"gpt-5.4-mini", "gpt-6-luna"}:
         assert call["json"]["reasoning_effort"] == "none"
     assert result["parsed"] == {"label": "yes"}
     assert result["model"] == model + "-snapshot"

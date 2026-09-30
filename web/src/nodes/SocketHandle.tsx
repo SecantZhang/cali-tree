@@ -7,12 +7,13 @@ import { Handle, Position } from '@xyflow/react'
  * Handle's own hit-testing/connection-line geometry.
  */
 export function SocketHandle({
-  kind, id, label, top, color,
+  kind, id, label, top, color, disabled = false,
 }: {
   kind: 'source' | 'target'
   id: string
   label: string
   top: string
+  disabled?: boolean
   color: string
 }) {
   const isTarget = kind === 'target'
@@ -20,7 +21,8 @@ export function SocketHandle({
     <>
       <Handle
         type={kind} position={isTarget ? Position.Left : Position.Right} id={id}
-        style={{ top, background: color }}
+        isConnectable={!disabled}
+        style={{ top, background: color, opacity: disabled ? .35 : 1 }}
       />
       <span
         className={`rf-node-socket-label ${isTarget ? 'rf-node-socket-label-left' : 'rf-node-socket-label-right'}`}

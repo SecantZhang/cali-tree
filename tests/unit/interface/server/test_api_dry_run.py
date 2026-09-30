@@ -74,6 +74,7 @@ def test_list_node_types_returns_exactly_the_in_scope_set(client):
         "gepa_frozen",
         "rubric_lite_fit", "rubric_lite_apply",
         "calitree_judge", "calitree_eval",
+        "aurora_source", "calitree_partition", "calitree_leaf", "calitree_merge",
     }
 
 

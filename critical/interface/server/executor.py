@@ -63,6 +63,7 @@ class GraphExecutionEngine:
         # of whatever remains). Requires `seed_results` to cover every id here (the route
         # validates that up front).
         seed_node_ids: Optional[set[str]] = None,
+        stage_requests: Optional[dict[str, Any]] = None,
     ) -> None:
         self.graph = graph
         self.run = run
@@ -75,6 +76,7 @@ class GraphExecutionEngine:
         self.target_node_id = target_node_id
         self.seed_results = seed_results
         self.seed_node_ids = seed_node_ids or set()
+        self.stage_requests = stage_requests or {}
 
     def _emit(self, event: str, payload: dict[str, Any]) -> None:
         if self.progress_cb:
@@ -215,6 +217,7 @@ class GraphExecutionEngine:
                 event, {**payload, "node_id": _nid}
             ),
             should_stop=self.should_stop,
+            execution_options=self.stage_requests.get(node_id, {}),
             on_batch=on_batch,
         )
         t0 = time.perf_counter()

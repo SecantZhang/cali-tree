@@ -31,6 +31,8 @@ That override applies process-wide, so leave it unset for mixed-provider workflo
 
 OpenAI uses Chat Completions with `max_completion_tokens`. GPT-5.1/5.2/5.4 sampling
 uses `reasoning_effort=none`, including the AURORA `gpt-5.4-mini` configuration.
+The same sampling configuration is supported for explicit `gpt-6-luna` calls;
+the fresh CaliTree observation pilot uses that model at temperature 0.
 Earlier GPT-5 and o-series reasoning models require temperature 1 in this adapter;
 unsupported sampling settings fail explicitly rather than changing an experiment's
 temperature silently. Model availability still depends on the provider/account. Use

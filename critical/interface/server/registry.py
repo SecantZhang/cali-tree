@@ -44,6 +44,7 @@ class NodeRunContext:
     # `supports_partial_input` node against an in-flight upstream batch — never true for a
     # node's own normal, authoritative run at its regular position in topological order.
     is_preview: bool = False
+    execution_options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

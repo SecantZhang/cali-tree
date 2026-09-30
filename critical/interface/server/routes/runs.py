@@ -8,6 +8,7 @@ isolated worker process.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from ..artifacts import load_artifact
 
 from .. import run_manager
 from ..graph import GraphError, ancestors_closure, topological_sort, validate_edges
@@ -52,6 +53,25 @@ def create_run(req: RunRequest) -> RunStatusOut:
 
     target_node_id = req.target_node_id
     seed_results = None
+    stage_requests = {node_id: value.model_dump() for node_id, value in req.stage_requests.items()}
+    for node_id in stage_requests:
+        node = next((node for node in spec.nodes if node.id == node_id), None)
+        if node is None or node.type not in {"calitree_leaf", "calitree_merge"}:
+            raise HTTPException(status_code=400, detail="Stage requests require a CaliTree leaf or merge")
+
+    def seed_from(run_id):
+        handle = REGISTRY.get(run_id)
+        if handle is not None and handle.result is not None:
+            return handle.result.node_results
+        directory = run_manager.run_dir_for(run_id)
+        if not directory.is_dir():
+            raise HTTPException(status_code=404, detail=f"No prior run '{run_id}'")
+        from ..registry import NodeRunResult
+        saved = run_manager.reconstruct_node_results(directory)
+        for row in saved.get("node_results", {}).values():
+            if any(isinstance(value, dict) and "__summary__" in value for value in row.get("outputs", {}).values()):
+                raise HTTPException(status_code=400, detail="Prior run has incomplete disk artifacts; run the ancestor chain again")
+        return {key: NodeRunResult(**row) for key, row in saved.get("node_results", {}).items()}
 
     if req.run_mode == "ancestors":
         if not target_node_id:
@@ -74,13 +94,7 @@ def create_run(req: RunRequest) -> RunStatusOut:
             raise HTTPException(
                 status_code=400, detail="seed_run_id is required when run_mode='self_only'"
             )
-        seed_handle = REGISTRY.get(req.seed_run_id)
-        if seed_handle is None or seed_handle.result is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No completed prior run '{req.seed_run_id}' to re-run from",
-            )
-        seed_results = seed_handle.result.node_results
+        seed_results = seed_from(req.seed_run_id)
         try:
             ancestor_ids = {n.id for n in ancestors_closure(spec, target_node_id).nodes}
         except GraphError as e:
@@ -104,13 +118,7 @@ def create_run(req: RunRequest) -> RunStatusOut:
                 status_code=400, detail="seed_run_id is required when there are locked nodes"
             )
         if seed_results is None:
-            seed_handle = REGISTRY.get(req.seed_run_id)
-            if seed_handle is None or seed_handle.result is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No completed prior run '{req.seed_run_id}' to reuse locked results from",
-                )
-            seed_results = seed_handle.result.node_results
+            seed_results = seed_from(req.seed_run_id)
         missing = sorted(seed_node_ids - set(seed_results))
         if missing:
             raise HTTPException(
@@ -129,6 +137,7 @@ def create_run(req: RunRequest) -> RunStatusOut:
         spec, dry_run=req.dry_run, allow_live=req.allow_live, workflow_name=req.workflow_name,
         target_node_id=target_node_id, seed_results=seed_results,
         seed_node_ids=seed_node_ids or None,
+        stage_requests=stage_requests,
     )
     return _status_out(handle)
 
@@ -172,6 +181,7 @@ def _create_resumed_run(resume_from: str) -> RunStatusOut:
             allow_live=cfg.get("allow_live", False),
             resume_from=run_dir,
             workflow_name=cfg.get("workflow_name"),
+            stage_requests=cfg.get("stage_requests"),
         )
     except Exception:
         REGISTRY.release_resume_dir(run_dir)
@@ -234,3 +244,11 @@ def get_run(run_id: str) -> RunStatusOut:
         },
         order=reco.get("order", []),
     )
+
+
+@router.get("/{run_id}/artifacts/{node_id}/{stage}/{digest}")
+def get_stage_artifact(run_id: str, node_id: str, stage: str, digest: str):
+    try:
+        return load_artifact({"run_id": run_id, "node_id": node_id, "stage": stage, "digest": digest})
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error

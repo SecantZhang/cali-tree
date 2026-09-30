@@ -8,6 +8,8 @@ while the FastAPI parent remains responsive and owns all public run state.
 
 from __future__ import annotations
 
+import json
+
 import multiprocessing
 import os
 import pickle
@@ -82,11 +84,18 @@ class RunRegistry:
         target_node_id: Optional[str] = None,
         seed_results: Optional[dict[str, NodeRunResult]] = None,
         seed_node_ids: Optional[set[str]] = None,
+        stage_requests: Optional[dict[str, Any]] = None,
     ) -> RunHandle:
         run, _checkpoint = start_run(
             graph, dry_run=dry_run, allow_live=allow_live,
             resume_from=resume_from, workflow_name=workflow_name,
         )
+        if stage_requests:
+            stage_requests = {nid: {**request, "execution_id": request.get("execution_id") or uuid.uuid4().hex}
+                              for nid, request in stage_requests.items()}
+            cfg = json.loads((run.run_dir / "run_config.json").read_text())
+            cfg["stage_requests"] = stage_requests
+            run.write_json("run_config.json", cfg)
         order = topological_sort(graph)
         if seed_results is not None and target_node_id is not None:
             order = [target_node_id]
@@ -105,6 +114,7 @@ class RunRegistry:
             "target_node_id": target_node_id,
             "seed_results": dict(seed_results or {}),
             "seed_node_ids": set(seed_node_ids or set()),
+            "stage_requests": stage_requests or {},
             "worker_imports": list(self.worker_imports),
         }
         with job_path.open("wb") as f:

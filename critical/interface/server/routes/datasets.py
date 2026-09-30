@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ....database.dl_human_annotations import aggregate_annotations, load_human_annotations
 from ....database.dl_imagenhub import ImagenHubLoader
+from ....database.dl_aurora import AuroraBenchLoader
 from ....database.dl_peanut_eval import PeanutEvalLoader
 from ....database.dl_peanut_eval.loader import parse_item_id, use_case_for
 
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 # This route is the left-panel Datasets tab's read-only browser (per interface.md,
 # independent of any one graph/node) — it talks to the loaders directly, not through a
 # node executor, so this list lives here rather than on any particular node type.
-LOADER_KINDS = {"peanut_eval", "human_annotations", "imagenhub"}
+LOADER_KINDS = {"peanut_eval", "human_annotations", "imagenhub", "aurora"}
 
 
 @router.get("/loaders")
@@ -41,6 +42,11 @@ def list_items(
         use_case_by_project = {r.project: use_case_for(r.project) for r in records}
         aggregated = aggregate_annotations(records, use_case_lookup=use_case_by_project)
         return {"items": sorted(aggregated)}
+    if loader == "aurora":
+        try:
+            return {"items": AuroraBenchLoader().list_items()}
+        except (FileNotFoundError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
     if loader == "imagenhub":
         try:
             return {"items": ImagenHubLoader().list_items()}
@@ -67,6 +73,12 @@ def get_item(loader: str, item_id: str, model: str = "peanut") -> dict:
         if agg is None:
             raise HTTPException(status_code=404, detail=f"No item '{item_id}'")
         return asdict(agg)
+    if loader == "aurora":
+        try:
+            source = AuroraBenchLoader()
+            return {**source.load_sample(item_id), "human_label": source.load_label(item_id)}
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
     if loader == "imagenhub":
         try:
             loader_impl = ImagenHubLoader()

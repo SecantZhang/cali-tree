@@ -16,6 +16,7 @@ from typing import Any, Iterable, Optional
 
 from ... import config
 from ..dl_template.base import DataLoader
+from .assets import is_release_composite
 
 AURORA_MODELS: tuple[str, ...] = (
     "finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
@@ -125,6 +126,15 @@ class AuroraBenchLoader(DataLoader):
             if str(row.get("task_uid")) not in split:
                 raise ValueError(f"AURORA item {item_id!r} is absent from seed {self.seed}")
             score_to_label(float(row["human_score"]))
+            if is_release_composite(str(row["task"]), str(row["model"])):
+                normalization = row.get("image_normalization") or {}
+                if (normalization.get("layout") != "source_left_output_right"
+                        or not row.get("raw_edited_path")
+                        or row["edited_path"] == row["raw_edited_path"]):
+                    raise ValueError(
+                        f"AURORA item {item_id!r} still exposes a comparison composite; "
+                        "rerun ./run/setup_aurora_bench.sh to extract output panels"
+                    )
             row["split"] = split[str(row["task_uid"])]
             rows[item_id] = row
         if not rows:

@@ -24,7 +24,14 @@ export interface RunStatusOut {
 // scratch) and Re-run (↻, "self_only": just this node, reusing seedRunId's already-computed
 // outputs for everything upstream) buttons — see NodeChrome.tsx/SimpleParamNode.tsx. The
 // global Run button (RunControls.tsx) omits all three, preserving today's whole-graph run.
+export interface StageRequest {
+  action?: 'run' | 'metrics' | 'fresh'
+  run_from?: string
+  run_until?: string
+}
+
 export interface ScopedRunOptions {
+  stageRequest?: StageRequest
   targetNodeId: string
   runMode: 'ancestors' | 'self_only'
   seedRunId?: string
@@ -43,6 +50,7 @@ export function startRun(
 ): Promise<RunStatusOut> {
   return api.post('/api/runs', {
     graph, dry_run: dryRun, allow_live: allowLive, workflow_name: workflowName || undefined,
+    stage_requests: scope?.stageRequest ? { [scope.targetNodeId]: scope.stageRequest } : undefined,
     target_node_id: scope?.targetNodeId,
     run_mode: scope?.runMode,
     seed_run_id: scope?.seedRunId ?? lock?.seedRunId ?? undefined,

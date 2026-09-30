@@ -21,6 +21,12 @@ from ...core.calibration.rubric_lite import (
     ordinal_label,
 )
 from ...core.optimization.prompt.textgrad import textgrad_update
+from ...core.optimization.prompt.calitree import (
+    ArtifactExecutor, TwoWayAdapter, TwoWayVisionAdapter, DecompositionTwoWay,
+    DecompositionTwoWayVision, validate_tree, ConcatenateMergeAlgorithm,
+)
+from ...core.optimization.prompt.calitree.optimization.composite import PLANS
+from ...core.optimization.prompt.calitree.optimization.gepa import BudgetExhausted
 from ...core.judge.parse import parse_json_object
 from ...lm_engine import get_engine, load_creds, require_live
 from ...lm_engine import openai_compat
@@ -2113,6 +2119,34 @@ def _format_feedback(
     )
 
 
+class _LoggedDecompositionEngine:
+    def __init__(self, runtime, engine):
+        self.runtime, self.engine = runtime, engine
+
+    def __getattr__(self, name):
+        return getattr(self.engine, name)
+
+    def generate(self, *args, **kwargs):
+        result = self.engine.generate(*args, **kwargs)
+        self.runtime._record(result, "judge")
+        with self.runtime._usage_lock:
+            self.runtime.usage["decomposition_calls"] = self.runtime.usage.get("decomposition_calls", 0) + 1
+        if self.runtime.ctx.progress_cb:
+            self.runtime.ctx.progress_cb("calitree_decomposition", {"calls": self.runtime.usage["decomposition_calls"]})
+        return result
+
+
+class _BoundedOptimizerEngine:
+    def __init__(self, runtime):
+        self.runtime = runtime
+
+    def __getattr__(self, name):
+        return getattr(self.runtime.optimizer_engine, name)
+
+    def generate(self, *args, **kwargs):
+        return self.runtime._bounded_generate(*args, **kwargs)
+
+
 class _CaliTreeRuntime:
     def __init__(
         self,
@@ -2139,6 +2173,8 @@ class _CaliTreeRuntime:
             from ...preprocessing.localized_change import LocalizedChangePreprocessor
             self._change_pre = LocalizedChangePreprocessor()
         self.optimizer_completion_tokens = 0
+        self.modular_executor = None
+        self._optimizer_call_lock = threading.Lock()
         self._usage_lock = threading.Lock()
         self.usage = {
             "judge_calls": 0, "optimizer_calls": 0, "embedding_calls": 0,
@@ -2159,6 +2195,65 @@ class _CaliTreeRuntime:
 
     def reset_optimizer_budget(self) -> None:
         self.optimizer_completion_tokens = 0
+
+    def configure_modular(self, strategy, tree=None):
+        engine = _LoggedDecompositionEngine(self, self.judge_engine)
+        if strategy == "two_way":
+            adapter = TwoWayAdapter(DecompositionTwoWay(engine, checkpoint=self.ctx.checkpoint,
+                                                       concurrency=self.concurrency))
+        elif strategy == "two_way_vision":
+            adapter = TwoWayVisionAdapter(DecompositionTwoWayVision(engine, checkpoint=self.ctx.checkpoint,
+                                                                   concurrency=self.concurrency))
+        else:
+            raise ValueError(f"Unknown decomposition strategy {strategy!r}")
+        executor = ArtifactExecutor(adapter, self.ctx.checkpoint)
+        if tree is not None:
+            validate_tree(tree, executor)
+        self.modular_executor = executor
+        return adapter
+
+    def _bounded_generate(self, *args, **kwargs):
+        from copy import copy
+        with self._optimizer_call_lock:
+            remaining = self.optimizer_budget - self.optimizer_completion_tokens
+            if remaining <= 0:
+                raise BudgetExhausted("Optimizer completion-token budget exhausted")
+            engine = copy(self.optimizer_engine)
+            engine.max_tokens = min(int(engine.max_tokens), remaining)
+            result = engine.generate(*args, **kwargs)
+            self._record(result, "optimizer")
+            return result
+
+    def reflect(self, messages):
+        result = self._bounded_generate(json.dumps(messages, ensure_ascii=False),
+            system="Execute the reflective prompt-editing request below. Return only its requested prompt proposal.")
+        return str(result.get("content") or "")
+
+    def optimizer_identity(self):
+        return {"engine": {key: getattr(self.optimizer_engine, key, None)
+                           for key in ("name", "model", "temperature", "max_tokens")},
+                "prompt_version": self.prompt_version, "textgrad_version": "0.1.8",
+                "completion_token_budget": self.optimizer_budget}
+
+    def optimizer_usage(self):
+        with self._usage_lock:
+            return {"calls": self.usage["optimizer_calls"],
+                    "completion_tokens": self.optimizer_completion_tokens}
+
+    def merge_many(self, children):
+        template = (PROMPT_ROOT / "calitree_modular_v1" / "merge_many.txt").read_text()
+        key = f"{self.ctx.node_id}::modular::merge::{_hash(children, self.optimizer_identity(), template)}"
+        if self.ctx.checkpoint.has(key):
+            return self.ctx.checkpoint.get(key)
+        try:
+            result = self._bounded_generate(template + json.dumps(children, ensure_ascii=False))
+        except BudgetExhausted:
+            return {"prompt": "", "conflict": True, "conflict_reason": "optimizer budget exhausted"}
+        parsed = parse_json_object(str(result.get("content") or ""))
+        if not isinstance(parsed, dict) or not isinstance(parsed.get("prompt"), str):
+            raise ValueError("Invalid joint merge proposal")
+        self.ctx.checkpoint.put(key, parsed)
+        return parsed
 
     def _judge_media(self, sample: dict[str, Any]) -> tuple[list[dict[str, str]], str, str]:
         """Media + an extra user note + a checkpoint-key component for the change signal.
@@ -2186,6 +2281,8 @@ class _CaliTreeRuntime:
         return _media(sample), "", ""
 
     def judge(self, prompt: str, sample: dict[str, Any]) -> dict[str, Any]:
+        if self.modular_executor is not None:
+            return self.modular_executor.judge(prompt, sample)
         media, note, change_key = self._judge_media(sample)
         key_parts = [prompt, sample.get("item_id")]
         if change_key:
@@ -2209,6 +2306,8 @@ class _CaliTreeRuntime:
     def judge_many(
         self, prompt: str, samples: dict[str, dict[str, Any]]
     ) -> dict[str, dict[str, Any]]:
+        if self.modular_executor is not None:
+            return self.modular_executor.judge_many(prompt, samples)
         if self.concurrency <= 1 or len(samples) <= 1:
             return {
                 item_id: self.judge(prompt, sample)
@@ -2281,6 +2380,8 @@ class _CaliTreeRuntime:
         if self.optimizer_completion_tokens >= self.optimizer_budget:
             return prompt
         key = f"{self.ctx.node_id}::calitree::opt::{_hash(prompt, feedback)}"
+        if self.modular_executor:
+            key += "::" + _hash(self.optimizer_identity())
         if self.ctx.checkpoint.has(key):
             return str(self.ctx.checkpoint.get(key))
 
@@ -2290,8 +2391,8 @@ class _CaliTreeRuntime:
         updated = textgrad_update(
             prompt,
             feedback,
-            engine=self.optimizer_engine,
-            usage_cb=record,
+            engine=_BoundedOptimizerEngine(self) if self.modular_executor else self.optimizer_engine,
+            usage_cb=None if self.modular_executor else record,
             log_dir=self.ctx.run.run_dir / "textgrad",
         )
         self.ctx.checkpoint.put(key, updated)
@@ -2302,11 +2403,19 @@ class _CaliTreeRuntime:
             f"{self.ctx.node_id}::calitree::components::"
             f"{_hash(self.prompt_version, prompt)}"
         )
+        if self.modular_executor:
+            key += "::" + _hash(self.optimizer_identity(), _prompt("extract_components.txt", self.prompt_version))
         if self.ctx.checkpoint.has(key):
             return self.ctx.checkpoint.get(key)
         query = _prompt("extract_components.txt", self.prompt_version).format(rubric=prompt)
-        result = self.optimizer_engine.generate(query)
-        self._record(result, "optimizer")
+        if self.modular_executor:
+            try:
+                result = self._bounded_generate(query)
+            except BudgetExhausted:
+                return {"criteria": [prompt], "priorities": [], "constraints": []}
+        else:
+            result = self.optimizer_engine.generate(query)
+            self._record(result, "optimizer")
         try:
             parsed = parse_json_object(str(result.get("content") or ""))
         except (ValueError, TypeError):
@@ -2395,6 +2504,14 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
     }
     output_sockets = {"prompt_tree": "prompt_tree", "calitree_report": "calitree_report"}
     param_schema = {
+        "modular_mode": {"type": "bool", "default": False},
+        "optimizer_plan": {"type": "enum", "default": "textgrad", "options": list(PLANS)},
+        "decomposition_strategy": {"type": "enum", "default": "two_way",
+                                   "options": ["two_way", "two_way_vision"]},
+        "merge_strategy": {"type": "enum", "default": "prompt_synthesis",
+                           "options": ["prompt_synthesis", "concatenate"]},
+        "max_merge_children": {"type": "number", "default": 2, "min": 2},
+        "gepa_python": {"type": "string", "default": ""},
         "embedding_model": {"type": "string", "default": ""},
         "prompt_version": {
             "type": "enum",
@@ -2509,6 +2626,33 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
+        from dataclasses import replace
+        from ...core.optimization.prompt.calitree.annotation_quality import partition_annotations
+        labels = ctx.inputs.get("labels")
+        if labels is None:
+            return self._run_reviewed(ctx)
+        try:
+            eligible, quarantined = partition_annotations(labels)
+            inputs = {**ctx.inputs, "labels": eligible}
+            population, population_quarantine = partition_annotations(ctx.inputs.get("population_labels") or labels)
+            inputs["population_labels"] = population
+        except ValueError as exc:
+            return NodeRunResult(status="error", error=str(exc))
+        result = self._run_reviewed(replace(ctx, inputs=inputs))
+        report = result.outputs.get("calitree_report")
+        if quarantined:
+            result.meta["annotation_quarantine"] = quarantined
+            if isinstance(report, dict):
+                report["annotation_quarantine"] = quarantined
+        if population_quarantine:
+            result.meta["population_annotation_quarantine"] = population_quarantine
+            if isinstance(report, dict):
+                report["population_annotation_quarantine"] = population_quarantine
+        if (quarantined or population_quarantine) and isinstance(report, dict) and not ctx.dry_run:
+            ctx.run.write_json(f"calitree_{ctx.node_id}.json", report)
+        return result
+
+    def _run_reviewed(self, ctx: NodeRunContext) -> NodeRunResult:
         samples = ctx.inputs.get("samples")
         labels = ctx.inputs.get("labels")
         population_labels = ctx.inputs.get("population_labels") or labels
@@ -2520,6 +2664,27 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                 error="Cali-Tree Train requires samples, labels, judge_engine, and optimizer_engine",
             )
         architecture = str(ctx.params.get("architecture") or "hierarchical")
+        modular_mode = bool(ctx.params.get("modular_mode", False))
+        optimizer_plan = str(ctx.params.get("optimizer_plan") or "textgrad")
+        decomposition_strategy = str(ctx.params.get("decomposition_strategy") or "two_way")
+        merge_strategy = str(ctx.params.get("merge_strategy") or "prompt_synthesis")
+        try:
+            max_merge_children = int(ctx.params.get("max_merge_children", 2))
+            if max_merge_children < 2 or max_merge_children != ctx.params.get("max_merge_children", 2):
+                raise ValueError("max_merge_children must be an integer >= 2")
+            if not modular_mode and max_merge_children != 2:
+                raise ValueError("Multi-child merging requires modular_mode")
+            if modular_mode:
+                if architecture != "hierarchical" or ctx.params.get("specialization_mode", "replace") != "replace":
+                    raise ValueError("Modular mode requires hierarchical architecture and replacement specialization")
+                if optimizer_plan not in PLANS or decomposition_strategy not in {"two_way", "two_way_vision"} or merge_strategy not in {"prompt_synthesis", "concatenate"}:
+                    raise ValueError("Unknown modular optimizer/decomposition/merge strategy")
+                if ctx.params.get("leaf_grouping") == "residual_context":
+                    raise ValueError("Modular mode does not support the legacy residual-context cascade")
+                if optimizer_plan in {"textgrad_then_gepa", "gepa_then_textgrad", "best_of_both"} and int(ctx.params.get("max_steps", 3)) < 2:
+                    raise ValueError("Combined optimizer plans require max_steps >= 2")
+        except (ValueError, TypeError) as exc:
+            return NodeRunResult(status="error", error=str(exc))
         if architecture not in {"hierarchical", "rubric_lite"}:
             return NodeRunResult(
                 status="error",
@@ -2695,11 +2860,25 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                     ),
                 }
             )
+            if modular_mode:
+                operations = len(fit_tasks) + int(ctx.params.get("max_merge_attempts", 20)) + 1
+                estimated_calls.update({
+                    "decomposition_compile_max": 1 + operations * (max_steps + 1),
+                    "decomposition_conditions_per_judgment_max": 4 if decomposition_strategy == "two_way" else 12,
+                    "decomposition_preservation_per_judgment": 0 if decomposition_strategy == "two_way" else 1,
+                    "decomposition_aggregation_per_judgment": 0 if decomposition_strategy == "two_way" else 1,
+                    "joint_merge_synthesis_max": int(ctx.params.get("max_merge_attempts", 20)) if merge_strategy == "prompt_synthesis" else 0,
+                    "gepa_reflection_max": max_steps * len(fit_tasks) if optimizer_plan != "textgrad" and optimizer_plan != "evaluate_only" else 0,
+                })
             return NodeRunResult(
                 outputs={"prompt_tree": {}, "calitree_report": {}},
                 meta={
                     "dry_run": True,
                     "architecture": architecture,
+                    "modular_mode": modular_mode,
+                    "modular_strategies": {"optimizer_plan": optimizer_plan,
+                        "decomposition_strategy": decomposition_strategy, "merge_strategy": merge_strategy,
+                        "max_merge_children": max_merge_children} if modular_mode else {},
                     "n_train": len(train_ids),
                     "n_fit": len(fit_ids),
                     "n_fit_tasks": len(fit_tasks),
@@ -2737,6 +2916,16 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             concurrency=int(judge_config.get("concurrency") or 1),
             change_signal=change_signal,
         )
+        modular_adapter = None
+        if modular_mode:
+            try:
+                modular_adapter = runtime.configure_modular(decomposition_strategy)
+                runtime.modular_executor.preflight(samples)
+                if "gepa" in optimizer_plan or optimizer_plan == "best_of_both":
+                    from ...core.optimization.prompt.calitree.optimization.gepa import resolve_gepa_python
+                    resolve_gepa_python(ctx.params.get("gepa_python") or None)
+            except (ValueError, OSError) as exc:
+                return NodeRunResult(status="error", error=str(exc))
         targets = {item_id: _target(labels[item_id]) for item_id in fit_ids}
         initial_prompt = _prompt("initial_rubric.txt", prompt_version)
         all_ids = train_ids + test_ids
@@ -2828,6 +3017,19 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                 extract_components=runtime.extract,
                 embed=runtime.embed,
                 merge_prompts=runtime.merge,
+                modular_mode=modular_mode,
+                decomposition=modular_adapter,
+                optimizer_plan=optimizer_plan,
+                optimizer_seed=int(ctx.params.get("split_seed", 44)),
+                gepa_python=ctx.params.get("gepa_python") or None,
+                max_merge_children=max_merge_children,
+                merge_many_prompts=runtime.merge_many if modular_mode else None,
+                merge_algorithm=ConcatenateMergeAlgorithm() if modular_mode and merge_strategy == "concatenate" else None,
+                reflect=runtime.reflect if modular_mode else None,
+                budget_available=(lambda: runtime.optimizer_completion_tokens < runtime.optimizer_budget) if modular_mode else None,
+                optimizer_identity=runtime.optimizer_identity() if modular_mode else None,
+                optimizer_usage=runtime.optimizer_usage if modular_mode else None,
+                checkpoint=ctx.checkpoint if modular_mode else None,
                 format_feedback=lambda ids, case_samples, case_targets, results: _format_feedback(
                     ids,
                     case_samples,
@@ -2977,6 +3179,14 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
                 semantic_groups=semantic_groups_arg,
                 leaf_groups=leaf_groups_arg,
             )
+            if modular_mode:
+                runtime.configure_modular(decomposition_strategy, tree)
+                tree["config"]["optimizer_engine"] = {key: optimizer_config.get(key) for key in
+                    ("engine_kind", "model", "temperature", "max_tokens", "concurrency")}
+                tree["config"]["optimizer_completion_token_budget"] = budget
+                if merge_strategy == "prompt_synthesis":
+                    tree["config"]["merge_template_sha256"] = hashlib.sha256(
+                        (PROMPT_ROOT / "calitree_modular_v1" / "merge_many.txt").read_bytes()).hexdigest()
             routing_vectors = runtime.embed(
                 [_routing_text(samples[item_id]) for item_id in all_ids]
             )
@@ -3298,9 +3508,14 @@ class CaliTreeTrainNodeExecutor(NodeExecutor):
             }
             for item_id in all_ids
         }
+        if modular_mode:
+            tree["artifacts"]["policies"].update(runtime.modular_executor.policies)
+            tree["artifacts"]["evaluations"].update(runtime.modular_executor.evaluations)
+            # Legacy prediction cache has no evidence binding; use the modular checkpoint instead.
+            tree["prediction_cache"] = {}
         tree_predictions = {item_id: row["label"] for item_id, row in tree_results.items()}
         report: dict[str, Any] = {
-            "version": "calitree-v2",
+            "version": tree["version"],
             "architecture": architecture,
             "prompt_version": prompt_version,
             "n_train": len(train_ids),
@@ -3434,6 +3649,7 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
     input_sockets = {
         "samples": "samples",
         "prompt_tree": "prompt_tree",
+        "calitree_node": "calitree_node",
         "judge_engine": "engine_config",
     }
     output_sockets = {"judge_result": "judge_result"}
@@ -3446,6 +3662,9 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
     }
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
+        if ctx.inputs.get("calitree_node") is not None:
+            from .calitree_manual_nodes import judge_manual_node
+            return judge_manual_node(ctx)
         samples = ctx.inputs.get("samples")
         tree = ctx.inputs.get("prompt_tree")
         engine_config = ctx.inputs.get("judge_engine")
@@ -3518,6 +3737,12 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
             # and inference see the same evidence.
             change_signal=str(tree.get("change_signal") or "off"),
         )
+        if tree.get("version") == "calitree-modular-v1":
+            try:
+                runtime.configure_modular(tree["config"]["decomposition_strategy"], tree)
+                runtime.modular_executor.preflight(samples)
+            except (ValueError, KeyError, OSError) as exc:
+                return NodeRunResult(status="error", error=f"Invalid modular tree: {exc}")
         single_global_rubric = tree.get("architecture") == "rubric_lite"
         if not runtime.embedding_model and not single_global_rubric:
             return NodeRunResult(status="error", error="prompt_tree has no embedding_model")
@@ -3525,7 +3750,7 @@ class CaliTreeJudgeNodeExecutor(NodeExecutor):
         routed_by_item: dict[str, dict[str, Any]] = {}
         grouped: dict[str, dict[str, dict[str, Any]]] = {}
         cached_results: dict[str, dict[str, Any]] = {}
-        prediction_cache = tree.get("prediction_cache") or {}
+        prediction_cache = {} if runtime.modular_executor else tree.get("prediction_cache") or {}
         item_ids = sorted(samples)
         if single_global_rubric:
             routed_rows = [
@@ -3818,6 +4043,27 @@ class CaliTreeEvalNodeExecutor(NodeExecutor):
     param_schema: dict[str, Any] = {}
 
     def run(self, ctx: NodeRunContext) -> NodeRunResult:
+        from dataclasses import replace
+        from ...core.optimization.prompt.calitree.annotation_quality import partition_annotations
+        labels = ctx.inputs.get("labels")
+        if labels is None:
+            return self._run_reviewed(ctx)
+        try:
+            eligible, quarantined = partition_annotations(labels)
+            inputs = {**ctx.inputs, "labels": eligible}
+        except ValueError as exc:
+            return NodeRunResult(status="error", error=str(exc))
+        result = self._run_reviewed(replace(ctx, inputs=inputs))
+        report = result.outputs.get("metrics_report")
+        if quarantined:
+            result.meta["annotation_quarantine"] = quarantined
+            if isinstance(report, dict):
+                report["annotation_quarantine"] = quarantined
+        if (quarantined) and isinstance(report, dict) and not ctx.dry_run:
+            ctx.run.write_json(f"calitree_eval_{ctx.node_id}.json", report)
+        return result
+
+    def _run_reviewed(self, ctx: NodeRunContext) -> NodeRunResult:
         results = ctx.inputs.get("judge_result")
         labels = ctx.inputs.get("labels")
         samples = ctx.inputs.get("samples")

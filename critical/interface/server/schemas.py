@@ -110,6 +110,13 @@ class NodeTypeOut(BaseModel):
     param_schema: dict[str, Any]
 
 
+class CaliTreeStageRequest(BaseModel):
+    action: Literal["run", "metrics", "fresh"] = "run"
+    run_from: Optional[str] = None
+    run_until: Optional[str] = None
+    reuse: dict[str, dict[str, str]] = Field(default_factory=dict)
+
+
 class RunRequest(BaseModel):
     # Either a graph to run fresh, or resume_from (a prior run_id) — never both. When
     # resuming, the graph is reconstructed server-side from that run's own saved
@@ -132,6 +139,7 @@ class RunRequest(BaseModel):
     # so every run starts past the lock frontier. Composes with run_mode. Requires
     # `seed_run_id` (validated in routes/runs.py) to cover every locked id.
     locked_node_ids: list[str] = Field(default_factory=list)
+    stage_requests: dict[str, CaliTreeStageRequest] = Field(default_factory=dict)
 
 
 class NodeResultOut(BaseModel):

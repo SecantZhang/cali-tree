@@ -105,4 +105,5 @@ def test_only_the_in_scope_node_types_are_registered():
         "gepa_frozen",
         "rubric_lite_fit", "rubric_lite_apply",
         "calitree_judge", "calitree_eval",
+        "aurora_source", "calitree_partition", "calitree_leaf", "calitree_merge",
     }

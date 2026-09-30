@@ -6,7 +6,7 @@ export type SocketType =
   | 'metrics_report' | 'calibration_results' | 'general_calibration' | 'judge_rule'
   | 'evidence_bundle' | 'area_rubric_spec' | 'area_judge_result'
   | 'decomposition_features' | 'unit_labels' | 'active_labeling_report'
-  | 'prompt_tree' | 'calitree_report'
+  | 'prompt_tree' | 'calitree_report' | 'calitree_data' | 'calitree_node' | 'optimized_prompt' | 'decision_sets'
   | 'rubric_calibrator'
 
 export const SOCKET_COLORS: Record<SocketType, string> = {
@@ -27,6 +27,10 @@ export const SOCKET_COLORS: Record<SocketType, string> = {
   decomposition_features: 'var(--node-calibration)',
   unit_labels: 'var(--node-db)',
   active_labeling_report: 'var(--node-calibration)',
+  calitree_data: 'var(--node-calibration)',
+  calitree_node: 'var(--node-calibration)',
+  optimized_prompt: 'var(--node-calibration)',
+  decision_sets: 'var(--node-calibration)',
   prompt_tree: 'var(--node-calibration)',
   calitree_report: 'var(--node-calibration)',
   rubric_calibrator: 'var(--node-calibration)',
@@ -216,6 +220,10 @@ export interface NodeTypeSockets {
 }
 
 export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
+  aurora_source: {"input": {}, "output": {"raw_dataset": "raw_dataset", "raw_labels": "raw_labels"}},
+  calitree_partition: {"input": {"samples": "samples", "labels": "labels"}, "output": {"partition": "calitree_data", "test_samples": "samples", "test_labels": "labels"}},
+  calitree_leaf: {"input": {"partition": "calitree_data", "judge_engine": "engine_config", "optimizer_engine": "engine_config"}, "output": {"node": "calitree_node", "optimized_prompt": "optimized_prompt", "decision_sets": "decision_sets", "calitree_report": "calitree_report"}},
+  calitree_merge: {"input": {"partition": "calitree_data", "judge_engine": "engine_config", "optimizer_engine": "engine_config", "children": "calitree_node"}, "output": {"node": "calitree_node", "optimized_prompt": "optimized_prompt", "decision_sets": "decision_sets", "calitree_report": "calitree_report"}},
   peanut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   coconut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
   grapenut_source: { input: {}, output: { raw_dataset: 'raw_dataset' } },
@@ -369,7 +377,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
   },
   calitree_judge: {
     input: {
-      samples: 'samples', prompt_tree: 'prompt_tree', judge_engine: 'engine_config',
+      samples: 'samples', prompt_tree: 'prompt_tree', calitree_node: 'calitree_node', judge_engine: 'engine_config',
     },
     output: { judge_result: 'judge_result' },
   },
@@ -383,6 +391,7 @@ export const NODE_SOCKETS: Record<string, NodeTypeSockets> = {
 // accept fan-in (multiple incoming edges), keyed by node type. The Dataset node merges
 // several source nodes this way. Everything else stays one-edge-only.
 export const MULTI_INPUT_SOCKETS: Record<string, string[]> = {
+  calitree_merge: ['children'],
   dataset: ['raw_dataset', 'raw_labels'],
   area_aggregation: ['area_judge_result'],
   edit_aware_calibration: ['judge_result'],

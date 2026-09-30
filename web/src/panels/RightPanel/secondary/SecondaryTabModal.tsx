@@ -17,6 +17,7 @@ import { NodeTimingTab } from './NodeTimingTab'
 import { SourceSecondaryTab } from './SourceSecondaryTab'
 import { EditDecompositionSecondaryTab } from './EditDecompositionSecondaryTab'
 import { AreaJudgeSecondaryTab } from './AreaJudgeSecondaryTab'
+import { CaliTreeManualPanel } from './CaliTreeManualPanel'
 import { CaliTreeWorkbench } from './CaliTreeWorkbench'
 import { CaliTreeEvalSecondaryTab } from './CaliTreeEvalSecondaryTab'
 import { ImagenHubSourceSecondaryTab } from './ImagenHubSourceSecondaryTab'
@@ -28,7 +29,8 @@ const EVAL_TYPES = new Set(['eval'])
 // Timing tabs below, so this only covers the bespoke visualization (or a stub hint).
 function DetailsTab({ node }: { node: VeNode }) {
   const type = node.type ?? ''
-  if (type === 'imagenhub_source') return <ImagenHubSourceSecondaryTab node={node} />
+  if (['calitree_leaf', 'calitree_merge', 'calitree_partition'].includes(type)) return <CaliTreeManualPanel key={node.id} node={node} />
+  if (type === 'imagenhub_source' || type === 'aurora_source') return <ImagenHubSourceSecondaryTab node={node} />
   if (type === 'calitree_train' || type === 'rubric_lite_train') {
     return <CaliTreeWorkbench node={node} />
   }

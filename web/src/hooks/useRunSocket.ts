@@ -82,6 +82,14 @@ export function useRunSocket(
       const { setNodeStatus } = graphStore.getState()
       for (const [nodeId, result] of Object.entries(nodeResults)) {
         setNodeStatus(nodeId, result.status as NodeStatus, result.error ?? null)
+        const node = graphStore.getState().nodes.find(n => n.id === nodeId)
+        if (node && ['calitree_leaf', 'calitree_merge'].includes(node.type ?? '') && result.status === 'done' && !result.meta.dry_run) {
+          const report = result.outputs.calitree_report as { stages?: Record<string, { artifact_ref?: unknown }> } | undefined
+          if (report?.stages) graphStore.getState().updateNodeParams(nodeId, {
+            artifact_run_id: result.meta.artifact_run_id,
+            stage_cache: Object.fromEntries(Object.entries(report.stages).filter(([, row]) => row.artifact_ref).map(([stage, row]) => [stage, row.artifact_ref])),
+          })
+        }
       }
     }
 
@@ -138,10 +146,12 @@ export function useRunSocket(
           state: event.state ?? 'running',
         })
       } else if (
-        (event.type === 'judge_progress_init' || event.type === 'calibration_progress_init') &&
+        (event.type === 'judge_progress_init' || event.type === 'calibration_progress_init' || event.type === 'calitree_progress_init') &&
         event.node_id && event.total != null
       ) {
         setNodeProgressTotal(event.node_id, event.total)
+      } else if (event.type === 'calitree_stage' && event.node_id && event.state === 'complete') {
+        incrementNodeProgress(event.node_id)
       } else if (
         event.type === 'judge_item_start' || event.type === 'judge_metric' ||
         event.type === 'calibration_item_start' || event.type === 'calibration_item_done'

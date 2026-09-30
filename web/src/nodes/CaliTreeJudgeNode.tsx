@@ -14,9 +14,10 @@ export function CaliTreeJudgeNode({ id, data, selected }: NodeProps) {
       schema={NODE_PARAM_SCHEMAS.calitree_judge}
       sockets={
         <>
-          <SocketHandle kind="target" id="samples" label="samples" top={socketTop(0, 3)} color={SOCKET_COLORS.samples} />
-          <SocketHandle kind="target" id="prompt_tree" label="prompt_tree" top={socketTop(1, 3)} color={SOCKET_COLORS.prompt_tree} />
-          <SocketHandle kind="target" id="judge_engine" label="judge_engine" top={socketTop(2, 3)} color={SOCKET_COLORS.engine_config} />
+          <SocketHandle kind="target" id="samples" label="samples" top={socketTop(0, 4)} color={SOCKET_COLORS.samples} />
+          <SocketHandle kind="target" id="prompt_tree" label="prompt_tree" top={socketTop(1, 4)} color={SOCKET_COLORS.prompt_tree} />
+          <SocketHandle kind="target" id="calitree_node" label="calitree_node (alternative)" top={socketTop(2, 4)} color={SOCKET_COLORS.calitree_node} />
+          <SocketHandle kind="target" id="judge_engine" label="judge_engine" top={socketTop(3, 4)} color={SOCKET_COLORS.engine_config} />
           <SocketHandle kind="source" id="judge_result" label="judge_result" top={socketTop(0, 1)} color={SOCKET_COLORS.judge_result} />
         </>
       }

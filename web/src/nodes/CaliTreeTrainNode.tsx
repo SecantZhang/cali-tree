@@ -12,7 +12,9 @@ export function CaliTreeTrainNode({ id, data, selected }: NodeProps) {
       id={id} data={d} selected={selected}
       title="Cali-Tree Train" color="var(--node-calibration)"
       schema={NODE_PARAM_SCHEMAS.calitree_train}
-      summaryLine={(p) => `${p.max_steps ?? 3} steps · merge ≥ ${p.merge_acceptance ?? 0.8}`}
+      summaryLine={(p) => p.modular_mode
+        ? `${p.optimizer_plan ?? 'textgrad'} · up to ${p.max_merge_children ?? 2} children`
+        : `${p.max_steps ?? 3} steps · merge ≥ ${p.merge_acceptance ?? 0.8}`}
       socketZoneHeight={90}
       sockets={
         <>

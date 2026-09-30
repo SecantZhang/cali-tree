@@ -103,3 +103,34 @@ def test_completed_run_persists_run_results(logs):
     assert results_path.is_file()
     saved = json.loads(results_path.read_text())
     assert "src" in saved["node_results"] and "order" in saved
+
+
+def test_managed_full_results_and_stage_pins_survive_restart(logs):
+    from critical.logging.exp_logger import make_exp_run
+    from critical.interface.server.registry import NodeRunResult
+    from critical.interface.server.artifacts import save_artifact, load_artifact
+    identity = '260927-12:34:56'
+    directory = run_manager.run_dir_for(identity)
+    run = make_exp_run(run_dir=directory)
+    data = {str(index): {'input': {'instruction': f'case {index}'}} for index in range(100)}
+    result = NodeRunResult(outputs={'partition': data})
+    stage = {'version': 'calitree-stage-v1', 'stage': 'optimization', 'data': {'prompt': 'saved prompt'}}
+    reference = save_artifact(run, 'leaf', 'optimization', stage)
+    run_manager.save_run_results(run, {'partition': result}, ['partition'])
+    run.write_json('run_status.json', {'status': 'done', 'error': None})
+    run.close()
+    assert run_manager.load_run_results(directory)['node_results']['partition']['outputs']['partition']['__summary__'] == 'dict'
+    assert run_manager.reconstruct_node_results(directory)['node_results']['partition']['outputs']['partition'] == data
+    assert load_artifact(reference) == stage
+    client = TestClient(create_app())
+    response = client.get(f'/api/runs/{identity}/artifacts/leaf/optimization/{reference["digest"]}')
+    assert response.status_code == 200 and response.json() == stage
+    assert client.get(f'/api/runs/{identity}').json()['node_results']['partition']['outputs']['partition'] == data
+
+
+def test_artifact_paths_and_integrity_are_checked(logs):
+    from critical.interface.server.artifacts import load_artifact
+    with pytest.raises(ValueError, match='run identity'):
+        load_artifact({'run_id': '../other', 'node_id': 'leaf', 'stage': 'compilation', 'digest': '0'*64})
+    with pytest.raises(ValueError, match='stage/digest'):
+        load_artifact({'run_id': 'saved', 'node_id': 'leaf', 'stage': '../compilation', 'digest': '0'*64})

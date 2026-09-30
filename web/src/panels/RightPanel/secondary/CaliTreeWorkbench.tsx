@@ -208,6 +208,7 @@ function PromptTree({
             >
               <strong>{node.status}</strong>
               <span>{node.covered_ids.length} cases</span>
+              {tree.version === 'calitree-modular-v1' && <span>{node.children.length} children</span>}
               <small>{(node.validation_accuracy * 100).toFixed(0)}%</small>
             </button>
           ))}
@@ -268,6 +269,13 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
   }, [caseIds, cases, predictions])
   const caseId = selectedCase && cases[selectedCase] ? selectedCase : caseIds[0]
   const selected = selectedNode ? nodes[selectedNode] : undefined
+  const artifacts = (tree.artifacts ?? {}) as {
+    nodes?: Record<string, { policy_ref?: string; scope_ids?: string[]; served_ids?: string[];
+      strategy_manifest?: Record<string, unknown>; evaluation_refs?: Record<string, string>; provenance?: unknown }>
+    policies?: Record<string, unknown>
+    evaluations?: Record<string, unknown>
+  }
+  const selectedArtifact = selectedNode ? artifacts.nodes?.[selectedNode] : undefined
 
   if (!lastResult) {
     return <p className="empty-hint">Run calibration training to inspect its rubric and metrics.</p>
@@ -457,6 +465,19 @@ export function CaliTreeWorkbench({ node }: { node: VeNode }) {
               <div key={kind}><b>{kind}:</b> {values.join(' · ') || '—'}</div>
             ))}
             <details><summary>Prompt</summary><pre>{selected.prompt}</pre></details>
+            {selectedArtifact && <section aria-label="Modular node artifacts">
+              <div>{selected.children.length} children · scope {selectedArtifact.scope_ids?.length ?? 0}
+                {' · '}served {selectedArtifact.served_ids?.length ?? 0}</div>
+              <details><summary>Resolved strategies</summary>
+                <pre>{JSON.stringify(selectedArtifact.strategy_manifest, null, 2)}</pre></details>
+              <details><summary>Compiled decision policy</summary>
+                <pre>{JSON.stringify(artifacts.policies?.[selectedArtifact.policy_ref ?? ''], null, 2)}</pre></details>
+              <details><summary>Instruction plans, checks, and traces</summary>
+                <pre>{JSON.stringify(Object.fromEntries(Object.entries(selectedArtifact.evaluation_refs ?? {})
+                  .map(([id, ref]) => [id, artifacts.evaluations?.[ref]])), null, 2)}</pre></details>
+              <details><summary>Optimization lineage</summary>
+                <pre>{JSON.stringify(selectedArtifact.provenance, null, 2)}</pre></details>
+            </section>}
           </div>
         )}
       </section>

@@ -28,7 +28,7 @@ for you; the free ones never do. When unsure what a run will cost, use
 |---|---|---|
 | `setup_env.sh` | no | **Run once.** Create `.venv` and install dev/interface/video Python deps. |
 | `setup_imagenhub.sh` | no gateway calls (downloads public data) | Materialize and hash the 179-task ImagenHub + eight publicly available editor outputs with resumable downloads. See `docs/calitree.md`. |
-| `setup_aurora_bench.sh` | no gateway calls (downloads public data) | Materialize and hash AURORA-Bench's 2,000 human-rated outputs (400 prompts × five editors), then write task-grouped 20/80 calibration splits. |
+| `setup_aurora_bench.sh` | no gateway calls (downloads public data) | Materialize and hash AURORA-Bench's 2,000 human-rated outputs (400 prompts × five editors), extract the right output panel from the 150 known comparison composites while preserving raw images, then write task-grouped 20/80 calibration splits. |
 | `run_aurora_prompt_repair.sh` | no by default; yes only with explicit `--live` | Sample a task-disjoint, label-balanced AURORA set; measure `gpt-5.4-mini` repeat stability; and independently repair incorrect/unstable cases with TextGrad and GEPA. |
 | `robust_prompt_repair_50.py` / `robust_prompt_repair_50_parallel.py` | no by default; yes only with explicit `--live` | Compare single-draw and repeated-evaluation GEPA repair on 50 task-disjoint AURORA test cases, with 15 frozen-prompt final judgments per case and arm. See `docs/experiments/robust_prompt_repair_50.md`. |
 | `setup_editinspector.sh` | no gateway calls (downloads public data) | Materialize pinned, nested EditInspector development/calibration/final partitions with resumable image downloads and SHA-256 manifest. |
@@ -171,3 +171,5 @@ ignored. The grid skips complete cells and resumes a half-finished cell's checkp
 Every real/dry run writes a fresh `logs/exps/<YYMMDD-HH:MM:SS>-exps/` directory
 (`gap_result.json`, `aligned_pairs.csv`, `gap_report.xlsx`, `chart_gap_by_dimension.png`,
 `run.log`, `llm-histories.log`, `run_config.json`). See `docs/benchmark.md` for the schema.
+
+For the manual leaf/merge canvas path, use `workflows/examples/calitree_aurora_canvas.json`. Run its shared partition first, then select each leaf’s fit cases in the Data tab. `.venv/bin/python -m run.calitree_canvas_demo` exercises three-child merging, JSON reload, and direct saved-policy judging entirely offline.
