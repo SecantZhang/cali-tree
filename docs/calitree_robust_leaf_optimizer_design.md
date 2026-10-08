@@ -1,6 +1,6 @@
 # Robust casewise leaf-judge optimization
 
-Status: v3 implementation added 2026-10-07. See [implementation and usage](calitree_robust_leaf_optimizer.md) for the executable contracts, acceptance thresholds, tests, and pilot commands. This design motivates the implementation; empirical results and limitations are recorded separately in experiment reports.
+Status: v3 implementation added 2026-10-07; opt-in missing/nested evidence repair added 2026-10-08. See [implementation and usage](calitree_robust_leaf_optimizer.md) for the executable contracts, acceptance thresholds, tests, and pilot commands. This design motivates the implementation; empirical results and limitations are recorded separately in experiment reports.
 
 ## Goal and scope
 
@@ -183,6 +183,41 @@ Trace a suspected error through the dependency graph before editing the final fu
 Use the images, instruction, reference label, component observations, and prior rejected-edit diagnostics to propose a repair. The proposer may see the reference label. Executable checkers must not see it, desired answers, or optimization feedback. The semantic auditor compares the candidate with the original instruction without seeing the reference label or target-conditioned repair rationale.
 
 The case label is a constraint, not a verdict on each component. If faithful visual judgments consistently contradict it, retain the evidence and return an unresolved reference conflict for review rather than weakening requirements until the label matches.
+
+## Missing and nested evidence repair
+
+When supporting checks pass but the final result disagrees with a `partial` reference, investigate whether the checks record sufficient evidence for the requested **property, relation, and extent**. Passing weak proxies is not equivalent to establishing the complete requested outcome. The repair may add an overlooked evidence check or refine a broad support with a nested visual investigation; criterion revision is not the only option.
+
+For “Turn the image into a drawing made from chalk,” the saved forced-decomposition experiment observed chalk-like treatment and drawing-like forms, then scored complete. A proposed refinement is:
+
+```text
+n1: Is chalk-like treatment present?                 [support; images]
+n2: Are drawing-like forms present?                  [support; images]
+  n2a: Does the conversion cover the image as a whole,
+       or does substantial photographic appearance remain?
+                                                    [support; images + n2 evidence]
+n3: Judge the original requested transformation.     [fulfillment; n1/n2/n2a evidence only]
+```
+
+This is a proposed diagnostic question, not a new observation from the live experiment. A broad parent may pass while its finer child fails. If verified evidence establishes genuine progress and incomplete conversion, the original fulfillment can become partial. If necessary evidence is unknown, it remains unresolved. All four calls count toward the execution cap; supporting checks do not become new requested edits or receive completion credit. No particular chalk technique or removal of the pictured subjects is required.
+
+The instruction, rubric, requirement ledger, requested outcome and its target/reference bindings remain frozen. Each added or revised support records its node-to-requirement mapping and an exact source phrase in the transaction history. This prevents unanchored additions structurally; it does not prove that an anchored criterion is semantically justified. Atomic validation checks the entire edited graph, updated readout dependencies, activation states, coverage and four-check/depth limits. A label-blind semantic audit must still approve the full candidate.
+
+### Visual discovery and model-family review
+
+Use one or at most two explicitly configured visual reviewers per parent batch. A reviewer receives source/edited images, original instruction/rubric, saved program and observations, excluding the reference label, aggregate agreement, gradients and rejection feedback. It proposes at most two instruction-grounded hypotheses: missing evidence, nested evidence, or composition problems. It may find no justified repair and must investigate possible overclaiming and underclaiming rather than seek a negative answer.
+
+Different multimodal families can supply complementary hypotheses. Persist reviewer name/family, requested model identity, durable execution reference, returned identity and usage, raw findings and validation failures. Their outputs are hypotheses, not verified check outcomes; do not splice their answers into inference, turn consensus into an optimization reward, or claim independent correctness evidence from family diversity. The structural proposer receives these hypotheses together with native node-level TextGrad feedback, labels, traces and prior diagnostics. Only subsequent label-blind execution supplies candidate observations.
+
+Reviewers use the primary ledger and case scope, frozen model routes, existing single-attempt transport rules, and search/token ceilings. Their calls cannot consume the reserved final allowance. Provider rejection stops the run without substitution; failed or interrupted slots are retained on resume. The default new runner uses its primary model for discovery; alternative families require explicit configuration.
+
+### Audit-rejected seed diagnosis
+
+The completed chalk follow-up never reached visual backward feedback during search because its seed failed the semantic audit. In the new opt-in path, a structurally executable audit-rejected parent can receive **one diagnostic-only program draw**, cached in a separate namespace. Those actual observations support visual discovery and native backward feedback. Persist schema, transport and dependency failures as failures, never as negative visual evidence.
+
+Diagnostic reports remain separate from screening and confirmation evidence. They cannot enter either frontier, qualify a candidate, or replace an audited incumbent, even when their label matches perfectly. Invalid compilation still produces an unresolved leaf without fabricated observations. Repaired candidates must pass structural validation and their own semantic audit before normal screening and fresh confirmation. Freeze selection before final verification; final outcomes cannot trigger another repair.
+
+The new `nested-evidence-readout-v1` checker contract explicitly permits ancestor evidence context in support calls and keeps the fulfillment readout image-free. Historical `forced-evidence-readout-v1` programs retain their independent-support behavior. Explicit promotion creates a new template/hash and requires a fresh audit; saved artifacts are never silently reinterpreted. The v3 executable container and existing prompt/hierarchy APIs remain compatible.
 
 ## Rules for removing and revising decisions
 

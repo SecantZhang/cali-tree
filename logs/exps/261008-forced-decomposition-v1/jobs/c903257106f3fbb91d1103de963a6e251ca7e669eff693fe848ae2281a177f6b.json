@@ -1,0 +1,409 @@
+{
+  "execution_ref": "c903257106f3fbb91d1103de963a6e251ca7e669eff693fe848ae2281a177f6b",
+  "stage": "propose",
+  "slot": "round/1/batch/1/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "r1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "o1",
+          "requirement_ids": [
+            "r1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "frog",
+          "reference": "toilet",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "n1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is a frog visibly present in the edited image?",
+          "criteria": "pass: a frog is visibly present. fail: the image clearly shows no frog. unknown: the image does not establish whether a frog is present.",
+          "binding": "Visual presence of the requested frog; presence alone does not establish placement inside the toilet.",
+          "inferences": []
+        },
+        {
+          "id": "n2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "n1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is the toilet visibly identifiable in the edited image?",
+          "criteria": "pass: a toilet is visibly identifiable. fail: the image clearly shows no toilet. unknown: the image does not establish whether a toilet is present.",
+          "binding": "Visual presence of the requested toilet; presence alone does not establish that the frog is inside it.",
+          "inferences": []
+        },
+        {
+          "id": "n3",
+          "role": "requested",
+          "outcome_id": "o1",
+          "parent": "n2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "n1",
+            "n2"
+          ],
+          "question": "Based only on the saved observations and image-grounded evidence from both supports, was a frog added inside the toilet?",
+          "criteria": "complete: both supports pass and their evidence establishes that the frog is visibly inside the toilet. partial: evidence establishes some progress toward the requested placement, such as a frog present but not clearly inside the toilet, or only partly placed there. absent: evidence establishes that no requested change has progressed, including a clearly absent frog; a present frog clearly outside the toilet is not fulfillment and is absent unless evidence establishes partial placement. unknown: necessary evidence about frog presence or placement remains unresolved, or the observations do not establish whether any requested progress occurred. A known negative observation is evidence, not unknown; unrelated edits do not count. Do not infer facts beyond the support evidence.",
+          "binding": "The requested change is to put a frog inside the toilet. Combine both support observations and their evidence; do not treat either support fact alone as fulfillment.",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute the supplied check and return status, image-grounded or dependency-grounded evidence, reported confidence from 0 to 1 (or null), and used_dependency_ids.\nFor a support node, inspect SOURCE and EDITED only for its ONE saved visual proposition. Return pass/fail/unknown according to the criteria; fail is usable negative evidence, not automatic uncertainty. Never assess overall fulfillment or predict an expected label. used_dependency_ids must be [] because the evidence checks are independent.\nFor a requested node, NO IMAGES are supplied. Use ALL and ONLY the saved dependency observations for visual evidence, together with the original instruction, rubric, binding and saved composition criteria. Return complete/partial/absent/unknown. Explain how the dependency observations support the selected state, naming their IDs. used_dependency_ids must list every supplied dependency check_id exactly once in the saved order. Do not invent visual observations, silently replace dependency findings, or count supporting facts as completed edits. If necessary evidence is missing or contradictory, return unknown. Confidence is self-report, not a calibrated probability.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {},
+      "report": null,
+      "rejected_diagnostics": [
+        {
+          "program_ref": "6f74a68e20962109ae731b542982da7fbf2f159a6262058fd68047e3b0d24af7",
+          "semantic_rejection": "The supports are distinct and relevant, but they do not preserve enough evidence for the readout: frog presence and toilet presence separately cannot establish whether the frog is inside the toilet or partly placed there. The readout must infer placement not recorded by either support."
+        },
+        {
+          "program_ref": "70d6a5a91205d17103ed14c22a4b91a5748722454b5460fba14ae841aacf554b",
+          "semantic_rejection": "The supports are distinct and relevant, but the readout cannot faithfully distinguish partial progress from absence using the saved observations. A frog clearly outside the bowl is explicitly classified as absent unless partial placement is established, yet the supports record only presence and location relative to the bowl opening—not whether any placement progress occurred. The readout must infer that distinction or collapse partial progress into absent/unknown."
+        },
+        {
+          "parent": "6f74a68e20962109ae731b542982da7fbf2f159a6262058fd68047e3b0d24af7",
+          "round": 1,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "reason": "The edited image contains frogs in several distinct placements, including one visibly inside the toilet bowl. Replace the weak presence-only support with focused placement evidence so the image-free readout can distinguish fulfillment from partial progress or absence; retain an independent frog-identity check and compose both observations.",
+            "edits": [
+              {
+                "operator": "subtree_replace",
+                "remove_nodes": [
+                  "n1",
+                  "n2",
+                  "n3"
+                ],
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "outcome_id": "",
+                    "parent": "",
+                    "question": "Is at least one newly added, visibly frog-shaped animal present in the edited image?",
+                    "criteria": "pass: at least one recognizable frog is visible in the edited image and was not present in the source. fail: the edited image clearly contains no newly added recognizable frog. unknown: frog identity or whether it is newly added cannot be established.",
+                    "binding": "Inspect only frog identity and new presence, comparing source and edited images; do not judge toilet placement.",
+                    "role": "support",
+                    "active_on": [
+                      "complete",
+                      "partial",
+                      "absent",
+                      "unknown",
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ],
+                    "dependencies": [],
+                    "inferences": []
+                  },
+                  {
+                    "id": "n2",
+                    "outcome_id": "",
+                    "parent": "n1",
+                    "question": "Does the edited image visibly show a newly added frog placed in or partly entering the toilet bowl?",
+                    "criteria": "pass: a frog is visibly within the bowl interior, or visibly straddles/enters the bowl in a way that establishes placement progress. fail: the image clearly shows frogs only outside the bowl, such as on the lid or floor, with none in or partly entering it. unknown: bowl placement or partial entry cannot be determined.",
+                    "binding": "Inspect frog-to-bowl spatial relation and visible placement progress only; do not decide overall fulfillment or frog identity beyond what is needed to locate the depicted animal.",
+                    "role": "support",
+                    "active_on": [
+                      "complete",
+                      "partial",
+                      "absent",
+                      "unknown",
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ],
+                    "dependencies": [],
+                    "inferences": []
+                  },
+                  {
+                    "id": "n3",
+                    "outcome_id": "o1",
+                    "parent": "n2",
+                    "question": "Based only on both saved support observations, what fulfillment state applies to putting a frog inside the toilet?",
+                    "criteria": "complete: n1 and n2 pass and n2 establishes a frog inside the bowl. partial: n1 passes and evidence establishes placement progress but not complete placement inside the bowl. absent: evidence establishes no requested progress, including no newly added frog, or frogs clearly only outside the bowl with no placement progress. unknown: necessary evidence is unresolved or observations do not establish whether requested progress occurred. Unrelated edits do not count; do not infer beyond support evidence.",
+                    "binding": "Compose all support observations only. n1 establishes newly added frog presence; n2 establishes bowl placement/progress. A frog on the lid or floor alone is not fulfillment or progress. Known negative evidence remains usable.",
+                    "role": "requested",
+                    "active_on": [
+                      "complete",
+                      "partial",
+                      "absent",
+                      "unknown",
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ],
+                    "dependencies": [
+                      "n1",
+                      "n2"
+                    ],
+                    "inferences": []
+                  }
+                ],
+                "remove_outcomes": [],
+                "outcomes": [],
+                "node_order": [
+                  "n1",
+                  "n2",
+                  "n3"
+                ]
+              }
+            ],
+            "outcome_mapping": []
+          },
+          "error": "Virtual-root children have no activation condition",
+          "accepted": false
+        }
+      ]
+    },
+    "limit": 2,
+    "contract": "forced-evidence-readout-v1"
+  },
+  "case_id": "decomposed-greedy/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "747d20cf1f5d24ca9e65e6d5f0edefa6cc7f5c0082549b599494b947d0dd61ee"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "5858e639272ff378e7cd315b34785a3aa87448555282f50c65f60d3f05dc03fd"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"reason\":\"Replace the weak presence-only checks with independent visual evidence for newly added frog presence and its placement relative to the toilet bowl. The image shows frogs on the lid and floor as well as one in the bowl, so the readout must compose both presence and placement evidence without treating unrelated placements as fulfillment. Ensure the virtual-root support is activated in all states and the image-free readout depends on every support in order.\",\"edits\":[{\"operator\":\"subtree_replace\",\"remove_nodes\":[\"n1\",\"n2\",\"n3\"],\"nodes\":[{\"id\":\"n1\",\"outcome_id\":\"\",\"parent\":\"\",\"question\":\"Is at least one recognizable frog newly present in the edited image compared with the source?\",\"criteria\":\"pass: a recognizable frog is visible in the edited image and absent from the corresponding source area. fail: the edited image clearly contains no newly added recognizable frog. unknown: frog identity or whether it is newly added cannot be established.\",\"binding\":\"Inspect source and edited images only for recognizable frog identity and new presence; do not assess placement.\",\"role\":\"support\",\"active_on\":[\"complete\",\"partial\",\"absent\",\"unknown\",\"pass\",\"fail\",\"unknown\"],\"dependencies\":[],\"inferences\":[]},{\"id\":\"n2\",\"outcome_id\":\"\",\"parent\":\"n1\",\"question\":\"Does the edited image visibly show a frog inside the toilet bowl, partly entering it, or only outside it?\",\"criteria\":\"pass: a frog is visibly inside the bowl or visibly straddles/enters it, establishing placement progress. fail: frogs are clearly only outside the bowl, with none inside or partly entering. unknown: the frog-to-bowl relation or placement progress cannot be determined.\",\"binding\":\"Inspect only the visible spatial relation of frogs to the toilet bowl and whether any is inside or partly entering; do not decide overall fulfillment.\",\"role\":\"support\",\"active_on\":[\"complete\",\"partial\",\"absent\",\"unknown\",\"pass\",\"fail\",\"unknown\"],\"dependencies\":[],\"inferences\":[]},{\"id\":\"n3\",\"outcome_id\":\"o1\",\"parent\":\"n2\",\"question\":\"Based only on both saved support observations, what fulfillment state applies to putting a frog inside the toilet?\",\"criteria\":\"complete: n1 passes and n2 passes with evidence that a frog is inside the bowl. partial: n1 passes and n2 establishes placement progress, but not complete placement inside the bowl. absent: evidence establishes no newly added frog, or frogs only outside the bowl with no placement progress. unknown: necessary evidence is unresolved or the observations do not establish whether requested progress occurred. Unrelated edits do not count; do not infer beyond support evidence.\",\"binding\":\"Compose all support observations only: n1 establishes newly added frog presence; n2 establishes bowl placement/progress. A frog on the lid or floor alone is not fulfillment or progress. Known negative evidence remains usable.\",\"role\":\"requested\",\"active_on\":[\"complete\",\"partial\",\"absent\",\"unknown\",\"pass\",\"fail\",\"unknown\"],\"dependencies\":[\"n1\",\"n2\"],\"inferences\":[]}],\"remove_outcomes\":[],\"outcomes\":[],\"node_order\":[\"n1\",\"n2\",\"n3\"]}],\"outcome_mapping\":[]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 5204,
+    "completionTokens": 648,
+    "totalTokens": 5852,
+    "latencySeconds": 6.70720100402832,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "reason": "Replace the weak presence-only checks with independent visual evidence for newly added frog presence and its placement relative to the toilet bowl. The image shows frogs on the lid and floor as well as one in the bowl, so the readout must compose both presence and placement evidence without treating unrelated placements as fulfillment. Ensure the virtual-root support is activated in all states and the image-free readout depends on every support in order.",
+          "edits": [
+            {
+              "operator": "subtree_replace",
+              "remove_nodes": [
+                "n1",
+                "n2",
+                "n3"
+              ],
+              "nodes": [
+                {
+                  "id": "n1",
+                  "outcome_id": "",
+                  "parent": "",
+                  "question": "Is at least one recognizable frog newly present in the edited image compared with the source?",
+                  "criteria": "pass: a recognizable frog is visible in the edited image and absent from the corresponding source area. fail: the edited image clearly contains no newly added recognizable frog. unknown: frog identity or whether it is newly added cannot be established.",
+                  "binding": "Inspect source and edited images only for recognizable frog identity and new presence; do not assess placement.",
+                  "role": "support",
+                  "active_on": [
+                    "complete",
+                    "partial",
+                    "absent",
+                    "unknown",
+                    "pass",
+                    "fail",
+                    "unknown"
+                  ],
+                  "dependencies": [],
+                  "inferences": []
+                },
+                {
+                  "id": "n2",
+                  "outcome_id": "",
+                  "parent": "n1",
+                  "question": "Does the edited image visibly show a frog inside the toilet bowl, partly entering it, or only outside it?",
+                  "criteria": "pass: a frog is visibly inside the bowl or visibly straddles/enters it, establishing placement progress. fail: frogs are clearly only outside the bowl, with none inside or partly entering. unknown: the frog-to-bowl relation or placement progress cannot be determined.",
+                  "binding": "Inspect only the visible spatial relation of frogs to the toilet bowl and whether any is inside or partly entering; do not decide overall fulfillment.",
+                  "role": "support",
+                  "active_on": [
+                    "complete",
+                    "partial",
+                    "absent",
+                    "unknown",
+                    "pass",
+                    "fail",
+                    "unknown"
+                  ],
+                  "dependencies": [],
+                  "inferences": []
+                },
+                {
+                  "id": "n3",
+                  "outcome_id": "o1",
+                  "parent": "n2",
+                  "question": "Based only on both saved support observations, what fulfillment state applies to putting a frog inside the toilet?",
+                  "criteria": "complete: n1 passes and n2 passes with evidence that a frog is inside the bowl. partial: n1 passes and n2 establishes placement progress, but not complete placement inside the bowl. absent: evidence establishes no newly added frog, or frogs only outside the bowl with no placement progress. unknown: necessary evidence is unresolved or the observations do not establish whether requested progress occurred. Unrelated edits do not count; do not infer beyond support evidence.",
+                  "binding": "Compose all support observations only: n1 establishes newly added frog presence; n2 establishes bowl placement/progress. A frog on the lid or floor alone is not fulfillment or progress. Known negative evidence remains usable.",
+                  "role": "requested",
+                  "active_on": [
+                    "complete",
+                    "partial",
+                    "absent",
+                    "unknown",
+                    "pass",
+                    "fail",
+                    "unknown"
+                  ],
+                  "dependencies": [
+                    "n1",
+                    "n2"
+                  ],
+                  "inferences": []
+                }
+              ],
+              "remove_outcomes": [],
+              "outcomes": [],
+              "node_order": [
+                "n1",
+                "n2",
+                "n3"
+              ]
+            }
+          ],
+          "outcome_mapping": []
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "reason": "Replace the weak presence-only checks with independent visual evidence for newly added frog presence and its placement relative to the toilet bowl. The image shows frogs on the lid and floor as well as one in the bowl, so the readout must compose both presence and placement evidence without treating unrelated placements as fulfillment. Ensure the virtual-root support is activated in all states and the image-free readout depends on every support in order.",
+        "edits": [
+          {
+            "operator": "subtree_replace",
+            "remove_nodes": [
+              "n1",
+              "n2",
+              "n3"
+            ],
+            "nodes": [
+              {
+                "id": "n1",
+                "outcome_id": "",
+                "parent": "",
+                "question": "Is at least one recognizable frog newly present in the edited image compared with the source?",
+                "criteria": "pass: a recognizable frog is visible in the edited image and absent from the corresponding source area. fail: the edited image clearly contains no newly added recognizable frog. unknown: frog identity or whether it is newly added cannot be established.",
+                "binding": "Inspect source and edited images only for recognizable frog identity and new presence; do not assess placement.",
+                "role": "support",
+                "active_on": [
+                  "complete",
+                  "partial",
+                  "absent",
+                  "unknown",
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "dependencies": [],
+                "inferences": []
+              },
+              {
+                "id": "n2",
+                "outcome_id": "",
+                "parent": "n1",
+                "question": "Does the edited image visibly show a frog inside the toilet bowl, partly entering it, or only outside it?",
+                "criteria": "pass: a frog is visibly inside the bowl or visibly straddles/enters it, establishing placement progress. fail: frogs are clearly only outside the bowl, with none inside or partly entering. unknown: the frog-to-bowl relation or placement progress cannot be determined.",
+                "binding": "Inspect only the visible spatial relation of frogs to the toilet bowl and whether any is inside or partly entering; do not decide overall fulfillment.",
+                "role": "support",
+                "active_on": [
+                  "complete",
+                  "partial",
+                  "absent",
+                  "unknown",
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "dependencies": [],
+                "inferences": []
+              },
+              {
+                "id": "n3",
+                "outcome_id": "o1",
+                "parent": "n2",
+                "question": "Based only on both saved support observations, what fulfillment state applies to putting a frog inside the toilet?",
+                "criteria": "complete: n1 passes and n2 passes with evidence that a frog is inside the bowl. partial: n1 passes and n2 establishes placement progress, but not complete placement inside the bowl. absent: evidence establishes no newly added frog, or frogs only outside the bowl with no placement progress. unknown: necessary evidence is unresolved or the observations do not establish whether requested progress occurred. Unrelated edits do not count; do not infer beyond support evidence.",
+                "binding": "Compose all support observations only: n1 establishes newly added frog presence; n2 establishes bowl placement/progress. A frog on the lid or floor alone is not fulfillment or progress. Known negative evidence remains usable.",
+                "role": "requested",
+                "active_on": [
+                  "complete",
+                  "partial",
+                  "absent",
+                  "unknown",
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "dependencies": [
+                  "n1",
+                  "n2"
+                ],
+                "inferences": []
+              }
+            ],
+            "remove_outcomes": [],
+            "outcomes": [],
+            "node_order": [
+              "n1",
+              "n2",
+              "n3"
+            ]
+          }
+        ],
+        "outcome_mapping": []
+      }
+    ]
+  }
+}

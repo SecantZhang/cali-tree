@@ -1,3 +1,38 @@
+## 261008-11:02:19 — Checkpoint nested evidence repair and pilot results
+- Type: chore
+- Scope: current implementation, tests, documentation and reproducibility artifacts
+- What: User-authorized commit/push checkpoint before typed edits; explicit allowlist and secret scan; offline suite 1,237 passed, 23 skipped.
+- Why: Preserve the measured current state before changing graph construction.
+- Details: [full record](details/261008-11:02:19-updates.md)
+
+## 261008-10:21:38 — Small live nested-evidence repair test
+- Type: feature
+- Scope: bounded one-case runner, saved-seed preparation, compiler guidance, tests and reproducible live reports
+- What: Completed 139/150 calls. Controlled chalk result: broad 0→4/5, decomposed 0→2/5 reference matches; decomposition failed robustness. Missing extent was discovered, but both nested insertions had invalid ancestry. Offline suite: 1,237 passed, 23 skipped; frozen-source zero-call replay verified.
+- Why: Test the repair path on the saved chalk failure while retaining invalid compilation, rejected edits and strict budget accounting.
+- Details: [full record](details/261008-10:21:38-updates.md)
+
+## 261008-10:00:20 — Missing and nested visual evidence repair
+- Type: feature
+- Scope: architecture, nested runtime, visual reviewers, structural repair, durable routes, runner and offline tests
+- What: Add missing/nested evidence proposals and visual diagnosis of audit-rejected seeds without admitting diagnostic scores to acceptance. Focused tests: 89 passed; full offline suite: 1,234 passed, 23 skipped. No new live calls.
+- Why: Repair coarse passing proxies by investigating instruction-grounded evidence rather than forcing a failing check or desired label.
+- Details: [full record](details/261008-10:00:20-updates.md)
+
+## 261008 — Authorized frozen verification continuation
+- Type: feature
+- Scope: durable continuation driver, offline tests, frozen-source live final verification
+- What: Completed 108 unattempted final calls with no new failures; cumulative 474 calls. Follow-up selected agreement broad 46.7%, forced 26.7%; frozen-source zero-call replay verified. Offline suite 1,218 passed, 23 skipped.
+- Why: Finish the transport-interrupted comparison without reopening optimization or resampling failed slots.
+- Details: [full record](details/261008-frozen-continuation-updates.md)
+
+## 261008 — Mandatory decomposition experiment
+- Type: feature
+- Scope: opt-in evidence decomposition, paired runner, tests and documentation
+- What: Completed 242-call comparison (broad 60.0%, forced 33.3% selected agreement); corrected format guidance and preserved a 124-call follow-up stopped after TLS failures. Combined 366 calls; offline suite 1,212 passed, 23 skipped; frozen-source zero-call replays verified.
+- Why: Directly test the user's decomposition idea while preventing repairs from collapsing to a broad check.
+- Details: [full record](details/261008-forced-decomposition-updates.md)
+
 ## 261008-01:07:36 — Prepare publication of current CaliTree progress
 - Type: docs
 - Scope: implementation, tests, reports, reproducible experiment artifacts and update records

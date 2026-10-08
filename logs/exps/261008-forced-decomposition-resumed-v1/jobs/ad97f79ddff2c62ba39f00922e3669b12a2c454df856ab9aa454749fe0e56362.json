@@ -1,0 +1,110 @@
+{
+  "execution_ref": "ad97f79ddff2c62ba39f00922e3669b12a2c454df856ab9aa454749fe0e56362",
+  "stage": "audit",
+  "slot": "audit/9920243365637b1ac4f039d1b72d55f421dabd6bffa7f5dbaa9e77ce82ca89ec",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "r1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "o1",
+          "requirement_ids": [
+            "r1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "frog",
+          "reference": "toilet",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "n1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is any frog visibly inside the toilet bowl in the edited image?",
+          "criteria": "pass: at least one frog is visibly within the toilet bowl opening, below the rim. fail: the image clearly shows no frog inside the bowl. unknown: the image does not establish whether a frog is inside the bowl.",
+          "binding": "Inspect only for a frog visibly inside the toilet bowl; do not assess frogs on the lid, rim, or elsewhere.",
+          "inferences": []
+        },
+        {
+          "id": "n2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "n1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is any frog visibly outside the toilet bowl in the edited image?",
+          "criteria": "pass: at least one frog is visibly outside the bowl, such as on the lid, rim, or floor. fail: the image clearly shows no frog outside the bowl. unknown: the image does not establish whether a frog is outside the bowl.",
+          "binding": "Inspect only for frogs visibly outside the toilet bowl; do not assess frogs inside the bowl or overall fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "n3",
+          "role": "requested",
+          "outcome_id": "o1",
+          "parent": "n2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "n1",
+            "n2"
+          ],
+          "question": "Based only on both saved support observations, was a frog added inside the toilet?",
+          "criteria": "complete: n1 establishes a frog inside the bowl and the evidence establishes the requested placement. partial: evidence establishes some progress toward placement but not completed placement, such as a frog outside the bowl with no established frog inside. absent: evidence establishes no requested change has progressed. unknown: the observations do not establish whether any requested progress occurred or whether placement is complete. A known negative observation is usable evidence; unrelated edits do not count. Do not infer facts beyond the support evidence.",
+          "binding": "Compose all support observations: n1 records frog-inside-bowl evidence and n2 records frog-outside-bowl evidence. Do not treat either observation alone as proof of completed placement; do not inspect images or invent visual facts.",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute the supplied check and return status, image-grounded or dependency-grounded evidence, reported confidence from 0 to 1 (or null), and used_dependency_ids.\nFor a support node, inspect SOURCE and EDITED only for its ONE saved visual proposition. Return pass/fail/unknown according to the criteria; fail is usable negative evidence, not automatic uncertainty. Never assess overall fulfillment or predict an expected label. used_dependency_ids must be [] because the evidence checks are independent.\nFor a requested node, NO IMAGES are supplied. Use ALL and ONLY the saved dependency observations for visual evidence, together with the original instruction, rubric, binding and saved composition criteria. Return complete/partial/absent/unknown. Explain how the dependency observations support the selected state, naming their IDs. used_dependency_ids must list every supplied dependency check_id exactly once in the saved order. Do not invent visual observations, silently replace dependency findings, or count supporting facts as completed edits. If necessary evidence is missing or contradictory, return unknown. Confidence is self-report, not a calibrated probability.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "forced-evidence-readout-v1"
+  },
+  "case_id": "decomposed-greedy/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks are distinct, but they do not preserve the requested placement judgment. A frog outside the bowl alone is not evidence that the requested change has progressed: it could be unrelated or pre-existing, and the instruction does not request a frog elsewhere. The readout nevertheless permits that observation to establish partial progress, so it can misclassify absence and cannot faithfully distinguish the rubric states from the saved evidence.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1256,
+    "completionTokens": 96,
+    "totalTokens": 1352,
+    "latencySeconds": 2.177180051803589,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks are distinct, but they do not preserve the requested placement judgment. A frog outside the bowl alone is not evidence that the requested change has progressed: it could be unrelated or pre-existing, and the instruction does not request a frog elsewhere. The readout nevertheless permits that observation to establish partial progress, so it can misclassify absence and cannot faithfully distinguish the rubric states from the saved evidence."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks are distinct, but they do not preserve the requested placement judgment. A frog outside the bowl alone is not evidence that the requested change has progressed: it could be unrelated or pre-existing, and the instruction does not request a frog elsewhere. The readout nevertheless permits that observation to establish partial progress, so it can misclassify absence and cannot faithfully distinguish the rubric states from the saved evidence."
+  }
+}
