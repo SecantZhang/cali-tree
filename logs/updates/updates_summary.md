@@ -1,3 +1,101 @@
+## 261008-01:07:36 — Prepare publication of current CaliTree progress
+- Type: docs
+- Scope: implementation, tests, reports, reproducible experiment artifacts and update records
+- What: User-authorized commit/push preparation; full unit suite passed (1,191 passed, 23 skipped), selected files checked for credentials.
+- Why: Publish the current optimizer progress while retaining local machine settings and raw histories locally.
+- Details: [full record](details/261008-01:07:36-updates.md)
+
+## 261007-23:46:40 — Complete harder-case current-optimizer stress test
+- Type: docs
+- Scope: live results, reproducible analysis, protocol/replay verification and update logs
+- What: Completed three cases × four arms, 392 calls and 120 final draws; 0–2 robust cases per arm. All 38 candidates remained single-check.
+- Why: Measure current criterion repair on historical failures, expose confidence/reference disagreement, and distinguish this from a decomposition test.
+- Details: [full record](details/261007-23:46:40-updates.md)
+
+## 261007-23:28:55 — Prepare harder-case robust leaf stress test
+- Type: feature
+- Scope: failure-selected experiment runner, offline tests and usage documentation
+- What: Freeze three cases with prior judge errors, reuse all four unchanged optimizer arms, and reserve fresh verification within a smaller ceiling.
+- Why: Measure difficult local behavior and actual decomposition topology. Offline suite: 1,191 passed, 23 skipped; user approved the exact bounded live test.
+- Details: [full record](details/261007-23:28:55-updates.md)
+
+## 261007-21:17:16 — Completed robust leaf live comparison
+- Type: docs
+- Scope: live experiment artifacts, quantitative report and replay verification
+- What: Completed six cases × four arms, 240 final draws; selected agreement 46.7–80.0%, 3–4 robust cases per arm. Replay reproduced all results with zero calls.
+- Why: Measure the optimizer while recording that all candidate programs remained single-check, so tree benefits were not established.
+- Details: [full record](details/261007-21:17:16-updates.md)
+
+## 261007-20:49:04 — Authorized robust leaf pilot restart
+- Type: fix
+- Scope: robust pilot runner, restart tests and documentation
+- What: Preserved stopped attempt and deducted its reservations from an authorized network-enabled run; 1,188 offline tests passed.
+- Why: Execute the requested live comparison without resetting failure history or exceeding the original ceiling.
+- Details: [full record](details/261007-20:49:04-updates.md)
+
+## 261007-20:36:30 — Robust v3 local leaf optimizer
+- Type: feature
+- Scope: decision runtime, program optimization, CaliTree leaf integration, pilot runner, tests and docs
+- What: Added conditional programs, native nodewise TextGrad feedback, structural repairs and Pareto selection; 1,186 offline tests passed. Live attempt preserved after three sandbox DNS failures.
+- Why: Fit individual leaves for semantic preservation, confidence and repeated agreement.
+- Details: [full record](details/261007-20:36:30-updates.md)
+
+## 261007-19:37:29 — Add Pareto textual repair and ordered leaf trees to design
+- Type: docs
+- Scope: robust leaf optimizer design
+- What: Added textual-gradient structural proposals, a bounded multi-objective candidate frontier, and conditional tree execution semantics.
+- Why: Support complementary candidate exploration and ordered dependent checks inside each leaf.
+- Details: [logs/updates/details/261007-19:37:29-updates.md](details/261007-19:37:29-updates.md)
+
+## 261007-13:55:13 — Document confidence-aware casewise leaf repair
+- Type: docs
+- Scope: proposed leaf optimizer design
+- What: Captured the two repair branches, per-decision confidence and repeat metrics, safe removal rules, and fresh final verification.
+- Why: Turn the user's robust leaf-judge optimization idea into a reviewable design.
+- Details: [logs/updates/details/261007-13:55:13-updates.md](details/261007-13:55:13-updates.md)
+
+## 261006-21:34:33 — Measure DSG decomposition score fidelity
+- Type: feature
+- Scope: DSG runtime, prompts, paired experiment runner, tests and reports
+- What: DSG plus original-rubric readout matched 44/60 original scores; all 120 draws replayed offline. Native DSG fractions are recorded separately.
+- Why: Test whether decomposing prompts preserves CaliTree scores on the same twelve cases.
+- Details: [logs/updates/details/261006-21:34:33-updates.md](details/261006-21:34:33-updates.md)
+
+## 261006-21:05:02 — Test combined versus separate visual decision checks
+- Type: feature
+- Scope: paired execution runtime, runner, tests and experiment report
+- What: Three approved cases showed no stability gain from separation; nine failed preparation. Full artifacts and limitations are recorded.
+- Why: Test identical visual criteria under combined and individually evaluated prompts.
+- Details: [logs/updates/details/261006-21:05:02-updates.md](details/261006-21:05:02-updates.md)
+
+## 261006-20:42:46 — Compare native GEPA and TextGrad structural leaf optimizers
+- Type: feature
+- Scope: structural optimizer adapters, comparison runner, tests and pilot report
+- What: Native GEPA/TextGrad optimize executable leaf graphs; twelve-case selected agreement was 75.0% / 61.1%, versus custom 63.9%.
+- Why: Compare casewise rule optimization under shared seeds, execution, audits and budgets.
+- Details: [logs/updates/details/261006-20:42:46-updates.md](details/261006-20:42:46-updates.md)
+
+## 261006-17:21:58 — Rebuild independent CaliTree leaf optimization
+- Type: feature
+- Scope: casewise decision runtime, local repair, program leaves, tests and live pilot
+- What: Six of twelve local leaves passed fresh verification; executable graphs and repair histories are saved.
+- Why: Fit each leaf independently and defer shared-rule learning to CaliTree structure.
+- Details: [logs/updates/details/261006-17:21:58-updates.md](details/261006-17:21:58-updates.md)
+
+## 260930-21:28:55 — Class-balanced and guarded CaliTree refinements
+- Type: feature
+- Scope: tree programs, offline runner/tests, experiment reports
+- What: Tested class-balanced fitting, role proportions and supported rubric corrections; training validation prefers the fixed rubric over refined trees.
+- Why: Address class collapse and weak tree features while preserving independent support and conservative selection.
+- Details: [logs/updates/details/260930-21:28:55-updates.md](details/260930-21:28:55-updates.md)
+
+## 260930-21:05:57 — Test shared CaliTree decision rules offline
+- Type: feature
+- Scope: tree programs, retrospective runner/tests, experiment documentation
+- What: Added and ran grouped shared-rule comparisons on five-repeat traces; a small agreement gain accompanies lower balanced accuracy and zero yes recall.
+- Why: Test the user's shared robust decision-rule idea without changing existing observations or making new model calls.
+- Details: [logs/updates/details/260930-21:05:57-updates.md](details/260930-21:05:57-updates.md)
+
 ## 260930-13:18:26 — Publish current CaliTree progress
 - Type: chore
 - Scope: modular CaliTree, canvas, research runners/reports and project setup

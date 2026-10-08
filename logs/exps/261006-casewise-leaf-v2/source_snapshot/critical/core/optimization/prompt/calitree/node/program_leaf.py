@@ -1,0 +1,56 @@
+"""Independent local leaves; no parent construction or cross-case fitting."""
+from hashlib import sha256
+from pathlib import Path
+from critical.core.decision.artifacts import restore_program, program_ref
+VERSION = 'calitree-casewise-leaves-v2'
+
+def evidence_hashes(evidence):
+    return {k: sha256(Path(evidence[k]).read_bytes()).hexdigest() for k in ('source_image', 'edited_image')}
+
+class ProgramLeafController:
+    def __init__(self, optimizer_factory):
+        self.optimizer_factory = optimizer_factory
+    def build(self, cases, reference_labels, *, seeds=None):
+        if not cases or len({c.id for c in cases}) != len(cases) or set(reference_labels) != {c.id for c in cases}:
+            raise ValueError('Need unique cases and exactly one reference label per case')
+        bundle = {'version': VERSION, 'nodes': {}, 'programs': {}}
+        for case in cases:
+            optimizer = self.optimizer_factory(case)
+            result = optimizer.optimize(case, reference_labels[case.id], seed=(seeds or {}).get(case.id))
+            executor = optimizer.evaluator.executor
+            node = {'id': 'leaf:' + case.id, 'case_id': case.id, 'fit_scope': [case.id],
+                    'instruction': case.instruction, 'evidence_hashes': evidence_hashes(case.evidence),
+                    'executor_identity': executor.checker.identity, 'max_checks': executor.max_checks,
+                    'support_status': 'local_unverified', 'result': result.to_dict(),
+                    'program_ref': result.selected['program_ref'] if result.selected else None}
+            for artifact in (result.seed, result.selected):
+                if artifact:
+                    bundle['programs'][artifact['program_ref']] = artifact
+            bundle['nodes'][node['id']] = node
+        return validate_program_leaves(bundle)
+
+def validate_program_leaves(bundle):
+    if bundle.get('version') != VERSION or not bundle.get('nodes'):
+        raise ValueError('Unsupported or empty leaf bundle')
+    for ref, artifact in bundle['programs'].items():
+        if program_ref(restore_program(artifact)) != ref:
+            raise ValueError('Program reference mismatch')
+    for key, node in bundle['nodes'].items():
+        if node['id'] != key or node['fit_scope'] != [node['case_id']]:
+            raise ValueError('Invalid local scope')
+        if node['program_ref'] is not None:
+            p = restore_program(bundle['programs'][node['program_ref']])
+            if p.instruction != node['instruction'] or node['result']['selected']['program_ref'] != node['program_ref']:
+                raise ValueError('Leaf binding mismatch')
+    return bundle
+
+def judge_program_leaf(bundle, node_id, evidence, executor, *, repeat='inference/0'):
+    validate_program_leaves(bundle)
+    node = bundle['nodes'][node_id]
+    if node['program_ref'] is None:
+        raise ValueError('Leaf has no executable program')
+    if node['executor_identity'] != executor.checker.identity or node['max_checks'] != executor.max_checks:
+        raise ValueError('Saved execution contract differs')
+    if evidence_hashes(evidence) != node['evidence_hashes']:
+        raise ValueError('A local leaf cannot silently substitute a different case')
+    return executor.execute(restore_program(bundle['programs'][node['program_ref']]), evidence, repeat=repeat)

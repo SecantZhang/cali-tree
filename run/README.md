@@ -168,8 +168,110 @@ ignored. The grid skips complete cells and resumes a half-finished cell's checkp
 
 ## Where results go
 
+### CaliTree shared decision-rule pilot
+
+Fit and evaluate a shallow CART program on saved five-repeat decomposition
+observations, with no model calls:
+
+```bash
+.venv/bin/python -m run.calitree_shared_tree
+```
+
+The default source is `logs/exps/260930-10:51:35-exps`. Use `--source PATH` to
+select a compatible frozen snapshot and `--output-dir PATH` for a new output
+directory. Historical J cases train the program; grouped training-only validation
+selects depth/support; later N cases evaluate it. Unknown and failed draws remain
+unresolved. The fixed role mapper is an auditable scaffold, not a learned ontology.
+The report compares a fixed reducer, majority baseline, pooled tree, semantic-role
+tree, and a tree selected with a repeat-disagreement penalty. See
+[`calitree_shared_tree_pilot.md`](../docs/experiments/calitree_shared_tree_pilot.md)
+for results and the next experiment.
+
+To run the exploratory class-balanced, fraction-feature and guarded-rule
+refinements on the same frozen cohort:
+
+```bash
+.venv/bin/python -m run.calitree_tree_refinement
+```
+
+This comparison includes the fixed reducer as an eligible training-validation
+candidate and keeps source/instruction support separate from class weights.
+The evaluation cases have already been inspected; this is an exploratory follow-up.
+See [`calitree_tree_refinement.md`](../docs/experiments/calitree_tree_refinement.md).
+
 Every real/dry run writes a fresh `logs/exps/<YYMMDD-HH:MM:SS>-exps/` directory
 (`gap_result.json`, `aligned_pairs.csv`, `gap_report.xlsx`, `chart_gap_by_dimension.png`,
 `run.log`, `llm-histories.log`, `run_config.json`). See `docs/benchmark.md` for the schema.
 
 For the manual leaf/merge canvas path, use `workflows/examples/calitree_aurora_canvas.json`. Run its shared partition first, then select each leaf’s fit cases in the Data tab. `.venv/bin/python -m run.calitree_canvas_demo` exercises three-child merging, JSON reload, and direct saved-policy judging entirely offline.
+
+## Casewise CaliTree leaf optimizer
+
+Fit one executable decision program per case, with structural and binding repairs:
+
+```sh
+.venv/bin/python -m run.calitree_program_optimization --demo --output-dir .cache/casewise-demo
+.venv/bin/python -m run.calitree_program_optimization --preflight --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_program_optimization --live --resume --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_program_optimization --report --output-dir RUN_DIRECTORY
+```
+
+See [the casewise runtime and API guide](../docs/calitree_program_optimizer.md).
+The fresh pilot uses all twelve prior-pilot cases as independent local fits, with
+GPT-6 Luna, 600 total requests and 768,000 completion tokens. Final comparisons are
+reserved before search. Failed/interrupted requests are never resampled. Saved v2
+leaves execute their exact decomposition and checks; parent merging is deferred.
+
+## Compare custom, GEPA and TextGrad leaf optimization
+
+All three methods can optimize executable decision rules on the same twelve cases:
+
+```sh
+.venv/bin/python -m run.calitree_optimizer_comparison --preflight --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_optimizer_comparison --live --resume --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_optimizer_comparison --report --output-dir RUN_DIRECTORY
+```
+
+Uses pinned GEPA 0.1.4 and TextGrad 0.1.8, identical saved seeds, and equal per-case
+call allowances. The full comparison cap is 1,800 calls and 2,304,000 completion
+tokens, with final comparisons reserved in advance. See the
+[adapter and protocol guide](../docs/calitree_optimizer_comparison.md).
+
+The completed twelve-case results and limitations are in
+[`docs/experiments/calitree_optimizer_comparison.md`](../docs/experiments/calitree_optimizer_comparison.md).
+
+### Paired visual-check execution test
+
+Compare the same frozen visual criteria in one combined prompt versus individual
+image checks followed by text-only fulfillment:
+
+```sh
+.venv/bin/python -m run.calitree_check_ablation --preflight --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_check_ablation --live --resume --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_check_ablation --report --output-dir RUN_DIRECTORY
+```
+
+See the [protocol](../docs/calitree_check_ablation.md) and
+[completed pilot](../docs/experiments/calitree_check_ablation.md).
+
+### DSG decomposition score fidelity
+
+Compare the original saved seed scorer against DSG-style tuples, atomic questions,
+prerequisite masking, and a text-only readout of the original rubric:
+
+```sh
+.venv/bin/python -m run.calitree_dsg_fidelity --preflight --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_dsg_fidelity --live --resume --output-dir RUN_DIRECTORY
+.venv/bin/python -m run.calitree_dsg_fidelity --report --output-dir RUN_DIRECTORY
+```
+
+Native DSG fractions are retained separately from the yes/partial/no comparison.
+Questions are frozen before scoring; there is no label-guided optimization.
+See the [protocol](../docs/calitree_dsg_fidelity.md) and
+[experiment report](../docs/experiments/calitree_dsg_fidelity.md).
+
+### Robust local leaf optimizer (v3)
+
+`python -m run.calitree_robust_leaf_optimization --preflight --output-dir logs/exps/NEW-RUN` freezes a six-case flat/tree × greedy/Pareto experiment. Use `--demo` for offline repair, `--live` for the explicitly gated OpenAI pilot, `--live --resume` for unattempted slots, and `--report` to regenerate the report. See [v3 usage](../docs/calitree_robust_leaf_optimizer.md). Old leaf runners and artifact formats remain available.
+
+`python -m run.calitree_robust_hard_cases --preflight --output-dir logs/exps/NEW-HARD-RUN` freezes three prior-failure cases outside the six-case v3 pilot. Use `--live` to run the same four optimizer arms with a 1,800-call/2,304,000-completion-token ceiling, `--live --resume` for unattempted slots, or `--report` for saved results. Selection evidence and image hashes are pinned; runtime, prompts and thresholds are unchanged. See [v3 usage](../docs/calitree_robust_leaf_optimizer.md#failure-selected-harder-cases).
