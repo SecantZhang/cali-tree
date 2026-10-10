@@ -1,0 +1,414 @@
+{
+  "execution_ref": "2170a18cbc9acb37ba28f6baada21ed0191aca4af8981ef18bb164c0460b71db",
+  "stage": "propose_typed",
+  "slot": "round/0/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show the original visual content rendered in a pencil-drawn style?",
+          "criteria": "Pass if the image visibly represents its content as a pencil drawing; fail if there is sufficient evidence that no pencil-drawing transformation has occurred; unknown if the image or its style cannot be assessed reliably. Partial evidence of a pencil-drawn style is progress, not completion.",
+          "binding": "Compare the supplied image with the requested transformation: assess whether its visual content is rendered in a pencil-drawn style. Do not require a particular pencil technique.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image-grounded evidence of any progress toward rendering the content as a pencil drawing, even if the transformation is incomplete?",
+          "criteria": "Pass if the image shows some visible pencil-drawing-style treatment of its content, including an incomplete treatment; fail if sufficient evidence shows no requested transformation has progressed; unknown if evidence is insufficient to determine whether any such progress occurred. Unrelated edits do not count as progress.",
+          "binding": "Assess only visible changes in the supplied image that move its visual content toward a pencil-drawn style; do not infer progress from unrelated changes.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Does the image visibly appear as a completed pencil drawing?",
+          "criteria": "Compose both supports under R1 without treating either support as completion credit by itself. Complete (yes) only when s1 passes. Partial only when s1 does not pass, s2 passes, and the evidence is sufficient to establish some requested progress without complete fulfillment. Absent (no) only when s1 fails and s2 fails, with sufficient evidence that no requested change has progressed. Unknown when required evidence is unresolved, including when s1 is unknown and completion cannot be established, or when s2 is unknown and absence or partial progress cannot be established. Unrelated edits never count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s binding asks whether the image appears as a *completed* pencil drawing, but its criteria make s1 passing sufficient for “yes.” That lets evidence of a muted, grainy pencil-like treatment override the distinction between visible progress and completion; s2’s wording (“indicating progress”) also does not establish completion. Tighten the typed decision logic so completion requires evidence that the requested transformation is substantially realized across the image, while partial requires supported visible progress that falls short, and absent requires supported lack of progress. Apply those thresholds to the actual source/edit comparison: the edit visibly changes the meal and setting into a pale, grainy, sketch-like rendering, but the traces do not explain why that amounts to a completed drawing rather than partial progress. Require the supports to distinguish those states explicitly and ground their judgments in visual evidence, rather than treating two correlated “pass” labels as independent proof. Preserve unknown when evidence cannot resolve the distinction. No transport, schema, or dependency failure is indicated here; the mismatch is semantic calibration and criterion ambiguity."
+        ],
+        "s2": [
+          "The node correctly detects visible progress, but its progress-only question cannot distinguish the rubric’s three outcomes; a pass is being treated downstream as completed “yes.” Keep this support node narrowly about image-grounded progress, and make its typed criteria explicitly report evidence for progress versus no progress, reserving unknown for insufficient visual evidence. Ensure the parent decision separately assesses whether the transformation is substantially complete before assigning yes, and partial when visible progress falls short. Ground the comparison in the source and edit: the edit retains the scene while applying a pale, muted, grainy, sketch-like treatment across the meal and surroundings. That supports progress, but the trace should not imply that progress alone establishes completion. Do not count correlated pass labels as independent evidence. This is semantic criterion/routing ambiguity, not a transport, schema, or dependency failure."
+        ],
+        "s1": [
+          "The trace supports visible progress: the edit preserves the meal and setting while applying a pale, grainy, sketch-like treatment across them. But that evidence alone does not establish that the requested pencil-drawing transformation is complete, and the aggregate incorrectly maps the single pass to “yes” despite the partial reference. Keep this support node focused on image-grounded progress, while making its typed output distinguish clear progress from clear absence and retain unknown when the comparison is inconclusive. Ensure downstream routing assesses substantial completion separately before assigning “yes”; a progress pass must not itself imply completion. Ask for evidence that distinguishes a substantially realized pencil rendering from a partial or merely pencil-like treatment, and do not count correlated support passes as independent confirmation. This is semantic criterion/routing ambiguity, not a transport, schema, or dependency failure."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 194.0,
+        "traces": [
+          {
+            "program_ref": "74929fd5e52a62d4000ff763de51056d9cd063ece93deeb96c931416e3a2af32",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved supports pass: s1 establishes that the edited image preserves the meal and table setting in a pencil-drawn style, and s2 independently reports visible sketch-like shading and outlines. Under the saved criteria, s1 passing is sufficient for completion."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting while rendering them in a muted, grainy, pencil-drawn style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 51,
+                "dependencies": [],
+                "execution_ref": "2d0837e3715a79635eb5d8ca7b9fc7d2aa812af9ceafba26844f2a2e093a2095",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines, indicating progress toward the requested style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 61,
+                "dependencies": [],
+                "execution_ref": "61a9e73a7533f4b359d46fbc72f7b59e93cb8c4c13b3d7aa85392bca84d0ede3",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "Both saved supports pass: s1 establishes that the edited image preserves the meal and table setting in a pencil-drawn style, and s2 independently reports visible sketch-like shading and outlines. Under the saved criteria, s1 passing is sufficient for completion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 82,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting while rendering them in a muted, grainy, pencil-drawn style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 51,
+                    "dependencies": [],
+                    "execution_ref": "2d0837e3715a79635eb5d8ca7b9fc7d2aa812af9ceafba26844f2a2e093a2095",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines, indicating progress toward the requested style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "61a9e73a7533f4b359d46fbc72f7b59e93cb8c4c13b3d7aa85392bca84d0ede3",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "a6869595de91e2f97a430c76d3229a4e3fbb9e95ab4ba61ee8915e87466951fe",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6de822eb2ccca68fa0349f086e56765bca2954bd89af3ae262aaf924d29d1170",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "nested-required/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "5db0d279451fb04e45ed07b8175f3e31efc00865814e8cb6d22bd41242f00e4e"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "48495e33d4e2a16df287ae85edb941fc526fbf395f446f74cc1990dd6d0c3a91"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The existing checks establish visible sketch-like progress but do not distinguish that from a substantially completed pencil drawing. Add a nested, image-grounded check for the extent and consistency of the style conversion; revise the readout so progress alone supports partial, not completion. The added check uses the broad progress observation as context, not as independent confirmation.\",\"actions\":[{\"operation\":\"insert_support\",\"after\":\"s2\",\"before\":\"fulfillment\",\"new_check_id\":\"s3\",\"target_id\":\"\",\"requirement_id\":\"R1\",\"question\":\"Does the pencil-drawing treatment substantially and consistently render the image's visual content as a drawing, rather than merely applying a pale or grainy sketch-like effect while retaining a predominantly photographic appearance?\",\"criteria\":\"Pass only if comparison of source and edit shows that the requested pencil-drawing style is substantially realized across the image's salient content, with drawing-like rendering rather than merely a partial or superficial effect. Fail if there is sufficient visual evidence that the treatment falls short of substantial conversion. Unknown if the extent or consistency cannot be assessed reliably. A pass on the ancestor establishes only progress and is not itself evidence of substantial completion.\",\"binding\":\"Inspect the source and edited images directly. Use the ancestor's progress observation as context, then independently assess the extent and consistency of the style transformation across the meal and surrounding scene. Do not treat muted color, grain, or isolated sketch-like details alone as proof of completion.\",\"readout_criteria\":\"\",\"evidence_from\":[\"s2\"]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Compose all three supports without treating correlated observations as independent proof. Complete (yes) only when s3 passes, establishing substantial and consistent conversion. Partial only when s1 or s2 establishes visible requested progress and s3 fails, establishing that the transformation falls short of substantial completion. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to distinguish these states is unresolved; in particular, a pass on s1 or s2 alone cannot establish completion, and an unknown s3 prevents deciding between complete and partial. Unrelated edits do not count as progress.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4664,
+    "completionTokens": 486,
+    "totalTokens": 5150,
+    "latencySeconds": 6.384119987487793,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The existing checks establish visible sketch-like progress but do not distinguish that from a substantially completed pencil drawing. Add a nested, image-grounded check for the extent and consistency of the style conversion; revise the readout so progress alone supports partial, not completion. The added check uses the broad progress observation as context, not as independent confirmation.",
+          "actions": [
+            {
+              "operation": "insert_support",
+              "after": "s2",
+              "before": "fulfillment",
+              "new_check_id": "s3",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "Does the pencil-drawing treatment substantially and consistently render the image's visual content as a drawing, rather than merely applying a pale or grainy sketch-like effect while retaining a predominantly photographic appearance?",
+              "criteria": "Pass only if comparison of source and edit shows that the requested pencil-drawing style is substantially realized across the image's salient content, with drawing-like rendering rather than merely a partial or superficial effect. Fail if there is sufficient visual evidence that the treatment falls short of substantial conversion. Unknown if the extent or consistency cannot be assessed reliably. A pass on the ancestor establishes only progress and is not itself evidence of substantial completion.",
+              "binding": "Inspect the source and edited images directly. Use the ancestor's progress observation as context, then independently assess the extent and consistency of the style transformation across the meal and surrounding scene. Do not treat muted color, grain, or isolated sketch-like details alone as proof of completion.",
+              "readout_criteria": "",
+              "evidence_from": [
+                "s2"
+              ]
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Compose all three supports without treating correlated observations as independent proof. Complete (yes) only when s3 passes, establishing substantial and consistent conversion. Partial only when s1 or s2 establishes visible requested progress and s3 fails, establishing that the transformation falls short of substantial completion. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to distinguish these states is unresolved; in particular, a pass on s1 or s2 alone cannot establish completion, and an unknown s3 prevents deciding between complete and partial. Unrelated edits do not count as progress.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The existing checks establish visible sketch-like progress but do not distinguish that from a substantially completed pencil drawing. Add a nested, image-grounded check for the extent and consistency of the style conversion; revise the readout so progress alone supports partial, not completion. The added check uses the broad progress observation as context, not as independent confirmation.",
+        "actions": [
+          {
+            "operation": "insert_support",
+            "after": "s2",
+            "before": "fulfillment",
+            "new_check_id": "s3",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "Does the pencil-drawing treatment substantially and consistently render the image's visual content as a drawing, rather than merely applying a pale or grainy sketch-like effect while retaining a predominantly photographic appearance?",
+            "criteria": "Pass only if comparison of source and edit shows that the requested pencil-drawing style is substantially realized across the image's salient content, with drawing-like rendering rather than merely a partial or superficial effect. Fail if there is sufficient visual evidence that the treatment falls short of substantial conversion. Unknown if the extent or consistency cannot be assessed reliably. A pass on the ancestor establishes only progress and is not itself evidence of substantial completion.",
+            "binding": "Inspect the source and edited images directly. Use the ancestor's progress observation as context, then independently assess the extent and consistency of the style transformation across the meal and surrounding scene. Do not treat muted color, grain, or isolated sketch-like details alone as proof of completion.",
+            "readout_criteria": "",
+            "evidence_from": [
+              "s2"
+            ]
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Compose all three supports without treating correlated observations as independent proof. Complete (yes) only when s3 passes, establishing substantial and consistent conversion. Partial only when s1 or s2 establishes visible requested progress and s3 fails, establishing that the transformation falls short of substantial completion. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to distinguish these states is unresolved; in particular, a pass on s1 or s2 alone cannot establish completion, and an unknown s3 prevents deciding between complete and partial. Unrelated edits do not count as progress.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

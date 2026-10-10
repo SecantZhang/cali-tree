@@ -1,0 +1,129 @@
+{
+  "execution_ref": "002d62475686c36f34092fd618066dcf0bf1acd60e930fa3f53817e1caf23705",
+  "stage": "audit_v4",
+  "slot": "audit/ea872a3922328b7c5ff614deb6068b84102dcb784e18f950a7b668dd335a9f90",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Stuff the paper into the cup.",
+        "source_phrase": "Stuffing the paper into the cup"
+      }
+    ],
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "In the edited image, can the source-image paper and cup be identified, and is that paper visibly stuffed inside that cup?",
+          "criteria": "Pass only if the edited image provides enough visual evidence to identify the same paper and cup shown in the source and shows the paper placed inside the cup with evidence it has been stuffed into it. Fail only if both objects are identifiable and the paper is visibly outside the cup or merely on its rim. Unknown if either object's identity, or their placement, cannot be established.",
+          "binding": "Anchor “the paper” and “the cup” to the objects in the source image. Do not treat a visually different-looking item or object in the edited image as the same object without sufficient evidence.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "In the edited image, can the source-image paper and cup be identified, and is there visible progress toward stuffing that paper into that cup without the paper already being stuffed inside?",
+          "criteria": "Pass only if the edited image provides enough evidence to identify the same paper and cup shown in the source, shows movement or placement advancing the paper toward or into the cup, and s1 has not established completion. Fail only if both objects are identifiable and there is visibly no progress toward the requested placement, or s1 establishes completion. Unknown if either object's identity or the relevant progress relation cannot be established.",
+          "binding": "Progress counts only when it advances stuffing the source-image paper into the source-image cup. Do not infer absence of progress from uncertain object identity or proximity.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when support 1 passes: the requested outcome is visibly complete. Return no only when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing some progress without completion. Return unknown whenever the evidence needed to distinguish these alternatives is unresolved. A skipped support is unobserved, not automatically inapplicable; on any skipped path, return a decision only if the remaining evidence establishes that same outcome under the rubric, otherwise return unknown. Supporting evidence earns no completion credit independently, and unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_then_sol/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":true,\"reason\":\"The chain preserves the rubric’s complete/partial/absent distinctions: s1 tests completion, s2 tests requested progress short of completion, and fulfillment maps their evidence to yes/no/partial while leaving unresolved evidence unknown. The source-image binding and exclusion of unrelated edits are supported by the instruction and rubric. The fulfillment readout is image-free, and the checker template correctly treats skipped evidence as unobserved rather than as failure or non-applicability.\",\"source_clause\":\"\",\"counterexample\":\"\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1657,
+    "completionTokens": 113,
+    "totalTokens": 1770,
+    "latencySeconds": 2.089533805847168,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": true,
+      "reason": "The chain preserves the rubric’s complete/partial/absent distinctions: s1 tests completion, s2 tests requested progress short of completion, and fulfillment maps their evidence to yes/no/partial while leaving unresolved evidence unknown. The source-image binding and exclusion of unrelated edits are supported by the instruction and rubric. The fulfillment readout is image-free, and the checker template correctly treats skipped evidence as unobserved rather than as failure or non-applicability.",
+      "source_clause": "",
+      "counterexample": ""
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": true,
+    "reason": "The chain preserves the rubric’s complete/partial/absent distinctions: s1 tests completion, s2 tests requested progress short of completion, and fulfillment maps their evidence to yes/no/partial while leaving unresolved evidence unknown. The source-image binding and exclusion of unrelated edits are supported by the instruction and rubric. The fulfillment readout is image-free, and the checker template correctly treats skipped evidence as unobserved rather than as failure or non-applicability.",
+    "source_clause": "",
+    "counterexample": ""
+  }
+}

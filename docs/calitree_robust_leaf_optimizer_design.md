@@ -1,8 +1,51 @@
 # Robust casewise leaf-judge optimization
 
-Status: v3 implementation added 2026-10-07; opt-in missing/nested evidence repair added 2026-10-08. See [implementation and usage](calitree_robust_leaf_optimizer.md) for the executable contracts, acceptance thresholds, tests, and pilot commands. This design motivates the implementation; empirical results and limitations are recorded separately in experiment reports.
+Status: v3 implementation added 2026-10-07; opt-in missing/nested evidence repair added 2026-10-08; v4 independent scheduling and adaptive proposer added 2026-10-09. The user-selected current v5 default disables semantic auditing and uses flat all/some/none counting. See [implementation and usage](calitree_robust_leaf_optimizer.md) for versioned contracts and pilot commands. Historical audited designs below remain references rather than the current default.
 
 ## Goal and scope
+
+### Degree of fulfillment (v7, 2026-10-09)
+
+The user-selected change measures degree of fulfillment, independently of reported confidence or repeat agreement.
+Observe each required condition on a factual 0/.5/1 anchored scale. Preserve exact requirement budgets across edits:
+equal initial requirement/facet weights, equal conserved splits, zero auxiliary weight, no positive-mass deletion.
+The authoritative weighted score >=.9 means satisfied, <=.1 nonsatisfied, and intermediate values partial. Unknown
+components contribute [0,1] bounds; the label resolves only when the full aggregate interval has one category. This can
+leave a resolved overall label with an uncertain atom, which still fails strict confidence gates until evidence exists.
+
+V7 stores and hashes its roots, rational allocations, anchors, thresholds and scoring mode. Both comparison arms use
+the same label-free seed and Luna grading calls; binary derives strict fully-complete votes (score 1) and fulfillment
+uses the weighted bounds. Independent optimization/repeat histories plus both same-observation readouts separate
+aggregation changes from newly sampled model behavior. Historical boolean-prompt comparisons remain descriptive.
+Labels and feedback reach only optimization, not compilation or scoring. Auditing and parent construction remain deferred.
+
+### Endpoint repair corrections (v6, 2026-10-09)
+
+The audit-free counting variant now has an explicit `--scoring endpoints` runtime: preferred two-to-three distinct
+endpoint dimensions, exact original quotes and necessity explanations, rejection of explicit progress/helper votes,
+and targeted all-pass/all-fail diagnosis. Repairs declare predicted per-condition observations; measured outcomes return
+to the next proposer instead of hiding valid but ineffective additions. Single irreducible conditions remain allowed,
+with their inability to represent partial reported explicitly. Literal provenance and model explanations do not certify
+semantic necessity or sufficiency.
+
+Qualification requires all five labels match, all five runs resolve and the existing confidence/consistency gates.
+One predeclared transport-only recovery check per report uses a new slot and preserves all original observations/costs;
+valid wrong/uncertain, schema-invalid and interrupted attempts are not resampled. Recovery selection excludes labels.
+Raw and effective accurate-and-repeatable case ratios are separate. Auditor/readout remain disabled, source-relative
+visual evidence remains essential, and stable reference disagreements are reported without relabeling. See usage for
+artifact versions, reservations and the fresh same-twelve-case comparison.
+
+### User-selected counting variant (2026-10-09)
+
+Compile flat, independent necessary conditions from the original instruction, each with a positive fulfillment meaning:
+pass means that condition is satisfied. All pass yields satisfied, all fail yields unsatisfied, a known mixture yields
+partial. Unknown, invalid or failed observations and an empty applicable set remain unresolved. Code computes this count;
+there is no semantic audit and no model readout. Confidence and repeat stability still govern empirical robust acceptance.
+
+This changes the scoring interpretation: partial means some required conditions hold, rather than a model judgment about
+how much editing progress occurred. Supporting inventories, progress checks and unvisited tree alternatives cannot be
+silently treated as required-condition votes. Fresh v5 compilation and explicit artifact dispatch preserve historical
+v2/v3/v4 behavior. Structural/provenance validation remains, while semantic preservation is deliberately not model-audited.
 
 Optimize one CaliTree leaf for one instruction and its source/edited evidence so that it returns the reference label reliably across repeated executions, while preserving the meaning of the instruction.
 
@@ -221,6 +264,26 @@ The new `nested-evidence-readout-v1` checker contract explicitly permits ancesto
 
 ## Rules for removing and revising decisions
 
+### Typed structural edits and deterministic construction
+
+The `typed-evidence-v1` proposal protocol separates semantic decisions from executable wiring. The model proposes focused questions, criteria, bindings, existing requirement IDs and ancestor evidence context. Code constructs the graph. It does not silently repair archived raw-node proposals or treat structural validity as semantic approval.
+
+Transactions contain a reason and one to four actions: `insert_support`, `replace_support`, `revise_support`, `revise_readout`, and `remove_support`. Insertion names an existing direct `after → before` edge, a unique new check ID, evidence context and explicit readout criteria. The executor inserts the check, reparents its consumer, reconstructs saved chain order and makes the readout consume every support. For the rejected chalk proposals, insertion on `n2 → n3` deterministically produces `n2 → n4 → n3`.
+
+Replacement preserves the support's ID and position; splitting combines replacement and insertion. Removal reconnects the chain, but cannot silently discard surviving support evidence references: the same transaction must explicitly revise those references. Validate the final transaction atomically, preserve the complete immutable instruction/outcome contract, and reject over-cap programs without truncation. Retain two or three supports plus one image-free fulfillment readout. This initial typed mode uses all-state ordered chains; general conditional restructuring and DAG execution remain deferred.
+
+Models do not emit `parent`, `active_on`, `role`, `outcome_id` or `node_order`. Code derives exact source provenance from the identified original requirement, stores the typed request and expanded executable transaction, and records both program hashes. Support polarity and readout interpretation remain explicit model-proposed semantics; no automatic all-pass reducer is introduced. Every candidate still requires a label-blind semantic audit and fresh robustness measurement.
+
+The typed compiler likewise accepts ordered support specifications, earlier-support indices and fulfillment criteria, then assigns IDs `s1…sN` and `fulfillment`, roles, outcome identity, chain routing and dependencies. Invalid specifications remain recorded single-attempt failures. The v3 executable/leaf formats and their frozen checker contracts remain authoritative and unchanged; the new proposal protocol is explicitly selected rather than applied to historical artifacts.
+
+Graph validation raises structured `ValueError`-compatible diagnostics identifying missing parents/dependencies, cycles, non-ancestor or sibling consumption, and depth/check limits. Rejection feedback includes the offending node and dependency. Semantic-audit rejection and checker/transport failures remain separate stages.
+
+The fresh chalk experiment compares criterion-only revisions with nested-required typed repair. The nested arm may explore criterion-only intermediates, but cannot qualify or select them as a successful nested result. It requires an added support with ancestor evidence context, sufficient actual execution, complete qualifying confirmation and fresh final verification. Absence of an eligible audited nested candidate produces explicit structural failure and an unoptimized seed fallback.
+
+The current typed search has a maximum of **fifteen repair rounds**, each with one parent batch and at most two proposals. A candidate that fails its full confirmation becomes the next repair parent; its repeated observations and rejection diagnostics remain available for revising, replacing or investigating the inserted component. A passing component is not assigned an expected failure simply because the aggregate label disagrees. Empty/invalid/duplicate proposals do not end the bounded loop; unchanged candidates are not remeasured to manufacture success.
+
+Stop early only after an audited, structurally eligible program satisfies the complete confirmation policy, or when the independently enforced call/token/provider limit is reached. Otherwise exhaust all fifteen rounds. Record rounds started and completed separately, including partial rounds stopped by budgets. Confirmation remains provisional: selection freezes before independent final verification. The new schedule is versioned in experiment configuration, while historical two-round results and runtime snapshots remain unchanged. Longer search does not silently increase an approved model-call budget.
+
 Removal is appropriate when a rule is redundant, unsupported by the instruction, or replaced by another rule that preserves its necessary semantics. Low confidence or disagreement with the reference alone is insufficient.
 
 Every transaction must preserve coverage of the immutable requirement ledger. Replacements record explicit mappings from old outcomes to their successors. Validate the entire transaction atomically for coverage on every terminal path, dependency references, cycles, bindings, applicability, ordered traversal, branch semantics, and execution limits.
@@ -391,3 +454,17 @@ Additional tests should cover ordered sibling execution, pass/fail/unknown trans
 A future pilot should compare the seed, the current casewise optimizer, and this hybrid component-focused optimizer under a frozen case set and matched budgets. To isolate contributions, predeclare matched-budget comparisons of flat versus ordered execution and single-incumbent textual repair versus textual repair with a Pareto frontier. Keep the requirement ledger and reducer fixed across arms. Report final label agreement, coverage, requirement and conditional-node consistency, branch activation, executed checks, cost, confidence/error association, and semantic-audit outcomes separately. Repeats do not increase the number of independent cases. Calibrating confidence as correctness would require additional independent labeled examples; it cannot be established by repeatedly fitting the same leaf.
 
 The [DSG fidelity experiment](experiments/calitree_dsg_fidelity.md) motivates explicit outcome aggregation, consistent bindings, and progress-sensitive checks. Its results do not establish that this proposed repair loop will succeed; that remains to be tested.
+
+## Implemented v4 uncertainty handling and adaptive proposals
+
+`decision-leaf-v4` and `typed-evidence-v2` separate three relationships that earlier forced evidence chains conflated: saved ancestor context (`dependencies`), genuinely required known facts (`required_dependencies`), and explicit activation (`activation.check_id` / `activation.states`). Code retains deterministic ordered topology, but scheduling never propagates an independent question's blockage to later questions. Context can be unknown, invalid, or skipped; the checker sees an honest missing-evidence marker rather than an invented negative fact. The fulfillment call always has an explicit scheduling decision and receives no images.
+
+For a jacket, uncertainty about whether closure increased must not prevent direct edited-image closure inspection. A resolved fulfillment result can use a legitimate alternate rule despite optional uncertainty. This does **not** relax robustness: an executed uncertain support still fails known-answer consistency. A subsequent audited repair may reorder endpoint inspection first and conditionally omit progress when the endpoint establishes completion. Skipped questions remain untested, and required unknown evidence remains unresolved.
+
+The immutable instruction, rubric, requirement ledger and requested outcome/bindings remain authoritative. Typed edits add deterministic support reordering and activation configuration to insertion, replacement, revision and safe removal. One to three supports plus fulfillment are allowed; compilation starts with two supports. All edits validate atomically, including surviving references after removal. The auditor must ground rejection in an exact original clause and a concrete unsupported interpretation; its approval remains fallible evidence.
+
+The local greedy search uses at most 15 rounds and two proposed transactions per round under an enforced budget. Both arms retain valid intermediate candidates and comparable screening/confirmation evidence. Unresolved or mismatching candidate screens do not receive five-draw confirmation. The audited seed does receive five fresh confirmation draws. A selected candidate cannot regress agreement or coverage against an equally measured audited seed; a qualifying incumbent cannot be replaced by a failing cheaper candidate.
+
+`luna_then_sol` begins with Luna and permanently changes only the proposer to GPT-6.1 Sol after three consecutive completed rounds without improvement in the frozen screening objective. Empty, duplicate and rejected proposals can contribute to this streak. Transport/invalid-response failures and interrupted rounds do not. Improvement resets the streak. The parent, counter, policy, route and logical slot are persisted before dispatch and validated on replay. Compilation, discovery, native TextGrad backward calls, checking and semantic auditing remain on Luna.
+
+The paired experiment uses the original 12 saved cases with fresh common label-free seeds and independent arm observations. Both arms use the corrected v4 runtime, so the paired comparison measures proposer escalation. The 3,600-call / 4,608,000-completion-token ceiling includes preparation, search and final verification; 960 calls and 983,040 tokens are reserved before search. All 24 selections freeze before any final draw. Existing v2/v3 programs are neither migrated implicitly nor reinterpreted under v4.

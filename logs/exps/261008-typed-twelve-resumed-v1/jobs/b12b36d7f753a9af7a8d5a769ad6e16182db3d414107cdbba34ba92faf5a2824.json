@@ -1,0 +1,129 @@
+{
+  "execution_ref": "b12b36d7f753a9af7a8d5a769ad6e16182db3d414107cdbba34ba92faf5a2824",
+  "stage": "audit",
+  "slot": "audit/cca398271e8092e33528261af294f3f51f94a44f2e6ecb2ced43a1fd94d388cd",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show the original visual content rendered in a pencil-drawn style?",
+          "criteria": "Pass if the image visibly represents its content as a pencil drawing; fail if there is sufficient evidence that no pencil-drawing transformation has occurred; unknown if the image or its style cannot be assessed reliably. Partial evidence of a pencil-drawn style is progress, not completion.",
+          "binding": "Compare the supplied image with the requested transformation: assess whether its visual content is rendered in a pencil-drawn style. Do not require a particular pencil technique.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image-grounded evidence of any progress toward rendering the content as a pencil drawing, even if the transformation is incomplete?",
+          "criteria": "Pass if the image shows some visible pencil-drawing-style treatment of its content, including an incomplete treatment; fail if sufficient evidence shows no requested transformation has progressed; unknown if evidence is insufficient to determine whether any such progress occurred. Unrelated edits do not count as progress.",
+          "binding": "Assess only visible changes in the supplied image that move its visual content toward a pencil-drawn style; do not infer progress from unrelated changes.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s2"
+          ],
+          "question": "Considering the edited image as a whole, does its visible result read as a pencil drawing of the original content, rather than as a photograph with pencil-like treatment?",
+          "criteria": "Pass if the overall visible result reasonably reads as a pencil drawing of the content. Fail if sufficient evidence shows it still reads predominantly as a photograph with pencil-like treatment rather than as a drawing. Unknown if the overall visual character cannot be assessed reliably. Do not require monochrome rendering, particular marks, or a specific transformation method.",
+          "binding": "Inspect the source and edited images directly. Use the ancestor's observation of progress only as context, and independently judge the overall appearance. Consider whether the forms and surfaces visually read as a drawing or retain photographic lighting, texture, and detail. Muted color, grain, or softened shading alone is not decisive; neither color nor use of a filter alone disqualifies the result.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the image visibly appear as a completed pencil drawing?",
+          "criteria": "Compose all supports explicitly. Complete only when s3 passes, establishing that the result as a whole reads as a pencil drawing. Partial when s1 or s2 establishes requested progress and s3 fails, establishing that the result remains predominantly photographic rather than a drawing. Absent only when s1 and s2 both fail with sufficient evidence of no requested progress. If s3 is unknown, or progress evidence needed to distinguish partial from absent is unresolved, return unknown. A pass on s1 or s2 alone never establishes completion; unrelated edits do not count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The program adds an unsupported completion constraint: s3 requires the result to read as a drawing rather than a photograph with pencil-like treatment. The instruction asks for a pencil drawing, but does not exclude a photographic base or prescribe that overall distinction. The fulfillment rule makes s3 decisive for completion and partial status, so it can reject a valid pencil-drawing transformation. The other checks broadly cover requested progress and avoid requiring a particular technique.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1566,
+    "completionTokens": 101,
+    "totalTokens": 1667,
+    "latencySeconds": 1.9458260536193848,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The program adds an unsupported completion constraint: s3 requires the result to read as a drawing rather than a photograph with pencil-like treatment. The instruction asks for a pencil drawing, but does not exclude a photographic base or prescribe that overall distinction. The fulfillment rule makes s3 decisive for completion and partial status, so it can reject a valid pencil-drawing transformation. The other checks broadly cover requested progress and avoid requiring a particular technique."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The program adds an unsupported completion constraint: s3 requires the result to read as a drawing rather than a photograph with pencil-like treatment. The instruction asks for a pencil drawing, but does not exclude a photographic base or prescribe that overall distinction. The fulfillment rule makes s3 decisive for completion and partial status, so it can reject a valid pencil-drawing transformation. The other checks broadly cover requested progress and avoid requiring a particular technique."
+  }
+}

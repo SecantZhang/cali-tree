@@ -1,0 +1,132 @@
+{
+  "execution_ref": "e5701385ee6712dbbaaafa2dbc2ded4b85fa4cd1028efaf3ea497834c4c83ef4",
+  "stage": "audit_v4",
+  "slot": "audit/3a3e398235155a5235b10f51b6de8c70e654089abc354caa9250bc0f6670e2f2",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Stuff the paper into the cup.",
+        "source_phrase": "Stuffing the paper into the cup"
+      }
+    ],
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the source paper visibly stuffed inside the source cup in the edited image?",
+          "criteria": "Pass if the edited image shows the paper from the source image placed inside the cup from the source image, with visible evidence it has been stuffed into it. Fail if the matched paper and cup are assessable and the paper is visibly outside the cup or only resting nearby or on its rim. Unknown if the source objects cannot be reliably matched in the edited image, or their relationship cannot be assessed.",
+          "binding": "Identify the requested paper and cup by their visual and contextual roles in the source image, allowing their appearance to change in the edited image. Judge whether that paper is stuffed inside that cup; do not require exact color or shape matches.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Can the source paper and cup be reliably matched to objects in the edited image, and is there visible progress toward placing that paper into that cup without the requested stuffing being complete?",
+          "criteria": "Pass only if both edited objects can be reliably matched to the source paper and cup, and visible evidence shows the paper being moved toward or into the cup without being fully stuffed inside. Fail if both objects and their relationship are assessable and there is no visible progress, or the paper is already visibly stuffed inside. Unknown if either object cannot be reliably matched or the relevant movement or placement cannot be assessed. Proximity, overlap, or a hand-held item near a round object alone is not evidence of progress.",
+          "binding": "Match each edited object to its source counterpart using affirmative visual or contextual correspondence; exact appearance need not be preserved. Judge progress only for the matched paper in relation to the matched cup.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when s1 passes. Return no only when s1 fails and s2 fails. Return partial only when s1 fails and s2 passes. If s1 is unknown, do not infer partial from s2; return unknown unless the available evidence independently establishes the requested outcome under the rubric. Unresolved or skipped evidence is not failure. Unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [
+            "s1",
+            "s2"
+          ],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_only/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout cannot preserve the rubric’s progress meaning when the paper is already stuffed into the cup but s1 is unknown or skipped. Its criteria allow yes only when s1 passes, and explicitly prohibit inferring partial from s2 when s1 is unknown. Yet s2 can fail when the paper is already stuffed, so the saved evidence may not establish any outcome even though the requested end result is complete. The program also lacks a separately declared activation and an ordered code-owned chain.\",\"source_clause\":\"yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment.\",\"counterexample\":\"The edited image visibly shows the paper stuffed into the cup, but s1 is skipped or unknown and s2 fails because the paper is already stuffed. The fulfillment criteria return unknown, losing a complete result that the rubric defines as yes.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1636,
+    "completionTokens": 190,
+    "totalTokens": 1826,
+    "latencySeconds": 3.39465594291687,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout cannot preserve the rubric’s progress meaning when the paper is already stuffed into the cup but s1 is unknown or skipped. Its criteria allow yes only when s1 passes, and explicitly prohibit inferring partial from s2 when s1 is unknown. Yet s2 can fail when the paper is already stuffed, so the saved evidence may not establish any outcome even though the requested end result is complete. The program also lacks a separately declared activation and an ordered code-owned chain.",
+      "source_clause": "yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment.",
+      "counterexample": "The edited image visibly shows the paper stuffed into the cup, but s1 is skipped or unknown and s2 fails because the paper is already stuffed. The fulfillment criteria return unknown, losing a complete result that the rubric defines as yes."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout cannot preserve the rubric’s progress meaning when the paper is already stuffed into the cup but s1 is unknown or skipped. Its criteria allow yes only when s1 passes, and explicitly prohibit inferring partial from s2 when s1 is unknown. Yet s2 can fail when the paper is already stuffed, so the saved evidence may not establish any outcome even though the requested end result is complete. The program also lacks a separately declared activation and an ordered code-owned chain.",
+    "source_clause": "yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment.",
+    "counterexample": "The edited image visibly shows the paper stuffed into the cup, but s1 is skipped or unknown and s2 fails because the paper is already stuffed. The fulfillment criteria return unknown, losing a complete result that the rubric defines as yes."
+  }
+}

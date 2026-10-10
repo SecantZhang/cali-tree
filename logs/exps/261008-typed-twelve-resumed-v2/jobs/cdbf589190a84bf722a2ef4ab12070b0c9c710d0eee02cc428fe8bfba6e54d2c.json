@@ -1,0 +1,523 @@
+{
+  "execution_ref": "cdbf589190a84bf722a2ef4ab12070b0c9c710d0eee02cc428fe8bfba6e54d2c",
+  "stage": "propose_typed",
+  "slot": "round/6/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is a frog visibly present inside the toilet bowl?",
+          "criteria": "Pass if the image clearly shows a frog within the toilet bowl; fail if the bowl is visible and no frog is inside it; unknown if the bowl or its contents cannot be assessed reliably.",
+          "binding": "Assess the frog’s placement relative to the toilet bowl in the image, using the toilet in the input image as the reference. A frog elsewhere does not satisfy this check.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the image provide sufficient evidence to determine whether the requested frog-in-toilet edit was made?",
+          "criteria": "Pass if the toilet bowl and its contents are sufficiently visible to assess whether a frog is inside; fail if the image clearly shows the bowl but no frog inside; unknown if visibility or image evidence is insufficient. This check supplies evidence only and does not independently establish completion.",
+          "binding": "Use only visible image evidence about the toilet bowl and its contents; unrelated edits do not count as progress.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is a frog visibly placed inside the toilet bowl?",
+          "criteria": "For R1, complete if s1 passes. Absent if s1 fails and there is no visible evidence of partial progress toward placing a frog inside the toilet. Partial if the image shows some progress toward placing a frog inside but does not clearly show a frog within the bowl. Unknown if required evidence is insufficient or unresolved; do not infer completion or absence from uncertainty. Unrelated edits are not progress.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s completion criterion is too coarse: it treats s1 passing as sufficient for complete fulfillment, while the rubric requires distinguishing complete fulfillment from partial progress. In the edited image, one frog is visibly inside the bowl, but additional frogs are placed on the raised lid/tank area and on the floor; the source has no frogs. The image therefore shows the requested change, yet the reference is partial, so the node should assess the whole requested edit and explain what makes fulfillment incomplete rather than equating any clear in-bowl frog with completion. Keep the existing partial-progress and uncertainty distinctions, and bind the decision to the actual source/edited images and requested change. The support traces are valid, queried, and high-confidence, with no transport or dependency failure; their confident but incomplete evidence is a criterion/aggregation issue, not a reason to discount visual evidence or force a label."
+        ],
+        "s2": [
+          "The support check currently establishes only that the bowl is visible and contains a frog; that is evidence of progress, not by itself evidence of complete fulfillment. Keep this node’s evidence-gathering role, but make its binding/criteria report the visible placement of frogs across the edited scene and compare against the source and instruction, so downstream fulfillment can distinguish a frog in the bowl from additional frogs on the lid/tank area and floor. Do not treat those extra placements as automatically disqualifying or impose an unstated exact-count/location requirement; provide the evidence and leave completeness to the rubric. Preserve unknown when visibility is insufficient. The traces are valid and high-confidence, so this is a criterion/aggregation gap, not a transport or dependency failure; confidence alone should not turn partial progress into a yes."
+        ],
+        "s1": [
+          "The support node currently asks only whether a frog is inside the bowl, so its high-confidence pass captures genuine progress but cannot inform downstream whether the requested edit is complete. Refine its binding and evidence criteria to compare the source and edited images against the instruction, and report frog placements across the edited scene: the source has no frogs, while the edit visibly places frogs in the bowl, on the raised lid/tank area, and on the floor. Keep this as evidence gathering rather than making extra placements automatically disqualifying or imposing an unstated count/location requirement; let the fulfillment rubric judge completeness from the whole edit. Preserve unknown when visibility is insufficient. The trace is valid and has no transport or dependency failure; address the criterion/aggregation gap, not the visual evidence or confidence."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 153.0,
+        "traces": [
+          {
+            "program_ref": "0b63d9a99bbfbfc240fbd2dcfc94b88a91b5edc813b510db5d1dff35dcd3e942",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a frog is clearly visible inside the toilet bowl, fulfilling the requested edit."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "A frog is clearly visible inside the toilet bowl in the edited image.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 40,
+                "dependencies": [],
+                "execution_ref": "adc33564bf6545479a1fac2adf1236f491f1cbd78188227aa19e2f2967718fc7",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible, and a frog is visibly inside the bowl, so the image provides sufficient evidence to assess the requested edit.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 60,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A frog is clearly visible inside the toilet bowl in the edited image.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 40,
+                    "dependencies": [],
+                    "execution_ref": "adc33564bf6545479a1fac2adf1236f491f1cbd78188227aa19e2f2967718fc7",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "4f380bc7a3452632dd2d7505a356c46f9ec33ec72c065faa337cd4aac4ff2063",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a frog is clearly visible inside the toilet bowl, fulfilling the requested edit.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 53,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A frog is clearly visible inside the toilet bowl in the edited image.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 40,
+                    "dependencies": [],
+                    "execution_ref": "adc33564bf6545479a1fac2adf1236f491f1cbd78188227aa19e2f2967718fc7",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible, and a frog is visibly inside the bowl, so the image provides sufficient evidence to assess the requested edit.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 60,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "A frog is clearly visible inside the toilet bowl in the edited image.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 40,
+                        "dependencies": [],
+                        "execution_ref": "adc33564bf6545479a1fac2adf1236f491f1cbd78188227aa19e2f2967718fc7",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "4f380bc7a3452632dd2d7505a356c46f9ec33ec72c065faa337cd4aac4ff2063",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "b08dd313748dca5ba9df1316118bcf9175c1b509728c3cfa73d6d2acdfd6600d",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "0b63d9a99bbfbfc240fbd2dcfc94b88a91b5edc813b510db5d1dff35dcd3e942",
+          "semantic_rejection": "The support checks do not provide separate evidence for partial progress. s1 only distinguishes a frog visibly inside the bowl from its absence or uncertainty, and s2 repeats that same visibility assessment. The fulfillment rule nevertheless allows partial when there is some progress toward placing a frog inside without a frog clearly within the bowl. With no support observation capable of establishing that progress, the readout cannot faithfully distinguish partial from no progress or unknown."
+        },
+        {
+          "program_ref": "25db991663569673ca02673e39a74ce793a72eba8aa677368480fb9df63ad218",
+          "semantic_rejection": "The support checks do not preserve the requested property reliably. s1 treats a frog visibly inside the bowl as sufficient, but the instruction only says to put a frog in the toilet; it does not require the frog to be visibly inside the bowl. s2 also conflates insufficient visibility with a clear bowl containing no frog by assigning both fail, so the readout cannot distinguish known absence of progress from unresolved evidence. The fulfillment criteria then assert that a frog in the bowl is progress without support for the broader requested relation, and do not provide a sound composition rule for deciding completion versus partial fulfillment. These gaps make the saved evidence insufficient for faithful fulfillment judgments."
+        },
+        {
+          "program_ref": "eefd8aeb6cb56e80164c7b6942c7437ddaed4c1f6b76578c3654e243c746ce10",
+          "semantic_rejection": "The fulfillment readout depends on s1 and s2, but s2 is only an evidence-sufficiency check: its criteria do not establish whether additional misplaced frogs actually exist. The readout nevertheless treats conspicuous additional misplaced frogs as evidence of incompleteness, so it can require a fact the supports do not reliably establish. This leaves the requested completion criterion unsupported and can make the readout unresolved despite sufficient evidence of the requested placement."
+        },
+        {
+          "program_ref": "fd1d3fac8e58fb2b10d46cd67315142c89c2f254cf630c8f7e06fbd6f3b10ec5",
+          "semantic_rejection": "The support checks do not provide a distinct, reliable observation of progress short of completion. s1 only distinguishes a frog inside the bowl from no frog inside or uncertainty; s2 repeats that same distinction and explicitly supplies no independent progress evidence. Consequently, the fulfillment readout cannot faithfully identify partial progress (such as a frog placed in the toilet but not established inside the bowl) and may classify it as absent or unknown. The requested outcome is otherwise appropriately scoped to a frog inside the input toilet."
+        },
+        {
+          "program_ref": "35d8108cb7d2645b94839eb7a6f1c1bee1ee079d853289db75c3a96936509305",
+          "semantic_rejection": "The fulfillment rule is too permissive: it treats a frog placed “in or on” the original toilet as complete, although the request and target require a frog inside the toilet bowl. Support s2 also treats placement “in or on” the toilet as progress, so a frog merely on the toilet could be reported as progress despite not satisfying the requested spatial relation. The readout therefore cannot faithfully distinguish the requested placement from a weaker one."
+        },
+        {
+          "program_ref": "008208c41f95719c835e6e502ed336f4769824fdde3eedf121228fa3ec45b38d",
+          "semantic_rejection": "The fulfillment rule adds an unsupported requirement: it treats conspicuous extra frogs outside the toilet as making the result partial, although the instruction only asks to put a frog in the toilet and the rubric says unrelated edits are not requested progress. No support check assesses extra frogs, so the readout cannot establish either their presence or absence; it also explicitly forbids inferring that evidence from the existing checks. Thus a frog correctly placed in the bowl cannot be judged complete from the saved evidence, and the composition rule does not faithfully preserve the request."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c3065e47b9e439590899c02cc15fc40d72c5ab3b566380e8b62795209a8e6b9a",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Put a frog in the toilet",
+                "parent_id": "s1",
+                "question": "Is the frog that appears inside the toilet bowl clearly a frog, and is it actually within the bowl rather than merely overlapping the rim or opening?",
+                "criteria": "Inspect the frog and its placement against the bowl interior; pass only if a recognizable frog is visibly situated within the bowl, not just elsewhere on the toilet or in front of it.",
+                "evidence": "The edited image shows several bright green frog-like figures: one appears in the bowl, while others are on the raised lid, near the tank, and on the floor. The saved s1 observation asserts that a frog is clearly inside the bowl but does not describe the bowl-relative placement in detail.",
+                "rationale": "The instruction requires a frog in the toilet. The broad s1 pass and fulfillment readout rely on the same placement claim; a focused inspection can test that relation directly without treating the other frogs as requested progress."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Put a frog in the toilet",
+            "parent_id": "s1",
+            "question": "Is the frog that appears inside the toilet bowl clearly a frog, and is it actually within the bowl rather than merely overlapping the rim or opening?",
+            "criteria": "Inspect the frog and its placement against the bowl interior; pass only if a recognizable frog is visibly situated within the bowl, not just elsewhere on the toilet or in front of it.",
+            "evidence": "The edited image shows several bright green frog-like figures: one appears in the bowl, while others are on the raised lid, near the tank, and on the floor. The saved s1 observation asserts that a frog is clearly inside the bowl but does not describe the bowl-relative placement in detail.",
+            "rationale": "The instruction requires a frog in the toilet. The broad s1 pass and fulfillment readout rely on the same placement claim; a focused inspection can test that relation directly without treating the other frogs as requested progress.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c3065e47b9e439590899c02cc15fc40d72c5ab3b566380e8b62795209a8e6b9a",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "747d20cf1f5d24ca9e65e6d5f0edefa6cc7f5c0082549b599494b947d0dd61ee"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "5858e639272ff378e7cd315b34785a3aa87448555282f50c65f60d3f05dc03fd"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The existing supports establish a frog in the bowl but do not capture the broader visible edit; the readout consequently equates that evidence with completion. Revise the two supports to report scene-wide frog placements as evidence, without making extra placements an automatic failure, and revise the readout to judge completeness from that evidence under the original request.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Comparing the source and edited images, what frog placements are visibly present in the edited scene, including whether a recognizable frog is within the toilet bowl?\",\"criteria\":\"Pass if the edited image visibly shows a recognizable frog within the toilet bowl; fail if the bowl is assessable and no frog is within it; unknown if placement cannot be assessed reliably. Record other visible frog placements as evidence, not as automatic disqualification.\",\"binding\":\"Compare the source and edited images for the requested frog placement. Describe visible frogs across the scene, distinguishing the bowl interior from the lid/tank area, floor, or other locations. Do not impose an unstated count or treat extra placements alone as failure.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"What visible evidence in the edited scene, compared with the source, indicates progress toward placing a frog in the toilet, and what placements remain uncertain?\",\"criteria\":\"Pass if visible evidence shows a frog placed in or on the toilet, including a frog within the bowl; fail only if the relevant scene is assessable and shows no frog placement indicating progress toward the request; unknown if visibility is insufficient. Report placements and uncertainty without deciding completion.\",\"binding\":\"Use the source and edited images to describe frog placements relative to the toilet and surrounding scene. Distinguish a frog inside the bowl from one on the lid/tank or floor. Extra placements are evidence only, not an automatic disqualifier or an unstated count/location requirement.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"For R1, complete only when the saved evidence establishes the requested frog placement in the toilet and supports that the requested edit is fulfilled; do not equate any single support pass with completion. Partial when evidence establishes progress toward the requested placement but does not establish complete fulfillment. Absent only when evidence establishes no requested progress. Unknown when necessary evidence is insufficient or unresolved. Consider reported scene-wide placements as evidence, but do not treat extra frogs alone as disqualifying or impose an unstated exact count/location requirement. Unrelated edits are not progress.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 7892,
+    "completionTokens": 603,
+    "totalTokens": 8495,
+    "latencySeconds": 6.410542011260986,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The existing supports establish a frog in the bowl but do not capture the broader visible edit; the readout consequently equates that evidence with completion. Revise the two supports to report scene-wide frog placements as evidence, without making extra placements an automatic failure, and revise the readout to judge completeness from that evidence under the original request.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Comparing the source and edited images, what frog placements are visibly present in the edited scene, including whether a recognizable frog is within the toilet bowl?",
+              "criteria": "Pass if the edited image visibly shows a recognizable frog within the toilet bowl; fail if the bowl is assessable and no frog is within it; unknown if placement cannot be assessed reliably. Record other visible frog placements as evidence, not as automatic disqualification.",
+              "binding": "Compare the source and edited images for the requested frog placement. Describe visible frogs across the scene, distinguishing the bowl interior from the lid/tank area, floor, or other locations. Do not impose an unstated count or treat extra placements alone as failure.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "What visible evidence in the edited scene, compared with the source, indicates progress toward placing a frog in the toilet, and what placements remain uncertain?",
+              "criteria": "Pass if visible evidence shows a frog placed in or on the toilet, including a frog within the bowl; fail only if the relevant scene is assessable and shows no frog placement indicating progress toward the request; unknown if visibility is insufficient. Report placements and uncertainty without deciding completion.",
+              "binding": "Use the source and edited images to describe frog placements relative to the toilet and surrounding scene. Distinguish a frog inside the bowl from one on the lid/tank or floor. Extra placements are evidence only, not an automatic disqualifier or an unstated count/location requirement.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "For R1, complete only when the saved evidence establishes the requested frog placement in the toilet and supports that the requested edit is fulfilled; do not equate any single support pass with completion. Partial when evidence establishes progress toward the requested placement but does not establish complete fulfillment. Absent only when evidence establishes no requested progress. Unknown when necessary evidence is insufficient or unresolved. Consider reported scene-wide placements as evidence, but do not treat extra frogs alone as disqualifying or impose an unstated exact count/location requirement. Unrelated edits are not progress.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The existing supports establish a frog in the bowl but do not capture the broader visible edit; the readout consequently equates that evidence with completion. Revise the two supports to report scene-wide frog placements as evidence, without making extra placements an automatic failure, and revise the readout to judge completeness from that evidence under the original request.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Comparing the source and edited images, what frog placements are visibly present in the edited scene, including whether a recognizable frog is within the toilet bowl?",
+            "criteria": "Pass if the edited image visibly shows a recognizable frog within the toilet bowl; fail if the bowl is assessable and no frog is within it; unknown if placement cannot be assessed reliably. Record other visible frog placements as evidence, not as automatic disqualification.",
+            "binding": "Compare the source and edited images for the requested frog placement. Describe visible frogs across the scene, distinguishing the bowl interior from the lid/tank area, floor, or other locations. Do not impose an unstated count or treat extra placements alone as failure.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "What visible evidence in the edited scene, compared with the source, indicates progress toward placing a frog in the toilet, and what placements remain uncertain?",
+            "criteria": "Pass if visible evidence shows a frog placed in or on the toilet, including a frog within the bowl; fail only if the relevant scene is assessable and shows no frog placement indicating progress toward the request; unknown if visibility is insufficient. Report placements and uncertainty without deciding completion.",
+            "binding": "Use the source and edited images to describe frog placements relative to the toilet and surrounding scene. Distinguish a frog inside the bowl from one on the lid/tank or floor. Extra placements are evidence only, not an automatic disqualifier or an unstated count/location requirement.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "For R1, complete only when the saved evidence establishes the requested frog placement in the toilet and supports that the requested edit is fulfilled; do not equate any single support pass with completion. Partial when evidence establishes progress toward the requested placement but does not establish complete fulfillment. Absent only when evidence establishes no requested progress. Unknown when necessary evidence is insufficient or unresolved. Consider reported scene-wide placements as evidence, but do not treat extra frogs alone as disqualifying or impose an unstated exact count/location requirement. Unrelated edits are not progress.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,953 @@
+{
+  "execution_ref": "5aa6e1f6815c526a614815baaf344a7c19ee112ffa6e2652e127b1817638f464",
+  "stage": "propose_typed",
+  "slot": "round/3/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Compared with the source image, is there clear visible evidence that the same woman's jacket front closure has moved toward closing in the edited image?",
+          "criteria": "Pass only when the closure itself is visible enough to compare and shows progress toward bringing the front panels together, even if an opening remains. Fail only when the closure is clearly assessable and shows no progress or is more open. Unknown when the turned pose, drape, or occlusion prevents reliable comparison; do not infer progress or its absence from silhouette alone.",
+          "binding": "Compare the same jacket's front closure in the source and edited images. Judge actual alignment or separation along the closure, not the woman's pose or the jacket's outward flare. This is a progress check, not a full-closure check.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "In the edited image, is the same woman's jacket fully closed, with no visible opening remaining along its front closure?",
+          "criteria": "Pass only if the visible closure itself shows the panels meeting with no opening. Fail only if an opening along the closure is clearly visible; panels appearing separated solely because the jacket flares with the turned pose is not sufficient. Unknown if pose, drape, or occlusion prevents judging the closure itself.",
+          "binding": "Assess the same woman's jacket. Inspect the edited image's front closure, distinguishing a visible opening along the closure from outward flare or silhouette caused by pose and drape. Full closure is required; partial closure is not complete fulfillment. Use the source only to identify the garment, not to infer the edited endpoint.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the woman's jacket fully closed?",
+          "criteria": "Complete only when s2 passes. Partial when s2 does not pass and s1 passes, establishing progress without full closure. Absent only when s1 fails and s2 fails with clear evidence that no requested progress occurred. Unknown whenever necessary evidence is unresolved, including an unknown s1 or s2; do not convert uncertainty into absence.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "yes",
+    "feedback": {
+      "textual_gradients": {
+        "s2": [
+          "The node’s criterion is appropriately strict, and the repeated valid traces consistently identify a visible opening at the front closure; this is negative visual evidence, not a binding ambiguity to resolve by relaxing the test. However, the reference “yes” conflicts with those observations, and the rubric’s yes/no/partial distinction means this support check alone may not establish whether any requested progress occurred. Inspect the parent and aggregation/routing logic to ensure a failed endpoint check is not being treated as proof of “no progress,” and that partial progress can be represented when supported by other evidence. Keep this node focused on the edited closure and preserve its flare-versus-opening distinction; do not force a pass to match the reference. The fifth unresolved trace is an explicit transport failure, not visual uncertainty—handle it as an execution/dependency issue rather than evidence. Repeated high-confidence failures are a signal to investigate the reference, image-to-trace alignment, and aggregation path, not to change the visual criterion."
+        ],
+        "s1": [
+          "The binding is already appropriately specific: compare the same jacket’s closure, distinguish actual panel alignment from outward flare, and allow partial progress without requiring full closure. Do not relax this criterion to match the reference. In the supplied images, the edited woman is turned sideways and the jacket front is obscured by its drape, so the repeated valid traces’ “unknown” judgments are consistent with insufficient visual evidence—not proof of no progress. Keep that uncertainty distinct from the two explicit transport failures, which are execution errors rather than visual observations. The reference “yes” conflicts with what this node can establish; investigate image/trace alignment and parent aggregation or routing so this support check is not treated as a definitive whole-task label and other evidence can establish partial or complete progress. Low confidence or repeated variation should prompt investigation, not a forced pass."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 0.0,
+        "label_consistency": 0.0,
+        "label_distribution": {
+          "unresolved": 5
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "assessment": "assessed",
+            "confidence": [
+              null,
+              0.94,
+              0.94,
+              0.94,
+              null
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 4,
+              "unknown": 1
+            },
+            "consistency": 0.8,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.94,
+              0.91,
+              0.94,
+              null
+            ]
+          },
+          "fulfillment": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "requirement_consistency": 0.0,
+        "confidence_pass": false,
+        "mean_checks": 2.0,
+        "mean_completion_tokens": 705.8,
+        "traces": [
+          {
+            "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "Transport failure in slot c519dda5a416971209dacbffdb93abbb8c4204193ee807eaa888622f098d46ad: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "5ca6e1f7abba701a6bf3d89a1fd13847cc31254938e77f0533c749ed8d99dd29",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the front of the woman's jacket visibly open, with the panels separated and the closure not meeting. The jacket's outward flare alone would not establish this, but an opening along the front is visible.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "5a1dc3ede4c3d9d324195b870be2f0dcda0fc45ef9a40d3f422ae157fd395b7e",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot c519dda5a416971209dacbffdb93abbb8c4204193ee807eaa888622f098d46ad: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "5ca6e1f7abba701a6bf3d89a1fd13847cc31254938e77f0533c749ed8d99dd29",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the front of the woman's jacket visibly open, with the panels separated and the closure not meeting. The jacket's outward flare alone would not establish this, but an opening along the front is visible.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "5a1dc3ede4c3d9d324195b870be2f0dcda0fc45ef9a40d3f422ae157fd395b7e",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image shows the woman turned sideways, and the jacket front closure is obscured by the pose and drape. Its alignment cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "3f936bb4095b9f7d84519adf3d90535b1b4979c9bedc3ac8ddd42aef8d2b76d7",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The same woman's jacket is visibly open in the edited image: its front panels are separated, with a clear gap along the closure. The jacket's outward flare does not account for the visible opening.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 65,
+                "dependencies": [],
+                "execution_ref": "f883bb10ee3778837a1c527b0e518f9f962b2dd1d19d4100fe17e19a4a035ec6",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image shows the woman turned sideways, and the jacket front closure is obscured by the pose and drape. Its alignment cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "3f936bb4095b9f7d84519adf3d90535b1b4979c9bedc3ac8ddd42aef8d2b76d7",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The same woman's jacket is visibly open in the edited image: its front panels are separated, with a clear gap along the closure. The jacket's outward flare does not account for the visible opening.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 65,
+                    "dependencies": [],
+                    "execution_ref": "f883bb10ee3778837a1c527b0e518f9f962b2dd1d19d4100fe17e19a4a035ec6",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image shows the woman turned sideways, and the jacket front is obscured by its drape. The closure cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 66,
+                "dependencies": [],
+                "execution_ref": "d1fbb8d161db19675eeec5f6e29a603cae69d25992b8bcf6b084a61f1580eb26",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The same woman's jacket is visibly open in the edited image: its front panels are separated, with a clear gap along the closure. The jacket's outward flare does not account for the visible opening.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 65,
+                "dependencies": [],
+                "execution_ref": "87cb6296bda5d5e422b3eb9b8c8386784cf46e697d044ae99e52204541cdeafc",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image shows the woman turned sideways, and the jacket front is obscured by its drape. The closure cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 66,
+                    "dependencies": [],
+                    "execution_ref": "d1fbb8d161db19675eeec5f6e29a603cae69d25992b8bcf6b084a61f1580eb26",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The same woman's jacket is visibly open in the edited image: its front panels are separated, with a clear gap along the closure. The jacket's outward flare does not account for the visible opening.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 65,
+                    "dependencies": [],
+                    "execution_ref": "87cb6296bda5d5e422b3eb9b8c8386784cf46e697d044ae99e52204541cdeafc",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image shows the woman turned sideways, and the jacket front is obscured by its drape. The closure cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 66,
+                "dependencies": [],
+                "execution_ref": "0c4cfe013977d63581685e97d2c19105f037bba66528c0899f639b65174886ac",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the front of the woman's jacket visibly open, with the panels separated and the dark inner clothing visible. The closure is not fully closed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 57,
+                "dependencies": [],
+                "execution_ref": "62c5610463596f23f191a947572a496d6533616d825d0c5831fdc68e3042b690",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image shows the woman turned sideways, and the jacket front is obscured by its drape. The closure cannot be reliably compared with the source, so visible progress toward closing cannot be established.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 66,
+                    "dependencies": [],
+                    "execution_ref": "0c4cfe013977d63581685e97d2c19105f037bba66528c0899f639b65174886ac",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the front of the woman's jacket visibly open, with the panels separated and the dark inner clothing visible. The closure is not fully closed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 57,
+                    "dependencies": [],
+                    "execution_ref": "62c5610463596f23f191a947572a496d6533616d825d0c5831fdc68e3042b690",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "Transport failure in slot a27760574cd182aa9effe3a09221c1e7d5ece04b10c272e497823bfd024fabf3: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "538a4aa8bcc43733534182d61213099cc09b4f77696a13aa1c55c3b477d20fbf",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Transport failure in slot cd284f60d2d8bd3cca6f4abe7cf5a7c02da76d81875de54932cf999be04a0fc4: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "d2ac768b6f91ac295933b0b48f7cd59f24fbe4f4641a028b53f9b600759e12ca",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot a27760574cd182aa9effe3a09221c1e7d5ece04b10c272e497823bfd024fabf3: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "538a4aa8bcc43733534182d61213099cc09b4f77696a13aa1c55c3b477d20fbf",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot cd284f60d2d8bd3cca6f4abe7cf5a7c02da76d81875de54932cf999be04a0fc4: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "d2ac768b6f91ac295933b0b48f7cd59f24fbe4f4641a028b53f9b600759e12ca",
+                    "failure": "CallFailure"
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "42932e137eb5a62903f457259a4620c006a63d4c2d66f2cedd6b29e08f702b35",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "target_mismatch"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "8a69a923091e0ce275efe1ee28ac9235d59cde00f15f13d26228640738a90c73",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s1"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "01608218972db78c124bf7a380a2fd75d61080537115d54208158f146c190bfa",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s1",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "69aff9b27fa5c56bc9a4e4132cd610e34c81736b9efac37457107ce27ea9ed0f",
+          "semantic_rejection": "The fulfillment composition is incomplete: it can return complete when s2 passes, but it has no rule for combining s1 pass (evidence of progress) with s2 fail (visible remaining opening). That case establishes progress and incompleteness and must be partial, not merely partial without regard to s1 or unresolved. The saved criteria instead say s2 fail is partial without asserting progress, which conflicts with the rubric’s requirement that partial means some requested change has progressed. Thus the readout cannot faithfully distinguish progress from no progress when the jacket remains open."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "00746de1b2e94335943ee66121a46510fb4b1874ff9ea0d0a143ff28b663a5f8",
+            "findings": [
+              {
+                "kind": "missing_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "close her jacket fully",
+                "parent_id": "",
+                "question": "Does the edited image visibly show the jacket’s front closure itself, and, if so, is there still a gap along it rather than merely outward flare from the turned pose?",
+                "criteria": "Inspect the closure line and whether the front panels meet; distinguish a visible opening from pose-related drape. If the closure is obscured or cannot be identified, mark unknown.",
+                "evidence": "The edited image shows the woman turned sideways, with the jacket front hanging outward; the closure line is difficult to discern. Existing observations repeatedly report an open gap, but some also say the closure is obscured, and the fulfillment readout is unresolved.",
+                "rationale": "The repeated s2 fail claims visible separation, while s1 is unknown and the fulfillment check could not run. A focused visual adjudication of the closure would resolve whether the apparent gap is actual evidence of incomplete closure or only pose/drape, without treating transport failures as visual evidence."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "missing_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "close her jacket fully",
+            "parent_id": "",
+            "question": "Does the edited image visibly show the jacket’s front closure itself, and, if so, is there still a gap along it rather than merely outward flare from the turned pose?",
+            "criteria": "Inspect the closure line and whether the front panels meet; distinguish a visible opening from pose-related drape. If the closure is obscured or cannot be identified, mark unknown.",
+            "evidence": "The edited image shows the woman turned sideways, with the jacket front hanging outward; the closure line is difficult to discern. Existing observations repeatedly report an open gap, but some also say the closure is obscured, and the fulfillment readout is unresolved.",
+            "rationale": "The repeated s2 fail claims visible separation, while s1 is unknown and the fulfillment check could not run. A focused visual adjudication of the closure would resolve whether the apparent gap is actual evidence of incomplete closure or only pose/drape, without treating transport failures as visual evidence.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "00746de1b2e94335943ee66121a46510fb4b1874ff9ea0d0a143ff28b663a5f8",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "3ec20c3bd3ae2e1479cfe0ae9990215043339d9f394916c3233562654650a95a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "ce988302e0ebf0c992d381ff2fbb93dd6298ce3aa2fabe6329fb1ed8967bdb2a"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The readout’s current composition cannot distinguish evidenced progress from no progress when the jacket remains open. Preserve the strict endpoint and progress checks; revise only the image-free composition so partial requires positive progress evidence, while unresolved progress remains unknown.\",\"actions\":[{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Complete only when s2 passes. Partial only when s1 passes and s2 fails: s1 establishes visible progress toward closing, while s2 establishes a remaining opening. Absent only when s1 fails and s2 fails, with both checks providing clear evidence that no requested progress occurred and the jacket is not fully closed. Unknown whenever either check is unknown or otherwise lacks the evidence needed for these determinations; do not treat s2 failure alone as proof of no progress or as partial. Do not infer visual facts beyond the saved support observations.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 9360,
+    "completionTokens": 222,
+    "totalTokens": 9582,
+    "latencySeconds": 3.4559438228607178,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The readout’s current composition cannot distinguish evidenced progress from no progress when the jacket remains open. Preserve the strict endpoint and progress checks; revise only the image-free composition so partial requires positive progress evidence, while unresolved progress remains unknown.",
+          "actions": [
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Complete only when s2 passes. Partial only when s1 passes and s2 fails: s1 establishes visible progress toward closing, while s2 establishes a remaining opening. Absent only when s1 fails and s2 fails, with both checks providing clear evidence that no requested progress occurred and the jacket is not fully closed. Unknown whenever either check is unknown or otherwise lacks the evidence needed for these determinations; do not treat s2 failure alone as proof of no progress or as partial. Do not infer visual facts beyond the saved support observations.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The readout’s current composition cannot distinguish evidenced progress from no progress when the jacket remains open. Preserve the strict endpoint and progress checks; revise only the image-free composition so partial requires positive progress evidence, while unresolved progress remains unknown.",
+        "actions": [
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Complete only when s2 passes. Partial only when s1 passes and s2 fails: s1 establishes visible progress toward closing, while s2 establishes a remaining opening. Absent only when s1 fails and s2 fails, with both checks providing clear evidence that no requested progress occurred and the jacket is not fully closed. Unknown whenever either check is unknown or otherwise lacks the evidence needed for these determinations; do not treat s2 failure alone as proof of no progress or as partial. Do not infer visual facts beyond the saved support observations.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

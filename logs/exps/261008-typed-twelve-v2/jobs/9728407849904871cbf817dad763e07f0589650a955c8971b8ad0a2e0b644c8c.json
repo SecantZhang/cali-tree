@@ -1,0 +1,131 @@
+{
+  "execution_ref": "9728407849904871cbf817dad763e07f0589650a955c8971b8ad0a2e0b644c8c",
+  "stage": "audit",
+  "slot": "audit/8ecc4e5c81e98eb09695c84b752bbba008bc12f2960e7620a5c9d5cec96e628f",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the woman's jacket visibly closed more than in the input image, with its front panels brought together at least in part?",
+          "criteria": "Pass if the image shows the jacket's front panels brought together along some portion of the closure compared with the input. Fail if the jacket is visibly unchanged or more open. Unknown if the closure cannot be assessed from the image or comparison evidence is insufficient.",
+          "binding": "Assess only the woman's jacket identified in the input image; judge visible change to its front closure, not unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is the woman's jacket fully closed, with no visible opening remaining along its closure?",
+          "criteria": "Pass if the jacket's front panels meet along the entire closure and no opening remains. Fail if any visible opening remains along the closure. Unknown if the closure is obscured or the image does not provide enough evidence to determine whether it is fully closed.",
+          "binding": "Assess the same jacket and closure as in s1. Full closure is the requested endpoint; partial closure is not complete fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s2"
+          ],
+          "question": "In the edited image, is there a visible gap between the jacket's front panels along the closure, rather than only an outer panel flaring away from the body?",
+          "criteria": "Pass if the closure is directly visible and the panels meet throughout with no opening. Fail if the closure is directly visible and a gap remains at any point. Unknown if pose, drape, occlusion, or image detail prevents reliably distinguishing a closure gap from fabric projecting outward; do not infer a gap from drape alone.",
+          "binding": "Inspect the same woman's jacket closure in the edited image. Use s2 as context, but independently assess the closure itself; distinguish separation between the front panels from a loose panel displaced by pose or motion.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Is the woman's jacket fully closed?",
+          "criteria": "Use s1, s2, and s3 together. Complete only when s2 and s3 establish full closure. Partial only when evidence establishes some progress toward closure but not full closure. Absent only when evidence establishes no requested progress. A visible gap or outward drape alone does not establish absence or progress; if the evidence needed to determine progress or completion is unresolved, report unknown. Do not infer visual facts beyond the supports.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks do not preserve the requested comparison reliably. s1 asks whether the jacket is more closed than in the input, but its criteria require comparison evidence that the checker template does not explicitly provide or require; without a dependable baseline, progress may remain unknown. More importantly, s3 is framed as a gap-versus-drape distinction, yet its pass criterion requires full closure and its fail criterion requires a remaining gap. It therefore duplicates the endpoint check rather than independently resolving the ambiguity it asks about. The fulfillment rule also makes partial depend on evidence of progress from s1, so it cannot faithfully classify a visibly incomplete but already-closed-in-part jacket when comparison is unavailable. The program needs a sound progress check and a distinct, consistently defined ambiguity check before its readout can compose the requested outcomes.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1476,
+    "completionTokens": 175,
+    "totalTokens": 1651,
+    "latencySeconds": 3.9638137817382812,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks do not preserve the requested comparison reliably. s1 asks whether the jacket is more closed than in the input, but its criteria require comparison evidence that the checker template does not explicitly provide or require; without a dependable baseline, progress may remain unknown. More importantly, s3 is framed as a gap-versus-drape distinction, yet its pass criterion requires full closure and its fail criterion requires a remaining gap. It therefore duplicates the endpoint check rather than independently resolving the ambiguity it asks about. The fulfillment rule also makes partial depend on evidence of progress from s1, so it cannot faithfully classify a visibly incomplete but already-closed-in-part jacket when comparison is unavailable. The program needs a sound progress check and a distinct, consistently defined ambiguity check before its readout can compose the requested outcomes."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks do not preserve the requested comparison reliably. s1 asks whether the jacket is more closed than in the input, but its criteria require comparison evidence that the checker template does not explicitly provide or require; without a dependable baseline, progress may remain unknown. More importantly, s3 is framed as a gap-versus-drape distinction, yet its pass criterion requires full closure and its fail criterion requires a remaining gap. It therefore duplicates the endpoint check rather than independently resolving the ambiguity it asks about. The fulfillment rule also makes partial depend on evidence of progress from s1, so it cannot faithfully classify a visibly incomplete but already-closed-in-part jacket when comparison is unavailable. The program needs a sound progress check and a distinct, consistently defined ambiguity check before its readout can compose the requested outcomes."
+  }
+}

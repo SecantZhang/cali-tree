@@ -1,0 +1,131 @@
+{
+  "execution_ref": "9c56726eb4bcc3ef99641d0e8617e1ef2157979d5016925c108de01e86530ef2",
+  "stage": "audit",
+  "slot": "audit/c610ba1fbbe204cd24471070a03cda72864729c0122f909bb868e3f274c72437",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the woman's jacket visibly closed more than in the input image, with its front panels brought together at least in part?",
+          "criteria": "Pass if the image shows the jacket's front panels brought together along some portion of the closure compared with the input. Fail if the jacket is visibly unchanged or more open. Unknown if the closure cannot be assessed from the image or comparison evidence is insufficient.",
+          "binding": "Assess only the woman's jacket identified in the input image; judge visible change to its front closure, not unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is the woman's jacket fully closed, with no visible opening remaining along its closure?",
+          "criteria": "Pass if the jacket's front panels meet along the entire closure and no opening remains. Fail if any visible opening remains along the closure. Unknown if the closure is obscured or the image does not provide enough evidence to determine whether it is fully closed.",
+          "binding": "Assess the same jacket and closure as in s1. Full closure is the requested endpoint; partial closure is not complete fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s2"
+          ],
+          "question": "Can the jacket’s actual front closure be reliably assessed in the edited image, distinguishing separated front edges from a panel displaced by the woman’s turned pose or movement?",
+          "criteria": "Pass if the closure line is sufficiently visible to distinguish whether the front edges are joined or separated. Fail if the closure is not reliably assessable because pose, draping, occlusion, or image ambiguity obscures that distinction. Do not use pass or fail to assert whether the jacket is fully closed or whether progress occurred; those are assessed by the other checks. Unknown if the image evidence is insufficient for this observability judgment.",
+          "binding": "Assess only observability of the same jacket closure in s2, independently using the edited image. A panel hanging away from the body is not by itself evidence that the closure edges are separated. Preserve uncertainty when the turned pose or drape prevents inspection.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Is the woman's jacket fully closed?",
+          "criteria": "Use s3 only to qualify the reliability of s1 and s2: when s3 fails or is unknown, do not treat their apparent closure judgments as established if they depend on the ambiguous displaced panel; classify unresolved evidence as unknown. When s3 passes, retain s1 as evidence of progress only if its source-to-edit comparison establishes change, and use s2 for the endpoint. Complete only on reliable evidence that s2 passes; partial only on reliable evidence of progress and incompleteness; absent only on reliable evidence of no progress; otherwise unknown.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The program adds an unnecessary observability requirement (s3) and makes it a gate on the fulfillment readout. This can turn otherwise usable evidence from s1 and s2 into unknown merely because s3 fails or is unknown, even when the closure and progress judgments are independently assessable. The requested property is fully closed; s1 and s2 already assess progress and endpoint with uncertainty handling. The extra gate risks suppressing valid evidence and is not required by the instruction or rubric.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1535,
+    "completionTokens": 112,
+    "totalTokens": 1647,
+    "latencySeconds": 1.9897279739379883,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The program adds an unnecessary observability requirement (s3) and makes it a gate on the fulfillment readout. This can turn otherwise usable evidence from s1 and s2 into unknown merely because s3 fails or is unknown, even when the closure and progress judgments are independently assessable. The requested property is fully closed; s1 and s2 already assess progress and endpoint with uncertainty handling. The extra gate risks suppressing valid evidence and is not required by the instruction or rubric."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The program adds an unnecessary observability requirement (s3) and makes it a gate on the fulfillment readout. This can turn otherwise usable evidence from s1 and s2 into unknown merely because s3 fails or is unknown, even when the closure and progress judgments are independently assessable. The requested property is fully closed; s1 and s2 already assess progress and endpoint with uncertainty handling. The extra gate risks suppressing valid evidence and is not required by the instruction or rubric."
+  }
+}

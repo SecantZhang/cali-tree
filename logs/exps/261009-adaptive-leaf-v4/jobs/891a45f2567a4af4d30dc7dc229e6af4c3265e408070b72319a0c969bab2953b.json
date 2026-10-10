@@ -1,0 +1,472 @@
+{
+  "execution_ref": "891a45f2567a4af4d30dc7dc229e6af4c3265e408070b72319a0c969bab2953b",
+  "stage": "propose_v4",
+  "slot": "round/2/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the source paper visibly stuffed inside the source cup in the edited image?",
+          "criteria": "Pass if the edited image shows the paper from the source image placed inside the cup from the source image, with visible evidence it has been stuffed into it. Fail if the matched paper and cup are assessable and the paper is visibly outside the cup or only resting nearby or on its rim. Unknown if the source objects cannot be reliably matched in the edited image, or their relationship cannot be assessed.",
+          "binding": "Identify the requested paper and cup by their visual and contextual roles in the source image, allowing their appearance to change in the edited image. Judge whether that paper is stuffed inside that cup; do not require exact color or shape matches.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "If the source paper is not visibly stuffed inside the source cup, is there visible progress toward stuffing that paper into that cup?",
+          "criteria": "Pass if the edited image shows the matched source paper being moved toward or into the matched source cup, but not yet visibly stuffed inside it. Fail if the matched objects are assessable and there is no visible progress toward placing the paper into the cup, or the paper is already visibly stuffed inside it. Unknown if the source objects cannot be reliably matched in the edited image, or their placement or movement cannot be assessed.",
+          "binding": "Identify the requested paper and cup by their visual and contextual roles in the source image, allowing their appearance to change in the edited image. Count only visible progress toward stuffing that paper into that cup; unrelated edits do not count.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when support 1 passes: the requested outcome is visibly complete. Return no only when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing some progress without completion. Return unknown whenever the evidence needed to distinguish these alternatives is unresolved. A skipped support is unobserved, not automatically inapplicable; on any skipped path, return a decision only if the remaining evidence establishes that same outcome under the rubric, otherwise return unknown. Supporting evidence earns no completion credit independently, and unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s binding is too vague to preserve object identity across the edit, and its criteria permit a partial label from evidence that conflicts with the reference. Make the executable decision explicitly compare the source paper and cup with the edited image, requiring reliable visual matching before crediting either completion or progress. Here, the edited image shows a hand holding a blue printed item near a round object; neither can be reliably matched to the source paper and blue cup. Treat that as unresolved evidence, not as proof of partial progress. Keep the rubric’s distinction between complete, progressed-but-incomplete, and no progress: do not infer progress merely from proximity or an ambiguous object match, and do not force “no” when identity or change remains unresolved. The current trace’s high-confidence partial judgment despite its own stated matching uncertainty suggests the progress criterion or evidence routing needs tightening. This is a visual-evidence issue, not a transport or schema failure."
+        ],
+        "s2": [
+          "Tighten the binding and progress criterion so the node compares the source paper and cup against the edited image and credits progress only when both objects can be reliably matched and a visible placement change toward stuffing is supported. In this trace, the edited blue printed item and round object are not reliably identifiable as the source white paper and blue cup; proximity alone does not establish progress. Route uncertain identity or placement to unknown rather than pass, while retaining the distinction between complete, partial progress, and assessable no progress. The high-confidence partial judgment despite ambiguous matching is a visual-evidence/routing issue, not a transport or schema failure."
+        ],
+        "s1": [
+          "The trace correctly reports unknown: the edited image shows a hand holding a blue printed item near a round object, but neither is reliably identifiable as the source paper and cup, and their placement relationship is obscured. The binding should preserve source-to-edit identity using contextual and visual evidence without demanding exact appearance, and the criteria should award partial progress only when a visible change toward stuffing is supported for reliably matched objects—not from proximity or an ambiguous resemblance. Keep complete, partial, assessable no-progress, and unresolved distinct; do not force the reference “no” when identity is uncertain. The aggregate partial label conflicts with the node’s unknown trace, so tighten outcome routing to prevent unresolved evidence from becoming partial. This is a visual-evidence/routing issue, not a transport, schema, or dependency failure."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "partial": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 1
+            },
+            "consistency": 0.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.91
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "partial": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.91
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "partial": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 219.0,
+        "traces": [
+          {
+            "program_ref": "4e13d75cdbe556dd6d63e36a835802a7984db4c93942c38e77f5cd5abbee3b8f",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Support 1 is unresolved, so completion is not established. Support 2 establishes that the paper has been moved partly into the matched cup, showing progress without completion. Therefore the requested outcome is partially fulfilled."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The source paper and cup are visible, but the edited image shows a hand holding a blue printed item near a round object. The source paper and cup cannot be reliably matched to these objects, so whether the paper was stuffed into the cup cannot be established.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 77,
+                "dependencies": [],
+                "event": "valid_uncertainty",
+                "failure": null,
+                "execution_ref": "b5d63d8db50ace4379feb2ed0190f51397a9e6d55eb90dabdef72c0f40d6ffa2"
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The source shows a white paper and a blue cup. In the edited image, the paper has been moved over and partly into the matched cup, showing progress toward stuffing it, but it is not visibly stuffed inside.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "a98928754c3a1dd6f69bd89f76132c37a4e055be683985911ef33fa488163d3e"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "Support 1 is unresolved, so completion is not established. Support 2 establishes that the paper has been moved partly into the matched cup, showing progress without completion. Therefore the requested outcome is partially fulfilled.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 73,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The source paper and cup are visible, but the edited image shows a hand holding a blue printed item near a round object. The source paper and cup cannot be reliably matched to these objects, so whether the paper was stuffed into the cup cannot be established.",
+                    "confidence": 0.98
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The source shows a white paper and a blue cup. In the edited image, the paper has been moved over and partly into the matched cup, showing progress toward stuffing it, but it is not visibly stuffed inside.",
+                    "confidence": 0.91
+                  }
+                ],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "2d7790213d612da81f7228ed64788aff8ac3cd9fc54221d1d2c7faba38e012fd"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "unknown",
+                "event": "valid_uncertainty",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": null,
+                "eligible": true,
+                "state": "pass",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "partial",
+                "event": "observed",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c1628797d93844a1373a1345e50aca3dd885cc206162a3a9ca395e0da5190e32",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Stuffing the paper into the cup",
+                "parent_id": "s2",
+                "question": "Does the edited image visibly show the source paper entering the opening of the source cup, rather than merely overlapping or being held near a round object?",
+                "criteria": "Inspect the paper–cup boundary and opening. Pass only if the paper is visibly inserted into the cup; fail if the apparent overlap is with an unrelated object or the paper remains outside. If the opening or object identity cannot be assessed, return unknown.",
+                "evidence": "The edited image shows a hand holding a blue printed sheet over a reddish round object. The source shows a white sheet and a blue cup, whose opening is clearly visible; the edited image does not clearly show that cup or its opening.",
+                "rationale": "The broad progress observation claims the paper is partly into a matched cup, but the visible edited image leaves the object match and insertion relation uncertain. A focused check of the opening and boundary is needed before treating overlap as progress toward stuffing."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Stuffing the paper into the cup",
+            "parent_id": "s2",
+            "question": "Does the edited image visibly show the source paper entering the opening of the source cup, rather than merely overlapping or being held near a round object?",
+            "criteria": "Inspect the paper–cup boundary and opening. Pass only if the paper is visibly inserted into the cup; fail if the apparent overlap is with an unrelated object or the paper remains outside. If the opening or object identity cannot be assessed, return unknown.",
+            "evidence": "The edited image shows a hand holding a blue printed sheet over a reddish round object. The source shows a white sheet and a blue cup, whose opening is clearly visible; the edited image does not clearly show that cup or its opening.",
+            "rationale": "The broad progress observation claims the paper is partly into a matched cup, but the visible edited image leaves the object match and insertion relation uncertain. A focused check of the opening and boundary is needed before treating overlap as progress toward stuffing.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c1628797d93844a1373a1345e50aca3dd885cc206162a3a9ca395e0da5190e32",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "25b5a44c2b8a44936cb9f27ed1800bc9c4afc490510157002d52e25a27191f5d",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "Shared seed audit unavailable; Audit rejection needs an exact original clause and concrete counterexample"
+          }
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_only/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "db4f4c94fb6291dd275ffcc4ebef3e8e262594c66e1cf1407ea63209693504f6"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "be3df08b51fb88f0f543940723d8b01c85262c89d0682b9f964e2fa6e3a7f9ce"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v2\",\"reason\":\"The progress check can pass despite the completion check reporting that the source objects cannot be matched. Tighten progress to require reliable source-to-edit matching and visible movement toward the cup; unresolved identity or placement must remain unknown. This preserves the original requirement and does not force the reference label.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Can the source paper and source cup be reliably matched in the edited image, and does the edited image show the paper visibly moved toward or into that cup without being fully stuffed inside?\",\"criteria\":\"Pass only if both edited objects can be reliably matched to the source paper and cup and visible evidence shows the paper being moved toward or partly into the cup, but not fully stuffed inside. Fail if both objects and their relationship are assessable and there is no visible progress toward placing the paper into the cup, or the paper is already visibly stuffed inside it. Unknown if either object cannot be reliably matched, or the placement or movement cannot be assessed. Proximity or overlap alone is not evidence of progress.\",\"binding\":\"Identify the requested paper and cup by visual and contextual evidence linking each edited object to its source counterpart; exact appearance need not be preserved. Count progress only for visible movement of that paper toward or into that cup.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Return yes when s1 passes. Return no only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails and s2 passes, establishing visible progress for reliably matched source objects without completion. If s1 is unknown, do not infer partial from s2; return unknown unless the available evidence independently establishes the requested outcome under the rubric. A skipped or unresolved support is not a failure. Unrelated edits do not count as progress.\",\"binding\":\"\",\"readout_criteria\":\"Apply the original complete/partial/absent/unknown rubric using the support states: completion requires s1 pass; partial requires s1 fail and s2 pass; absence requires s1 fail and s2 fail. Unresolved evidence that prevents distinguishing these outcomes remains unknown.\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[\"s1\",\"s2\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4876,
+    "completionTokens": 544,
+    "totalTokens": 5420,
+    "latencySeconds": 4.855842113494873,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v2",
+          "reason": "The progress check can pass despite the completion check reporting that the source objects cannot be matched. Tighten progress to require reliable source-to-edit matching and visible movement toward the cup; unresolved identity or placement must remain unknown. This preserves the original requirement and does not force the reference label.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Can the source paper and source cup be reliably matched in the edited image, and does the edited image show the paper visibly moved toward or into that cup without being fully stuffed inside?",
+              "criteria": "Pass only if both edited objects can be reliably matched to the source paper and cup and visible evidence shows the paper being moved toward or partly into the cup, but not fully stuffed inside. Fail if both objects and their relationship are assessable and there is no visible progress toward placing the paper into the cup, or the paper is already visibly stuffed inside it. Unknown if either object cannot be reliably matched, or the placement or movement cannot be assessed. Proximity or overlap alone is not evidence of progress.",
+              "binding": "Identify the requested paper and cup by visual and contextual evidence linking each edited object to its source counterpart; exact appearance need not be preserved. Count progress only for visible movement of that paper toward or into that cup.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Return yes when s1 passes. Return no only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails and s2 passes, establishing visible progress for reliably matched source objects without completion. If s1 is unknown, do not infer partial from s2; return unknown unless the available evidence independently establishes the requested outcome under the rubric. A skipped or unresolved support is not a failure. Unrelated edits do not count as progress.",
+              "binding": "",
+              "readout_criteria": "Apply the original complete/partial/absent/unknown rubric using the support states: completion requires s1 pass; partial requires s1 fail and s2 pass; absence requires s1 fail and s2 fail. Unresolved evidence that prevents distinguishing these outcomes remains unknown.",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": [
+                "s1",
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v2",
+        "reason": "The progress check can pass despite the completion check reporting that the source objects cannot be matched. Tighten progress to require reliable source-to-edit matching and visible movement toward the cup; unresolved identity or placement must remain unknown. This preserves the original requirement and does not force the reference label.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Can the source paper and source cup be reliably matched in the edited image, and does the edited image show the paper visibly moved toward or into that cup without being fully stuffed inside?",
+            "criteria": "Pass only if both edited objects can be reliably matched to the source paper and cup and visible evidence shows the paper being moved toward or partly into the cup, but not fully stuffed inside. Fail if both objects and their relationship are assessable and there is no visible progress toward placing the paper into the cup, or the paper is already visibly stuffed inside it. Unknown if either object cannot be reliably matched, or the placement or movement cannot be assessed. Proximity or overlap alone is not evidence of progress.",
+            "binding": "Identify the requested paper and cup by visual and contextual evidence linking each edited object to its source counterpart; exact appearance need not be preserved. Count progress only for visible movement of that paper toward or into that cup.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Return yes when s1 passes. Return no only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails and s2 passes, establishing visible progress for reliably matched source objects without completion. If s1 is unknown, do not infer partial from s2; return unknown unless the available evidence independently establishes the requested outcome under the rubric. A skipped or unresolved support is not a failure. Unrelated edits do not count as progress.",
+            "binding": "",
+            "readout_criteria": "Apply the original complete/partial/absent/unknown rubric using the support states: completion requires s1 pass; partial requires s1 fail and s2 pass; absence requires s1 fail and s2 fail. Unresolved evidence that prevents distinguishing these outcomes remains unknown.",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": [
+              "s1",
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "execution_ref": "f1905b239fed64cf452cb88b0f8aefe81346d773903eef40d3b5c3965e36aa0f",
+  "stage": "audit_v4",
+  "slot": "audit/686f1aec7af9a21b28ce66221e7eaf344c717b9609d0cd84a8948c4da3651ace",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Turn the image into a drawing made from chalk",
+        "source_phrase": "Turn the image into a drawing made from chalk"
+      }
+    ],
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.",
+          "reference": "The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image coherently read as a drawing made from chalk, including its main subjects, rather than merely a photograph with a chalk-like surface effect?",
+          "criteria": "Inspect the edited image independently for the requested final appearance. Assess the giraffes' contours, markings, shading and surfaces together with the surrounding scene. Pass if these elements coherently read as chalk-rendered drawing, even when recognizable detail or realistic proportions remain. Fail if the image clearly has not achieved that appearance, including when chalk-like treatment is limited to the background or a surface effect while the main subjects remain substantially photographic. Grain, softness or texture alone does not establish completion; photographic-looking detail alone does not establish failure. Do not require a particular chalk technique, blackboard background, or removal of every realistic detail. Unknown if the distinction cannot be established from the available image.",
+          "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; supporting evidence does not independently earn completion credit.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does comparison with the input image show that the requested chalk-drawing transformation has progressed?",
+          "criteria": "Pass if comparison shows some change toward rendering the image as a chalk drawing, even if the transformation is incomplete. Fail if there is no requested progress; unrelated edits alone do not count. Unknown if the images or comparison are insufficient to determine progress.",
+          "binding": "O1 and the rubric: assess progress toward the requested chalk-drawing transformation, not unrelated edits.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a chalk drawing.",
+          "criteria": "Apply the original instruction and rubric to R1. Return complete (yes) when s1 passes, establishing the requested final chalk-drawing appearance. Return partial only when s1 explicitly fails and s2 passes, establishing requested progress and known incomplete fulfillment. Return absent (no) only when s1 explicitly fails and s2 explicitly fails, establishing no requested progress. Return unknown when s1 is unknown or invalid, or when s1 fails and s2 lacks a valid known observation. Do not interpret failure to establish completion as established incompleteness. When s1 passes, s2 may be conditionally skipped; that skipped observation supplies neither progress nor failure evidence and does not block the established endpoint. Unrelated edits never count as requested progress.",
+          "binding": "Target: The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.. Reference: The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing..",
+          "requirement_id": "",
+          "required_dependencies": [
+            "s1"
+          ],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_then_sol/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is not always scheduled: it is activated only on s2 states pass, fail, or unknown, while s2 itself is activated only when s1 fails or is unknown. Thus a passing s1 leaves fulfillment unscheduled, contrary to the required always-scheduled image-free readout. Also, s1 adds a giraffe-specific inspection requirement unsupported by the original instruction, which specifies no subject.\",\"source_clause\":\"The program has an ordered code-owned chain, separately declared activation, advisory evidence context, genuinely required known prerequisites, and an always-scheduled image-free fulfillment readout.\",\"counterexample\":\"If s1 passes, s2 is skipped and fulfillment is not activated, so no fulfillment readout runs. The s1 criteria also require assessing “the giraffes' contours, markings, shading and surfaces,” although the original instruction only says “Turn the image into a drawing made from chalk.”\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1690,
+    "completionTokens": 196,
+    "totalTokens": 1886,
+    "latencySeconds": 3.10282301902771,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is not always scheduled: it is activated only on s2 states pass, fail, or unknown, while s2 itself is activated only when s1 fails or is unknown. Thus a passing s1 leaves fulfillment unscheduled, contrary to the required always-scheduled image-free readout. Also, s1 adds a giraffe-specific inspection requirement unsupported by the original instruction, which specifies no subject.",
+      "source_clause": "The program has an ordered code-owned chain, separately declared activation, advisory evidence context, genuinely required known prerequisites, and an always-scheduled image-free fulfillment readout.",
+      "counterexample": "If s1 passes, s2 is skipped and fulfillment is not activated, so no fulfillment readout runs. The s1 criteria also require assessing “the giraffes' contours, markings, shading and surfaces,” although the original instruction only says “Turn the image into a drawing made from chalk.”"
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is not always scheduled: it is activated only on s2 states pass, fail, or unknown, while s2 itself is activated only when s1 fails or is unknown. Thus a passing s1 leaves fulfillment unscheduled, contrary to the required always-scheduled image-free readout. Also, s1 adds a giraffe-specific inspection requirement unsupported by the original instruction, which specifies no subject.",
+    "source_clause": "The program has an ordered code-owned chain, separately declared activation, advisory evidence context, genuinely required known prerequisites, and an always-scheduled image-free fulfillment readout.",
+    "counterexample": "If s1 passes, s2 is skipped and fulfillment is not activated, so no fulfillment readout runs. The s1 criteria also require assessing “the giraffes' contours, markings, shading and surfaces,” although the original instruction only says “Turn the image into a drawing made from chalk.”"
+  }
+}

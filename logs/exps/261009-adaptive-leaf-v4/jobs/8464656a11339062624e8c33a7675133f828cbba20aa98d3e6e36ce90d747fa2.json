@@ -1,0 +1,129 @@
+{
+  "execution_ref": "8464656a11339062624e8c33a7675133f828cbba20aa98d3e6e36ce90d747fa2",
+  "stage": "audit_v4",
+  "slot": "common_seed_audit",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Stuff the paper into the cup.",
+        "source_phrase": "Stuffing the paper into the cup"
+      }
+    ],
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the paper visibly stuffed inside the cup, rather than merely resting nearby or on its rim?",
+          "criteria": "Pass if the image shows the paper placed inside the cup with visible evidence it has been stuffed into it. Fail if the paper is visibly outside the cup or only resting nearby or on its rim. Unknown if the image does not provide enough evidence to distinguish these cases.",
+          "binding": "The paper must be stuffed into the cup; merely being nearby or on the rim does not satisfy the requested outcome.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there visible evidence that the paper has been moved toward or into the cup, even if it is not yet stuffed inside?",
+          "criteria": "Pass if visible evidence shows progress toward placing the paper into the cup, but the paper is not visibly stuffed inside it. Fail if there is no visible progress toward the requested placement, or if the paper is visibly stuffed inside the cup. Unknown if the image does not provide enough evidence to determine progress.",
+          "binding": "Progress counts only when it advances the requested act of stuffing the paper into the cup; unrelated edits do not count.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when support 1 passes: the requested outcome is visibly complete. Return no only when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing some progress without completion. Return unknown whenever the evidence needed to distinguish these alternatives is unresolved. A skipped support is unobserved, not automatically inapplicable; on any skipped path, return a decision only if the remaining evidence establishes that same outcome under the rubric, otherwise return unknown. Supporting evidence earns no completion credit independently, and unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "prepare/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is correctly image-free and preserves the rubric’s yes/no/partial meanings, but the chain makes s2 depend on s1 and then requires both supports for a decision. If s1 is unknown, s2 is still scheduled but its result cannot establish partial or no under the fulfillment criteria. That blocks independent inspection and leaves a potentially decidable outcome unresolved. The redundant s2 support also adds a second check where a focused check could preserve the rubric’s progress meaning.\",\"source_clause\":\"An uncertain advisory observation must not block independent inspection. Prefer a focused faithful check to multiple redundant or compound questions.\",\"counterexample\":\"If s1 is unknown because the image does not establish whether the paper is stuffed inside, s2 can still independently show visible progress short of completion. The fulfillment criteria nevertheless return unknown whenever s1 is unresolved, so they cannot return partial despite evidence of progress. Conversely, a focused check could assess the rubric’s requested progress state without this dependent two-support chain.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1567,
+    "completionTokens": 212,
+    "totalTokens": 1779,
+    "latencySeconds": 3.4733362197875977,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is correctly image-free and preserves the rubric’s yes/no/partial meanings, but the chain makes s2 depend on s1 and then requires both supports for a decision. If s1 is unknown, s2 is still scheduled but its result cannot establish partial or no under the fulfillment criteria. That blocks independent inspection and leaves a potentially decidable outcome unresolved. The redundant s2 support also adds a second check where a focused check could preserve the rubric’s progress meaning.",
+      "source_clause": "An uncertain advisory observation must not block independent inspection. Prefer a focused faithful check to multiple redundant or compound questions.",
+      "counterexample": "If s1 is unknown because the image does not establish whether the paper is stuffed inside, s2 can still independently show visible progress short of completion. The fulfillment criteria nevertheless return unknown whenever s1 is unresolved, so they cannot return partial despite evidence of progress. Conversely, a focused check could assess the rubric’s requested progress state without this dependent two-support chain."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is correctly image-free and preserves the rubric’s yes/no/partial meanings, but the chain makes s2 depend on s1 and then requires both supports for a decision. If s1 is unknown, s2 is still scheduled but its result cannot establish partial or no under the fulfillment criteria. That blocks independent inspection and leaves a potentially decidable outcome unresolved. The redundant s2 support also adds a second check where a focused check could preserve the rubric’s progress meaning.",
+    "source_clause": "An uncertain advisory observation must not block independent inspection. Prefer a focused faithful check to multiple redundant or compound questions.",
+    "counterexample": "If s1 is unknown because the image does not establish whether the paper is stuffed inside, s2 can still independently show visible progress short of completion. The fulfillment criteria nevertheless return unknown whenever s1 is unresolved, so they cannot return partial despite evidence of progress. Conversely, a focused check could assess the rubric’s requested progress state without this dependent two-support chain."
+  }
+}

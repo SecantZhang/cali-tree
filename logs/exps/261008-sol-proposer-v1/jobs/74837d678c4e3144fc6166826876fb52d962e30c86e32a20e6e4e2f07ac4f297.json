@@ -1,0 +1,1769 @@
+{
+  "execution_ref": "74837d678c4e3144fc6166826876fb52d962e30c86e32a20e6e4e2f07ac4f297",
+  "stage": "propose_typed",
+  "slot": "round/1/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Can the requested paper and cup be identified in the edited image, using the source for context, with sufficient visibility to assess their placement?",
+          "criteria": "Pass if visible features establish the paper and a cup in the edited image and permit assessment of their spatial relation. Fail only if adequate visibility positively establishes that the required paper or cup is absent from the relevant edited scene. Unknown if identity, occlusion, framing, or visibility prevents that determination. Not recognizing a cup is not proof that no cup exists. Report concrete identifying features and visibility limitations; do not judge completion here.",
+          "binding": "Compare source and edited images directly. The source's blue cup provides context, not proof that a reddish object in the edit is a cup. Investigate cup-like opening, interior, walls, and paper boundaries without requiring preservation of the source's color. Do not infer an unseen interior or object identity from the instruction.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Given the object-identification evidence, does the edited image establish that the paper is inside the cup and stuffed into it rather than merely nearby or resting on its rim?",
+          "criteria": "Pass if identified paper visibly extends into an identified cup's interior and visible containment, compression, or insertion establishes stuffing. Fail if adequate visual evidence establishes that this full target is not met, including clearly external paper, rim-only placement, visibly incomplete insertion, or positively established absence of a required object. A fail means incomplete, not necessarily no progress. Unknown if object identity or the interior relation is unresolved. Describe the decisive spatial evidence and distinguish incomplete insertion from merely external placement.",
+          "binding": "Use s1 as ancestor context, then inspect the edited image independently for the specific containment and stuffing relation. Do not repeat s1 as independent corroboration. A hand holding paper beside an unidentified reddish object establishes neither completion nor absence of progress. Do not demand that all paper disappear inside the cup.",
+          "inferences": []
+        },
+        {
+          "id": "s3_insertion_progress",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Within the paper-and-cup relation investigated by s1 and s2, is any requested insertion or stuffing progress visibly established, whether complete or intermediate?",
+          "criteria": "Pass if the edited image establishes paper entering or occupying an identified cup's interior, or a visible intermediate stuffing action directed into its opening. State whether the evidence shows completed stuffing or incomplete insertion. Fail only if sufficient evidence positively establishes no insertion or stuffing progress: for example, identified paper is wholly external with no entry into the cup, mere proximity or rim contact without insertion, or a required object is demonstrably absent. Unknown if cup identity, paper boundaries, opening, or occlusion prevents distinguishing actual insertion from proximity. Failure of s2 alone does not establish failure here.",
+          "binding": "Use s1 and s2 as ancestor context and inspect the narrower progress proposition directly in the edited image. Compare the source where useful, but do not count changed paper appearance, a hand, a new background, or proximity alone as requested progress. Do not infer motion or insertion from a static grip. Preserve uncertainty when the reddish object's identity or interior cannot be established.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3_insertion_progress",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3_insertion_progress"
+          ],
+          "question": "Does the image show the paper stuffed inside the cup?",
+          "criteria": "Use all and only s1, s2, and s3_insertion_progress observations. Complete requires grounded identification and placement evidence from s1, affirmative stuffing evidence from s2, and affirmative insertion evidence from s3_insertion_progress. Partial requires positively established insertion or stuffing progress from s3_insertion_progress and positively established incompleteness from s2; mere proximity and unrelated changes do not qualify. Absent requires s3_insertion_progress to positively establish no requested progress, with trustworthy object identification and spatial evidence or explicit, adequately visible absence of a required object. A failed completion check alone never establishes absent. Unknown applies when required identity, placement, completion, or progress evidence remains unresolved, or when observations conflict without a supported resolution. Dependent agreement is not independent visual confirmation, and supporting passes do not themselves earn completion credit.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "s1": [
+          "The repeated unknowns are valid evidence of an identification/visibility bottleneck, not proof that the requested edit is absent; do not force a “no” from the reference label. The binding already appropriately warns against treating the source cup or instruction as proof of the edited object’s identity. Improve the node’s typed criteria/binding to distinguish observable progress from full placement assessment: inspect the edited image for paper boundaries and cup-specific visible structure, and report whether the paper visibly overlaps, enters, or is merely held in front of the candidate object. Here the paper is clearly visible and overlaps a reddish rounded form, but the form is partly occluded and no opening/interior is established, so placement relative to a confirmed cup remains unresolved. Preserve that uncertainty rather than converting it to absence or completion. Keep source context limited to comparison, and avoid making any single feature (such as a visible interior) an absolute identity requirement when other visible features could establish a cup. No transport, schema, or dependency failures are reported; the issue is semantic ambiguity and insufficient visual evidence, not execution failure."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 0.0,
+        "label_consistency": 0.0,
+        "label_distribution": {
+          "unresolved": 5
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.94,
+              0.91,
+              0.94,
+              0.94
+            ]
+          },
+          "s2": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          },
+          "s3_insertion_progress": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          },
+          "fulfillment": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "requirement_consistency": 0.0,
+        "confidence_pass": true,
+        "mean_checks": 1.0,
+        "mean_completion_tokens": 103.0,
+        "traces": [
+          {
+            "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 117,
+                "dependencies": [],
+                "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "s3_insertion_progress",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3_insertion_progress",
+                    "status": "unknown",
+                    "evidence": "Inactive conditional branch",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Unknown required evidence dependency",
+                        "valid": false,
+                        "eligible": false,
+                        "queried": false,
+                        "confidence": null,
+                        "completion_tokens": 0,
+                        "dependencies": [
+                          {
+                            "check_id": "s1",
+                            "status": "unknown",
+                            "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                            "valid": true,
+                            "eligible": true,
+                            "queried": true,
+                            "confidence": 0.91,
+                            "completion_tokens": 117,
+                            "dependencies": [],
+                            "execution_ref": "7a3b81384eb6359640d12fbccd91a2ca4484df35eac4e6c71865b48d34a7f550",
+                            "failure": null
+                          }
+                        ],
+                        "execution_ref": "",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "s3_insertion_progress",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3_insertion_progress",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 88,
+                "dependencies": [],
+                "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 88,
+                    "dependencies": [],
+                    "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "s3_insertion_progress",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 88,
+                    "dependencies": [],
+                    "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 88,
+                        "dependencies": [],
+                        "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 88,
+                    "dependencies": [],
+                    "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 88,
+                        "dependencies": [],
+                        "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3_insertion_progress",
+                    "status": "unknown",
+                    "evidence": "Inactive conditional branch",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 88,
+                        "dependencies": [],
+                        "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Unknown required evidence dependency",
+                        "valid": false,
+                        "eligible": false,
+                        "queried": false,
+                        "confidence": null,
+                        "completion_tokens": 0,
+                        "dependencies": [
+                          {
+                            "check_id": "s1",
+                            "status": "unknown",
+                            "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. No cup-like opening or interior is visible, and its visible curved surface alone does not establish that it is a cup. The paper and cup therefore cannot both be identified with sufficient confidence to assess their placement.",
+                            "valid": true,
+                            "eligible": true,
+                            "queried": true,
+                            "confidence": 0.94,
+                            "completion_tokens": 88,
+                            "dependencies": [],
+                            "execution_ref": "94c08537ed1fe092a21e3a562613da81f0ae722f17be4204307939740c642c52",
+                            "failure": null
+                          }
+                        ],
+                        "execution_ref": "",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "s3_insertion_progress",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3_insertion_progress",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 117,
+                "dependencies": [],
+                "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "s3_insertion_progress",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3_insertion_progress",
+                    "status": "unknown",
+                    "evidence": "Inactive conditional branch",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 117,
+                        "dependencies": [],
+                        "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Unknown required evidence dependency",
+                        "valid": false,
+                        "eligible": false,
+                        "queried": false,
+                        "confidence": null,
+                        "completion_tokens": 0,
+                        "dependencies": [
+                          {
+                            "check_id": "s1",
+                            "status": "unknown",
+                            "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. Behind it is a reddish rounded form with a dark curved line, but its visible features do not establish a cup opening, interior, or walls; it could be another object. The source shows a blue cup, but that does not establish the identity of the reddish form. The paper and possible cup are visible enough to inspect, yet the cup cannot be identified with sufficient confidence.",
+                            "valid": true,
+                            "eligible": true,
+                            "queried": true,
+                            "confidence": 0.91,
+                            "completion_tokens": 117,
+                            "dependencies": [],
+                            "execution_ref": "186a60ed6934b7ee38419a20a687e1b33562058e382fd75f91138b90b1ee3528",
+                            "failure": null
+                          }
+                        ],
+                        "execution_ref": "",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "s3_insertion_progress",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3_insertion_progress",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 80,
+                "dependencies": [],
+                "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 80,
+                    "dependencies": [],
+                    "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "s3_insertion_progress",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 80,
+                    "dependencies": [],
+                    "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 80,
+                        "dependencies": [],
+                        "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 80,
+                    "dependencies": [],
+                    "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 80,
+                        "dependencies": [],
+                        "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3_insertion_progress",
+                    "status": "unknown",
+                    "evidence": "Inactive conditional branch",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 80,
+                        "dependencies": [],
+                        "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Unknown required evidence dependency",
+                        "valid": false,
+                        "eligible": false,
+                        "queried": false,
+                        "confidence": null,
+                        "completion_tokens": 0,
+                        "dependencies": [
+                          {
+                            "check_id": "s1",
+                            "status": "unknown",
+                            "evidence": "The edited image clearly shows a sheet of paper, but the reddish object behind it is mostly occluded. Its visible curved surface and dark line do not establish a cup opening, interior, or walls, so the cup cannot be identified with sufficient confidence or its placement assessed.",
+                            "valid": true,
+                            "eligible": true,
+                            "queried": true,
+                            "confidence": 0.94,
+                            "completion_tokens": 80,
+                            "dependencies": [],
+                            "execution_ref": "9fa5e759b051c5ef9264007488f93546e4ec90809bf37f41ce089d1eb36c9917",
+                            "failure": null
+                          }
+                        ],
+                        "execution_ref": "",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "s3_insertion_progress",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3_insertion_progress",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 113,
+                "dependencies": [],
+                "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 113,
+                    "dependencies": [],
+                    "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "s3_insertion_progress",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 113,
+                    "dependencies": [],
+                    "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 113,
+                        "dependencies": [],
+                        "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 113,
+                    "dependencies": [],
+                    "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 113,
+                        "dependencies": [],
+                        "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3_insertion_progress",
+                    "status": "unknown",
+                    "evidence": "Inactive conditional branch",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 113,
+                        "dependencies": [],
+                        "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Unknown required evidence dependency",
+                        "valid": false,
+                        "eligible": false,
+                        "queried": false,
+                        "confidence": null,
+                        "completion_tokens": 0,
+                        "dependencies": [
+                          {
+                            "check_id": "s1",
+                            "status": "unknown",
+                            "evidence": "The edited image clearly shows a blue printed paper-like item held in a hand. A reddish rounded object is partly visible behind it, but its visible features do not establish a cup opening, interior, or walls. The source shows a blue cup, but that does not establish the identity of the reddish object in the edit. The paper is visible, while the cup’s identity and the paper’s placement relative to it cannot be reliably assessed.",
+                            "valid": true,
+                            "eligible": true,
+                            "queried": true,
+                            "confidence": 0.94,
+                            "completion_tokens": 113,
+                            "dependencies": [],
+                            "execution_ref": "679b7b4fccede1efc817ac396413eaf8488a5a3be8b93c5a984d990f39a22a57",
+                            "failure": null
+                          }
+                        ],
+                        "execution_ref": "",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "s3_insertion_progress",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3_insertion_progress",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "f9febc5b0bcaa55f45855bdb49a68fac9594a53782e850c805008639aee51e8c",
+          "semantic_rejection": "The support checks do not provide sufficient evidence to distinguish partial progress from no progress. Both focus on whether the paper is already stuffed inside the cup; s1 treats paper not inside as fail, and s2 only resolves whether the target is complete. The fulfillment readout therefore cannot reliably identify cases where the paper has progressed toward the cup but is not yet stuffed inside. Its absent/partial rules require that distinction, so the saved evidence does not support the requested extent."
+        },
+        {
+          "program_ref": "e6fdea462787cd8851a89fea38c95e0fbb9fe89e047c9ba7cffe10a2bd1bc791",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s1"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "4e392ee0ee3b34dd11ab6661fbee8cb736c1bfb0fa0c97383f91c09fa1883e18",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Stuffing the paper into the cup",
+                "parent_id": "s1",
+                "question": "Inspect the edited image directly: does the reddish object behind the paper show any visible cup-like opening or interior, and is any part of the paper visibly entering or occupying it?",
+                "criteria": "Report concrete visible cues and distinguish actual entry into an interior from overlap, contact, or proximity. Preserve unknown if the object or spatial relation cannot be established; do not infer cup identity from the source image alone.",
+                "evidence": "The edited image shows a hand holding a blue printed sheet in front of a partly occluded reddish rounded object. The saved s1 observations repeatedly report that no opening or interior is established, but s2 and the insertion-progress check were not executed because s1 was unknown.",
+                "rationale": "The broad identification check's unknown result leaves the key relation unresolved. A direct, narrower inspection could still find evidence of entry or rule out visible insertion, which matters for distinguishing progress from no progress; the saved observations do not settle that question."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Stuffing the paper into the cup",
+            "parent_id": "s1",
+            "question": "Inspect the edited image directly: does the reddish object behind the paper show any visible cup-like opening or interior, and is any part of the paper visibly entering or occupying it?",
+            "criteria": "Report concrete visible cues and distinguish actual entry into an interior from overlap, contact, or proximity. Preserve unknown if the object or spatial relation cannot be established; do not infer cup identity from the source image alone.",
+            "evidence": "The edited image shows a hand holding a blue printed sheet in front of a partly occluded reddish rounded object. The saved s1 observations repeatedly report that no opening or interior is established, but s2 and the insertion-progress check were not executed because s1 was unknown.",
+            "rationale": "The broad identification check's unknown result leaves the key relation unresolved. A direct, narrower inspection could still find evidence of entry or rule out visible insertion, which matters for distinguishing progress from no progress; the saved observations do not settle that question.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "4e392ee0ee3b34dd11ab6661fbee8cb736c1bfb0fa0c97383f91c09fa1883e18",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "sol-proposer/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "db4f4c94fb6291dd275ffcc4ebef3e8e262594c66e1cf1407ea63209693504f6"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "be3df08b51fb88f0f543940723d8b01c85262c89d0682b9f964e2fa6e3a7f9ce"
+    }
+  ],
+  "route": "sol-proposer",
+  "requested_identity": {
+    "model": "gpt-6.1-sol",
+    "provider": "openai",
+    "temperature": null,
+    "reasoning_effort": "medium"
+  },
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"All five traces stop at s1 because its compound identification-and-placement proposition is unknown; the inserted progress check was never inspected. Repair this bottleneck by separating a grounded visual inventory from the nested insertion investigation, moving that investigation ahead of completion while retaining three supports. Cup identity and hidden placement must remain unresolved when genuinely ambiguous. This proposal requires structural validation, label-blind semantic audit, and fresh repeated forward verification; it does not presume a resolved aggregate label.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Can the edited scene be visually inventoried to locate the paper and candidate receiving object and describe their visible boundaries and occlusions for a narrower insertion investigation?\",\"criteria\":\"Pass if visible evidence permits a grounded inventory of the paper and candidate receiving object, including concrete boundaries, visible identifying features, overlap, and visibility limitations. A pass establishes inspectable context only, not confirmed cup identity or insertion. Report separately whether paper identity and cup identity are established, disproved, or unresolved. Fail if adequate visibility positively establishes absence of the paper or any relevant receiving object; identify the decisive evidence. Unknown if framing or visibility prevents even a grounded inventory. Unresolved cup identity must be recorded explicitly and never silently promoted to confirmed identity.\",\"binding\":\"Inspect source and edit directly. Use the source only to locate the requested objects and compare appearances, not to certify the reddish object's identity. Describe the paper outline and the reddish object's exposed contour and dark marking; investigate whether these support a cup, another object, or neither determination. Consider the combined visible structure without demanding a visible interior as an absolute identity requirement. Distinguish image-plane overlap from entry into a container. Do not infer hidden geometry or stuffing from the hand's grip.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"remove_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s3_insertion_progress\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"\",\"binding\":\"\",\"readout_criteria\":\"Use all and only the remaining s1 and s2 observations. Complete requires positively established paper and cup identity and affirmative containment and stuffing evidence from s2. Partial requires explicit evidence of actual insertion progress together with explicit incompleteness; a failed completion check alone supplies neither. Absent requires explicit evidence of no insertion progress or adequately visible absence of a required object. Unknown applies whenever identity, completion, or the progress distinction remains unresolved. Inventory passes do not earn fulfillment credit.\",\"evidence_from\":[]},{\"operation\":\"insert_support\",\"after\":\"s1\",\"before\":\"s2\",\"new_check_id\":\"s4_opening_entry\",\"target_id\":\"\",\"requirement_id\":\"R1\",\"question\":\"Within the scene inventoried by s1, does direct inspection establish actual paper entry into a cup or an intermediate stuffing action, rather than projected overlap with the reddish object?\",\"criteria\":\"Pass if the paper and a cup are established by concrete visible features and the paper visibly enters or occupies its interior, or visible deformation and crossing of its opening establish an intermediate stuffing action. Describe the boundary crossing, containment, and whether progress is complete or intermediate; do not infer motion from a grip. Fail only if adequate evidence establishes no requested insertion progress: the paper is wholly external to an identified cup with no entry or stuffing action, contact is demonstrably rim-only, or a required object is positively shown absent. A candidate positively identified as a non-cup can support failure only when the relevant scene is sufficiently visible to exclude another receiving cup or hidden insertion. Unknown if identity, paper boundaries, opening, or occlusion prevents distinguishing entry from overlap. Lack of a visible opening alone is not evidence of no progress.\",\"binding\":\"Use s1 as coarse ancestor context, including its explicitly unresolved identity fields, and inspect the edited image independently. Examine the exposed reddish contour, dark line, paper edges, and any observable receiving opening, depth, enclosing wall, or boundary crossing. Test cup and non-container interpretations against visible features rather than the instruction. Paper in front of a rounded form, color changes, and hand presence are not insertion evidence. Retain uncertainty if the paper could hide the decisive structure.\",\"readout_criteria\":\"Use all and only s1, s4_opening_entry, and s2 observations in that order. Complete requires grounded paper-and-cup identity, actual insertion evidence from s4_opening_entry, and affirmative contained stuffing evidence from s2. Partial requires positively established insertion or intermediate stuffing progress from s4_opening_entry and positively established incompleteness from s2. Absent requires s4_opening_entry to establish no requested progress using trustworthy external-placement evidence or adequately visible absence of a required object. Failure of s2 alone never establishes absent. Unknown applies when required identity, progress, or completion evidence remains unresolved, or observations conflict without a grounded resolution. A pass on s1 supplies inventory context only; supporting agreement is dependent, not independent confirmation. Do not infer new visual facts.\",\"evidence_from\":[\"s1\"]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Given the visual inventory and direct opening-entry investigation, does the edited image establish completed stuffing of the paper into a cup?\",\"criteria\":\"Pass if concrete evidence identifies paper and a cup and shows the paper extending inside it with visible containment, compression, or insertion sufficient to establish stuffing. Fail if adequate visual evidence positively establishes the full target is not met, including incomplete insertion, wholly external paper, rim-only placement, or adequately visible absence of a required object. Report whether failure coexists with actual insertion progress or with no progress, without treating completion failure as proof of either. Unknown if identity, containment, or the distinction between completed stuffing and an intermediate state remains unresolved. Some paper may remain outside a successfully stuffed cup.\",\"binding\":\"Use s1 and s4_opening_entry as ancestor context, then inspect the edited image directly for completed stuffing. Do not treat s1's inventory pass as confirmed cup identity or s4's progress pass as completion. Cite the decisive containment or compression cues and reconcile any disagreement with ancestor observations using visible evidence. Do not infer an interior hidden behind the sheet, require preservation of the source cup's color, or count unrelated changes as progress.\",\"readout_criteria\":\"\",\"evidence_from\":[\"s1\",\"s4_opening_entry\"]}]}]}",
+    "model": "gpt-6.1-sol",
+    "engine": "gpt",
+    "promptTokens": 15358,
+    "completionTokens": 1714,
+    "totalTokens": 17072,
+    "latencySeconds": 38.81593322753906,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "All five traces stop at s1 because its compound identification-and-placement proposition is unknown; the inserted progress check was never inspected. Repair this bottleneck by separating a grounded visual inventory from the nested insertion investigation, moving that investigation ahead of completion while retaining three supports. Cup identity and hidden placement must remain unresolved when genuinely ambiguous. This proposal requires structural validation, label-blind semantic audit, and fresh repeated forward verification; it does not presume a resolved aggregate label.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Can the edited scene be visually inventoried to locate the paper and candidate receiving object and describe their visible boundaries and occlusions for a narrower insertion investigation?",
+              "criteria": "Pass if visible evidence permits a grounded inventory of the paper and candidate receiving object, including concrete boundaries, visible identifying features, overlap, and visibility limitations. A pass establishes inspectable context only, not confirmed cup identity or insertion. Report separately whether paper identity and cup identity are established, disproved, or unresolved. Fail if adequate visibility positively establishes absence of the paper or any relevant receiving object; identify the decisive evidence. Unknown if framing or visibility prevents even a grounded inventory. Unresolved cup identity must be recorded explicitly and never silently promoted to confirmed identity.",
+              "binding": "Inspect source and edit directly. Use the source only to locate the requested objects and compare appearances, not to certify the reddish object's identity. Describe the paper outline and the reddish object's exposed contour and dark marking; investigate whether these support a cup, another object, or neither determination. Consider the combined visible structure without demanding a visible interior as an absolute identity requirement. Distinguish image-plane overlap from entry into a container. Do not infer hidden geometry or stuffing from the hand's grip.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "remove_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s3_insertion_progress",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "",
+              "binding": "",
+              "readout_criteria": "Use all and only the remaining s1 and s2 observations. Complete requires positively established paper and cup identity and affirmative containment and stuffing evidence from s2. Partial requires explicit evidence of actual insertion progress together with explicit incompleteness; a failed completion check alone supplies neither. Absent requires explicit evidence of no insertion progress or adequately visible absence of a required object. Unknown applies whenever identity, completion, or the progress distinction remains unresolved. Inventory passes do not earn fulfillment credit.",
+              "evidence_from": []
+            },
+            {
+              "operation": "insert_support",
+              "after": "s1",
+              "before": "s2",
+              "new_check_id": "s4_opening_entry",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "Within the scene inventoried by s1, does direct inspection establish actual paper entry into a cup or an intermediate stuffing action, rather than projected overlap with the reddish object?",
+              "criteria": "Pass if the paper and a cup are established by concrete visible features and the paper visibly enters or occupies its interior, or visible deformation and crossing of its opening establish an intermediate stuffing action. Describe the boundary crossing, containment, and whether progress is complete or intermediate; do not infer motion from a grip. Fail only if adequate evidence establishes no requested insertion progress: the paper is wholly external to an identified cup with no entry or stuffing action, contact is demonstrably rim-only, or a required object is positively shown absent. A candidate positively identified as a non-cup can support failure only when the relevant scene is sufficiently visible to exclude another receiving cup or hidden insertion. Unknown if identity, paper boundaries, opening, or occlusion prevents distinguishing entry from overlap. Lack of a visible opening alone is not evidence of no progress.",
+              "binding": "Use s1 as coarse ancestor context, including its explicitly unresolved identity fields, and inspect the edited image independently. Examine the exposed reddish contour, dark line, paper edges, and any observable receiving opening, depth, enclosing wall, or boundary crossing. Test cup and non-container interpretations against visible features rather than the instruction. Paper in front of a rounded form, color changes, and hand presence are not insertion evidence. Retain uncertainty if the paper could hide the decisive structure.",
+              "readout_criteria": "Use all and only s1, s4_opening_entry, and s2 observations in that order. Complete requires grounded paper-and-cup identity, actual insertion evidence from s4_opening_entry, and affirmative contained stuffing evidence from s2. Partial requires positively established insertion or intermediate stuffing progress from s4_opening_entry and positively established incompleteness from s2. Absent requires s4_opening_entry to establish no requested progress using trustworthy external-placement evidence or adequately visible absence of a required object. Failure of s2 alone never establishes absent. Unknown applies when required identity, progress, or completion evidence remains unresolved, or observations conflict without a grounded resolution. A pass on s1 supplies inventory context only; supporting agreement is dependent, not independent confirmation. Do not infer new visual facts.",
+              "evidence_from": [
+                "s1"
+              ]
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Given the visual inventory and direct opening-entry investigation, does the edited image establish completed stuffing of the paper into a cup?",
+              "criteria": "Pass if concrete evidence identifies paper and a cup and shows the paper extending inside it with visible containment, compression, or insertion sufficient to establish stuffing. Fail if adequate visual evidence positively establishes the full target is not met, including incomplete insertion, wholly external paper, rim-only placement, or adequately visible absence of a required object. Report whether failure coexists with actual insertion progress or with no progress, without treating completion failure as proof of either. Unknown if identity, containment, or the distinction between completed stuffing and an intermediate state remains unresolved. Some paper may remain outside a successfully stuffed cup.",
+              "binding": "Use s1 and s4_opening_entry as ancestor context, then inspect the edited image directly for completed stuffing. Do not treat s1's inventory pass as confirmed cup identity or s4's progress pass as completion. Cite the decisive containment or compression cues and reconcile any disagreement with ancestor observations using visible evidence. Do not infer an interior hidden behind the sheet, require preservation of the source cup's color, or count unrelated changes as progress.",
+              "readout_criteria": "",
+              "evidence_from": [
+                "s1",
+                "s4_opening_entry"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "All five traces stop at s1 because its compound identification-and-placement proposition is unknown; the inserted progress check was never inspected. Repair this bottleneck by separating a grounded visual inventory from the nested insertion investigation, moving that investigation ahead of completion while retaining three supports. Cup identity and hidden placement must remain unresolved when genuinely ambiguous. This proposal requires structural validation, label-blind semantic audit, and fresh repeated forward verification; it does not presume a resolved aggregate label.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Can the edited scene be visually inventoried to locate the paper and candidate receiving object and describe their visible boundaries and occlusions for a narrower insertion investigation?",
+            "criteria": "Pass if visible evidence permits a grounded inventory of the paper and candidate receiving object, including concrete boundaries, visible identifying features, overlap, and visibility limitations. A pass establishes inspectable context only, not confirmed cup identity or insertion. Report separately whether paper identity and cup identity are established, disproved, or unresolved. Fail if adequate visibility positively establishes absence of the paper or any relevant receiving object; identify the decisive evidence. Unknown if framing or visibility prevents even a grounded inventory. Unresolved cup identity must be recorded explicitly and never silently promoted to confirmed identity.",
+            "binding": "Inspect source and edit directly. Use the source only to locate the requested objects and compare appearances, not to certify the reddish object's identity. Describe the paper outline and the reddish object's exposed contour and dark marking; investigate whether these support a cup, another object, or neither determination. Consider the combined visible structure without demanding a visible interior as an absolute identity requirement. Distinguish image-plane overlap from entry into a container. Do not infer hidden geometry or stuffing from the hand's grip.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "remove_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s3_insertion_progress",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "",
+            "binding": "",
+            "readout_criteria": "Use all and only the remaining s1 and s2 observations. Complete requires positively established paper and cup identity and affirmative containment and stuffing evidence from s2. Partial requires explicit evidence of actual insertion progress together with explicit incompleteness; a failed completion check alone supplies neither. Absent requires explicit evidence of no insertion progress or adequately visible absence of a required object. Unknown applies whenever identity, completion, or the progress distinction remains unresolved. Inventory passes do not earn fulfillment credit.",
+            "evidence_from": []
+          },
+          {
+            "operation": "insert_support",
+            "after": "s1",
+            "before": "s2",
+            "new_check_id": "s4_opening_entry",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "Within the scene inventoried by s1, does direct inspection establish actual paper entry into a cup or an intermediate stuffing action, rather than projected overlap with the reddish object?",
+            "criteria": "Pass if the paper and a cup are established by concrete visible features and the paper visibly enters or occupies its interior, or visible deformation and crossing of its opening establish an intermediate stuffing action. Describe the boundary crossing, containment, and whether progress is complete or intermediate; do not infer motion from a grip. Fail only if adequate evidence establishes no requested insertion progress: the paper is wholly external to an identified cup with no entry or stuffing action, contact is demonstrably rim-only, or a required object is positively shown absent. A candidate positively identified as a non-cup can support failure only when the relevant scene is sufficiently visible to exclude another receiving cup or hidden insertion. Unknown if identity, paper boundaries, opening, or occlusion prevents distinguishing entry from overlap. Lack of a visible opening alone is not evidence of no progress.",
+            "binding": "Use s1 as coarse ancestor context, including its explicitly unresolved identity fields, and inspect the edited image independently. Examine the exposed reddish contour, dark line, paper edges, and any observable receiving opening, depth, enclosing wall, or boundary crossing. Test cup and non-container interpretations against visible features rather than the instruction. Paper in front of a rounded form, color changes, and hand presence are not insertion evidence. Retain uncertainty if the paper could hide the decisive structure.",
+            "readout_criteria": "Use all and only s1, s4_opening_entry, and s2 observations in that order. Complete requires grounded paper-and-cup identity, actual insertion evidence from s4_opening_entry, and affirmative contained stuffing evidence from s2. Partial requires positively established insertion or intermediate stuffing progress from s4_opening_entry and positively established incompleteness from s2. Absent requires s4_opening_entry to establish no requested progress using trustworthy external-placement evidence or adequately visible absence of a required object. Failure of s2 alone never establishes absent. Unknown applies when required identity, progress, or completion evidence remains unresolved, or observations conflict without a grounded resolution. A pass on s1 supplies inventory context only; supporting agreement is dependent, not independent confirmation. Do not infer new visual facts.",
+            "evidence_from": [
+              "s1"
+            ]
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Given the visual inventory and direct opening-entry investigation, does the edited image establish completed stuffing of the paper into a cup?",
+            "criteria": "Pass if concrete evidence identifies paper and a cup and shows the paper extending inside it with visible containment, compression, or insertion sufficient to establish stuffing. Fail if adequate visual evidence positively establishes the full target is not met, including incomplete insertion, wholly external paper, rim-only placement, or adequately visible absence of a required object. Report whether failure coexists with actual insertion progress or with no progress, without treating completion failure as proof of either. Unknown if identity, containment, or the distinction between completed stuffing and an intermediate state remains unresolved. Some paper may remain outside a successfully stuffed cup.",
+            "binding": "Use s1 and s4_opening_entry as ancestor context, then inspect the edited image directly for completed stuffing. Do not treat s1's inventory pass as confirmed cup identity or s4's progress pass as completion. Cite the decisive containment or compression cues and reconcile any disagreement with ancestor observations using visible evidence. Do not infer an interior hidden behind the sheet, require preservation of the source cup's color, or count unrelated changes as progress.",
+            "readout_criteria": "",
+            "evidence_from": [
+              "s1",
+              "s4_opening_entry"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

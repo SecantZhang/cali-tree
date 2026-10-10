@@ -1,0 +1,110 @@
+{
+  "execution_ref": "6825f2bee72548ee0dec9e1d8ead9730aa79357560104b0c9a5023183f244f5c",
+  "stage": "audit",
+  "slot": "audit/075a80c212c5e6359e70bdf9d2d5d199dc2c007ba2e77a7786ed1e6486db0fdc",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image show observable drawing-like marks or shading on depicted content, rather than only reduced color, grain, or a texture overlay?",
+          "criteria": "Pass when visible drawing-like marks or shading alter depicted content in a way that indicates progress toward pencil rendering; cite affected regions and cues. Fail when sufficient evidence shows only desaturation, grain, or other non-drawing treatment and no drawing-like progress. Unknown when the visual evidence is insufficient. This check detects progress, not whole-image completion.",
+          "binding": "Compare source and edited images. Identify concrete drawing-like marks or shading on the content and distinguish them from color reduction or grain alone; note photographic cues where visible. Do not decide overall fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image-grounded evidence of any progress toward rendering the content as a pencil drawing, even if incomplete?",
+          "criteria": "Pass only when observable drawing-like marks or shading on depicted content indicate movement toward pencil rendering; cite affected content and cues. Desaturation or grain in isolation is insufficient. Fail when sufficient evidence shows no requested progress; unknown when evidence is insufficient. Unrelated edits do not count.",
+          "binding": "Assess visible changes in the supplied image against the source for drawing-like treatment of its content. Keep this as a progress test, not a completion judgment; distinguish drawing cues from muted color or texture alone.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Does the image visibly appear as a completed pencil drawing?",
+          "criteria": "Compose both supports without awarding completion credit for support passes alone. Complete only when s1 provides evidence of drawing-like marks or shading and the evidence supports that the overall image reads as a pencil drawing, rather than merely having muted color, grain, or softened outlines. Reconcile and cite evidence for drawing treatment and any remaining photographic shading or color appearance; s2 establishes progress only. Partial when completion is not established but s2 establishes requested progress. Absent only when both supports establish no requested progress. Unknown when necessary evidence is unresolved; do not infer missing visual facts.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "criterion-only/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is under-supported: it requires evidence that the overall image reads as a pencil drawing and reconciliation of remaining photographic appearance, but neither support check assesses whole-image completion. s1 explicitly detects progress only, and s2 repeats a progress test. The readout cannot inspect images and must not infer completion from those observations, so the requested outcome cannot be reliably judged complete even when it is.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1369,
+    "completionTokens": 95,
+    "totalTokens": 1464,
+    "latencySeconds": 2.0918350219726562,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is under-supported: it requires evidence that the overall image reads as a pencil drawing and reconciliation of remaining photographic appearance, but neither support check assesses whole-image completion. s1 explicitly detects progress only, and s2 repeats a progress test. The readout cannot inspect images and must not infer completion from those observations, so the requested outcome cannot be reliably judged complete even when it is."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is under-supported: it requires evidence that the overall image reads as a pencil drawing and reconciliation of remaining photographic appearance, but neither support check assesses whole-image completion. s1 explicitly detects progress only, and s2 repeats a progress test. The readout cannot inspect images and must not infer completion from those observations, so the requested outcome cannot be reliably judged complete even when it is."
+  }
+}

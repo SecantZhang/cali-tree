@@ -1,0 +1,137 @@
+{
+  "execution_ref": "b2a4057b90281152a6d850aaf92fbaafecb2b0e84348903df20b48f4fb82847f",
+  "stage": "audit_v4",
+  "slot": "common_seed_audit",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Change the image into pencil drawing",
+        "source_phrase": "Change the image into pencil drawing"
+      }
+    ],
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly render its content in a pencil-drawn style?",
+          "criteria": "Pass if the edited image is clearly rendered as a pencil drawing while representing the image’s visual content. Fail if it is clearly not rendered as a pencil drawing. Unknown if the edited image is unavailable or the style cannot be determined.",
+          "binding": "Inspect the edited image against the requested pencil-drawing outcome; do not require a source-to-edit progress check.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is there evidence that the requested pencil-drawing change has made some progress, even if the edited image is not yet a pencil drawing?",
+          "criteria": "Pass if comparison with the supplied image shows a change toward a pencil-drawn style, but the endpoint is not established by the first support. Fail if the image is unchanged or changes are unrelated to the requested style. Unknown if comparison is unavailable or the direction of change cannot be determined.",
+          "binding": "Use the supplied image only to assess progress toward the requested pencil-drawing transformation; unrelated edits are not progress. This check is needed only when the endpoint check does not establish completion.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a pencil drawing.",
+          "criteria": "Return yes only when support 1 passes: the edited image is rendered as a pencil drawing representing its visual content. Return no when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing progress without complete fulfillment. Return unknown when the available observations do not establish one of those outcomes, including when a needed observation is unknown. Support 2 is skipped when support 1 passes; on that path, the endpoint evidence alone establishes completion, so the skipped progress check is unobserved and earns no independent credit. Unrelated edits do not count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "prepare/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The endpoint support can establish completion, but the fulfillment node is activated only when s2 is pass, fail, or unknown. Since s2 is skipped when s1 passes, the fulfillment readout is not scheduled on the completion path. This violates the always-scheduled, image-free fulfillment-readout requirement and loses the yes outcome for a completed edit.\",\"source_clause\":\"and an always-scheduled image-free fulfillment readout\",\"counterexample\":\"If s1 passes, s2 is skipped and fulfillment is not activated because its activation states are only [\\\"pass\\\", \\\"fail\\\", \\\"unknown\\\"]. Thus a completed pencil drawing has no scheduled fulfillment readout to return yes.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1553,
+    "completionTokens": 148,
+    "totalTokens": 1701,
+    "latencySeconds": 2.1012651920318604,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The endpoint support can establish completion, but the fulfillment node is activated only when s2 is pass, fail, or unknown. Since s2 is skipped when s1 passes, the fulfillment readout is not scheduled on the completion path. This violates the always-scheduled, image-free fulfillment-readout requirement and loses the yes outcome for a completed edit.",
+      "source_clause": "and an always-scheduled image-free fulfillment readout",
+      "counterexample": "If s1 passes, s2 is skipped and fulfillment is not activated because its activation states are only [\"pass\", \"fail\", \"unknown\"]. Thus a completed pencil drawing has no scheduled fulfillment readout to return yes."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The endpoint support can establish completion, but the fulfillment node is activated only when s2 is pass, fail, or unknown. Since s2 is skipped when s1 passes, the fulfillment readout is not scheduled on the completion path. This violates the always-scheduled, image-free fulfillment-readout requirement and loses the yes outcome for a completed edit.",
+    "source_clause": "and an always-scheduled image-free fulfillment readout",
+    "counterexample": "If s1 passes, s2 is skipped and fulfillment is not activated because its activation states are only [\"pass\", \"fail\", \"unknown\"]. Thus a completed pencil drawing has no scheduled fulfillment readout to return yes."
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "execution_ref": "e555ff1427ed5d26cf431d295d583c0a4eea4f3d718e2dab799e7390d309b36c",
+  "stage": "audit",
+  "slot": "audit/da011d181a3ecb6c33cccd11c1e276ff36470299a50c5fdf7162b978ec9276b4",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the book behind the flower",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the book behind the flower",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the book behind the flower.",
+          "source_phrase": "Move the book behind the flower"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The book is moved behind the flower.",
+          "target": "The book is visibly positioned behind the flower, with the flower in front of it.",
+          "reference": "Compare the book’s and flower’s relative positions and occlusion in the edited image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the book visibly positioned behind the flower, with the flower in front of it?",
+          "criteria": "Pass if the image shows the flower in front of and occluding the book in a way that establishes the book is behind it. Fail if the image clearly shows the book is not behind the flower. Unknown if the relative depth or occlusion cannot be determined from the image.",
+          "binding": "Assess only the book’s and flower’s relative positions and visible occlusion in the edited image.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "In the edited image, does the flower visibly occlude any part of the book—including its pages or cover—so that the book is established as behind the flower?",
+          "criteria": "Pass if visible overlap or another clear depth cue establishes that the flower is in front of and the book behind it. Fail if the visible book and flower are clearly separate, with no such cue. Unknown if the relevant objects, overlap, or depth ordering cannot be determined. Proximity, left-right placement, or a change in book orientation alone is not evidence of the requested relation.",
+          "binding": "Assess the book named in the instruction and the flower in the edited image. Treat the book’s pages and cover as parts of the same book; use visible overlap/occlusion or another clear depth cue, not proximity or left-right position alone. Do not count unrelated edits as progress.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the image show any progress toward moving the book behind the flower, even if the requested placement is not complete?",
+          "criteria": "Pass if the image provides clear evidence of partial progress toward placing the book behind the flower, such as a changed relative position or partial occlusion consistent with that placement, without establishing complete fulfillment. Fail if the image clearly shows no progress toward the requested placement. Unknown if progress cannot be determined from the image.",
+          "binding": "Compare the book’s and flower’s relative positions and occlusion in the edited image; do not count unrelated edits as progress.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "question": "Is the book visibly positioned behind the flower?",
+          "criteria": "Use this nested observation as a focused check of the book–flower depth relation, not as independent proof that a move occurred. Complete only when s1 establishes the requested final relation; partial only when s2 establishes clear progress without completion; absent only when both relevant checks fail; otherwise unknown. Do not infer progress or completion from unrelated edits.",
+          "binding": "Target: The book is visibly positioned behind the flower, with the flower in front of it.. Reference: Compare the book’s and flower’s relative positions and occlusion in the edited image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-88caae46533b0440f452::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks do not cleanly separate completion from progress. s1 and s3 both test essentially the same final behind/occlusion relation, while s2 is activated under every s3 result and can pass on partial occlusion without establishing that the book was moved; its criteria do not reliably distinguish a changed placement from an already-existing relation. The fulfillment rule then treats s1 pass as completion and s2 pass as partial, so conflicting observations can yield overlapping completion and partial evidence, with no explicit precedence or contradiction handling. This does not faithfully establish the rubric’s requested-change progress and completion states.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1543,
+    "completionTokens": 135,
+    "totalTokens": 1678,
+    "latencySeconds": 2.632554054260254,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks do not cleanly separate completion from progress. s1 and s3 both test essentially the same final behind/occlusion relation, while s2 is activated under every s3 result and can pass on partial occlusion without establishing that the book was moved; its criteria do not reliably distinguish a changed placement from an already-existing relation. The fulfillment rule then treats s1 pass as completion and s2 pass as partial, so conflicting observations can yield overlapping completion and partial evidence, with no explicit precedence or contradiction handling. This does not faithfully establish the rubric’s requested-change progress and completion states."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks do not cleanly separate completion from progress. s1 and s3 both test essentially the same final behind/occlusion relation, while s2 is activated under every s3 result and can pass on partial occlusion without establishing that the book was moved; its criteria do not reliably distinguish a changed placement from an already-existing relation. The fulfillment rule then treats s1 pass as completion and s2 pass as partial, so conflicting observations can yield overlapping completion and partial evidence, with no explicit precedence or contradiction handling. This does not faithfully establish the rubric’s requested-change progress and completion states."
+  }
+}

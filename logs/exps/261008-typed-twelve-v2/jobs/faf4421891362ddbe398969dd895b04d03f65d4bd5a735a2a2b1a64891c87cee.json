@@ -1,0 +1,480 @@
+{
+  "execution_ref": "faf4421891362ddbe398969dd895b04d03f65d4bd5a735a2a2b1a64891c87cee",
+  "stage": "propose_typed",
+  "slot": "round/1/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the woman's jacket visibly closed more than in the input image, with its front panels brought together at least in part?",
+          "criteria": "Pass if the image shows the jacket's front panels brought together along some portion of the closure compared with the input. Fail if the jacket is visibly unchanged or more open. Unknown if the closure cannot be assessed from the image or comparison evidence is insufficient.",
+          "binding": "Assess only the woman's jacket identified in the input image; judge visible change to its front closure, not unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is the woman's jacket fully closed, with no visible opening remaining along its closure?",
+          "criteria": "Pass if the jacket's front panels meet along the entire closure and no opening remains. Fail if any visible opening remains along the closure. Unknown if the closure is obscured or the image does not provide enough evidence to determine whether it is fully closed.",
+          "binding": "Assess the same jacket and closure as in s1. Full closure is the requested endpoint; partial closure is not complete fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the woman's jacket fully closed?",
+          "criteria": "Use only the evidence in s1 and s2 for the requested jacket change. Complete if s2 passes. Partial if s2 does not pass, s1 passes, and the evidence establishes some progress toward closing the jacket. Absent if both checks fail and the evidence establishes no requested progress. Unknown if required evidence is unresolved such that complete, partial, or absent cannot be determined. Unrelated edits do not count as progress; do not treat unknown evidence as failure or completion.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "yes",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s target and completion criterion are clear, but its evidence chain appears to misread the images: the source already shows the jacket front together, while the edited image shows it hanging open. Thus the requested change is not evidenced, and the reference label “yes” should not override that visual evidence. Improve the upstream checks’ source-versus-edit comparison and ensure the fulfillment node faithfully uses their statuses; do not change the criterion or force a positive label. Both checks were valid, queried, and high-confidence with no transport or schema failure, so investigate visual interpretation/binding rather than execution reliability. Keep the binding anchored to the same jacket and distinguish closure from pose or garment movement; retain partial/unknown handling when evidence genuinely warrants it."
+        ],
+        "s2": [
+          "The endpoint criterion is clear, but the node’s evidence appears to confuse the jacket’s drape and the woman’s changed pose with an open closure. The edited image shows her turned sideways with the jacket swinging outward; that alone does not establish that an opening remains along the closure. Refine the binding to inspect the closure itself in the edited frame, distinguishing a visible gap between the front panels from fabric displaced by motion or viewpoint. Use unknown when the closure cannot be reliably seen, and preserve partial progress if some closure is visible but incomplete. Keep the full-closure requirement unchanged; the reference label is not atomic ground truth. Both checks ran validly at high confidence, so this is a visual interpretation issue, not a transport or schema failure."
+        ],
+        "s1": [
+          "The binding already identifies the correct jacket and asks about partial closure, so do not alter the criterion to force a positive result. Improve the visual comparison: the source appears to show the jacket front together, while the edited frame shows the woman turned and the jacket swinging outward. Do not treat that displaced fabric alone as proof that the closure is more open or that a requested change occurred. Inspect whether the front panels actually meet along the closure, comparing the same garment region across frames and accounting for pose and viewpoint; distinguish visible closure from drape or motion. If the closure is obscured, use unknown rather than inferring progress. The check executed validly with high confidence, so this is a visual interpretation issue, not a transport or schema failure; the reference label is aggregate guidance, not atomic ground truth."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "no": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.94
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 182.0,
+        "traces": [
+          {
+            "program_ref": "42932e137eb5a62903f457259a4620c006a63d4c2d66f2cedd6b29e08f702b35",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved checks fail: s1 reports the jacket became more open rather than showing progress toward closure, and s2 reports it remains visibly open. The requested change is not evidenced."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The jacket’s front is visibly more open in the edited image, with a panel hanging away from her body, rather than brought together compared with the source.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 57,
+                "dependencies": [],
+                "execution_ref": "1733cc421535e77ffe8c7d73ceabdc27894ea0734f6cbe5cd141413dc61bc1d4",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The same jacket remains visibly open in the edited image: its front panel hangs away from her body, leaving an opening along the closure.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 56,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The jacket’s front is visibly more open in the edited image, with a panel hanging away from her body, rather than brought together compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 57,
+                    "dependencies": [],
+                    "execution_ref": "1733cc421535e77ffe8c7d73ceabdc27894ea0734f6cbe5cd141413dc61bc1d4",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "0cf6a6df462bbc60d7a6965b5d63a4bbb135873bae77bb5f536782b7c7bae7de",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both saved checks fail: s1 reports the jacket became more open rather than showing progress toward closure, and s2 reports it remains visibly open. The requested change is not evidenced.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 69,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The jacket’s front is visibly more open in the edited image, with a panel hanging away from her body, rather than brought together compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 57,
+                    "dependencies": [],
+                    "execution_ref": "1733cc421535e77ffe8c7d73ceabdc27894ea0734f6cbe5cd141413dc61bc1d4",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The same jacket remains visibly open in the edited image: its front panel hangs away from her body, leaving an opening along the closure.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 56,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "fail",
+                        "evidence": "The jacket’s front is visibly more open in the edited image, with a panel hanging away from her body, rather than brought together compared with the source.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 57,
+                        "dependencies": [],
+                        "execution_ref": "1733cc421535e77ffe8c7d73ceabdc27894ea0734f6cbe5cd141413dc61bc1d4",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "0cf6a6df462bbc60d7a6965b5d63a4bbb135873bae77bb5f536782b7c7bae7de",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "3a0d4ff7bd041b5b42f5d55e0f3368621f2789d24bc6ec1c299d38c5f128d2e2",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "parent": "42932e137eb5a62903f457259a4620c006a63d4c2d66f2cedd6b29e08f702b35",
+          "round": 0,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "The edited pose and outward-draping panel make the closure hard to inspect; add a focused nested check to distinguish a visible opening from an obscured closure, without treating pose or drape as progress or failure by itself.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "fulfillment",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "In the edited image, can the same jacket’s front closure be directly inspected, and, if visible, do the front panels meet across its full length with no opening?",
+                "criteria": "Pass only if the closure is directly visible and joined throughout with no opening. Fail only if the closure is directly visible and an opening remains. Unknown if the turned pose, outward draping, occlusion, or image quality prevents reliable inspection; do not infer closure state from the panel hanging away from the body alone.",
+                "binding": "Inspect the woman’s jacket closure in the edited image, using s2’s observation as context but independently assessing visibility and the closure itself. A changed viewpoint or swinging panel is not evidence of closure or of an opening unless the closure can be seen.",
+                "readout_criteria": "",
+                "evidence_from": [
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "Insertion needs explicit readout criteria",
+          "accepted": false
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "a6b712158b782c5450e5969ae7145d1ecc51891dbdf362a9d33cda56e160944c",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "close her jacket fully",
+                "parent_id": "s2",
+                "question": "Is the visible opening along the jacket’s front closure actually a gap between the jacket panels, rather than the jacket’s loose outer panel hanging or flaring away from her body?",
+                "criteria": "Inspect the jacket front in the edited image and distinguish panel separation at the closure from fabric projecting outward; count an opening only where the closure itself visibly remains unclosed.",
+                "evidence": "In the edited image, the woman is turned partly sideways and a large pink panel flares outward. The view does not clearly show whether the front panels meet along the closure; the source also shows the jacket front only at a small scale.",
+                "rationale": "The saved s2 observation treats the panel hanging away from her body as evidence of an opening, but that alone may not establish a gap along the closure. This finer check could affect whether full closure is ruled out; the images do not support assuming either outcome."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "close her jacket fully",
+            "parent_id": "s2",
+            "question": "Is the visible opening along the jacket’s front closure actually a gap between the jacket panels, rather than the jacket’s loose outer panel hanging or flaring away from her body?",
+            "criteria": "Inspect the jacket front in the edited image and distinguish panel separation at the closure from fabric projecting outward; count an opening only where the closure itself visibly remains unclosed.",
+            "evidence": "In the edited image, the woman is turned partly sideways and a large pink panel flares outward. The view does not clearly show whether the front panels meet along the closure; the source also shows the jacket front only at a small scale.",
+            "rationale": "The saved s2 observation treats the panel hanging away from her body as evidence of an opening, but that alone may not establish a gap along the closure. This finer check could affect whether full closure is ruled out; the images do not support assuming either outcome.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "a6b712158b782c5450e5969ae7145d1ecc51891dbdf362a9d33cda56e160944c",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "nested-required/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "3ec20c3bd3ae2e1479cfe0ae9990215043339d9f394916c3233562654650a95a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "ce988302e0ebf0c992d381ff2fbb93dd6298ce3aa2fabe6329fb1ed8967bdb2a"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The outward-flaring panel in the edited frame does not by itself establish a gap at the closure. Add a nested, image-based check that distinguishes actual panel separation from drape and allows unresolved visibility; keep the full-closure endpoint and partial/unknown handling intact.\",\"actions\":[{\"operation\":\"insert_support\",\"after\":\"s2\",\"before\":\"fulfillment\",\"new_check_id\":\"s3\",\"target_id\":\"\",\"requirement_id\":\"R1\",\"question\":\"In the edited image, is there a visible gap between the jacket's front panels along the closure, rather than only an outer panel flaring away from the body?\",\"criteria\":\"Pass if the closure is directly visible and the panels meet throughout with no opening. Fail if the closure is directly visible and a gap remains at any point. Unknown if pose, drape, occlusion, or image detail prevents reliably distinguishing a closure gap from fabric projecting outward; do not infer a gap from drape alone.\",\"binding\":\"Inspect the same woman's jacket closure in the edited image. Use s2 as context, but independently assess the closure itself; distinguish separation between the front panels from a loose panel displaced by pose or motion.\",\"readout_criteria\":\"Use s1, s2, and s3 together. Complete only when s2 and s3 establish full closure. Partial only when evidence establishes some progress toward closure but not full closure. Absent only when evidence establishes no requested progress. A visible gap or outward drape alone does not establish absence or progress; if the evidence needed to determine progress or completion is unresolved, report unknown. Do not infer visual facts beyond the supports.\",\"evidence_from\":[\"s2\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 5503,
+    "completionTokens": 356,
+    "totalTokens": 5859,
+    "latencySeconds": 5.311992168426514,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The outward-flaring panel in the edited frame does not by itself establish a gap at the closure. Add a nested, image-based check that distinguishes actual panel separation from drape and allows unresolved visibility; keep the full-closure endpoint and partial/unknown handling intact.",
+          "actions": [
+            {
+              "operation": "insert_support",
+              "after": "s2",
+              "before": "fulfillment",
+              "new_check_id": "s3",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "In the edited image, is there a visible gap between the jacket's front panels along the closure, rather than only an outer panel flaring away from the body?",
+              "criteria": "Pass if the closure is directly visible and the panels meet throughout with no opening. Fail if the closure is directly visible and a gap remains at any point. Unknown if pose, drape, occlusion, or image detail prevents reliably distinguishing a closure gap from fabric projecting outward; do not infer a gap from drape alone.",
+              "binding": "Inspect the same woman's jacket closure in the edited image. Use s2 as context, but independently assess the closure itself; distinguish separation between the front panels from a loose panel displaced by pose or motion.",
+              "readout_criteria": "Use s1, s2, and s3 together. Complete only when s2 and s3 establish full closure. Partial only when evidence establishes some progress toward closure but not full closure. Absent only when evidence establishes no requested progress. A visible gap or outward drape alone does not establish absence or progress; if the evidence needed to determine progress or completion is unresolved, report unknown. Do not infer visual facts beyond the supports.",
+              "evidence_from": [
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The outward-flaring panel in the edited frame does not by itself establish a gap at the closure. Add a nested, image-based check that distinguishes actual panel separation from drape and allows unresolved visibility; keep the full-closure endpoint and partial/unknown handling intact.",
+        "actions": [
+          {
+            "operation": "insert_support",
+            "after": "s2",
+            "before": "fulfillment",
+            "new_check_id": "s3",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "In the edited image, is there a visible gap between the jacket's front panels along the closure, rather than only an outer panel flaring away from the body?",
+            "criteria": "Pass if the closure is directly visible and the panels meet throughout with no opening. Fail if the closure is directly visible and a gap remains at any point. Unknown if pose, drape, occlusion, or image detail prevents reliably distinguishing a closure gap from fabric projecting outward; do not infer a gap from drape alone.",
+            "binding": "Inspect the same woman's jacket closure in the edited image. Use s2 as context, but independently assess the closure itself; distinguish separation between the front panels from a loose panel displaced by pose or motion.",
+            "readout_criteria": "Use s1, s2, and s3 together. Complete only when s2 and s3 establish full closure. Partial only when evidence establishes some progress toward closure but not full closure. Absent only when evidence establishes no requested progress. A visible gap or outward drape alone does not establish absence or progress; if the evidence needed to determine progress or completion is unresolved, report unknown. Do not infer visual facts beyond the supports.",
+            "evidence_from": [
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

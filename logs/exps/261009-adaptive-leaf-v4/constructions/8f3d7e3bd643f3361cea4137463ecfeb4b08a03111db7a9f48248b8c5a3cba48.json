@@ -1,0 +1,120 @@
+{
+  "specification": {
+    "supports": [
+      {
+        "requirement_id": "R1",
+        "question": "Does the edited image show the woman wearing or otherwise visibly having a helmet on her head?",
+        "criteria": "Pass if a helmet is visibly on the woman’s head; fail if the image clearly shows that she does not have a helmet on her head; unknown if the woman, her head, or the presence of a helmet cannot be determined.",
+        "binding": "The woman in the input image; the requested result is a helmet visibly on her head.",
+        "evidence_from": [],
+        "required_evidence_from": [],
+        "activation_source": 0,
+        "activation_states": []
+      },
+      {
+        "requirement_id": "R1",
+        "question": "Does comparison with the input image show that adding a helmet to the woman is an edit made in response to the request?",
+        "criteria": "Pass if comparison shows the helmet was added to the woman; fail if comparison clearly shows no requested change was made; unknown if the comparison cannot establish whether the helmet was added.",
+        "binding": "The requested change is adding a helmet to the woman, not an unrelated edit.",
+        "evidence_from": [
+          1
+        ],
+        "required_evidence_from": [],
+        "activation_source": 0,
+        "activation_states": []
+      }
+    ],
+    "fulfillment_criteria": "Apply the original rubric to the requested change only. Return yes when the evidence establishes that the woman has a helmet on her head and that adding it is a requested edit. Return no only when the evidence establishes that no requested change has progressed. Return partial when evidence establishes some progress toward adding the helmet but does not establish complete fulfillment. Unrelated edits do not count as progress. If the evidence does not establish which rubric outcome applies, return unknown. The endpoint inspection can establish completion on its own when it clearly shows the requested result; the comparison check is supporting evidence, not an additional completion requirement. If that check is skipped, do not treat it as not applicable or as a failure: use the endpoint evidence to decide whether completion is established, and otherwise return unknown unless other evidence establishes progress or no progress. Supporting observations do not earn completion credit independently.",
+    "fulfillment_required": []
+  },
+  "program": {
+    "program_ref": "64a7459124ba68d771867e188a9f7357307529b190a0a084fa5824b66a434517",
+    "program": {
+      "instruction": "Give the woman a helmet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Give the woman a helmet.",
+          "source_phrase": "Give the woman a helmet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a helmet to the woman.",
+          "target": "The woman is wearing or otherwise visibly has a helmet on her head.",
+          "reference": "The woman in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image show the woman wearing or otherwise visibly having a helmet on her head?",
+          "criteria": "Pass if a helmet is visibly on the woman’s head; fail if the image clearly shows that she does not have a helmet on her head; unknown if the woman, her head, or the presence of a helmet cannot be determined.",
+          "binding": "The woman in the input image; the requested result is a helmet visibly on her head.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does comparison with the input image show that adding a helmet to the woman is an edit made in response to the request?",
+          "criteria": "Pass if comparison shows the helmet was added to the woman; fail if comparison clearly shows no requested change was made; unknown if the comparison cannot establish whether the helmet was added.",
+          "binding": "The requested change is adding a helmet to the woman, not an unrelated edit.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Add a helmet to the woman.",
+          "criteria": "Apply the original rubric to the requested change only. Return yes when the evidence establishes that the woman has a helmet on her head and that adding it is a requested edit. Return no only when the evidence establishes that no requested change has progressed. Return partial when evidence establishes some progress toward adding the helmet but does not establish complete fulfillment. Unrelated edits do not count as progress. If the evidence does not establish which rubric outcome applies, return unknown. The endpoint inspection can establish completion on its own when it clearly shows the requested result; the comparison check is supporting evidence, not an additional completion requirement. If that check is skipped, do not treat it as not applicable or as a failure: use the endpoint evidence to decide whether completion is established, and otherwise return unknown unless other evidence establishes progress or no progress. Supporting observations do not earn completion credit independently.",
+          "binding": "Target: The woman is wearing or otherwise visibly has a helmet on her head.. Reference: The woman in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  }
+}

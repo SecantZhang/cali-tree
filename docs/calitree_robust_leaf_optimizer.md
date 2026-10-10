@@ -1,4 +1,122 @@
-# Robust local leaf optimization (v3)
+# Local leaf optimization
+
+## Weighted fulfillment (v7)
+
+`--scoring fulfillment` runs a fresh paired **binary versus fulfillment** comparison with Luna-only proposals/checks.
+Both arms share a newly compiled label-free decomposition, use the same anchored grading observer and have independent
+optimization/repeat slots. `create_fulfillment_leaf_optimizer(...)` exposes the single-case API.
+
+Each required condition has observable 0/.5/1 fulfillment anchors. The checker returns `fulfillment_score` and
+`confidence` separately; confidence never changes the fulfillment score or its weight. Code computes a protected
+weighted mean: **>=.9 satisfied, <=.1 nonsatisfied, otherwise partial**. Unknown/invalid/transport-failed observations
+are unmeasured intervals [0,1], never zeros. If the complete aggregate interval belongs to one label band, that label
+can resolve while atomic uncertainty remains explicit and may still fail the separate confidence/robustness gates.
+
+Requirements receive equal immutable budgets, divided equally among their initial facets. Splitting divides the
+parent mass equally, preserving its root budget; models cannot supply or edit weights. Auxiliary additions have zero
+weight. Only zero-weight auxiliaries can be removed. Revisions preserve the requested endpoint; anchors and bindings
+can be clarified without changing numeric scale or the .9/.1 thresholds. Literal provenance and preserved mass do not
+constitute semantic proof. Four checks maximum, independent flat execution, no semantic auditor or model readout.
+
+Artifacts are `decision-leaf-v7` / `calitree-casewise-leaves-v7`, transactions `typed-fulfillment-v1`. Saved mode,
+weight roots, exact rational masses, anchors, bindings, thresholds and checker template are hashed and executed directly.
+Old versions retain their own contracts. Each draw also records both deterministic labels from the same observations.
+The binary comparison means score 1 is fully fulfilled; all/some/none strict endpoint votes. It is an aggregation
+ablation under the new grading observer, not a literal replay of the historical v6 boolean model prompt.
+
+```bash
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring fulfillment --offline-demo --output-dir /tmp/calitree-fulfillment-demo
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring fulfillment --preflight --output-dir logs/exps/NEW-FULFILLMENT-RUN
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring fulfillment --live --output-dir logs/exps/NEW-FULFILLMENT-RUN
+.venv/bin/python -m run.calitree_adaptive_leaf --resume --live --output-dir logs/exps/NEW-FULFILLMENT-RUN
+```
+
+The same twelve-case limits are 3,600 calls / 4,608,000 completion tokens, 107 search / 42 final calls per case-arm,
+five fresh confirmation and final draws, and one label-blind transport recovery check per report. All selections freeze
+before final verification. Invalid compilation remains a recorded unresolved case. Compare final draw accuracy,
+all-five-correct case ratio, raw/effective coverage, score ranges, confidence, costs and same-observation readout changes.
+
+## Endpoint repairs and transport recovery (v6)
+
+Use `--scoring endpoints` for the corrected counting experiment, or
+`create_endpoint_leaf_optimizer(...)` from `critical.core.optimization.program.robust.counting_v6`.
+Saved programs/bundles are explicitly `decision-leaf-v6` / `calitree-casewise-leaves-v6`, with `typed-counting-v2`
+transactions. Older v2–v5 programs retain their own execution and hashes. Counting v5 remains available as a baseline.
+
+- Compilation prefers two or three distinct required visual endpoints. Each declares an exact instruction/rubric quote,
+  aspect, positive endpoint and necessity explanation. A single irreducible condition is allowed with an explanation;
+  traces explicitly report that partial is unrepresentable. Code rejects missing/invalid provenance, duplicate aspects,
+  explicit progress/attempt questions, uncovered requirements and over-cap transactions. These checks do not prove semantics.
+- Repair feedback identifies all-pass/all-fail partial mismatches, missed endpoints, overly strict/permissive criteria,
+  unstable conditions and nonsemantic failures. Transactions predict concrete per-condition observations. Actual screen
+  results and missed predictions return in later proposer feedback. Transport/schema/interruption failures are excluded
+  from native node-gradient and visual-discovery observations. No semantic audit or model readout runs.
+- Seed confirmation is spent only on a resolved target-matching screen. Qualification requires **5/5 target agreement**,
+  **5/5 coverage**, and the existing confidence/condition-consistency gates. Final draws never reopen search.
+- Each screen/confirmation/final report may replace **one transport-failed check** in a new durable slot, chosen in saved
+  order without inspecting the target label. Successful, wrong, uncertain, schema-invalid and interrupted observations
+  are never replaced. Every other check remains exact. Original traces, both attempts and all token charges remain saved.
+  Reports show raw and effective accuracy separately. One HTTP attempt per slot and the three-consecutive-failure stop
+  remain enforced. Recovery does not automatically release a stop latch.
+
+```bash
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring endpoints --preflight --output-dir logs/exps/NEW-ENDPOINT-RUN
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring endpoints --live --output-dir logs/exps/NEW-ENDPOINT-RUN
+.venv/bin/python -m run.calitree_adaptive_leaf --resume --live --output-dir logs/exps/NEW-ENDPOINT-RUN
+```
+
+The twelve-case paired protocol keeps 3,600 calls / 4,608,000 completion tokens. It reserves 1,008 calls / 1,032,192
+tokens for final verification; each arm has 107 search and 42 final calls (40 normal maximum plus two recovery slots).
+Luna-only and Luna→Sol use identical endpoint/runtime rules and independent observations. Stronger proposal wording does
+not resolve systematic judge errors or annotation conflicts automatically. Cropping, parent learning and UI remain deferred.
+
+## Current default: flat counting, no semantic audit (v5)
+
+New CLI runs default to **independent required conditions** and deterministic counting:
+
+| Observations | Overall label |
+|---|---|
+| Every condition passes | `yes` — satisfied |
+| Every condition fails | `no` — unsatisfied |
+| Some pass and some fail | `partial` |
+| Any unknown, invalid or failed observation; no applicable conditions | Unresolved |
+
+The visual model answers each condition separately. **No semantic auditor and no model-based final readout run.**
+Auditing records say `disabled` / `performed: false`; they do not fabricate an approval. Structural validation still
+enforces immutable instruction/requirement provenance, requested bindings, unique IDs, complete ledger coverage and the
+four-check cap. Questions must express required endpoints, with pass meaning satisfied; progress/helper questions and
+conditional skipped branches are not silently counted. Old evidence programs require a new label-free compilation for
+this format and are never reinterpreted automatically.
+
+Use `create_counting_leaf_optimizer(calls, original, proposer_policy="luna_only" | "luna_then_sol", ...)`.
+Luna→Sol escalation after three completed stalled rounds and the existing confidence/consistency/fresh-repeat gates remain.
+`locally_robust` in this mode means **empirical gates passed without semantic review**. `partial` now means a mixture of
+satisfied/unsatisfied required conditions; it is not a separate model assessment of editing progress.
+
+Saved programs use `decision-leaf-v5` / `typed-counting-v1`; saved leaf bundles use `calitree-casewise-leaves-v5`.
+All decisions execute independently, including after an earlier unknown. The count is the authoritative final result and
+costs zero extra model calls. Add, remove, revise and split transactions validate atomically. Semantic preservation of
+model-proposed criteria is intentionally not checked by another model.
+
+```bash
+# Three synthetic, directly checked examples; no API calls.
+.venv/bin/python -m run.calitree_adaptive_leaf --offline-demo --output-dir /tmp/calitree-counting-demo
+
+# New runs use counting by default. Freezes the original 12 identities/images and new format.
+.venv/bin/python -m run.calitree_adaptive_leaf --preflight --output-dir logs/exps/NEW-COUNTING-RUN
+
+# Explicit --live performs a NEW billed experiment; no live counting pilot is implied by the code change.
+.venv/bin/python -m run.calitree_adaptive_leaf --live --output-dir logs/exps/NEW-COUNTING-RUN
+
+# The previous audited, model-readout behavior is an explicit alternative.
+.venv/bin/python -m run.calitree_adaptive_leaf --scoring semantic --preflight --output-dir logs/exps/NEW-SEMANTIC-RUN
+```
+
+Existing saved experiments retain their recorded mode and frozen sources; they are not relabeled as counting runs.
+Fresh counting preparation makes one compilation call per case and zero audit calls. A new live comparison needs fresh
+observations and its own recorded budget; historical v4 pass/fail helpers do not establish counting-mode accuracy.
+
+## Historical v3 runtime
 
 The implementation follows [the design](calitree_robust_leaf_optimizer_design.md). It fits one instruction and its saved source/edited images at a time. A leaf stores its decomposition **and** executable checks; loading it does not compile a new prompt or bind new images. Parent construction and cross-case generalization remain deferred.
 
@@ -55,7 +173,7 @@ The adapter invokes native TextGrad 0.1.8 `StringBasedFunction` and `backward` o
 
 The reference label is visible to backward/proposal requests, never compiler, checker, or audit requests. Runtime transport, parse, and dependency failures remain distinct from observed visual absence. The aggregate label supplies constraints, not atomic ground truth.
 
-There are two rounds with one then two parent batches, at most two transactions per batch. Greedy batches edit the incumbent; Pareto batches sample retained parents with replacement and a positive uniform weight floor. Both arms get six proposal opportunities. One-draw screening and five-draw confirmation archives stay separate. The seed is always retained. Seed confirmation occurs before feedback, and one new candidate can receive confirmation after each round.
+Legacy v3 experiment configurations use two rounds with one then two parent batches, at most two transactions per batch. Greedy batches edit the incumbent; Pareto batches sample retained parents with replacement and a positive uniform weight floor. Both legacy arms get six proposal opportunities. One-draw screening and five-draw confirmation archives stay separate. The seed is always retained. Seed confirmation occurs before feedback, and one new candidate can receive confirmation after each round. The current typed optimizer uses the fifteen-round schedule described below.
 
 Pareto objectives are agreement, coverage, minimum original-requirement consistency, fewer mean queried checks, and lower mean charged completion tokens. Requirement consistency reduces all mapped outcomes back to the immutable original ledger; additional nodes cannot inflate this score. Archives retain objective extremes and normalized-space diversity, bounded to six candidates. One-draw screening cannot establish stability; robust acceptance uses confirmation and final draws.
 
@@ -89,6 +207,62 @@ The run directory contains `manifest.json`, `source_snapshot/`, `prepared/`, `fr
 .venv/bin/python -m pytest tests/unit/calitree/test_robust_leaf.py -q
 .venv/bin/python -m pytest tests/unit -q
 ```
+
+## V4 independent evidence and adaptive proposer
+
+The v4 optimizer fixes uncertainty propagation without changing historical saved execution. Use
+`create_adaptive_evidence_optimizer(..., proposer_policy="luna_only" | "luna_then_sol")`, or the typed factory with
+`protocol="typed-evidence-v2"`. An adaptive factory requires `sol_calls=RoutedCalls(primary_case_calls, "sol-proposer")`
+(the typed factory calls this argument `proposer_calls`). Both routes must share the same case scope and durable ledger.
+
+V4 saves `decision-leaf-v4` programs in `calitree-casewise-leaves-v4` bundles. `dependencies` supplies advisory context;
+`required_dependencies` specifies known prerequisites. Support activation has an earlier `check_id` and explicit
+`pass`/`fail`/`unknown` states. Code owns the ordered chain. Unknown advisory evidence does not block independent image
+inspection; skipped or blocked questions do not automatically prevent the image-free readout from executing.
+
+The optimizer may safely revise, insert, replace, remove, reorder or conditionally activate supports. It preserves the
+requested outcome and original requirement ledger. It does not cut an instruction requirement because its answer is
+uncertain. Conditional omission/removal requires a semantic audit; unvisited alternatives are reported as untested.
+An executed unknown or invalid answer still fails strict robustness even when other evidence resolves the final label.
+
+Luna performs preparation, visual checks, native TextGrad feedback, discovery and audits. The adaptive arm switches only
+the proposer to Sol after three completed stalled rounds, permanently for that case. Sol uses medium reasoning without
+temperature; Luna uses temperature zero/default reasoning none. Both proposal caps are 4,096 completion tokens.
+Five-draw confirmation and fresh final verification must pass the original agreement, coverage, consistency, confidence
+and activation thresholds before a leaf earns `locally_robust`.
+
+```bash
+# Offline synthetic example: uncertainty does not block endpoint inspection.
+.venv/bin/python -m run.calitree_adaptive_leaf --offline-demo --output-dir /tmp/calitree-v4-demo
+
+# Freeze the exact original twelve cases, settings, code and dependencies.
+.venv/bin/python -m run.calitree_adaptive_leaf --preflight --output-dir logs/exps/261009-adaptive-leaf-v4
+
+# Only this mode contacts official OpenAI; maximum 3,600 calls / 4,608,000 completion tokens.
+.venv/bin/python -m run.calitree_adaptive_leaf --live --output-dir logs/exps/261009-adaptive-leaf-v4
+
+# Resume unattempted work. Completed, failed and interrupted slots are retained.
+.venv/bin/python -m run.calitree_adaptive_leaf --live --resume --output-dir logs/exps/261009-adaptive-leaf-v4
+
+# Regenerate the report from saved results without API calls.
+.venv/bin/python -m run.calitree_adaptive_leaf --report --output-dir logs/exps/261009-adaptive-leaf-v4
+```
+
+Each case-arm has at most 109 search calls and 40 final calls. Up to two shared preparation calls per case are outside
+the arm scopes but inside the global ceiling. Reserve 960 final calls / 983,040 tokens before search. Budget exhaustion
+can end a case before all 15 rounds. A provider rejection or three consecutive transport failures stops the whole run.
+An explicit subsequent request to continue a transport-stopped run may use `--live --resume --release-transport-stop`;
+this records one authorization, clears only the stop latch, and preserves all attempted slots and charges. Do not use
+that flag for automatic retries or a provider rejection.
+
+Results include exact programs, edits, audits, fresh traces/confidences, route decisions, source snapshots, per-class
+metrics, model usage and a report. `selection_freeze.json` is immutable on replay. Current-code resume refuses changed
+configuration, images or source hashes. Repeats remain within-case measurements, not extra examples; the data is
+previously observed and all labels guide only their own leaf's fitting.
+
+For saved inference, use `judge_program_leaf(bundle, node_id, evidence, executor, repeat="inference/fresh-0")` with
+`EvidenceExecutor(EvidenceChecker(case_calls))`. The caller must retain the saved checker identity/scope and exact image
+hashes. The controller dispatches v2, v3 and v4 explicitly; it never compiles a replacement or silently rebinds a leaf.
 
 Tests mock provider calls, including native TextGrad backward execution and end-to-end four-arm replay. They never call the live API.
 
@@ -135,7 +309,113 @@ For the smaller chalk-only test, add `--small-pilot`: the cumulative ceiling is 
 
 Only the original seed is loaded, never its reference label, optimization feedback, final traces or old audit approval. A fresh audit is required. Seed/case image hashes and prior manifest/budget hashes are pinned. A provider-stopped attempt cannot be silently restarted, and a corrective attempt cannot become the parent of another automatic follow-up. The first compilation failure remains recorded; there is no failed-slot resampling or schema normalization. Compiler guidance explicitly requires an ancestor chain even for independent evidence supports, and empty support outcome IDs.
 
-### Configuring alternative model families
+### Twelve-case typed comparison
+
+`run/calitree_typed_twelve.py` compares criterion-only and nested-required on the exact frozen twelve-case collection. It verifies image hashes and distinct source groups, then compiles a common label-free seed per case with exactly two supports and one readout. This leaves one executable-check slot for insertion. The compiler's count and requirement IDs are constrained in its response schema; invalid compilation is recorded without retry or invented feedback.
+
+```bash
+.venv/bin/python -m run.calitree_typed_twelve --preflight --output-dir logs/exps/NEW-TWELVE-RUN
+.venv/bin/python -m run.calitree_typed_twelve --live --output-dir logs/exps/NEW-TWELVE-RUN
+.venv/bin/python -m run.calitree_typed_twelve --live --resume --output-dir logs/exps/NEW-TWELVE-RUN
+.venv/bin/python -m run.calitree_typed_twelve --report --output-dir logs/exps/NEW-TWELVE-RUN
+```
+
+Two case workers share a concurrent durable ledger; HTTP calls can overlap while accounting stays serialized. Native TextGrad backward calls are serialized separately. All 24 selections freeze before final execution. The global ceiling is 3,600 calls / 4,608,000 completion tokens, including 960 reserved final calls / 983,040 tokens. Each arm allows 109 search calls and 40 final calls, with up to fifteen rounds. Resume never retries attempted slots or releases a provider/transport stop latch automatically. Code and configuration must match the frozen manifest.
+
+The [first twelve-case attempt](experiments/calitree_typed_twelve.md) stopped at 684 calls after three consecutive TLS failures. Nine scopes froze, but no final verification occurred; confirmation success is provisional and final accuracy remains unmeasured.
+
+After explicit authorization to continue a transport-stopped twelve-case run, use the partial-search continuation driver:
+
+```bash
+.venv/bin/python -m run.calitree_resume_typed_twelve --preflight --source logs/exps/STOPPED-TWELVE-RUN --output-dir logs/exps/AUTHORIZED-TWELVE-CONTINUATION
+.venv/bin/python -m run.calitree_resume_typed_twelve --live --source logs/exps/STOPPED-TWELVE-RUN --output-dir logs/exps/AUTHORIZED-TWELVE-CONTINUATION
+```
+
+This copies the complete durable state into a separate directory and releases one transport stop. It permits unfinished fitting while keeping every existing selection frozen, including invalid-seed outcomes. Failed slots, charges, observation prefixes and per-scope limits carry forward unchanged. New calls remain inside the original ceiling and final reservation. The driver verifies image, source, program and TextGrad hashes and executes the exact saved runtime; credential settings stay outside the artifact. Reinvoking the same continuation does not release a later stop. Provider rejection cannot be released. `initial_budget.json` records inherited usage; subtract it for incremental continuation costs.
+
+The replay adapter preserves the original failure diagnostic as well as its durable slot. This prevents error-text differences from changing downstream feedback hashes and resampling an already-attempted proposal. The continuation driver itself is hash pinned in `continuation_snapshot/`. The first continuation exposed this defect and repeated seven nested-mug proposal slots; all charges remain and that scope is explicitly flagged. It stopped at 1,413 combined calls with 17 frozen outcomes and no final draws. See the [continuation report](experiments/calitree_typed_twelve.md) for the recorded deviation and repair.
+
+The repaired continuation also guards inherited logical slots before dispatch, stopping if their payload hash changes. Its snapshot and replay protocol are pinned independently of the unchanged scoring manifest. Inherited deviations carry forward and cannot be erased by a later successful resume. The completed twelve-case run used 2,364 combined calls. Criterion-only reference matches improved from 17 to 31 out of 60 scheduled final draws, with four locally robust leaves; nested-required improved from 16 to 24, with no leaf passing all gates. Two common seeds failed compilation. Nested comic and chalk matched 5/5 final draws but lacked qualifying confirmation after transport failures. Exact final outputs and caveats are in the [completed report](experiments/calitree_typed_twelve.md).
+
+### Proposer-only model comparison
+
+`run/calitree_sol_proposer.py` compares fresh Luna and GPT-6.1 Sol proposal arms on the saved jacket, paper/cup and frog seeds. Every checker, native backward call, visual-discovery call and label-blind semantic audit stays on GPT-6 Luna. Only the Sol arm's typed repair proposer uses the frozen Sol route. That route must share the primary durable ledger and case scope, so changing models cannot create an independent budget or lose failures.
+
+Sol uses supported `medium` reasoning and omits temperature. Luna retains temperature zero and reasoning `none`. Both proposers have a 4,096-token completion cap; reasoning tokens count toward the Sol cap. This compares those two supported model configurations. Fifteen rounds, two transactions per batch, the forced-insertion constraint and all robustness gates remain fixed. Old feedback, historical audits and old observations are not supplied to the new optimizer.
+
+```bash
+.venv/bin/python -m run.calitree_sol_proposer --preflight --output-dir logs/exps/NEW-SOL-COMPARISON
+.venv/bin/python -m run.calitree_sol_proposer --live --output-dir logs/exps/NEW-SOL-COMPARISON
+.venv/bin/python -m run.calitree_sol_proposer --live --resume --output-dir logs/exps/NEW-SOL-COMPARISON
+.venv/bin/python -m run.calitree_sol_proposer --report --output-dir logs/exps/NEW-SOL-COMPARISON
+```
+
+Global ceilings are 900 calls / 1,152,000 completion tokens, including 240 reserved final calls / 245,760 tokens. At most 45 calls use Sol. All six selections freeze before final draws. Failed slots are preserved and transport/provider stops remain latched. Model identities, source/runtime hashes, role routes, exact programs, audits, edits, observations and accounting are persisted.
+
+The [completed proposer-only comparison](experiments/calitree_sol_proposer.md) used 739 calls, including 37 Sol requests. Sol had 9/11 transactions semantically approved versus Luna's 1/37, but selected final matches were only 1/15 versus 0/15, and neither arm produced a robust leaf. Saved traces identify unknown context blocking follow-up execution, inconclusive completion questions, and stable frog/reference disagreement. Stronger proposals alone did not repair these runtime and evidence problems.
+
+Recommended subsequent work, kept separate from this model comparison:
+
+1. Version the transaction format so one explicit combining rule can be provided for the complete transaction; validate that rule after all actions, without inventing missing semantics.
+2. Freeze instruction-grounded complete/partial/absent definitions and require review rejections to cite the original requirement and defective program clause. Separate objective graph/coverage checks from model judgments; flag contradictory semantic reviews explicitly.
+3. Allow valid existing-check repairs to qualify in production. Keep mandatory insertion as an experimental restriction, rather than making program growth a prerequisite for success.
+4. Prioritize coordinated repairs of defective original checks and readout rules. An addition alone cannot repair an inconsistent foundation.
+5. Report transport-unavailable evidence separately from semantic mismatch. Preserve failed-slot accounting and end-to-end coverage; evaluate a revised confirmation policy in a new artifact version rather than changing completed experiments.
+
+### Deterministic typed evidence edits
+
+`create_typed_evidence_optimizer(...)` enables the versioned `typed-evidence-v1` semantic proposal interface. It retains the existing v3 executable format and checker contract. `apply_typed_transaction(parent, transaction)` returns an `AppliedProgramEdit` containing the immutable program and construction details: parent/child hashes, expanded executable changes and exact requirement provenance. Search records these alongside the original typed transaction.
+
+Each action supplies all schema fields; unused strings are empty and unused `evidence_from` is `[]`. The operation-specific fields are:
+
+| Operation | Required semantics |
+|---|---|
+| `insert_support` | Existing `after`/`before` edge; unique `new_check_id`; `requirement_id`, question, criteria, binding, evidence context; explicit `readout_criteria` |
+| `replace_support`, `revise_support` | Existing `target_id`; complete question/criteria/binding, requirement ID and evidence context; optional readout criteria |
+| `revise_readout` | Existing readout `target_id` and new criteria |
+| `remove_support` | Existing support `target_id` and explicit remaining readout criteria; revise surviving context references in the same transaction |
+
+Code owns parent relationships, all-state activation, support/requested roles, outcome IDs and execution order. Insertion on `n2 → n3` generates `n2 → n4 → n3` and appends `n4` to readout dependencies. Replacement preserves identity/position; splitting combines replacement and insertion. Validation applies to the final compound transaction. The original ledger/outcome/binding/aggregation/template stay frozen, with at most four checks/depth four. Typed mode initially accepts all-state evidence chains. No support observation earns completion credit or receives an automatic positive interpretation.
+
+`TypedEvidenceCompiler` accepts two or three ordered support specifications containing a requirement ID, question, criteria, binding and `evidence_from` (one-based earlier support indices). Code assigns `s1…sN` and `fulfillment`, builds ancestry, and saves the specification, expanded program and provenance in `constructions/`. Invalid output remains a retained failure, not a request for automatic repair.
+
+`GraphValidationError` is a `ValueError` subclass with `to_dict()` providing code, message, node, dependency and relationship. Search forwards these diagnostics to subsequent proposals. Missing dependencies and sibling consumption are distinguished from depth, cycles and semantic rejection.
+
+```python
+from critical.core.optimization.program.robust import create_typed_evidence_optimizer
+
+optimizer = create_typed_evidence_optimizer(
+    calls, original, profile="nested-required", checkpoint=checkpoint, max_rounds=15,
+)
+result = optimizer.optimize(case, reference_label, seed=saved_seed)
+```
+
+Profiles are `general`, `criterion-only`, and `nested-required`. Criterion-only rejects structural actions. Nested-required may explore criterion intermediates, but selection requires a new support with ancestor evidence context; without one it reports structural failure and retains the seed. Confirmation shortlisting also respects that constraint. Legacy factories and saved programs retain their behavior.
+
+Fresh one-case runner:
+
+```bash
+.venv/bin/python -m run.calitree_typed_evidence --preflight --output-dir logs/exps/NEW-TYPED-RUN
+.venv/bin/python -m run.calitree_typed_evidence --live --output-dir logs/exps/NEW-TYPED-RUN
+.venv/bin/python -m run.calitree_typed_evidence --live --resume --output-dir logs/exps/NEW-TYPED-RUN
+.venv/bin/python -m run.calitree_typed_evidence --report --output-dir logs/exps/NEW-TYPED-RUN
+```
+
+The current runner uses the original saved three-check chalk seed, a separate label-free ordered compilation probe and one fresh shared seed audit. Both greedy arms have independent observations and up to **fifteen repair rounds**, one parent batch and at most two transactions per round (thirty proposal opportunities). Five fresh confirmation and final draws retain the current thresholds. Local robustness additionally requires complete qualifying confirmation; the nested arm must execute its added evidence-context check at least three times. Both selections freeze before any final call.
+
+A failed confirmation becomes the next repair parent, with its five-draw report and explicit rejection reasons forwarded to the proposer. This includes an added check that consistently passes while the full program remains mismatched. If no distinct valid repair is proposed, search keeps that failed parent for subsequent rounds. Repeated unchanged candidates are recorded as duplicates and are not resampled for another chance at acceptance. Empty or rejected proposals do not terminate search early.
+
+Search stops when a semantically audited, structurally eligible candidate passes all complete confirmation gates, when fifteen repair rounds complete, or when an enforced budget/provider stop is reached. Confirmation success is provisional; fresh final verification still determines local robustness and cannot reopen optimization. `max_rounds` accepts 1–15. Optional `stop_on_confirmation=False` permits an explicitly configured full-round exploration; legacy factories retain their original two-round behavior. Lineage records planned batches, rounds started/completed and whether a parent was selected for failed-confirmation follow-up.
+
+The approved ceiling is 300 calls / 384,000 completion tokens: 109 search calls per arm, two shared calls and 80 reserved final calls / 81,920 tokens. It uses GPT-6 Luna, temperature zero, reasoning `none`, one HTTP attempt per durable slot and no substitution. The manifest pins the pushed checkpoint SHA, saved seed, images, sources, templates and dependencies. Historical failures/proposals are preserved; no older experiment is resumed under the new protocol.
+
+The fifteen-round limit does not raise those allowances: a round includes backward/discovery, proposal, audit, screening and possibly confirmation calls, so the budget may end search before all fifteen rounds. New manifests use `typed-evidence-chalk-pilot-v2` and freeze the full schedule and stopping/follow-up settings. The saved two-round live run remains unchanged and must be replayed with its frozen runtime. No live experiment was run during the scheduler implementation itself.
+
+The later [same-case fifteen-round rerun](experiments/calitree_typed_evidence_15_rounds.md) used 224 calls. Nested-required qualified in round four and matched the partial reference in 5/5 fresh final draws; its added check returned fail in every draw, identifying photographic detail beneath the chalk-like treatment. Criterion-only completed eleven rounds, exhausted its search allowance in round twelve, and matched 0/5 final draws with 3/5 resolved coverage. Both actual completed rounds and stop reasons are reported; this was not fifteen completed rounds per arm.
+
+The [fresh live report](experiments/calitree_typed_evidence_chalk.md) records 140 calls. The inserted `n4` check executed in all five final draws with correct ancestry and consumed evidence, but the nested program matched the partial reference in 0/5 draws; criterion-only matched 2/5, with three unresolved draws. Neither qualified. The separate live compilation probe returned only one support and was rejected. Mechanical construction success is reported separately from scoring correctness.
+
+### Alternative reviewer families
 
 The library API accepts one or two explicitly named `VisualReviewer` objects. Configure existing provider clients in caller-owned engine factories and register all alternative identities before creating the ledger. Model choices and provider credentials remain explicit; there is no automatic fallback or model substitution. The CLI above uses a single primary-model reviewer; multiple families are available through the API:
 

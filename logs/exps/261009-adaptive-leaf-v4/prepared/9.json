@@ -1,0 +1,105 @@
+{
+  "seed": {
+    "program_ref": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.",
+          "reference": "The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image appear to be a drawing made from chalk?",
+          "criteria": "Pass if the edited image as a whole has the appearance of a chalk-made drawing. Fail if it clearly does not have that appearance, including when it shows only an unrelated edit or a partial chalk effect. Unknown if the edited image is unavailable or the appearance cannot be determined.",
+          "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; supporting evidence does not independently earn completion credit.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does comparison with the input image show that the requested chalk-drawing transformation has progressed?",
+          "criteria": "Pass if comparison shows some change toward rendering the image as a chalk drawing, even if the transformation is incomplete. Fail if there is no requested progress; unrelated edits alone do not count. Unknown if the images or comparison are insufficient to determine progress.",
+          "binding": "O1 and the rubric: assess progress toward the requested chalk-drawing transformation, not unrelated edits.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a chalk drawing.",
+          "criteria": "Apply the original rubric to R1. Return yes only when support 1 passes: the edited image is a chalk-made drawing. Return no only when support 1 fails and support 2 fails, establishing no requested progress. Return partial when support 1 fails and support 2 passes, establishing some but incomplete requested progress. Return unknown when the evidence needed to distinguish these outcomes is unresolved. Support 2 is conditionally skipped when support 1 passes; that skipped observation remains unobserved, and the endpoint evidence alone establishes completion. A skipped support does not count as a failure or as evidence of progress. Unrelated edits never count as requested progress.",
+          "binding": "Target: The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.. Reference: The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "seed_audit": {
+    "accepted": false,
+    "reason": "The fulfillment readout can return a known result without the evidence needed to establish it. If s1 is unknown, s2 is activated, but s2 only assesses progress; it cannot establish whether the image is a complete chalk drawing. The fulfillment criteria nevertheless say to return partial when s1 fails and s2 passes, without requiring s1 to be known to fail. That permits a partial result despite unresolved completion evidence, contrary to the rubric’s requirement that insufficient evidence stay unresolved.",
+    "source_clause": "Insufficient evidence stays unresolved.",
+    "counterexample": "s1 returns unknown because the edited image is unavailable, while s2 returns pass based on a comparison that indicates some progress. The fulfillment criteria allow partial because s1 did not pass and s2 passed, even though completion cannot be ruled out. The result should remain unknown.",
+    "execution_ref": "e604b1d3b827a12a72ca7bb4590a6458f8ba2f63ed2e5bbf12f013fae8d78eb1"
+  }
+}

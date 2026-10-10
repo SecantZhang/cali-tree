@@ -1,0 +1,129 @@
+{
+  "execution_ref": "a922577dc51e2e8f6a4e733f24d6315cbf3374ec51d9ec414cb848f6e10ddcd8",
+  "stage": "audit",
+  "slot": "audit/a1b56e90d498426f40716f5272ecaf2077f7711040176173feaf10c760667ac5",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image provide clear evidence that the source paper is stuffed inside the source cup?",
+          "criteria": "Pass if the source paper is visibly stuffed inside the source cup. Fail only if both source objects are reliably identifiable and the paper is clearly not stuffed inside the cup. Unknown if the cup or paper cannot be reliably identified, or the relation is obscured or ambiguous.",
+          "binding": "Judge the requested paper-into-cup relation using the edited image and source image for object identity; do not equate absence of visible completion with clear non-placement.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Comparing the source and edited images, is there visible evidence that the source paper has progressed toward being placed into the source cup?",
+          "criteria": "Pass only if the edited image visibly shows the source paper entering or inside the source cup, or otherwise shows a clear intermediate placement action toward that cup. Fail only if the source paper and source cup can be reliably identified in the edited image and the paper is clearly not being placed toward or into the cup. Unknown if either source object cannot be reliably matched, the cup is not identifiable, or the spatial relation is ambiguous. Do not count unrelated objects or mere proximity.",
+          "binding": "Assess only visible evidence in the edited image, using the source image to identify the requested paper and cup. Do not infer progress from a hand holding paper near an unidentified object.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Can the edited image reliably establish whether the source paper is stuffed into the source cup, including whether stuffing is incomplete?",
+          "criteria": "Pass if the source paper and cup are identifiable and their spatial relation clearly establishes stuffed placement or clear non-placement. Fail if the image clearly shows the paper is not stuffed into the cup but does not establish whether there was intermediate progress. Unknown if object identity, placement, or the distinction between progress and no progress is ambiguous.",
+          "binding": "Assess assessability of the requested relation from the edited image, using the source only to identify the paper and cup. Do not infer a negative from missing visibility.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "question": "Does the image show the paper stuffed inside the cup?",
+          "criteria": "Use s1, s3, and s2 together. Complete only with clear evidence the source paper is stuffed inside the source cup. Partial only with clear evidence of genuine placement progress and clear evidence that stuffing is incomplete. Absent only when the source objects are identifiable and there is clear evidence of no progress. If identity, placement, or incompleteness is unresolved, report unknown; do not treat an unidentifiable cup or failed completion evidence as absence or partial progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "luna-proposer/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks and fulfillment composition overlap and contradict each other. s1 fails only for clear non-placement, while s3 can fail for clear non-progress; s2 can pass on clear non-placement even when progress is unresolved. The fulfillment rule then requires clear evidence of no progress for absent, but does not specify how to compose these conflicting observations. It also makes s2 a prerequisite despite s2’s assessability criterion not reliably distinguishing completion, progress, and no progress. Thus the saved evidence rules do not support a faithful, unambiguous complete/partial/absent/unknown readout.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1587,
+    "completionTokens": 134,
+    "totalTokens": 1721,
+    "latencySeconds": 1.8620519638061523,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks and fulfillment composition overlap and contradict each other. s1 fails only for clear non-placement, while s3 can fail for clear non-progress; s2 can pass on clear non-placement even when progress is unresolved. The fulfillment rule then requires clear evidence of no progress for absent, but does not specify how to compose these conflicting observations. It also makes s2 a prerequisite despite s2’s assessability criterion not reliably distinguishing completion, progress, and no progress. Thus the saved evidence rules do not support a faithful, unambiguous complete/partial/absent/unknown readout."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks and fulfillment composition overlap and contradict each other. s1 fails only for clear non-placement, while s3 can fail for clear non-progress; s2 can pass on clear non-placement even when progress is unresolved. The fulfillment rule then requires clear evidence of no progress for absent, but does not specify how to compose these conflicting observations. It also makes s2 a prerequisite despite s2’s assessability criterion not reliably distinguishing completion, progress, and no progress. Thus the saved evidence rules do not support a faithful, unambiguous complete/partial/absent/unknown readout."
+  }
+}

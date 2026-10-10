@@ -1,3 +1,143 @@
+## 261010-10:21:16 — CaliTree fulfillment and experiment checkpoint
+- Type: checkpoint
+- Scope: decision runtime, structural optimization, provider configuration, templates, tests, documentation and experiment artifacts
+- What: Preserve typed edits, adaptive search, counting and fulfillment scoring with their reproducible experiments and saved walkthrough.
+- Why: Commit and push the current task-related progress at the user’s request.
+- Details: logs/updates/details/261010-10:21:16-updates.md
+
+## 261009-21:37:24 — Saved fulfillment optimization walkthrough
+- Type: docs
+- Scope: interactive twelve-case saved-data walkthrough, score/confidence separation, labels, repairs and acceptance rules
+- What: Shows 86 steps and 213 repeat views with exact questions, observations and final labels. Verified all interactions, mobile/dark layouts and missing-evidence states; zero model calls or runtime changes.
+- Why: Make the fulfillment optimization process inspectable case by case without conflating confidence, predicted scores or failed calls with measured fulfillment.
+- Details: [full record](details/261009-21:37:24-updates.md)
+
+## 261009-20:30:27 — Complete fulfillment experiment report
+- Type: docs
+- Scope: full saved-data report, 24-program appendix, definitions, guard/failure analysis, generator and artifact links
+- What: Consolidated all twelve cases, exact questions/anchors/scores/confidence, search costs, counterfactuals and historical limits. Verified every link and result total; zero API calls or runtime changes.
+- Why: Provide the complete report requested by the user without conflating the fresh strict binary pair with the previous best observer.
+- Details: [full record](details/261009-20:30:27-updates.md)
+
+## 261009-20:08:58 — Completed weighted fulfillment comparison
+- Type: experiment
+- Scope: authorized continuation, final graded/binary accuracy, same-observation readouts, durable accounting and replay
+- What: Completed 867 calls. Fulfillment 48/60 (80%) versus binary 35/60 (58.3%); eight versus seven all-five-correct cases. Both replays passed. Historical v6 86.7% was not exceeded; switching thresholds alone on binary programs did not help.
+- Why: Measure the user-requested degree-of-fulfillment scoring without hiding initial failures or retuning final selections.
+- Details: [full record](details/261009-20:08:58-updates.md)
+
+## 261009-15:56:57 — Fulfillment comparison interrupted by TLS stop
+- Type: experiment
+- Scope: partial v7 live artifacts, exact score/mass verification, source replay and interruption accounting
+- What: Stopped at 188 calls after three consecutive TLS failures; four selections frozen, zero final draws. Both zero-call replays passed. Final accuracy is unmeasured. Explicit continuation requested; no failed slots retried.
+- Why: Preserve the bounded experiment without presenting unattempted verification as an accuracy result.
+- Details: [full record](details/261009-15:56:57-updates.md)
+
+## 261009-15:39:23 — Protected weighted fulfillment scoring
+- Type: feature
+- Scope: v7 graded runtime, exact weight conservation, unknown intervals, local repair, saved leaves, paired runner and tests
+- What: Degree/confidence separated; .9/.1 label thresholds, zero helper mass and conserved splits. Full offline suite 1,390 passed, 23 skipped; historical zero-call replay preserved. Fresh binary/fulfillment pair prepared.
+- Why: Implement the user's fulfillment interpretation and measure accuracy under a common anchored observer.
+- Details: [full record](details/261009-15:39:23-updates.md)
+
+## 261009-14:19:40 — Completed corrected endpoint counting test
+- Type: experiment
+- Scope: paired v6 live results, raw/effective recovery, semantic limits, durable usage and reproducible verification
+- What: Completed 1,077 calls. Effective accurate/repeatable cases: Luna-only 8/12, adaptive 6/12; draw accuracy 52/60 and 42/60. Case ratio did not improve. Preserved thirty TLS failures; both zero-call replays passed.
+- Why: Evaluate the fixes without retuning final selections, hiding transport failures or assuming semantic correctness.
+- Details: [full record](details/261009-14:19:40-updates.md)
+
+## 261009-13:32:12 — Grounded endpoint repairs and bounded transport recovery
+- Type: fix
+- Scope: v6 endpoint compilation, targeted repair feedback, fresh verification recovery, artifact dispatch, runner and tests
+- What: Reject explicit progress votes, report single-check limitations and ineffective edits, require 5/5 agreement, and preserve raw/effective results around one transport-only recovery check. Full offline suite: 1,368 passed, 23 skipped; historical v5 zero-call replay passed.
+- Why: Address partial-representation and verification failures while retaining audit-free counting and immutable requirements.
+- Details: [full record](details/261009-13:32:12-updates.md)
+
+## 261009-12:49:37 — Completed twelve-case counting test
+- Type: experiment
+- Scope: audit-free v5 counting, paired live results, durable failures, saved-data verification and replay
+- What: Completed 1,204 calls; Luna-only selected accuracy 44/60 (73.3%), eight robust leaves; adaptive 36/60 (60.0%), six. Both zero-call replays passed. Preserved fifteen TLS failures and disclosed broad seeds and progress-condition semantic drift.
+- Why: Measure the user's simpler all/some/none scoring scheme on the original twelve cases without model readout or semantic auditing.
+- Details: [full record](details/261009-12:49:37-updates.md)
+
+## 261009-11:29:56 — Disable semantic audit and use flat counting
+- Type: feature
+- Scope: v5 independent decisions, deterministic aggregation, optimizer acceptance, saved-leaf dispatch, runner defaults and tests
+- What: New runs count independent required conditions, with no semantic auditor or model-based final readout. Full offline suite: 1,352 passed, 23 skipped; historical frozen replay preserved. Unknowns remain unresolved and empirical stability/confidence gates remain.
+- Why: Implement the user's selected simpler scoring scheme while preserving historical programs and experiments.
+- Details: [full record](details/261009-11:29:56-updates.md)
+
+## 261009-02:53:08 — Completed v4 adaptive twelve-case experiment
+- Type: fix
+- Scope: paired live results, failure/usage accounting, saved-data analysis, exact source replay and reporting
+- What: Completed 2,341 calls. Adaptive selected agreement 35/60 and five robust leaves; Luna-only 29/60 and two. Both source replays passed without API calls. Offline suite: 1,310 passed, 23 skipped.
+- Why: Evaluate corrected uncertainty handling and Luna-first/Sol escalation without changing frozen selections or hiding failed attempts.
+- Details: [full record](details/261009-02:53:08-updates.md)
+
+## 261009-00:43:53 — V4 uncertainty handling and adaptive proposer
+- Type: fix
+- Scope: versioned evidence runtime, typed repairs, local search, leaf dispatch, paired runner and offline verification
+- What: Separates advisory context from known prerequisites and activation; adds Luna-first/Sol escalation after three completed stalled rounds with strict robustness and durable replay.
+- Why: Prevent uncertain progress from blocking independent endpoint checks and test adaptive proposal depth on the original twelve cases.
+- Details: [full record](details/261009-00:43:53-updates.md)
+
+## 261008-18:35:55 — Sol 6.1 proposer integration and paired pilot
+- Type: feature
+- Scope: explicit reasoning parameters, proposer-only routing, three-case runner, tests and saved live analysis
+- What: Completed 739 calls including 37 Sol proposals. Semantic approvals: Sol 9/11, Luna 1/37; selected final matches 1/15 versus 0/15, with no robust leaves. Identified dependency, evidence and reference-disagreement blockers. Full offline suite: 1,281 passed, 23 skipped; zero-call replay passed.
+- Why: Test the requested cheaper advanced proposer while holding the visual judge and semantic reviewer fixed.
+- Details: [full record](details/261008-18:35:55-updates.md)
+
+## 261008-16:26:18 — Completed twelve-case final verification with guarded replay
+- Type: fix
+- Scope: historical-diagnostic replay, logical-slot guards, inherited deviations, final live results and reproducible reporting
+- What: Completed at 2,364 combined calls. Criterion-only 17→31/60 final matches with four locally robust leaves; nested-required 16→24/60 with none passing every gate. Retained two invalid seeds and one prior deviating scope. Zero-call replay passed; repaired continuation repeated no logical slots. Offline suite: 1,276 passed, 23 skipped.
+- Why: Finish the authorized twelve-case comparison without reopening frozen selections or hiding transport/replay failures.
+- Details: [full record](details/261008-16:26:18-updates.md)
+
+## 261008-15:34:31 — Authorized twelve-case continuation and diagnostic replay repair
+- Type: fix
+- Scope: partial-search continuation, inherited accounting, replay regression, saved analysis and live report
+- What: Resumed to 1,413 combined calls and 17 frozen outcomes before another TLS stop; no final draws. Disclosed seven repeated nested-mug proposal slots caused by changed failure text, retained charges, excluded that scope, and fixed replay diagnostics for future continuation. Offline suite: 1,276 passed, 23 skipped.
+- Why: Preserve interrupted work and prevent failure-message drift from resampling downstream proposals.
+- Details: [full record](details/261008-15:34:31-updates.md)
+
+## 261008-15:04:45 — Twelve-case typed optimizer comparison interrupted by transport stop
+- Type: feature
+- Scope: strict seed compiler, concurrent durable ledger, twelve-case runner, tests and partial live artifacts
+- What: Offline suite 1,272 passed, 23 skipped. Ran 684 calls on the exact twelve-case collection; froze nine scopes before three consecutive TLS failures. No final draws occurred; final accuracy is unmeasured. Saved failures, source snapshots, traces and partial analysis.
+- Why: Measure the fifteen-round typed search across all twelve local cases while preserving bounded accounting and failed-slot behavior.
+- Details: [full record](details/261008-15:04:45-updates.md)
+
+## 261008-13:25:27 — Saved optimization walkthrough and evidence-context correction
+- Type: docs
+- Scope: interactive saved-data walkthrough and factual report correction
+- What: Show actual rounds, rejected proposals, graph construction and final draws. Correct n4 context to n1, while its routing parent remains n2; preserve all experiment artifacts. Verify stage/check interactions and mobile/theme layouts without model calls.
+- Why: Explain the successful optimization and distinguish execution topology from evidence dependencies.
+- Details: [full record](details/261008-13:25:27-updates.md)
+
+## 261008-13:00:46 — Repeat chalk comparison with fifteen-round search
+- Type: feature
+- Scope: round reporting, same-case live test, frozen artifacts and documentation
+- What: Nested-required qualified in round four and matched 5/5 fresh final draws; added n4 failed in 5/5, supplying incompleteness evidence. Criterion-only exhausted its quota during round twelve and matched 0/5 with 3/5 coverage. Used 224/300 calls; zero-call replay verified.
+- Why: Measure whether the longer search can find a useful decomposed evidence component on the previous chalk case.
+- Details: [full record](details/261008-13:00:46-updates.md)
+
+## 261008-12:41:53 — Fifteen-round repair search with failed-candidate follow-up
+- Type: feature
+- Scope: search scheduling, typed factory, frozen runner settings, feedback, tests and documentation
+- What: Typed search now allows fifteen repair rounds and repairs failed confirmed candidates directly. Full confirmation can stop early; budgets remain enforced. Offline suite: 1,266 passed, 23 skipped; no new live calls.
+- Why: Leave repair opportunities after a newly added check fails, instead of ending at the two-round limit.
+- Details: [full record](details/261008-12:41:53-updates.md)
+
+## 261008-11:40:39 — Deterministic typed evidence construction and live comparison
+- Type: feature
+- Scope: typed compiler/actions, graph diagnostics, constrained selection, tests and live report
+- What: Pushed checkpoint a3b8047 first. Implemented deterministic insertion and observed an audited n4 execute in all five final draws. Criterion-only matched 2/5 with 2/5 coverage; nested matched 0/5 with 5/5 coverage; neither robust. 140/300 calls; zero-call replay verified. Delivery tests: 1,261 passed, 23 skipped.
+- Why: Remove model-generated wiring failures while retaining semantic audits and honest robustness measurement.
+- Details: [full record](details/261008-11:40:39-updates.md)
+
 ## 261008-11:02:19 — Checkpoint nested evidence repair and pilot results
 - Type: chore
 - Scope: current implementation, tests, documentation and reproducibility artifacts

@@ -1,0 +1,112 @@
+{
+  "execution_ref": "01a3038e210bd24d6fda4a81da3ce3f74bf645129adb375aaa28dbee098d06d5",
+  "stage": "audit",
+  "slot": "audit/9a9bf5720fd4dd828fb3b50600cfbb80e219708ebfecd6238f144ae135d3a1c2",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the mug to the right of the headphones",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the mug to the right of the headphones",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the mug to the right of the headphones",
+          "source_phrase": "Move the mug to the right of the headphones"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Move the mug so that it is positioned to the right of the headphones.",
+          "target": "The mug is visibly positioned to the right of the headphones.",
+          "reference": "The headphones in the image; compare the mug’s position with the headphones.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Can the source mug be reliably matched to an edited object using visible identity cues or scene/layout continuity?",
+          "criteria": "Pass only when visible cues reliably link the source mug to a specific edited object. Consider shape, handle, color, scale, and broader scene/layout continuity, including the headphones and object arrangement; report evidence for and against a match. Fail only when clear evidence establishes no matching source mug is present. Unknown when the blur, changed appearance, multiple candidates, or layout changes leave identity unresolved. Location alone or scene continuity alone is not a match.",
+          "binding": "Compare the source large light-blue handled mug left of the headphones with the edited blue blur and each pale mug separately. Inspect the headphones and overall layout for continuity, but distinguish observed cues from inference; do not assume the right-side mug is the source mug.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Using s1's actual identity and continuity observations, is the same source mug to the right of the headphones, or is there evidenced movement toward that relation without reaching it?",
+          "criteria": "Pass only if the same source mug is reliably identified and is right of the headphones. Fail only if the same mug is reliably identified and clear comparison establishes no movement toward the right-side relation. Unknown if identity or displacement is unresolved. Partial-progress evidence requires the same mug to be tracked and visibly displaced toward the right-side relation while still not right of the headphones; movement in another direction, a different mug on the right, or object presence is not progress. Report source and edited positions and the evidence for identity and displacement.",
+          "binding": "Use s1's specific observations as context, then independently compare the tracked mug's source and edited positions relative to the headphones. Explicitly report identity cues, displacement direction, and whether the requested relation is achieved; do not infer movement from the blur or another mug.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the mug visibly positioned to the right of the headphones?",
+          "criteria": "Apply the original rubric using only s1 and s2 observations. Complete only when they establish the source mug's identity and its position right of the headphones. Partial only when they establish that this same mug moved toward the right-side relation but has not reached it. Absent only when they establish no requested movement progressed. Unknown when identity, displacement, or progress/absence is unresolved, or required evidence is missing. A different mug's position, object presence, or unrelated edits cannot establish fulfillment.",
+          "binding": "Target: The mug is visibly positioned to the right of the headphones.. Reference: The headphones in the image; compare the mug’s position with the headphones..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "criterion-only/aurora-task-7b78f1229d9bb014bcc5::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The program adds an unsupported mandatory identity-tracking condition: the instruction asks that the mug be to the right of the headphones, but does not require proving it is the same source mug or proving movement from its original position. This can leave fulfillment unresolved even when the requested final relation is visibly satisfied. The support checks also make progress depend on tracking that same mug, so they can miss valid requested progress. The saved readout otherwise follows the rubric’s complete/partial/absent/unknown distinctions.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1472,
+    "completionTokens": 114,
+    "totalTokens": 1586,
+    "latencySeconds": 2.3093819618225098,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The program adds an unsupported mandatory identity-tracking condition: the instruction asks that the mug be to the right of the headphones, but does not require proving it is the same source mug or proving movement from its original position. This can leave fulfillment unresolved even when the requested final relation is visibly satisfied. The support checks also make progress depend on tracking that same mug, so they can miss valid requested progress. The saved readout otherwise follows the rubric’s complete/partial/absent/unknown distinctions."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The program adds an unsupported mandatory identity-tracking condition: the instruction asks that the mug be to the right of the headphones, but does not require proving it is the same source mug or proving movement from its original position. This can leave fulfillment unresolved even when the requested final relation is visibly satisfied. The support checks also make progress depend on tracking that same mug, so they can miss valid requested progress. The saved readout otherwise follows the rubric’s complete/partial/absent/unknown distinctions."
+  }
+}

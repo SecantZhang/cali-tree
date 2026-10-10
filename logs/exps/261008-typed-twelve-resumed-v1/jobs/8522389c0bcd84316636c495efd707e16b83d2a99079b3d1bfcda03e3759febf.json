@@ -1,0 +1,129 @@
+{
+  "execution_ref": "8522389c0bcd84316636c495efd707e16b83d2a99079b3d1bfcda03e3759febf",
+  "stage": "audit",
+  "slot": "audit/fd0fea9010b455ca3a3527eb44164be7037541dd2b2f8ddbdcdeded2e18a5f02",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Give the woman a helmet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Give the woman a helmet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Give the woman a helmet.",
+          "source_phrase": "Give the woman a helmet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a helmet to the woman.",
+          "target": "The woman is wearing or otherwise visibly has a helmet on her head.",
+          "reference": "The woman in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show a helmet visibly on the woman’s head?",
+          "criteria": "Pass if a helmet is visibly on the woman’s head; fail if the image clearly shows no helmet on her head; unknown if the woman or her head is not visible enough to determine this.",
+          "binding": "Assess only the woman in the input image and whether she is wearing or otherwise visibly has a helmet on her head. Ignore unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "In the edited image, is a helmet visibly on the head of the woman identified in the source image?",
+          "criteria": "Pass if a helmet is clearly visible on that woman’s head in the edited image; fail if her head is sufficiently visible and clearly has no helmet; unknown if identity, visibility, or helmet placement cannot be determined.",
+          "binding": "Assess the edited image, using the source image only to identify the woman. Judge whether a helmet is visibly on her head. Do not require a helmet in the source image and ignore unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image show visible progress toward giving the source-image woman a helmet, whether or not the requested result is complete?",
+          "criteria": "Pass if the edited image visibly shows a helmet on or being placed on the source-image woman’s head; fail if her head is sufficiently visible and there is no such helmet or placement; unknown if identity or visibility is insufficient. Assess progress independently of whether the complete result is established.",
+          "binding": "Assess visible evidence in the edited image, using the source image only to identify the woman. Do not count unrelated changes as progress.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "question": "Is a helmet visibly present on the woman’s head?",
+          "criteria": "For R1, complete only if s1 and s3 pass. Partial only if s1 and s3 both fail and s2 passes, establishing progress while also establishing incompleteness. Absent only if s1, s3, and s2 all fail. If s1 and s3 disagree, either is unknown, or the observations otherwise do not establish one of these states, return unknown. Unrelated edits do not count as progress.",
+          "binding": "Target: The woman is wearing or otherwise visibly has a helmet on her head.. Reference: The woman in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-538ef5e1e9d068bbfe6d::magic_reproduce_epoch=47-step=12999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support tree is structurally invalid: s1 asks about the source image, but its criteria and binding do not specify that image clearly, while s3 and s2 assess the edited image. More importantly, fulfillment is nested under s2, so it is activated only when s2 passes; it cannot report absent when s2 fails, despite its criteria requiring that case. The composition also requires both source and edited images to show the helmet for completion, although the request is to add one and the source need not already contain it. These defects prevent faithful completion and no-progress judgments.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1440,
+    "completionTokens": 132,
+    "totalTokens": 1572,
+    "latencySeconds": 2.7760860919952393,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support tree is structurally invalid: s1 asks about the source image, but its criteria and binding do not specify that image clearly, while s3 and s2 assess the edited image. More importantly, fulfillment is nested under s2, so it is activated only when s2 passes; it cannot report absent when s2 fails, despite its criteria requiring that case. The composition also requires both source and edited images to show the helmet for completion, although the request is to add one and the source need not already contain it. These defects prevent faithful completion and no-progress judgments."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support tree is structurally invalid: s1 asks about the source image, but its criteria and binding do not specify that image clearly, while s3 and s2 assess the edited image. More importantly, fulfillment is nested under s2, so it is activated only when s2 passes; it cannot report absent when s2 fails, despite its criteria requiring that case. The composition also requires both source and edited images to show the helmet for completion, although the request is to add one and the source need not already contain it. These defects prevent faithful completion and no-progress judgments."
+  }
+}

@@ -1,0 +1,493 @@
+{
+  "execution_ref": "eb25624dfafbb6a3fd5fb05a847c2baf16ae458e7ad439f0a4d7d4cdde1f639a",
+  "stage": "propose_typed",
+  "slot": "round/1/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "r1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "o1",
+          "requirement_ids": [
+            "r1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "the image",
+          "reference": "a drawing made from chalk",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "n1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly have a chalk-like drawing medium or surface treatment?",
+          "criteria": "pass: visible chalk-like marks or texture establish a chalk medium; fail: the image is clearly rendered in a non-chalk medium with no visible chalk treatment; unknown: the medium cannot be determined from the image.",
+          "binding": "Assess only visible evidence that the image uses a chalk-like medium or treatment.",
+          "inferences": []
+        },
+        {
+          "id": "n2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "n1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image visibly present its depicted content as a drawing rather than as an unchanged photograph?",
+          "criteria": "pass: visible rendering establishes a drawing, such as drawn or illustrated forms; fail: the depicted content remains clearly photographic with no visible drawing conversion; unknown: the image does not establish whether it is a drawing or photograph.",
+          "binding": "Assess only whether the image has been rendered as a drawing; do not assess its medium.",
+          "inferences": []
+        },
+        {
+          "id": "n3",
+          "role": "requested",
+          "outcome_id": "o1",
+          "parent": "n2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "n1",
+            "n2"
+          ],
+          "question": "Has the image been transformed into a drawing made from chalk?",
+          "criteria": "Use only the saved statuses and image-grounded evidence from n1 and n2. complete: both supports pass, establishing both a chalk medium and a drawing. partial: at least one support passes, but the other fails, so some requested transformation is evidenced without complete fulfillment. absent: both supports fail, establishing neither requested feature. unknown: no support passes and at least one is unknown, leaving progress unresolved. A known failure is negative evidence, not uncertainty; do not infer facts beyond the support evidence. Unrelated edits do not count as progress.",
+          "binding": "Target: the image. Reference: a drawing made from chalk. Combine the independent evidence for chalk medium and drawing form; do not inspect images or add requirements.",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "n3": [
+          "The node’s aggregation rule is too permissive: it treats two passing supports as proof of complete fulfillment, but the edited image still retains strongly photographic giraffe detail and composition despite its chalk-like texture and softened, drawn surroundings. This is evidence of progress, not necessarily a complete transformation. Keep the independent chalk-medium and drawing-form checks, but make the final criterion assess whether the image as a whole has actually become a chalk drawing, rather than equating texture plus sketch-like cues with completion. Preserve partial when evidence supports some requested change but not full fulfillment; do not infer absence from uncertainty or add requirements beyond the instruction. The issue is semantic aggregation, not transport or dependency failure."
+        ],
+        "n2": [
+          "The binding currently tests only whether the image reads as a drawing, so it can pass on sketch-like outlines and shading even when the requested chalk treatment is not established. Keep this node focused on drawing form, but make its pass criterion distinguish a convincing whole-image conversion from localized or superficial drawn cues: the edited image shows chalky texture and softened surroundings, yet the giraffes retain substantial photographic detail and the composition remains recognizable as a photo-derived scene. Treat that as evidence of progress, not by itself proof of complete drawing conversion; reserve fail for no visible conversion and unknown for genuinely insufficient evidence. Do not make this node judge chalk medium—that remains an independent check—and do not treat confidence or repeated variation as evidence of absence. The trace has no transport, schema, or dependency failure; the mismatch is semantic calibration of the pass criterion."
+        ],
+        "n1": [
+          "Keep this node narrowly focused on visible chalk-medium evidence; do not make it decide whether the whole image has become a drawing, since drawing-form and overall completion are separate checks. Its trace is valid and supports progress: the edited image has grainy, smudged, powdery-looking texture, though the giraffes retain substantial photographic detail. Clarify that a pass means observable chalk-like surface treatment, not proof of complete fulfillment; preserve fail for clear absence of chalk treatment and unknown for genuinely insufficient visual evidence. Let the aggregate retain “partial” when this support passes but the independent whole-image conversion criterion is not met. No transport, schema, or dependency issue is indicated."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "n1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.91
+            ]
+          },
+          "n2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.97
+            ]
+          },
+          "n3": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "r1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 173.0,
+        "traces": [
+          {
+            "program_ref": "5a2c20cd33d74218dffc09bf1abdf7c6c49e72bd3993510f50b2ce275ee89abd",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved supports pass: n1 establishes a chalk-like medium, and n2 establishes a drawing-like rendering. Together they support complete fulfillment of the requested chalk drawing."
+              }
+            },
+            "requirements": {
+              "r1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly grainy, smudged surface and soft, powdery-looking marks consistent with a chalk-like treatment.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 53,
+                "dependencies": [],
+                "execution_ref": "cbd785ff9f40376b2d5ed4ec964373e38957d1fb24b4c5dfcc374b2fdac0b8cb",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "pass",
+                "evidence": "The edited image visibly renders the giraffes and surroundings with soft, sketch-like outlines and drawn shading rather than retaining the source photograph’s photographic appearance.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 55,
+                "dependencies": [],
+                "execution_ref": "7929bb7c8873b85601b5401e0656f20920bbdc886ada1640c97dbe9a32525443",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "complete",
+                "evidence": "Both saved supports pass: n1 establishes a chalk-like medium, and n2 establishes a drawing-like rendering. Together they support complete fulfillment of the requested chalk drawing.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 65,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly grainy, smudged surface and soft, powdery-looking marks consistent with a chalk-like treatment.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 53,
+                    "dependencies": [],
+                    "execution_ref": "cbd785ff9f40376b2d5ed4ec964373e38957d1fb24b4c5dfcc374b2fdac0b8cb",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "pass",
+                    "evidence": "The edited image visibly renders the giraffes and surroundings with soft, sketch-like outlines and drawn shading rather than retaining the source photograph’s photographic appearance.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 55,
+                    "dependencies": [],
+                    "execution_ref": "7929bb7c8873b85601b5401e0656f20920bbdc886ada1640c97dbe9a32525443",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "a76962ff942bfe66f290a333aa37ff72ae9c18bdecb3598bba5b089df4c59da0",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "5a2c20cd33d74218dffc09bf1abdf7c6c49e72bd3993510f50b2ce275ee89abd",
+          "semantic_rejection": "The requested readout is not faithful to the rubric’s unresolved-evidence rule. It labels the case partial whenever one support passes and the other fails, but a failed support does not necessarily establish that the whole requested transformation is incomplete: n1 only checks for visible chalk treatment, and n2 only checks whether the content is a drawing. Their criteria allow failures based on absence of visible evidence, not necessarily evidence that the image was not transformed. The readout therefore overstates partial fulfillment. It also treats both supports failing as absent, although those failures may not establish that no requested change progressed."
+        },
+        {
+          "parent": "5a2c20cd33d74218dffc09bf1abdf7c6c49e72bd3993510f50b2ce275ee89abd",
+          "round": 0,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "The visual-discovery hypothesis identifies a useful nested extent check: the edit has chalk-like texture and sketch rendering, but the background and peripheral details may not be consistently converted. Add this as evidence under the drawing-form check, without treating the hypothesis or reference label as a predetermined result.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "n2",
+                "before": "n3",
+                "new_check_id": "n4",
+                "target_id": "",
+                "requirement_id": "r1",
+                "question": "Does the drawing-like rendering extend across the whole image, including the background and peripheral details, rather than mainly changing the giraffes and leaving substantial areas photographic?",
+                "criteria": "pass: the depicted scene throughout the image, including background and peripheral details, is visibly rendered as a drawing; fail: substantial regions remain clearly photographic; unknown: the extent of drawing treatment cannot be determined from the image.",
+                "binding": "Compare the source and edited images. Assess only whether drawing-like rendering extends across the image as a whole; do not infer chalk medium from texture or treat blur or grain alone as drawing evidence.",
+                "readout_criteria": "",
+                "evidence_from": [
+                  "n2"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "n3",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 passes and both n2 and n4 pass, establishing chalk treatment and drawing conversion across the image. partial: there is affirmative evidence of some requested transformation (n1 or n2 passes), but at least one necessary aspect of whole-image chalk-drawing conversion is known to fail. absent: evidence establishes that no requested change has progressed; do not infer this merely from missing or ambiguous evidence. unknown: necessary evidence is missing, ambiguous, or insufficient to establish complete, partial, or absent. A support failure counts as negative evidence only for its stated proposition; do not treat it alone as proof of no progress or incompleteness.",
+                "binding": "",
+                "readout_criteria": "",
+                "evidence_from": []
+              }
+            ]
+          },
+          "error": "Insertion needs explicit readout criteria",
+          "accepted": false
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6618f7dc79799cfd1c943a7edb73cb87d6c96d39c9520d38f4e2c83f81df9cae",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "r1",
+                "source_phrase": "Turn the image into a drawing made from chalk",
+                "parent_id": "n2",
+                "question": "Does the drawing-like rendering extend across the whole image, including the giraffes and background, rather than leaving substantial areas photographic or only applying a chalk-like surface effect?",
+                "criteria": "Pass if the depicted content throughout the image is visibly rendered as a drawing; fail if substantial content remains photographic or the drawing conversion is limited to only part of the image; unknown if extent cannot be determined.",
+                "evidence": "The saved observation for n2 cites sketch-like outlines and drawn shading on the giraffes and surroundings, while n1 cites grainy, smudged, powdery-looking treatment. The edited image appears broadly stylized, but the observations do not explicitly assess whether drawing conversion is consistent across the full image.",
+                "rationale": "The instruction targets the image as a whole. Separate passes for chalk-like treatment and drawing form do not by themselves establish that the drawing conversion extends throughout the image; this finer check could qualify the complete fulfillment readout without assuming a particular technique."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "r1",
+            "source_phrase": "Turn the image into a drawing made from chalk",
+            "parent_id": "n2",
+            "question": "Does the drawing-like rendering extend across the whole image, including the giraffes and background, rather than leaving substantial areas photographic or only applying a chalk-like surface effect?",
+            "criteria": "Pass if the depicted content throughout the image is visibly rendered as a drawing; fail if substantial content remains photographic or the drawing conversion is limited to only part of the image; unknown if extent cannot be determined.",
+            "evidence": "The saved observation for n2 cites sketch-like outlines and drawn shading on the giraffes and surroundings, while n1 cites grainy, smudged, powdery-looking treatment. The edited image appears broadly stylized, but the observations do not explicitly assess whether drawing conversion is consistent across the full image.",
+            "rationale": "The instruction targets the image as a whole. Separate passes for chalk-like treatment and drawing form do not by themselves establish that the drawing conversion extends throughout the image; this finer check could qualify the complete fulfillment readout without assuming a particular technique.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6618f7dc79799cfd1c943a7edb73cb87d6c96d39c9520d38f4e2c83f81df9cae",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "nested-required/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "76a06e20f42156268378372428ce173605b34af5db9f80e995c08ead17c4099a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "4595aa2c3cabf3bdd81bb18de8a4e937c50c39e5d9ec798cbbb3be647c734be0"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"A nested whole-image conversion check is justified: the edit has visible chalk-like grain and softened, drawn surroundings, while the giraffes retain substantial photographic detail. This check investigates extent without assuming the visual hypothesis or reference label is decisive. The readout must treat the new evidence as qualifying completion, not as automatic proof of progress or absence.\",\"actions\":[{\"operation\":\"insert_support\",\"after\":\"n2\",\"before\":\"n3\",\"new_check_id\":\"n4\",\"target_id\":\"\",\"requirement_id\":\"r1\",\"question\":\"Does drawing-like rendering extend across the image, including the giraffes, background, and peripheral details, rather than leaving substantial content photographic or applying only a surface effect?\",\"criteria\":\"pass: the depicted content throughout the image is visibly rendered as a drawing; fail: substantial content remains clearly photographic or drawing conversion is limited to only part of the image; unknown: the extent of drawing conversion cannot be determined from the image.\",\"binding\":\"Assess only the extent of drawing conversion across the image. Do not infer chalk medium from texture alone, or treat blur or grain alone as drawing evidence.\",\"readout_criteria\":\"Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 passes and n4 passes, establishing chalk-like treatment and drawing conversion across the image; n2 may provide supporting context but does not substitute for n4. partial: affirmative evidence establishes some requested change, while evidence also establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: evidence is insufficient to establish complete, partial, or absent. A failure on one proposition alone does not establish absence or incompleteness; uncertainty is not failure.\",\"evidence_from\":[\"n2\"]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"n3\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 and n4 pass, establishing chalk-like treatment and drawing conversion across the image. partial: affirmative evidence establishes some requested change, and evidence establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: necessary evidence is missing, ambiguous, or insufficient to establish complete, partial, or absent. Do not infer absence or incompleteness from a support failure alone; a failure is negative only for its stated proposition. Do not infer facts beyond the support evidence.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 5627,
+    "completionTokens": 544,
+    "totalTokens": 6171,
+    "latencySeconds": 6.365636110305786,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "A nested whole-image conversion check is justified: the edit has visible chalk-like grain and softened, drawn surroundings, while the giraffes retain substantial photographic detail. This check investigates extent without assuming the visual hypothesis or reference label is decisive. The readout must treat the new evidence as qualifying completion, not as automatic proof of progress or absence.",
+          "actions": [
+            {
+              "operation": "insert_support",
+              "after": "n2",
+              "before": "n3",
+              "new_check_id": "n4",
+              "target_id": "",
+              "requirement_id": "r1",
+              "question": "Does drawing-like rendering extend across the image, including the giraffes, background, and peripheral details, rather than leaving substantial content photographic or applying only a surface effect?",
+              "criteria": "pass: the depicted content throughout the image is visibly rendered as a drawing; fail: substantial content remains clearly photographic or drawing conversion is limited to only part of the image; unknown: the extent of drawing conversion cannot be determined from the image.",
+              "binding": "Assess only the extent of drawing conversion across the image. Do not infer chalk medium from texture alone, or treat blur or grain alone as drawing evidence.",
+              "readout_criteria": "Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 passes and n4 passes, establishing chalk-like treatment and drawing conversion across the image; n2 may provide supporting context but does not substitute for n4. partial: affirmative evidence establishes some requested change, while evidence also establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: evidence is insufficient to establish complete, partial, or absent. A failure on one proposition alone does not establish absence or incompleteness; uncertainty is not failure.",
+              "evidence_from": [
+                "n2"
+              ]
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "n3",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 and n4 pass, establishing chalk-like treatment and drawing conversion across the image. partial: affirmative evidence establishes some requested change, and evidence establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: necessary evidence is missing, ambiguous, or insufficient to establish complete, partial, or absent. Do not infer absence or incompleteness from a support failure alone; a failure is negative only for its stated proposition. Do not infer facts beyond the support evidence.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "A nested whole-image conversion check is justified: the edit has visible chalk-like grain and softened, drawn surroundings, while the giraffes retain substantial photographic detail. This check investigates extent without assuming the visual hypothesis or reference label is decisive. The readout must treat the new evidence as qualifying completion, not as automatic proof of progress or absence.",
+        "actions": [
+          {
+            "operation": "insert_support",
+            "after": "n2",
+            "before": "n3",
+            "new_check_id": "n4",
+            "target_id": "",
+            "requirement_id": "r1",
+            "question": "Does drawing-like rendering extend across the image, including the giraffes, background, and peripheral details, rather than leaving substantial content photographic or applying only a surface effect?",
+            "criteria": "pass: the depicted content throughout the image is visibly rendered as a drawing; fail: substantial content remains clearly photographic or drawing conversion is limited to only part of the image; unknown: the extent of drawing conversion cannot be determined from the image.",
+            "binding": "Assess only the extent of drawing conversion across the image. Do not infer chalk medium from texture alone, or treat blur or grain alone as drawing evidence.",
+            "readout_criteria": "Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 passes and n4 passes, establishing chalk-like treatment and drawing conversion across the image; n2 may provide supporting context but does not substitute for n4. partial: affirmative evidence establishes some requested change, while evidence also establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: evidence is insufficient to establish complete, partial, or absent. A failure on one proposition alone does not establish absence or incompleteness; uncertainty is not failure.",
+            "evidence_from": [
+              "n2"
+            ]
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "n3",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Use only saved statuses and image-grounded evidence from n1, n2, and n4. complete: n1 and n4 pass, establishing chalk-like treatment and drawing conversion across the image. partial: affirmative evidence establishes some requested change, and evidence establishes that the whole-image chalk drawing is incomplete. absent: evidence establishes that no requested change has progressed. unknown: necessary evidence is missing, ambiguous, or insufficient to establish complete, partial, or absent. Do not infer absence or incompleteness from a support failure alone; a failure is negative only for its stated proposition. Do not infer facts beyond the support evidence.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

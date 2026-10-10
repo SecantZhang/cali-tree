@@ -1,0 +1,348 @@
+{
+  "execution_ref": "a6bde5feeceb1f1dc76d47b4dcd5c34901f3921cb11602f3e554d99679cd7824",
+  "stage": "propose_v4",
+  "slot": "round/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the paper visibly stuffed inside the cup, rather than merely resting nearby or on its rim?",
+          "criteria": "Pass if the image shows the paper placed inside the cup with visible evidence it has been stuffed into it. Fail if the paper is visibly outside the cup or only resting nearby or on its rim. Unknown if the image does not provide enough evidence to distinguish these cases.",
+          "binding": "The paper must be stuffed into the cup; merely being nearby or on the rim does not satisfy the requested outcome.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there visible evidence that the paper has been moved toward or into the cup, even if it is not yet stuffed inside?",
+          "criteria": "Pass if visible evidence shows progress toward placing the paper into the cup, but the paper is not visibly stuffed inside it. Fail if there is no visible progress toward the requested placement, or if the paper is visibly stuffed inside the cup. Unknown if the image does not provide enough evidence to determine progress.",
+          "binding": "Progress counts only when it advances the requested act of stuffing the paper into the cup; unrelated edits do not count.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when support 1 passes: the requested outcome is visibly complete. Return no only when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing some progress without completion. Return unknown whenever the evidence needed to distinguish these alternatives is unresolved. A skipped support is unobserved, not automatically inapplicable; on any skipped path, return a decision only if the remaining evidence establishes that same outcome under the rubric, otherwise return unknown. Supporting evidence earns no completion credit independently, and unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s observed `no` is well supported: the edited image shows a hand holding a flat paper item away from the cup, with no visible placement or movement toward it. Preserve the rubric’s distinction between complete fulfillment, partial progress, and no progress; do not treat the reference label alone as atomic evidence. The main repair is structural: the supplied node has no dependencies, while the evaluated trace relies on `s1` and `s2`. Ensure the executable node explicitly routes to those valid support checks and applies the stated decision criteria, including `unknown` when evidence is unresolved or skipped evidence cannot establish an outcome. Keep the binding tied to the requested paper and cup, and distinguish visible progress toward insertion from mere proximity. No transport, schema, or dependency failure appears in this trace; the negative judgment is based on visual evidence, not an execution failure."
+        ],
+        "s2": [
+          "The observed `no` is supported by the edited image: the paper is held away from the cup, with no visible placement or movement toward it. Preserve the distinction between complete fulfillment, partial progress, and no progress; proximity alone is not progress, and the reference label is not atomic evidence. Repair the node’s structure by explicitly routing to the valid support checks (`s1` and `s2`) used by the evaluated trace, and ensure the decision uses their evidence. Retain `unknown` when evidence is insufficient or a skipped check leaves the outcome unresolved. Keep the binding specific to the requested paper and cup. This trace shows no transport, schema, or dependency execution failure; the negative judgment is visual."
+        ],
+        "s1": [
+          "The observed `no` is supported by the edited image: the paper is held outside the cup, with no visible insertion. The binding is currently ambiguous (`stuffed (...) or on its rim?`); make the requested outcome and the distinction between inside, on the rim, and outside explicit. Preserve the rubric’s three-way logic: complete fulfillment, visible partial progress toward insertion, and no progress; mere proximity or holding the paper away is not progress. Keep `unknown` for insufficient or unresolved evidence rather than forcing a label. Repair the executable structure by routing to the valid support checks `s1` and `s2` and using their evidence. The shown trace has no transport, schema, or dependency execution failure; its negative judgment is visual. Treat the reference label as an aggregate constraint, not atomic evidence."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 1.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "no": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.91
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.95
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 164.0,
+        "traces": [
+          {
+            "program_ref": "25b5a44c2b8a44936cb9f27ed1800bc9c4afc490510157002d52e25a27191f5d",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both valid support checks fail: the paper is outside the cup, and there is no visible progress toward placing it inside. The requested change has not progressed."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited image shows the paper held outside the cup; it is not visibly stuffed inside.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 44,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "d3779feccbf099433dd2ab2217abfe6a0ee1186212f0a9c6e2989832f71519bb"
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the paper held near the cup, but not being moved toward or into it; there is no visible progress toward stuffing it inside.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 56,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "3041d9c714cd7a47666e31f2efa685272409c1715f724a6dcc3b386f2f944740"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both valid support checks fail: the paper is outside the cup, and there is no visible progress toward placing it inside. The requested change has not progressed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.95,
+                "completion_tokens": 64,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image shows the paper held outside the cup; it is not visibly stuffed inside.",
+                    "confidence": 0.99
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image shows the paper held near the cup, but not being moved toward or into it; there is no visible progress toward stuffing it inside.",
+                    "confidence": 0.91
+                  }
+                ],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "5c7eb2605452b6d6d69c87be2b92c4b5f8ad12d7eec5f460ae606ebd1bced0f0"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "fail",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": null,
+                "eligible": true,
+                "state": "fail",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "absent",
+                "event": "observed",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6b0b8d3d1fec8e722b5f01e5d6dcd36d014bd460dd39a8cf6f7f13c0693b7538",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "25b5a44c2b8a44936cb9f27ed1800bc9c4afc490510157002d52e25a27191f5d",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "Shared seed audit unavailable; Audit rejection needs an exact original clause and concrete counterexample"
+          }
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_only/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "db4f4c94fb6291dd275ffcc4ebef3e8e262594c66e1cf1407ea63209693504f6"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "be3df08b51fb88f0f543940723d8b01c85262c89d0682b9f964e2fa6e3a7f9ce"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4125,
+    "completionTokens": 11,
+    "totalTokens": 4136,
+    "latencySeconds": 1.1298322677612305,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": []
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": []
+  }
+}

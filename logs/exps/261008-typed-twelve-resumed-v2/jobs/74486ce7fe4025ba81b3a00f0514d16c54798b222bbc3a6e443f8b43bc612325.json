@@ -1,0 +1,991 @@
+{
+  "execution_ref": "74486ce7fe4025ba81b3a00f0514d16c54798b222bbc3a6e443f8b43bc612325",
+  "stage": "propose_typed",
+  "slot": "round/5/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the book behind the flower",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the book behind the flower",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the book behind the flower.",
+          "source_phrase": "Move the book behind the flower"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The book is moved behind the flower.",
+          "target": "The book is visibly positioned behind the flower, with the flower in front of it.",
+          "reference": "Compare the book’s and flower’s relative positions and occlusion in the edited image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "In the edited image, is the book visibly behind the flower, with that flower in front of it?",
+          "criteria": "Pass only when visible placement or depth/occlusion cues establish the book is behind a flower. Fail only when the relevant book and flower are identifiable and visible evidence establishes they are not in that relation. Unknown when the flower identity or relative depth cannot be determined; do not infer absence from changed appearance or failure to match the source flower.",
+          "binding": "Assess the requested book-behind-flower relation in the edited image. Compare with the source as needed to identify the book and flower, but do not require proving that an edited flower is the same individual as the source rose. Use visible relative placement and depth/occlusion cues; changed appearance or ambiguous identity alone is not evidence of failure.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image show clear progress toward placing the book behind a flower, even if the requested relation is not complete?",
+          "criteria": "Pass only if comparison with the source shows visible movement of the book toward a behind-flower relation, or other clear relational progress. Fail only if the book and relevant flower are identifiable and evidence shows no such progress, including a clearly unchanged or still-separated relation. Unknown if identity, comparison, or progress cannot be determined. Appearance changes or proximity alone are not progress; a completed relation is not a failure for lack of further movement.",
+          "binding": "Compare source and edited images for the book's relative placement and depth with respect to a flower. Judge movement toward the requested relation, not merely object appearance or proximity. Do not require matching the exact source rose when the edited flower identity is ambiguous; preserve unknown if the relevant relation or progress cannot be assessed.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the book visibly positioned behind the flower?",
+          "criteria": "Complete (yes) only if s1 passes. Partial only if s2 passes and s1 does not pass. Absent (no) only if s1 and s2 both fail and their evidence affirmatively establishes no requested progress; a failure to establish completion or ambiguous flower identity is insufficient. Unknown if either support is unknown, or if failures do not establish absence of progress. Do not count unrelated edits as progress.",
+          "binding": "Target: The book is visibly positioned behind the flower, with the flower in front of it.. Reference: Compare the book’s and flower’s relative positions and occlusion in the edited image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s completion criterion is appropriately strict, but its progress signal is over-crediting proximity or movement toward the target. In the edited image, the blue book is near the flowers, yet neither flower visibly occludes it; the book appears behind the open book, not behind a flower. The source shows the book and rose separated, but the edit also changes the scene substantially (including the flowers’ appearance/count and the open book), so do not infer requested progress merely from a changed position or closeness. Tighten s2’s binding to require evidence that the requested book–flower relation itself has advanced relative to the source, and distinguish that from unrelated edits or adjacency; if evidence is ambiguous, preserve unknown rather than pass. Keep s1 focused on completed depth ordering and retain the existing rule that absence requires affirmative evidence of no progress. The repeated high-confidence partial outputs indicate a systematic criterion/binding issue, not transport or dependency failure: all checks are valid, queried, and have no execution failures. Do not force the reference label; use it as an aggregate diagnostic while grounding decisions in visible evidence."
+        ],
+        "s2": [
+          "Revise the binding so “progress” means observable advancement of the book–flower spatial relation, not simply moving the book closer to flowers or changing the scene. Compare the same book and relevant flower across source and edit; require relational evidence such as the book becoming positioned behind/occluded by a flower, or a clearly reduced separation that is specifically toward that relation. In these images the book is moved and flowers are added/changed, but the book remains visibly separate from both flowers; the edit does not establish progress toward being behind one. Do not treat overlap with the open book or unrelated scene changes as evidence. Preserve unknown when object correspondence or depth/progress is genuinely ambiguous, and reserve fail for affirmative evidence of no requested progress. The repeated high-confidence passes point to a criterion/binding issue, not transport or dependency failure; do not force the reference label or weaken other required checks."
+        ],
+        "s1": [
+          "The binding is ambiguous for this support node: it asks only whether the final book-behind-flower relation holds, while the rubric’s partial label depends on whether the requested relation has progressed from the source. Clarify that this node judges completion only; do not let proximity, unrelated scene changes, or overlap with the open book count as the book being behind a flower. In the edited image the blue book and two flowers are visible but separate, with no flower occluding the book, so the repeated fail traces are consistent evidence against completion. Keep unknown for genuinely indeterminate object identity or depth, but do not turn clear separation into unknown merely because the flowers changed. The source-to-edit comparison and progress criterion belong in the appropriate progress node, not this completion check. All traces are valid and queried with no execution failures, so this is a semantic scope/binding issue, not transport or dependency failure; use the reference label only as an aggregate diagnostic, not as atomic ground truth."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "partial": 5
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.96,
+              0.98,
+              0.98,
+              0.94,
+              0.96
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.87,
+              0.91,
+              0.91,
+              0.91
+            ]
+          },
+          "fulfillment": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "partial": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.94,
+              0.97,
+              0.96,
+              0.96,
+              0.96
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "partial": 5
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 206.2,
+        "traces": [
+          {
+            "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s2 establishes relational progress: the book was moved close to a flower. s1 fails to establish that it is behind the flower, so the requested placement is incomplete."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The book and flowers are visible, but the book is positioned to the left of the flowers with no overlap or occlusion indicating it is behind either flower. The flowers appear separate and in front/right of the book.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "ec9131edcfef504a0883dfbc38fc49145877a50d778b1b2831745ed6138a8352",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The book has been moved from its original position and is now close to a flower, showing relational progress toward placing it behind one. The edited image does not clearly establish that the book is actually behind the flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 68,
+                "dependencies": [],
+                "execution_ref": "9ed57cd305b8efa3ac218e4b80354debf62a6b06384844905a6a77e9164a7f71",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "s2 establishes relational progress: the book was moved close to a flower. s1 fails to establish that it is behind the flower, so the requested placement is incomplete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 66,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The book and flowers are visible, but the book is positioned to the left of the flowers with no overlap or occlusion indicating it is behind either flower. The flowers appear separate and in front/right of the book.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "ec9131edcfef504a0883dfbc38fc49145877a50d778b1b2831745ed6138a8352",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The book has been moved from its original position and is now close to a flower, showing relational progress toward placing it behind one. The edited image does not clearly establish that the book is actually behind the flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 68,
+                    "dependencies": [],
+                    "execution_ref": "9ed57cd305b8efa3ac218e4b80354debf62a6b06384844905a6a77e9164a7f71",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "e7bff473fd00994abc3215c9d13259a161af1f8ad895064ce9c4c62240a0673b",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s1 fails to establish the book behind the flower, while s2 establishes visible progress: the book has moved beside the flowers, though the requested relation is not complete."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers separately, with no flower visibly in front of or occluding the book. The book is not established as behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 59,
+                "dependencies": [],
+                "execution_ref": "198f758bcee66f191f71a61ead1e004cbd914fab6ef8e731c487fa1646a02c8e",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows the book moved into the area beside the flowers, with its blue cover partly behind the open book and near the flowers. This is visible relational progress compared with the source, where the book and rose are clearly separated, though the requested behind-flower relation is not clearly complete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.87,
+                "completion_tokens": 85,
+                "dependencies": [],
+                "execution_ref": "567c68e81ccb6b729f90422ed236358a4328e8c0da4260895b31d2ada9819816",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "s1 fails to establish the book behind the flower, while s2 establishes visible progress: the book has moved beside the flowers, though the requested relation is not complete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 66,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers separately, with no flower visibly in front of or occluding the book. The book is not established as behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 59,
+                    "dependencies": [],
+                    "execution_ref": "198f758bcee66f191f71a61ead1e004cbd914fab6ef8e731c487fa1646a02c8e",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows the book moved into the area beside the flowers, with its blue cover partly behind the open book and near the flowers. This is visible relational progress compared with the source, where the book and rose are clearly separated, though the requested behind-flower relation is not clearly complete.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.87,
+                    "completion_tokens": 85,
+                    "dependencies": [],
+                    "execution_ref": "567c68e81ccb6b729f90422ed236358a4328e8c0da4260895b31d2ada9819816",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "b6fcd04cbef4139c7ad10e0158d2339d20df82c43c59b4418e4f62dcb8089728",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s2 establishes progress: the book was moved toward the flowers and overlaps the nearer flower. s1 does not establish the requested completed depth relation, so the book is not shown clearly behind the flower."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited image shows the blue book and two flowers, but neither flower overlaps or occludes the book; the book is visibly separate from them rather than behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 60,
+                "dependencies": [],
+                "execution_ref": "c1ad3d333ebfaf370ef8648c555d315ec469f37b7f159c65a7e06dd9a6fe4c0a",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth relation is not clearly complete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 67,
+                "dependencies": [],
+                "execution_ref": "aa2679d7de0bcf24479aceac3deaad35fcec8df6c997398dba7ede4f0f41684e",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "s2 establishes progress: the book was moved toward the flowers and overlaps the nearer flower. s1 does not establish the requested completed depth relation, so the book is not shown clearly behind the flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 72,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited image shows the blue book and two flowers, but neither flower overlaps or occludes the book; the book is visibly separate from them rather than behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "c1ad3d333ebfaf370ef8648c555d315ec469f37b7f159c65a7e06dd9a6fe4c0a",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth relation is not clearly complete.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 67,
+                    "dependencies": [],
+                    "execution_ref": "aa2679d7de0bcf24479aceac3deaad35fcec8df6c997398dba7ede4f0f41684e",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "a312d4010cd59e9a12a11e04f39e68c55ce35e9f9269a5306e2b3ae7e1bf81f2",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s1 fails to establish the book behind the flower, while s2 passes and reports that the book was moved toward and now overlaps the nearer flower, showing progress without clear completed depth ordering."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers separately, with no visible overlap or occlusion establishing that the book is behind either flower. The book appears beside them rather than behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 63,
+                "dependencies": [],
+                "execution_ref": "f450db1d7ca10af103829644ffb58dfb7dd6a4151e613d77f1182fd3b75d029f",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth ordering is not clearly complete, but this check asks only for progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 75,
+                "dependencies": [],
+                "execution_ref": "258deb51953c50c341b6aa41d8d9dca9a39ca19d8308ee9ae6266786a0ddb2e6",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "s1 fails to establish the book behind the flower, while s2 passes and reports that the book was moved toward and now overlaps the nearer flower, showing progress without clear completed depth ordering.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 70,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers separately, with no visible overlap or occlusion establishing that the book is behind either flower. The book appears beside them rather than behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "f450db1d7ca10af103829644ffb58dfb7dd6a4151e613d77f1182fd3b75d029f",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth ordering is not clearly complete, but this check asks only for progress.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 75,
+                    "dependencies": [],
+                    "execution_ref": "258deb51953c50c341b6aa41d8d9dca9a39ca19d8308ee9ae6266786a0ddb2e6",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "0e7e1d0730de2ff0f6d1ddd9be41fc4c04f625a0f3d804d5e7303b8bfbd92c0a",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The completion check fails: the book is not visibly behind the flowers. The progress check passes: it has moved toward and overlaps a nearer flower, indicating progress without established completion."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The book and flowers are visible, but the book is positioned to the left of the flowers with no overlap or occlusion indicating it is behind either flower. The flowers appear separate and in front/right of the book.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "05e12d02098ef5cefbb9fcd8b960b11b9e03ade7823cb128b976a4d68f145953",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth relation is not clearly complete, but this check asks only for progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 75,
+                "dependencies": [],
+                "execution_ref": "b68206592abc4e3b8dfc4f6193f0da1e4103be07ab9d6b6e38bf194c65b34f53",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "The completion check fails: the book is not visibly behind the flowers. The progress check passes: it has moved toward and overlaps a nearer flower, indicating progress without established completion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 67,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The book and flowers are visible, but the book is positioned to the left of the flowers with no overlap or occlusion indicating it is behind either flower. The flowers appear separate and in front/right of the book.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "05e12d02098ef5cefbb9fcd8b960b11b9e03ade7823cb128b976a4d68f145953",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The book has been moved from its original position toward the flowers and now overlaps the nearer flower in the image, showing clear relational progress toward placing it behind a flower. The depth relation is not clearly complete, but this check asks only for progress.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 75,
+                    "dependencies": [],
+                    "execution_ref": "b68206592abc4e3b8dfc4f6193f0da1e4103be07ab9d6b6e38bf194c65b34f53",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "b670648470a5ab3cdc00cfbf8d58df2653e09b6f5891f194801e5265367c903f",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "439e59ec7c9c093406e69623282278681087458efe158cdc22e846bc95f3f828",
+          "semantic_rejection": "The fulfillment rule can misclassify unresolved evidence as absent: it says “Absent (no) if both checks fail” without requiring that the checks establish no requested progress across the relevant evidence. In particular, s1 can fail because the book is not fully behind a flower while s2 fails because progress is not established; those failures do not necessarily prove no progress. The rubric requires insufficient evidence to remain unresolved, so the readout must not treat these failures as sufficient evidence for no."
+        },
+        {
+          "program_ref": "b84f996506d988658b9a0a54e25892f208e9c32c188655d6416ca2f1b2a62d78",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "8762d0d3d9f5b9d713700845e3b8263f95529676917e78f038ac24c854feac74",
+          "semantic_rejection": "The support checks do not preserve the requested relation consistently. The instruction refers to “the flower,” but s1 and s2 require identifying the same specific source rose (and s2 further specifies a red-and-yellow rose), adding an unsupported identity constraint. More importantly, s1 tests whether the book is behind the flower in the edited image, while s2 tests progress only toward that relation by comparing source and edited images; its criteria can fail when the relation is already complete without showing movement, making the fulfillment rule’s partial/absent/unknown composition unreliable. The readout also treats s2 failure as absence only with affirmative evidence of no progress, but s2’s stated fail condition does not clearly cover a completed relation. Thus the saved evidence and composition do not reliably distinguish complete fulfillment, partial progress, and no progress."
+        },
+        {
+          "program_ref": "0b0427da42d85361ee00fa337dc832a386e8fb6d4a75455ee1a17fd7f50b499e",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "target_mismatch"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "227fc83bc5e651cfd5a5699aa323df781213b1e25b09476689468a5df11458ff",
+          "semantic_rejection": "The fulfillment rule is contradictory for a completed relation with no demonstrated movement: s1 can pass while s2 fails because s2 explicitly says a completed behind-flower relation is not a failure for lack of further movement, yet fulfillment marks complete only if s1 passes and otherwise partial only if s2 passes. More importantly, s2’s fail condition includes a clearly unchanged relation, but does not establish that the relation is incomplete; fulfillment therefore cannot safely treat s1 and s2 both failing as absence unless s1’s failure itself establishes incompleteness. The composition does not reliably distinguish completion, progress, and no progress for all supported observations."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6a87be621a0233676c6c15720fe77e04a1a35a0365e1ef210b9e6e39c840311e",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Move the book behind the flower",
+                "parent_id": "s1",
+                "question": "Inspect the edited image’s overlapping book-and-flower contours: does the flower visibly occlude the book, establishing that the book is behind it, or does the book instead occlude the flower?",
+                "criteria": "Determine front-to-back ordering from the actual overlap and visible boundaries, not overlap or proximity alone. If the flower is in front of the book, this supports completion; if the book is in front, it does not. Preserve uncertainty if the overlap does not establish depth.",
+                "evidence": "The edited image shows the blue book close to the nearer yellow flower, with apparent overlap; saved s1 observations repeatedly report no overlap or occlusion, while s2 observations describe overlap but do not resolve depth ordering.",
+                "rationale": "The broad completion check’s negative conclusion is not reconciled with the reported overlap in the edited image and progress observations. A focused contour/depth check could distinguish a completed relation from mere overlap, avoiding both underclaiming completion and treating overlap as sufficient."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Move the book behind the flower",
+            "parent_id": "s1",
+            "question": "Inspect the edited image’s overlapping book-and-flower contours: does the flower visibly occlude the book, establishing that the book is behind it, or does the book instead occlude the flower?",
+            "criteria": "Determine front-to-back ordering from the actual overlap and visible boundaries, not overlap or proximity alone. If the flower is in front of the book, this supports completion; if the book is in front, it does not. Preserve uncertainty if the overlap does not establish depth.",
+            "evidence": "The edited image shows the blue book close to the nearer yellow flower, with apparent overlap; saved s1 observations repeatedly report no overlap or occlusion, while s2 observations describe overlap but do not resolve depth ordering.",
+            "rationale": "The broad completion check’s negative conclusion is not reconciled with the reported overlap in the edited image and progress observations. A focused contour/depth check could distinguish a completed relation from mere overlap, avoiding both underclaiming completion and treating overlap as sufficient.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "6a87be621a0233676c6c15720fe77e04a1a35a0365e1ef210b9e6e39c840311e",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-88caae46533b0440f452::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "14f0627cf1f12feca994fa37573fdea18d23168017f6511624b5593830fab3f8"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "4dda5245b28d786ae82d831cc3deabad88fe3a176aa579ab872da7efcaee6ede"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The repeated traces show s2 treating proximity and scene changes as progress, while the edited image shows the blue book separate from both flowers. Tighten the existing progress evidence and make the readout distinguish affirmative no-progress evidence from unresolved evidence; retain the completion check’s separate scope.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Comparing the source and edited images, is there observable progress in the book’s spatial relation to a flower toward the book being behind it?\",\"criteria\":\"Pass only when the same book and a relevant flower can be compared and visible evidence shows the book–flower relation itself advancing toward the book being behind the flower—for example, the book becoming occluded by that flower, or a clearly reduced separation specifically along a placement that advances that relation. Fail only when the objects and comparison are clear and affirmative evidence shows no such relational progress, such as the book remaining separate or merely beside the flower, or moving toward/overlapping another object. Proximity, movement alone, changed flower appearance/count, and unrelated scene edits are not progress. Unknown when correspondence or relational change cannot be determined. A completed relation is not a failure for lack of further movement.\",\"binding\":\"Compare source and edited images for the book’s spatial relation to a flower, not general book movement or scene similarity. Do not require the edited flower to be the same individual as the source rose if identity is ambiguous; assess whether the visible relation to a flower advances toward the requested behind-flower placement. Do not count adjacency, proximity, or overlap with the open book. Preserve unknown when the relevant comparison is genuinely indeterminate.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Complete (yes) only if s1 passes. Partial only if s1 does not pass and s2 passes, establishing relational progress without completion. Absent (no) only if s1 fails and s2 fails, and both observations affirmatively establish that the requested relation is incomplete and no requested progress occurred. Unknown if either support is unknown, or if either failure does not affirmatively establish its relevant negative; in particular, failure to establish progress alone is not evidence of no progress. Do not count unrelated edits as progress.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 11384,
+    "completionTokens": 522,
+    "totalTokens": 11906,
+    "latencySeconds": 5.788589000701904,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The repeated traces show s2 treating proximity and scene changes as progress, while the edited image shows the blue book separate from both flowers. Tighten the existing progress evidence and make the readout distinguish affirmative no-progress evidence from unresolved evidence; retain the completion check’s separate scope.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Comparing the source and edited images, is there observable progress in the book’s spatial relation to a flower toward the book being behind it?",
+              "criteria": "Pass only when the same book and a relevant flower can be compared and visible evidence shows the book–flower relation itself advancing toward the book being behind the flower—for example, the book becoming occluded by that flower, or a clearly reduced separation specifically along a placement that advances that relation. Fail only when the objects and comparison are clear and affirmative evidence shows no such relational progress, such as the book remaining separate or merely beside the flower, or moving toward/overlapping another object. Proximity, movement alone, changed flower appearance/count, and unrelated scene edits are not progress. Unknown when correspondence or relational change cannot be determined. A completed relation is not a failure for lack of further movement.",
+              "binding": "Compare source and edited images for the book’s spatial relation to a flower, not general book movement or scene similarity. Do not require the edited flower to be the same individual as the source rose if identity is ambiguous; assess whether the visible relation to a flower advances toward the requested behind-flower placement. Do not count adjacency, proximity, or overlap with the open book. Preserve unknown when the relevant comparison is genuinely indeterminate.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Complete (yes) only if s1 passes. Partial only if s1 does not pass and s2 passes, establishing relational progress without completion. Absent (no) only if s1 fails and s2 fails, and both observations affirmatively establish that the requested relation is incomplete and no requested progress occurred. Unknown if either support is unknown, or if either failure does not affirmatively establish its relevant negative; in particular, failure to establish progress alone is not evidence of no progress. Do not count unrelated edits as progress.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The repeated traces show s2 treating proximity and scene changes as progress, while the edited image shows the blue book separate from both flowers. Tighten the existing progress evidence and make the readout distinguish affirmative no-progress evidence from unresolved evidence; retain the completion check’s separate scope.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Comparing the source and edited images, is there observable progress in the book’s spatial relation to a flower toward the book being behind it?",
+            "criteria": "Pass only when the same book and a relevant flower can be compared and visible evidence shows the book–flower relation itself advancing toward the book being behind the flower—for example, the book becoming occluded by that flower, or a clearly reduced separation specifically along a placement that advances that relation. Fail only when the objects and comparison are clear and affirmative evidence shows no such relational progress, such as the book remaining separate or merely beside the flower, or moving toward/overlapping another object. Proximity, movement alone, changed flower appearance/count, and unrelated scene edits are not progress. Unknown when correspondence or relational change cannot be determined. A completed relation is not a failure for lack of further movement.",
+            "binding": "Compare source and edited images for the book’s spatial relation to a flower, not general book movement or scene similarity. Do not require the edited flower to be the same individual as the source rose if identity is ambiguous; assess whether the visible relation to a flower advances toward the requested behind-flower placement. Do not count adjacency, proximity, or overlap with the open book. Preserve unknown when the relevant comparison is genuinely indeterminate.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Complete (yes) only if s1 passes. Partial only if s1 does not pass and s2 passes, establishing relational progress without completion. Absent (no) only if s1 fails and s2 fails, and both observations affirmatively establish that the requested relation is incomplete and no requested progress occurred. Unknown if either support is unknown, or if either failure does not affirmatively establish its relevant negative; in particular, failure to establish progress alone is not evidence of no progress. Do not count unrelated edits as progress.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

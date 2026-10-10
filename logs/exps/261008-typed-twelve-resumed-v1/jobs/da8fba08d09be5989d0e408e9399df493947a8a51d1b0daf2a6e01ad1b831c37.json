@@ -1,0 +1,129 @@
+{
+  "execution_ref": "da8fba08d09be5989d0e408e9399df493947a8a51d1b0daf2a6e01ad1b831c37",
+  "stage": "audit",
+  "slot": "audit/b8b0975f2e805db36c64fc7eaf8b9943f1d3dc413fa1d0dddcc4b3ac453dbc04",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show the original visual content rendered in a pencil-drawn style?",
+          "criteria": "Pass if the image visibly represents its content as a pencil drawing; fail if there is sufficient evidence that no pencil-drawing transformation has occurred; unknown if the image or its style cannot be assessed reliably. Partial evidence of a pencil-drawn style is progress, not completion.",
+          "binding": "Compare the supplied image with the requested transformation: assess whether its visual content is rendered in a pencil-drawn style. Do not require a particular pencil technique.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image-grounded evidence of any progress toward rendering the content as a pencil drawing, even if the transformation is incomplete?",
+          "criteria": "Pass if the image shows some visible pencil-drawing-style treatment of its content, including an incomplete treatment; fail if sufficient evidence shows no requested transformation has progressed; unknown if evidence is insufficient to determine whether any such progress occurred. Unrelated edits do not count as progress.",
+          "binding": "Assess only visible changes in the supplied image that move its visual content toward a pencil-drawn style; do not infer progress from unrelated changes.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s2"
+          ],
+          "question": "Does the edited image, considered as a whole, visibly read as a pencil drawing of its content, rather than as a photograph with pencil-like effects?",
+          "criteria": "Pass when the overall visual identity is recognizably a pencil drawing, supported by the image's rendering across its salient content; do not infer this merely from muted or desaturated color, grain, or sketch-like cues appearing across many objects. Fail when sufficient evidence shows the image remains recognizably photographic despite pencil-like treatment, or that the drawing style is limited and the whole image does not read as a pencil drawing. Unknown when the overall visual identity cannot be assessed reliably. Do not require a particular pencil technique, monochrome rendering, or method.",
+          "binding": "Inspect source and edited images directly. Use the ancestor's observation of possible progress as context, then independently judge the edited image's overall visual identity. Cite drawing-like qualities and any remaining photographic appearance that bears on whether the scene reads as a drawing or as a photograph with a pencil-like effect. Do not treat the ancestor's pass as proof of completion.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the image visibly appear as a completed pencil drawing?",
+          "criteria": "Compose all supports explicitly. Complete only when s3 passes and establishes that the image as a whole reads as a pencil drawing. Partial when s1 or s2 establishes requested progress and s3 fails, establishing that the whole-image transformation is incomplete. Also partial if s3 passes but s1 and s2 both fail to establish any progress only if other saved support evidence establishes requested progress; otherwise do not infer progress. Absent only when s1 and s2 both fail with sufficient evidence of no requested progress and s3 does not establish completion. Unknown whenever necessary evidence is unresolved, including progress with s3 unknown; do not treat unknown as failure or infer completion from s1 or s2 passes. Unrelated edits do not count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment composition has a contradictory rule: it says complete only when s3 passes, but then allows partial when s3 passes and s1 and s2 both fail if other saved support evidence establishes progress. No other support evidence exists, and s1/s2 are the designated progress checks, so this exception is unsupported and conflicts with the stated completion/progress logic. The program also makes s3 active after any s2 result, including unknown, which is acceptable for evidence gathering; the defect is the fulfillment exception.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1640,
+    "completionTokens": 118,
+    "totalTokens": 1758,
+    "latencySeconds": 2.0855109691619873,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment composition has a contradictory rule: it says complete only when s3 passes, but then allows partial when s3 passes and s1 and s2 both fail if other saved support evidence establishes progress. No other support evidence exists, and s1/s2 are the designated progress checks, so this exception is unsupported and conflicts with the stated completion/progress logic. The program also makes s3 active after any s2 result, including unknown, which is acceptable for evidence gathering; the defect is the fulfillment exception."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment composition has a contradictory rule: it says complete only when s3 passes, but then allows partial when s3 passes and s1 and s2 both fail if other saved support evidence establishes progress. No other support evidence exists, and s1/s2 are the designated progress checks, so this exception is unsupported and conflicts with the stated completion/progress logic. The program also makes s3 active after any s2 result, including unknown, which is acceptable for evidence gathering; the defect is the fulfillment exception."
+  }
+}

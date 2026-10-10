@@ -1,0 +1,1039 @@
+{
+  "execution_ref": "c3e46ad9faec44a0fd94859d15e49fa2031c9690b888d5f22daef38a3c0b02e7",
+  "stage": "propose_typed",
+  "slot": "round/10/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "r1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "o1",
+          "requirement_ids": [
+            "r1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "the image",
+          "reference": "a drawing made from chalk",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "n1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly use a chalk-like medium or treatment, rather than merely showing generic blur, grain, or softened photographic detail?",
+          "criteria": "pass: identifiable chalk-like marks or surface behavior are visible, beyond generic grain, blur, or softened photographic detail; fail: the image clearly lacks such chalk-like treatment; unknown: the visible evidence does not distinguish chalk-like treatment from generic filtering.",
+          "binding": "Assess only visible evidence of chalk-like medium or treatment. Do not assess whether the image is a drawing or whether the conversion covers the whole scene.",
+          "inferences": []
+        },
+        {
+          "id": "n2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "n1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image visibly present its content as a drawing rather than as a photograph with blur or texture overlays?",
+          "criteria": "pass: substantial depicted content has clearly drawn or illustrated rendering, not merely softened contours or texture over photographic detail; fail: the content remains clearly photographic without a genuine drawing conversion; unknown: evidence does not reliably distinguish a drawing from filtered photographic detail.",
+          "binding": "Assess only drawing-versus-photographic rendering. Do not assess chalk medium; do not treat blur, grain, or softened contours alone as proof of a drawing.",
+          "inferences": []
+        },
+        {
+          "id": "n3",
+          "role": "requested",
+          "outcome_id": "o1",
+          "parent": "n2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "n1",
+            "n2"
+          ],
+          "question": "Has the image been transformed into a drawing made from chalk?",
+          "criteria": "Use only saved support observations. complete: n1 and n2 pass and their evidence establishes a chalk-like drawing conversion across the image, not merely a chalk-like surface treatment or isolated sketch-like cues. partial: at least one support provides affirmative evidence of requested transformation, but complete conversion is not established. absent: both supports fail with evidence affirmatively establishing no requested transformation. unknown: evidence is insufficient to determine whether any requested transformation progressed; a failed or unknown cue alone does not establish absence. Do not infer visual facts beyond the supports; unrelated edits do not count.",
+          "binding": "Target: the image. Reference: a drawing made from chalk. Combine the independent evidence for chalk medium and drawing form; do not inspect images or add requirements.",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "n3": [
+          "The node’s binding is too underspecified to stabilize the distinction between a chalk-like surface treatment and an actual drawing conversion. Preserve the two independent checks, but make the aggregation criterion explicitly require evidence of both chalk-medium appearance and drawing-form transformation across the image; a dusty texture or sketchy outlines alone should count only as partial progress. Treat retained photographic detail as evidence against complete conversion only when the support explicitly reports it, and do not let a generic “pass” automatically imply full conversion. The traces vary between complete and partial despite similar support evidence, so clarify how to resolve that borderline case using the saved observations rather than adding visual requirements or inferring beyond them. No transport, schema, or dependency failures are present; the disagreement is semantic/criterion ambiguity, not missing evidence. The reference label is an aggregate constraint, not atomic ground truth."
+        ],
+        "n2": [
+          "The node correctly isolates drawing conversion from chalk medium, but its pass/fail boundary is not stable: traces call similar sketch-like contours and simplified shading a pass, while others identify retained photographic detail beneath blur/grain and fail. Keep the medium check separate; sharpen this node’s criterion to weigh the overall rendering of substantial content, distinguishing genuinely redrawn forms from photographic detail merely softened or overlaid with texture. Require the evidence to state what visual cues support either interpretation, and use unknown when those cues do not resolve the distinction. Do not infer full task completion from this node’s pass, or force a partial label here: partial progress is an aggregate judgment across independent checks. The edited image visibly has strong blur/grain and sketch-like outlines, but recognizable photographic structure remains, so avoid treating either cue alone as decisive. Traces are valid and dependencies are empty; this is semantic ambiguity, not a transport or schema failure. Treat the reference label as an aggregate constraint, not atomic ground truth."
+        ],
+        "n1": [
+          "The binding already correctly isolates chalk-like treatment from whether the scene is fully converted into a drawing; preserve that scope and do not make this node decide the aggregate label. The edited image shows a dusty, textured, softened treatment, but the giraffes and scene retain recognizable photographic structure, so avoid treating blur, grain, or sketch-like outlines alone as decisive evidence of chalk medium. Tighten the criterion to require identifiable chalk-like surface behavior beyond generic filtering, and require the trace to cite the specific visible cues supporting that distinction; use unknown when those cues are inconclusive. Similar high-confidence pass traces alongside an aggregate partial label signal a criterion/calibration issue, not missing execution: do not force a pass or fail to match the reference, and do not infer drawing-conversion completeness here. Transport, schema, and dependency checks succeeded."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.4,
+        "coverage": 1.0,
+        "label_consistency": 0.6,
+        "label_distribution": {
+          "yes": 3,
+          "partial": 2
+        },
+        "nodes": {
+          "n1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.88,
+              0.91,
+              0.91,
+              0.87,
+              0.91
+            ]
+          },
+          "n2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 3,
+              "fail": 2
+            },
+            "consistency": 0.6,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.94,
+              0.91,
+              0.94,
+              0.94
+            ]
+          },
+          "n3": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 3,
+              "partial": 2
+            },
+            "consistency": 0.6,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.96,
+              0.91,
+              0.96,
+              0.94
+            ]
+          }
+        },
+        "requirements": {
+          "r1": {
+            "states": {
+              "complete": 3,
+              "partial": 2
+            },
+            "consistency": 0.6,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 0.6,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 204.2,
+        "traces": [
+          {
+            "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved support observations pass: n1 reports a chalk-like dusty texture and smudged shading, while n2 reports illustrated, sketch-like contours and simplified shading across the giraffes and surroundings. Together they support a chalk-medium drawing conversion across the image, rather than only an isolated cue or surface treatment."
+              }
+            },
+            "requirements": {
+              "r1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly chalk-like, dusty textured surface with softened, sketch-like outlines and smudged shading, beyond ordinary photographic detail.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.88,
+                "completion_tokens": 55,
+                "dependencies": [],
+                "execution_ref": "d584c3edf055160bd84536f8613736efe8ed32a8ebfc41f1fa092d08077e4d22",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "pass",
+                "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, sketch-like contours and simplified shading rather than retaining the source photograph’s detailed photographic appearance. This supports a drawing conversion; chalk medium is not assessed here.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "f472560575807bc9c77ab7d70eda602a6daa1f57fe6c1c7c26cba4dae5febbff",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "complete",
+                "evidence": "Both saved support observations pass: n1 reports a chalk-like dusty texture and smudged shading, while n2 reports illustrated, sketch-like contours and simplified shading across the giraffes and surroundings. Together they support a chalk-medium drawing conversion across the image, rather than only an isolated cue or surface treatment.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 93,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly chalk-like, dusty textured surface with softened, sketch-like outlines and smudged shading, beyond ordinary photographic detail.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.88,
+                    "completion_tokens": 55,
+                    "dependencies": [],
+                    "execution_ref": "d584c3edf055160bd84536f8613736efe8ed32a8ebfc41f1fa092d08077e4d22",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "pass",
+                    "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, sketch-like contours and simplified shading rather than retaining the source photograph’s detailed photographic appearance. This supports a drawing conversion; chalk medium is not assessed here.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "f472560575807bc9c77ab7d70eda602a6daa1f57fe6c1c7c26cba4dae5febbff",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "8ba1c82767095c7105882f79d85a4d3b1ec2fe518bc148df17fb9791c14b10b8",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "n1 provides affirmative evidence of a chalk-like surface treatment, but n2 reports that photographic detail remains and the image is not clearly rendered as a drawing. The supports therefore do not establish a complete chalk-drawing conversion, while the chalk-like treatment indicates some requested progress."
+              }
+            },
+            "requirements": {
+              "r1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly chalk-like, dusty surface with broad smudged strokes and sketchy outlines, beyond generic blur or grain.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 54,
+                "dependencies": [],
+                "execution_ref": "6a444d6ecb4d02b4815c8d502d2aabd1b3052d891f87a208b2f623ad438c9570",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "fail",
+                "evidence": "The edited image retains photographic detail and recognizable photo-like giraffes and scenery, with blur and grainy texture overlays rather than a clearly drawn or illustrated rendering.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 57,
+                "dependencies": [],
+                "execution_ref": "0e5d0f5be50e8882a7fd1466db84325244eb0de85343fa620bfe04a2adf8afdc",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "partial",
+                "evidence": "n1 provides affirmative evidence of a chalk-like surface treatment, but n2 reports that photographic detail remains and the image is not clearly rendered as a drawing. The supports therefore do not establish a complete chalk-drawing conversion, while the chalk-like treatment indicates some requested progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 86,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly chalk-like, dusty surface with broad smudged strokes and sketchy outlines, beyond generic blur or grain.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 54,
+                    "dependencies": [],
+                    "execution_ref": "6a444d6ecb4d02b4815c8d502d2aabd1b3052d891f87a208b2f623ad438c9570",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "fail",
+                    "evidence": "The edited image retains photographic detail and recognizable photo-like giraffes and scenery, with blur and grainy texture overlays rather than a clearly drawn or illustrated rendering.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 57,
+                    "dependencies": [],
+                    "execution_ref": "0e5d0f5be50e8882a7fd1466db84325244eb0de85343fa620bfe04a2adf8afdc",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "22fc511a1d611bdc44bfbe812da457e474f2e6e98b466be864f850f4cd96a84b",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved supports pass: n1 reports chalk-like dusty texture and sketchy marks across the scene, while n2 reports illustrated, sketch-like forms replacing clear photographic detail. Together they establish a chalk-like drawing conversion across the image."
+              }
+            },
+            "requirements": {
+              "r1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly chalk-like, dusty surface with textured, sketchy marks across the scene, beyond generic blur or softened photographic detail.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 55,
+                "dependencies": [],
+                "execution_ref": "1a574a18b93215358e24cbbf246ac5ae75fb8a44bba32740722e8771ec276979",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "pass",
+                "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, sketch-like contours and simplified, painterly forms rather than retaining clear photographic detail. This supports a drawing conversion; the chalk medium is not assessed here.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "cf2cdc068d9068a20c6d8c37e49dcfa7eae58c92d1b8636ea53084ef9e607f6e",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "complete",
+                "evidence": "Both saved supports pass: n1 reports chalk-like dusty texture and sketchy marks across the scene, while n2 reports illustrated, sketch-like forms replacing clear photographic detail. Together they establish a chalk-like drawing conversion across the image.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 78,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly chalk-like, dusty surface with textured, sketchy marks across the scene, beyond generic blur or softened photographic detail.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 55,
+                    "dependencies": [],
+                    "execution_ref": "1a574a18b93215358e24cbbf246ac5ae75fb8a44bba32740722e8771ec276979",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "pass",
+                    "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, sketch-like contours and simplified, painterly forms rather than retaining clear photographic detail. This supports a drawing conversion; the chalk medium is not assessed here.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "cf2cdc068d9068a20c6d8c37e49dcfa7eae58c92d1b8636ea53084ef9e607f6e",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "006e2694514493c81231a51b4b8010b4c5941d0e3866af59a3427508a1c447e4",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "n1 provides affirmative evidence of a chalk-like, dusty surface and sketchy outlines across the scene. However, n2 reports that photographic detail remains and the image was not clearly converted into a drawing. This supports some requested progress, but not a complete chalk-drawing conversion."
+              }
+            },
+            "requirements": {
+              "r1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly chalk-like, dusty surface with softened, sketchy outlines and textured shading across the scene, beyond ordinary photographic detail.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.87,
+                "completion_tokens": 55,
+                "dependencies": [],
+                "execution_ref": "557abe42c33931ecfe8d635f0351643de7f659e2232ac56f612912a87538369d",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "fail",
+                "evidence": "The edited image retains photographic detail and recognizable photo-like giraffe and landscape rendering, with blur and grain-like texture overlays rather than a clearly drawn or illustrated conversion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 58,
+                "dependencies": [],
+                "execution_ref": "ac2933538da7562e462e787744f6ed8c9a6b4382e2666a2332d4b5de626b2dec",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "partial",
+                "evidence": "n1 provides affirmative evidence of a chalk-like, dusty surface and sketchy outlines across the scene. However, n2 reports that photographic detail remains and the image was not clearly converted into a drawing. This supports some requested progress, but not a complete chalk-drawing conversion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 87,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly chalk-like, dusty surface with softened, sketchy outlines and textured shading across the scene, beyond ordinary photographic detail.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.87,
+                    "completion_tokens": 55,
+                    "dependencies": [],
+                    "execution_ref": "557abe42c33931ecfe8d635f0351643de7f659e2232ac56f612912a87538369d",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "fail",
+                    "evidence": "The edited image retains photographic detail and recognizable photo-like giraffe and landscape rendering, with blur and grain-like texture overlays rather than a clearly drawn or illustrated conversion.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 58,
+                    "dependencies": [],
+                    "execution_ref": "ac2933538da7562e462e787744f6ed8c9a6b4382e2666a2332d4b5de626b2dec",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "1e2b3beb1d38bcfcd50e01c6b8e9f56b15c88e900ad2eac74a578e3fa2ace7a2",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "o1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved supports pass: n1 reports chalk-like dusty texture and shading across the scene, and n2 reports hand-drawn contours and shading across the giraffes and surroundings. Together they establish a chalk-like drawing conversion across the image."
+              }
+            },
+            "requirements": {
+              "r1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "n1",
+                "status": "pass",
+                "evidence": "The edited image has a visibly chalk-like, dusty surface with softened, sketchy outlines and textured shading across the scene, beyond ordinary photographic grain or blur.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 57,
+                "dependencies": [],
+                "execution_ref": "0ccd49d963647b17127e7fcd9bb6d68c363e0c3873b93c37c8fefa3320edc17f",
+                "failure": null
+              },
+              {
+                "check_id": "n2",
+                "status": "pass",
+                "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, hand-drawn contours and shading rather than retaining photographic detail with only blur or texture. This assesses drawing conversion only, not whether the medium is chalk.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "b73a3daf0e2a5a4ddfad8c9b799c9b1c3199ddd9ac0d35300c3b4c39f0ff903f",
+                "failure": null
+              },
+              {
+                "check_id": "n3",
+                "status": "complete",
+                "evidence": "Both saved supports pass: n1 reports chalk-like dusty texture and shading across the scene, and n2 reports hand-drawn contours and shading across the giraffes and surroundings. Together they establish a chalk-like drawing conversion across the image.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 79,
+                "dependencies": [
+                  {
+                    "check_id": "n1",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly chalk-like, dusty surface with softened, sketchy outlines and textured shading across the scene, beyond ordinary photographic grain or blur.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 57,
+                    "dependencies": [],
+                    "execution_ref": "0ccd49d963647b17127e7fcd9bb6d68c363e0c3873b93c37c8fefa3320edc17f",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "n2",
+                    "status": "pass",
+                    "evidence": "The edited image renders the giraffes and surroundings with visibly illustrated, hand-drawn contours and shading rather than retaining photographic detail with only blur or texture. This assesses drawing conversion only, not whether the medium is chalk.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "b73a3daf0e2a5a4ddfad8c9b799c9b1c3199ddd9ac0d35300c3b4c39f0ff903f",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "81bce8bd5fc9866775bf2c085de918d24a7431a71ab46be5e9f2080cec24a4a5",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "n1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n2",
+                "parent": "n1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "n3",
+                "parent": "n2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "5a2c20cd33d74218dffc09bf1abdf7c6c49e72bd3993510f50b2ce275ee89abd",
+          "semantic_rejection": "The requested readout is not semantically sound. It treats one support failure as evidence that the corresponding requested feature is absent, and both failures as proof of no progress. But n1 and n2 only assess visible evidence under their criteria; a failure may not establish that the image has not been transformed in the requested way. The readout therefore overstates negative evidence and can return absent or partial without sufficient support. It also requires both supports to pass for completion, although their criteria do not establish that the whole image was converted into a chalk drawing. The program needs evidence that supports the requested extent, not merely chalk-like treatment and drawing form in isolation."
+        },
+        {
+          "program_ref": "51cbd86e2144a6b175a67a1b328822813858aa58ea2526300e39b6ea4097abf7",
+          "semantic_rejection": "The requested readout is nested under n2, so it is activated only when n2 returns pass, fail, or unknown—which covers all allowed support statuses. However, its composition rules are contradictory: partial requires at least one support to pass, while unknown applies when no support passes and at least one is unknown; these conditions overlap when one support is unknown and the other fails. The program therefore does not define a unique readout for that evidence combination."
+        },
+        {
+          "program_ref": "5459a190d1bbea213f0ebf7e683880e57697e9f7087af08f698bb5aeecea0621",
+          "semantic_rejection": "The support checks do not establish the requested extent reliably. n1 treats broad coverage of the main depicted content as evidence of progress but does not determine whether the whole image has been converted; n2 likewise allows a pass for drawing treatment across depicted content without defining or checking substantial unconverted areas consistently. The readout then permits complete when both supports pass and their evidence establishes broad treatment, so it can infer full-image conversion from coarse coverage. This fails the requirement that a coarse support pass not imply an unexamined finer condition."
+        },
+        {
+          "program_ref": "8dae971c381fbcc1df7080e8c466db90b770fd332ca90252472d8399c6323c6c",
+          "semantic_rejection": "The support checks cover chalk-like treatment and drawing form, but neither establishes whether the conversion applies to the image as a whole. The requested readout requires both supports to pass and their evidence to explicitly establish whole-image conversion, yet the supports do not collect that extent evidence. This leaves complete fulfillment unprovable even when both pass, so the program does not preserve the requested property and extent."
+        },
+        {
+          "program_ref": "7ea15301f1a1af99a73ce103860d5088814f713acf1df76fa34b25ab0c12aa9b",
+          "semantic_rejection": "The requested readout requires evidence that the image as a whole was converted into a chalk drawing, but neither support check assesses whole-image coverage or remaining photographic areas. The readout cannot establish those facts from the saved observations, so its complete/partial criteria are unsupported. In addition, n3 treats both supports failing as absence, although failure only establishes that each specific cue was not established; the criteria themselves acknowledge that this does not prove no requested progress. The program therefore risks converting missing evidence into a negative result."
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot f0b918bacf05a44804795dac6a8eff2f41d8c05b1ff13709b5d40fd59ce5078a: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "stage": "feedback/proposal",
+          "error": "Transport failure in slot ff4b8ad4d242fc2a7d0d884c01c86699c3202832005bfad009e4550566271baa: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "program_ref": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:n2",
+              "node_instability:n3"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "parent": "e63119605349e854dbed3bb1b62643e141a835fe68aae29022b202e340192549",
+          "round": 6,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "The existing checks do not consistently establish whether the drawing conversion covers the whole scene; the visual-discovery hypothesis identifies background and ground as unresolved. Add a nested extent check under the drawing-form support, then require its affirmative evidence for completion while retaining partial progress from chalk-like treatment. This stays within the four-check cap and does not treat the reference label as atomic truth.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "n2",
+                "before": "n3",
+                "new_check_id": "n4",
+                "target_id": "",
+                "requirement_id": "r1",
+                "question": "Does the drawing-like rendering extend across the full scene, including the background and peripheral details, rather than leaving substantial areas photographic or merely blurred?",
+                "criteria": "pass: background, ground, and peripheral scene elements visibly have drawn or illustrated rendering, not merely smearing or blur, with no substantial area remaining photographic; fail: substantial background or peripheral areas clearly remain photographic or only blurred; unknown: visible evidence does not reliably distinguish drawing conversion from blur in those areas.",
+                "binding": "Assess whole-scene extent of drawing conversion, using n2 only as context. Do not assess chalk medium or infer coverage from the giraffes alone.",
+                "readout_criteria": "",
+                "evidence_from": [
+                  "n2"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "n3",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Use only saved support observations. complete: n1, n2, and n4 pass, with n4 affirmatively establishing drawing conversion across background and peripheral areas as well as the prominent content. partial: affirmative evidence of requested progress exists (including n1 pass for chalk-like treatment or drawing-form evidence), but complete conversion is not established; a fail or unknown on extent prevents complete but does not erase evidenced progress. absent: all supports affirmatively establish no requested transformation; support failures alone are insufficient. unknown: evidence is insufficient to determine whether any requested transformation progressed. Do not infer visual facts beyond supports; unrelated edits do not count.",
+                "binding": "",
+                "readout_criteria": "",
+                "evidence_from": []
+              }
+            ]
+          },
+          "error": "Criterion-only arm forbids structural changes",
+          "accepted": false
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot d8e8707bd94cd717897db447f6db8893a3935a7aa65368cc582a5987e13d8b90: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "program_ref": "a90cd1a22ab37d2baddb02430c488b804d232182f1d9a08eb2cf35d562103090",
+          "semantic_rejection": "The requested readout cannot establish complete fulfillment: n1 and n2 assess chalk-like treatment and drawing-specific rendering, but neither checks whether the conversion covers the whole image. The readout explicitly requires evidence that establishes conversion across the image, so even both supports passing can only yield partial, not complete. This leaves the requested yes outcome unreachable despite the instruction requiring the image to be turned into a chalk drawing."
+        },
+        {
+          "program_ref": "88b020c6342561e13157897da5638a98b5d3ec9e0116933a1c28c11a36b5b56f",
+          "semantic_rejection": "The readout’s complete rule requires evidence that drawing-form conversion covers the image, but n2 only asks whether drawn forms replace photographic detail across substantial content. Its pass criteria do not establish that other areas are not still photographic or merely smeared. The readout cannot infer that finer whole-image condition from n2’s coarse pass, so the program lacks sufficient support for complete fulfillment."
+        },
+        {
+          "program_ref": "44503d9e1ae5cecdd7d131062be0060295d0da0a973175dbe77898d40658f692",
+          "semantic_rejection": "The program adds an unsupported scene-specific requirement: n2 requires examining giraffes, although the instruction only says to turn the image into a chalk drawing and does not establish that giraffes are present. This can make the requested readout depend on evidence about an unrequested subject. Also, n3 permits complete only when the supports establish conversion “across the image,” but n2’s pass criterion requires drawn rendering across substantial content, not the whole image; the support evidence therefore cannot establish the extent demanded for completion. The readout must not infer that finer coverage from a coarse support pass."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c255c00750d9d48546d66ee5db1a3cda072c422a2e664342c16069d5888e58a6",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "r1",
+                "source_phrase": "Turn the image into a drawing made from chalk",
+                "parent_id": "n2",
+                "question": "Do the giraffes themselves—not just the background or overall surface—show a clearly drawn chalk rendering rather than retained photographic detail under a chalk-like texture?",
+                "criteria": "Inspect the animals’ forms, markings, and shading for evidence of drawing conversion and chalk-like marks; distinguish this from photographic detail merely softened or overlaid with texture. A pass on the broad drawing check does not settle this finer subject-level question.",
+                "evidence": "The edited image has a strongly dusty, smudged appearance and sketch-like outlines, especially in the background, while the giraffes retain detailed, recognizable photographic markings and forms.",
+                "rationale": "The saved observations conflict on whether photographic detail remains, and the complete readout infers conversion across the image from broad support claims. A focused check of the main subjects could clarify whether the requested conversion is complete or only a surface treatment."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "r1",
+            "source_phrase": "Turn the image into a drawing made from chalk",
+            "parent_id": "n2",
+            "question": "Do the giraffes themselves—not just the background or overall surface—show a clearly drawn chalk rendering rather than retained photographic detail under a chalk-like texture?",
+            "criteria": "Inspect the animals’ forms, markings, and shading for evidence of drawing conversion and chalk-like marks; distinguish this from photographic detail merely softened or overlaid with texture. A pass on the broad drawing check does not settle this finer subject-level question.",
+            "evidence": "The edited image has a strongly dusty, smudged appearance and sketch-like outlines, especially in the background, while the giraffes retain detailed, recognizable photographic markings and forms.",
+            "rationale": "The saved observations conflict on whether photographic detail remains, and the complete readout infers conversion across the image from broad support claims. A focused check of the main subjects could clarify whether the requested conversion is complete or only a surface treatment.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "c255c00750d9d48546d66ee5db1a3cda072c422a2e664342c16069d5888e58a6",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "76a06e20f42156268378372428ce173605b34af5db9f80e995c08ead17c4099a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "4595aa2c3cabf3bdd81bb18de8a4e937c50c39e5d9ec798cbbb3be647c734be0"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The repeated traces show that n1 can pass for chalk-like treatment while n2 varies between pass and fail on whether photographic detail remains; the readout then inconsistently treats both passes as complete. Preserve the independent checks and make completion depend on explicit saved evidence of whole-image conversion, while retaining partial for evidenced progress without that proof. This is criterion-only and does not force a label.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"n2\",\"requirement_id\":\"r1\",\"question\":\"Does the image’s content read as a drawing rather than a photograph with blur, grain, or texture overlaid?\",\"criteria\":\"pass: evidence identifies drawn or illustrated rendering replacing photographic detail across the image’s content, including prominent subjects and surrounding areas; fail: evidence identifies retained photographic rendering with only blur, grain, or texture overlays; unknown: visible cues do not reliably distinguish drawing conversion from filtered photography. State the specific cues supporting the judgment and note any substantial photographic areas.\",\"binding\":\"Assess drawing-form conversion and its extent across the image. Do not assess chalk medium; do not treat sketch-like outlines, blur, or texture alone as proof of conversion.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"n3\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Use only saved support observations. complete: n1 and n2 pass, and n2’s evidence explicitly establishes drawing conversion across the image’s content, with no substantial photographic areas remaining; n1 establishes chalk-like medium. partial: saved evidence affirmatively supports some requested progress, such as chalk-like treatment or drawing conversion, but complete conversion is not established; a fail or unknown does not by itself erase affirmative progress. absent: saved evidence affirmatively establishes that no requested transformation progressed; support failures alone are insufficient. unknown: evidence is insufficient to determine whether any requested transformation progressed. Do not infer visual facts beyond the supports; unrelated edits do not count.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 11472,
+    "completionTokens": 444,
+    "totalTokens": 11916,
+    "latencySeconds": 5.374518871307373,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The repeated traces show that n1 can pass for chalk-like treatment while n2 varies between pass and fail on whether photographic detail remains; the readout then inconsistently treats both passes as complete. Preserve the independent checks and make completion depend on explicit saved evidence of whole-image conversion, while retaining partial for evidenced progress without that proof. This is criterion-only and does not force a label.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "n2",
+              "requirement_id": "r1",
+              "question": "Does the image’s content read as a drawing rather than a photograph with blur, grain, or texture overlaid?",
+              "criteria": "pass: evidence identifies drawn or illustrated rendering replacing photographic detail across the image’s content, including prominent subjects and surrounding areas; fail: evidence identifies retained photographic rendering with only blur, grain, or texture overlays; unknown: visible cues do not reliably distinguish drawing conversion from filtered photography. State the specific cues supporting the judgment and note any substantial photographic areas.",
+              "binding": "Assess drawing-form conversion and its extent across the image. Do not assess chalk medium; do not treat sketch-like outlines, blur, or texture alone as proof of conversion.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "n3",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Use only saved support observations. complete: n1 and n2 pass, and n2’s evidence explicitly establishes drawing conversion across the image’s content, with no substantial photographic areas remaining; n1 establishes chalk-like medium. partial: saved evidence affirmatively supports some requested progress, such as chalk-like treatment or drawing conversion, but complete conversion is not established; a fail or unknown does not by itself erase affirmative progress. absent: saved evidence affirmatively establishes that no requested transformation progressed; support failures alone are insufficient. unknown: evidence is insufficient to determine whether any requested transformation progressed. Do not infer visual facts beyond the supports; unrelated edits do not count.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The repeated traces show that n1 can pass for chalk-like treatment while n2 varies between pass and fail on whether photographic detail remains; the readout then inconsistently treats both passes as complete. Preserve the independent checks and make completion depend on explicit saved evidence of whole-image conversion, while retaining partial for evidenced progress without that proof. This is criterion-only and does not force a label.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "n2",
+            "requirement_id": "r1",
+            "question": "Does the image’s content read as a drawing rather than a photograph with blur, grain, or texture overlaid?",
+            "criteria": "pass: evidence identifies drawn or illustrated rendering replacing photographic detail across the image’s content, including prominent subjects and surrounding areas; fail: evidence identifies retained photographic rendering with only blur, grain, or texture overlays; unknown: visible cues do not reliably distinguish drawing conversion from filtered photography. State the specific cues supporting the judgment and note any substantial photographic areas.",
+            "binding": "Assess drawing-form conversion and its extent across the image. Do not assess chalk medium; do not treat sketch-like outlines, blur, or texture alone as proof of conversion.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "n3",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Use only saved support observations. complete: n1 and n2 pass, and n2’s evidence explicitly establishes drawing conversion across the image’s content, with no substantial photographic areas remaining; n1 establishes chalk-like medium. partial: saved evidence affirmatively supports some requested progress, such as chalk-like treatment or drawing conversion, but complete conversion is not established; a fail or unknown does not by itself erase affirmative progress. absent: saved evidence affirmatively establishes that no requested transformation progressed; support failures alone are insufficient. unknown: evidence is insufficient to determine whether any requested transformation progressed. Do not infer visual facts beyond the supports; unrelated edits do not count.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

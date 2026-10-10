@@ -1,0 +1,135 @@
+{
+  "execution_ref": "69a45dd264d46c481162684bf9278e5e5d7728afbdabaad4596a70a8f6b198fb",
+  "stage": "audit_v4",
+  "slot": "audit/d5c2d32977204de21c5ef36c06ca2ed141f62c6c2b05e8cf728ab42563b2bdaa",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Put a frog in the toilet",
+        "source_phrase": "Put a frog in the toilet"
+      }
+    ],
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the source-to-edit comparison establish that a frog has been placed within the toilet bowl?",
+          "criteria": "First inspect the edited image independently for a recognizable frog situated within the bowl interior, using position relative to the opening, contact, and occlusion rather than mere overlap. Then compare that placement with the source image. Pass if the comparison establishes an added frog or a frog moved into the bowl. A newly recognizable frog added where an ambiguous source object was visible can establish completion; do not assume that the source object was already a frog or require its removal. Fail if the edited image clearly contains no frog within the bowl, or comparison clearly establishes that the only qualifying frog placement is unchanged and no requested placement occurred. Unknown if frog identity, interior placement, or the relevant source-to-edit correspondence cannot be resolved. Frogs solely on the lid, rim, or floor do not establish completion, but additional frogs outside the bowl do not negate a qualifying placement.",
+          "binding": "Compare the supplied source and edited images of the same toilet. Preserve the requested placement inside the bowl. Require at least one qualifying frog, without adding requirements for exact count, realism, cleanup, removal of pre-existing objects, or absence of other frogs.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "If no frog is established as placed within the toilet, does the edited image show visible progress toward placing a frog within it?",
+          "criteria": "Pass only for visible evidence of an incomplete placement attempt directed toward the toilet interior, such as a frog visibly entering the bowl or being positioned at its opening in a way that indicates placement into it. A frog merely on the lid, rim, or nearby floor is not by itself evidence of progress toward placement. Fail if the image clearly shows no such progress. Unknown if the evidence cannot distinguish an attempted placement from an unrelated position. If a frog is established as placed within the toilet, this check is not needed to establish completion.",
+          "binding": "Count only progress toward placing a frog within the toilet; do not count unrelated edits or frogs merely near the toilet. Do not let extra frogs outside the toilet negate a genuine placement within it.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Add a frog inside the toilet.",
+          "criteria": "Use only saved support observations. No support is universally required to be known: evaluate the evidence needed for the applicable branch. Return complete when s1 passes; s2 may then be conditionally skipped. When s1 fails, return partial if s2 establishes requested progress, absent if s2 establishes no requested progress, and unknown if s2 is unknown or unexpectedly skipped. When s1 is unknown, return partial only if s2 establishes requested progress short of completion; return absent only if its evidence explicitly establishes no requested progress, including no completed placement. Otherwise return unknown. Failure to identify an incomplete attempt does not resolve uncertain completion. Unknown, invalid, missing, and skipped observations are unobserved facts, not failures. Extra frogs outside the bowl neither establish progress by themselves nor negate completion. Do not infer any atomic answer from the reference label.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_then_sol/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The program preserves the requested endpoint and rubric, but its fulfillment logic weakens the rubric’s no-progress outcome when s1 is unknown: it can return absent only if s2 explicitly establishes no requested progress, including no completed placement. If s1 is unknown and s2 fails to establish an incomplete attempt, the rubric says insufficient evidence stays unresolved; the program correctly returns unknown in that case. However, when s2 explicitly establishes no progress while s1 remains unknown, the program returns absent even though completion is unresolved, so it may classify the result as no despite insufficient evidence about whether the requested change was completed.\",\"source_clause\":\"Insufficient evidence stays unresolved.\",\"counterexample\":\"s1 is unknown because frog identity or placement cannot be resolved, while s2 explicitly reports no visible incomplete attempt. The program permits fulfillment to return absent, although the unresolved s1 leaves completion uncertain; this turns insufficient evidence into a no outcome.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1755,
+    "completionTokens": 198,
+    "totalTokens": 1953,
+    "latencySeconds": 3.0664150714874268,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The program preserves the requested endpoint and rubric, but its fulfillment logic weakens the rubric’s no-progress outcome when s1 is unknown: it can return absent only if s2 explicitly establishes no requested progress, including no completed placement. If s1 is unknown and s2 fails to establish an incomplete attempt, the rubric says insufficient evidence stays unresolved; the program correctly returns unknown in that case. However, when s2 explicitly establishes no progress while s1 remains unknown, the program returns absent even though completion is unresolved, so it may classify the result as no despite insufficient evidence about whether the requested change was completed.",
+      "source_clause": "Insufficient evidence stays unresolved.",
+      "counterexample": "s1 is unknown because frog identity or placement cannot be resolved, while s2 explicitly reports no visible incomplete attempt. The program permits fulfillment to return absent, although the unresolved s1 leaves completion uncertain; this turns insufficient evidence into a no outcome."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The program preserves the requested endpoint and rubric, but its fulfillment logic weakens the rubric’s no-progress outcome when s1 is unknown: it can return absent only if s2 explicitly establishes no requested progress, including no completed placement. If s1 is unknown and s2 fails to establish an incomplete attempt, the rubric says insufficient evidence stays unresolved; the program correctly returns unknown in that case. However, when s2 explicitly establishes no progress while s1 remains unknown, the program returns absent even though completion is unresolved, so it may classify the result as no despite insufficient evidence about whether the requested change was completed.",
+    "source_clause": "Insufficient evidence stays unresolved.",
+    "counterexample": "s1 is unknown because frog identity or placement cannot be resolved, while s2 explicitly reports no visible incomplete attempt. The program permits fulfillment to return absent, although the unresolved s1 leaves completion uncertain; this turns insufficient evidence into a no outcome."
+  }
+}

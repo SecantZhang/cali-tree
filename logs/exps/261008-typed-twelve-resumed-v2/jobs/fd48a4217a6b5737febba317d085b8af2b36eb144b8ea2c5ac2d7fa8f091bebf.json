@@ -1,0 +1,132 @@
+{
+  "execution_ref": "fd48a4217a6b5737febba317d085b8af2b36eb144b8ea2c5ac2d7fa8f091bebf",
+  "stage": "audit",
+  "slot": "audit/a49a8dd1add9148ddd630377e9b8f9d8d050500545e3029b41a4319d3738fbe1",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the mug to the right of the headphones",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the mug to the right of the headphones",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the mug to the right of the headphones",
+          "source_phrase": "Move the mug to the right of the headphones"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Move the mug so that it is positioned to the right of the headphones.",
+          "target": "The mug is visibly positioned to the right of the headphones.",
+          "reference": "The headphones in the image; compare the mug’s position with the headphones.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Are both the mug and the headphones visible enough to compare their positions?",
+          "criteria": "Pass if the mug and headphones are identifiable and their relative positions can be judged; fail if the image clearly shows either is absent or the comparison is impossible; unknown if visibility or identification is inconclusive.",
+          "binding": "Use only the image to identify the mug and headphones and assess whether their relative placement is observable. This establishes evidence availability, not fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is the mug positioned to the right of the headphones?",
+          "criteria": "Pass if the image shows the mug positioned to the right of the headphones; fail if it clearly shows the mug is not to their right; unknown if their relative position cannot be determined. For R1, complete if this check passes; absent if it fails and no requested change has progressed; partial if the mug has moved toward the requested position but is not yet to the right; unknown if required evidence remains unresolved. Unrelated edits do not count as progress.",
+          "binding": "Compare the mug’s visible position with the headphones in the image. Judge the requested spatial relationship, without requiring a particular editing technique.",
+          "inferences": []
+        },
+        {
+          "id": "original_mug_progress",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Comparing source and edited images, what evidence is there that the original blue mug moved toward or to the right of the headphones? Assess whether the right-side mug corresponds to the source mug and whether the source mug remains at its former position.",
+          "criteria": "Pass if the source mug is identifiable in the edit and is now to the right of the headphones, with no clear evidence it remains at its former position. Fail if clear evidence shows the source mug remains at its former position and the right-side mug is additional, or otherwise shows no movement toward the requested position. Unknown if identity, correspondence, or movement cannot be determined. Report separately any clear movement toward the right that does not reach the requested position; do not infer movement from a right-side mug alone.",
+          "binding": "Use both source and edited images. Anchor the target to the original blue mug by its appearance and source location, and compare its position and correspondence with the headphones across images. Treat blur or artifacts as inconclusive unless they clearly establish identity or position.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "original_mug_progress",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "original_mug_progress"
+          ],
+          "question": "Is the mug visibly positioned to the right of the headphones?",
+          "criteria": "Compose all support observations explicitly. Complete only when this source-anchored check passes and establishes the original mug is right of the headphones. Partial when evidence establishes movement of the original mug toward the right but not completion, including clear progress with unresolved final placement or identity; a right-side mug alone is insufficient. Absent only when evidence establishes no requested progress; a failed check alone does not establish absence unless it shows no movement toward the target. Unknown when necessary evidence is unresolved and progress cannot be established. Ignore unrelated edits.",
+          "binding": "Target: The mug is visibly positioned to the right of the headphones.. Reference: The headphones in the image; compare the mug’s position with the headphones..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-7b78f1229d9bb014bcc5::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout cannot reliably compose the evidence: `s2` is a support check whose criteria already assign complete/absent/partial/unknown, while `original_mug_progress` separately assesses source-anchored movement. The readout does not specify how to resolve conflicting observations from these checks. In particular, `s2` can pass because a mug is right of the headphones even when the source-anchored check fails, and its own criteria call that complete despite the readout correctly requiring the original mug. This overlapping completion rule risks unsupported completion. The source-anchored check otherwise appropriately distinguishes progress from a right-side mug alone.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1617,
+    "completionTokens": 145,
+    "totalTokens": 1762,
+    "latencySeconds": 2.446946144104004,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout cannot reliably compose the evidence: `s2` is a support check whose criteria already assign complete/absent/partial/unknown, while `original_mug_progress` separately assesses source-anchored movement. The readout does not specify how to resolve conflicting observations from these checks. In particular, `s2` can pass because a mug is right of the headphones even when the source-anchored check fails, and its own criteria call that complete despite the readout correctly requiring the original mug. This overlapping completion rule risks unsupported completion. The source-anchored check otherwise appropriately distinguishes progress from a right-side mug alone."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout cannot reliably compose the evidence: `s2` is a support check whose criteria already assign complete/absent/partial/unknown, while `original_mug_progress` separately assesses source-anchored movement. The readout does not specify how to resolve conflicting observations from these checks. In particular, `s2` can pass because a mug is right of the headphones even when the source-anchored check fails, and its own criteria call that complete despite the readout correctly requiring the original mug. This overlapping completion rule risks unsupported completion. The source-anchored check otherwise appropriately distinguishes progress from a right-side mug alone."
+  }
+}

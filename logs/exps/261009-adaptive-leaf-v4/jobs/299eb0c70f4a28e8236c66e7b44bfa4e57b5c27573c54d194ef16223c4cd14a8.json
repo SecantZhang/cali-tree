@@ -1,0 +1,152 @@
+{
+  "execution_ref": "299eb0c70f4a28e8236c66e7b44bfa4e57b5c27573c54d194ef16223c4cd14a8",
+  "stage": "audit_v4",
+  "slot": "audit/b8a2d13fcc43c908335d8d1cb5a6277cfd5787ec9d228ce930f38fe80511434e",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the background into a basketball court",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Change the background into a basketball court",
+        "source_phrase": "Change the background into a basketball court"
+      }
+    ],
+    "program": {
+      "instruction": "Change the background into a basketball court",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the background into a basketball court",
+          "source_phrase": "Change the background into a basketball court"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Replace the image background with a basketball court.",
+          "target": "The background is visibly a basketball court, with recognizable court features such as a playing surface and court markings or basketball equipment.",
+          "reference": "The input image and the requested background change in R1.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited background as a whole read as a basketball court?",
+          "criteria": "Pass if the combined visible background establishes a recognizable basketball-court setting. Weigh the playing surface, visible lines, hoop or other basketball equipment, and surrounding scene together. Distinguish recognizable court markings from a thin or boundary-like line that alone may not establish a court. Basketball equipment alone is insufficient, but a dark or plain upper backdrop alone is not decisive if the rest of the scene establishes a court. Fail if the visible background clearly does not read as a court. Use unknown when the visible surface, markings, and context leave the court identity genuinely ambiguous; do not treat uncertainty as failure.",
+          "binding": "Judge completion of the requested background replacement from the entire visible background. Assess whether the combined scene reads as a basketball court, rather than requiring any particular unsupported feature or letting isolated equipment, a narrow line, or a plain upper backdrop decide the result alone. Keep this completion judgment separate from s2's progress judgment.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s1a",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Do the visible playing surface and its markings, considered apart from the hoop and basketballs, establish a recognizable basketball-court floor?",
+          "criteria": "Pass if the visible floor and its line geometry read as a basketball-court playing surface, based on recognizable court markings or equivalent contextual evidence. Fail if the visible floor has only sparse or boundary-like lines that do not establish a court floor. Unknown if the floor or markings cannot be assessed reliably. Do not treat the hoop or basketballs alone as evidence that the floor is a court.",
+          "binding": "Inspect only the visible playing surface and its markings as evidence relevant to the requested basketball-court background. This is a focused diagnostic of floor evidence, not a separate completion requirement; judge overall completion using s1.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1a",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there visible evidence that the background has begun changing toward a basketball court, even though completion is not established by this check?",
+          "criteria": "Pass if the image shows discernible progress toward replacing the background with a basketball court, including basketball-related scene changes or partial court cues. Fail if there is no visible progress toward that requested background change. Unknown if progress cannot be distinguished from the original or assessed reliably. This is a progress judgment, not a completion judgment; a complete court background may also pass.",
+          "binding": "Assess only progress toward the requested background replacement. Do not use this check to decide whether the background is complete; unrelated edits do not count as progress.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s1a",
+            "s2"
+          ],
+          "question": "Replace the image background with a basketball court.",
+          "criteria": "Preserve the existing fulfillment decision: complete if s1 passes; otherwise absent only if s1 fails and s2 fails; partial if s1 fails and s2 passes; unknown when the evidence needed to distinguish these outcomes is unresolved. s1a is diagnostic context only and must not change the outcome or block a result.",
+          "binding": "Target: The background is visibly a basketball court, with recognizable court features such as a playing surface and court markings or basketball equipment.. Reference: The input image and the requested background change in R1..",
+          "requirement_id": "",
+          "required_dependencies": [
+            "s1",
+            "s2"
+          ],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_only/aurora-task-65581617ad341fa398cb::magic_reproduce_epoch=47-step=12999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is not always scheduled: it is a child of s2 and activates only on s2 pass, fail, or unknown. If s2 is skipped or otherwise not run, fulfillment is skipped too, contrary to the required always-scheduled image-free readout. Also, s1a is a child of s1, so an unresolved or skipped s1 can prevent the independent floor inspection that the instruction requires.\",\"source_clause\":\"“an always-scheduled image-free fulfillment readout. An uncertain advisory observation must not block independent inspection.”\",\"counterexample\":\"If s2 is skipped, fulfillment is not activated, so there is no readout. If s1 is skipped, s1a is not activated, so the floor evidence is not independently inspected.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1839,
+    "completionTokens": 169,
+    "totalTokens": 2008,
+    "latencySeconds": 2.202605962753296,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is not always scheduled: it is a child of s2 and activates only on s2 pass, fail, or unknown. If s2 is skipped or otherwise not run, fulfillment is skipped too, contrary to the required always-scheduled image-free readout. Also, s1a is a child of s1, so an unresolved or skipped s1 can prevent the independent floor inspection that the instruction requires.",
+      "source_clause": "“an always-scheduled image-free fulfillment readout. An uncertain advisory observation must not block independent inspection.”",
+      "counterexample": "If s2 is skipped, fulfillment is not activated, so there is no readout. If s1 is skipped, s1a is not activated, so the floor evidence is not independently inspected."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is not always scheduled: it is a child of s2 and activates only on s2 pass, fail, or unknown. If s2 is skipped or otherwise not run, fulfillment is skipped too, contrary to the required always-scheduled image-free readout. Also, s1a is a child of s1, so an unresolved or skipped s1 can prevent the independent floor inspection that the instruction requires.",
+    "source_clause": "“an always-scheduled image-free fulfillment readout. An uncertain advisory observation must not block independent inspection.”",
+    "counterexample": "If s2 is skipped, fulfillment is not activated, so there is no readout. If s1 is skipped, s1a is not activated, so the floor evidence is not independently inspected."
+  }
+}

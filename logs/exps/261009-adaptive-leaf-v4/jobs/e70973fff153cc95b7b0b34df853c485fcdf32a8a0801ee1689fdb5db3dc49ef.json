@@ -1,0 +1,139 @@
+{
+  "execution_ref": "e70973fff153cc95b7b0b34df853c485fcdf32a8a0801ee1689fdb5db3dc49ef",
+  "stage": "audit_v4",
+  "slot": "audit/d0b2defd841f9b3a27ca585f1eef39641d7d86a02f7af9efc8675e48bd9909b4",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Turn the image into a drawing made from chalk",
+        "source_phrase": "Turn the image into a drawing made from chalk"
+      }
+    ],
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.",
+          "reference": "The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image appear to be a drawing made from chalk?",
+          "criteria": "Inspect the edited endpoint independently. Pass if the image as a whole reads as a chalk-made drawing, considering how contours, shading, surfaces, and marks render both the main subjects and the surrounding setting. Ground the answer in concrete evidence from the giraffes and background rather than grain or softening alone. Fail if the image clearly remains predominantly photographic with only a chalk-like surface effect, or if visibly untreated photographic regions make the requested transformation incomplete. Recognizable anatomy, spots, realistic detail, retained colors, or the use of an image filter do not by themselves establish failure: a chalk drawing can preserve these features. Do not require literal proof of physical chalk, a particular palette, or every detail to be redrawn. Unknown if the overall rendering cannot be distinguished reliably or the edited image is unavailable.",
+          "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; supporting evidence does not independently earn completion credit.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does comparison with the input image show that the requested chalk-drawing transformation has progressed?",
+          "criteria": "Pass if comparison shows some change toward rendering the image as a chalk drawing, even if the transformation is incomplete. Fail if there is no requested progress; unrelated edits alone do not count. Unknown if the images or comparison are insufficient to determine progress.",
+          "binding": "O1 and the rubric: assess progress toward the requested chalk-drawing transformation, not unrelated edits.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a chalk drawing.",
+          "criteria": "Apply the original rubric to R1. Return complete (yes) when s1 passes, establishing the requested chalk-drawing endpoint. Return partial only when s1 explicitly fails and s2 passes, establishing known progress without completion. Return absent (no) only when s1 explicitly fails and s2 fails, establishing no requested progress. Return unknown whenever s1 is unknown, even if s2 passes or fails; progress evidence alone does not resolve completion. Also return unknown when s1 fails and s2 is unknown, invalid, or skipped. When s1 passes, s2 is conditionally skipped and is not needed: its skipped state is neither failure nor evidence of progress. Unrelated edits never count as requested progress.",
+          "binding": "Target: The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.. Reference: The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing..",
+          "requirement_id": "",
+          "required_dependencies": [
+            "s1"
+          ],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_then_sol/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The saved composition does not preserve the rubric’s unresolved-evidence rule for a potentially partial result. If s1 is unknown but s2 passes, the fulfillment criteria force unknown, even though the known progress evidence may establish partial: the rubric defines partial as some progress without complete fulfillment and says only insufficient evidence stays unresolved. The instruction explicitly says not to demand all evidence to be known when a legitimate alternative proves completion; here s2 is the alternative evidence of progress when the endpoint is not established. The program also makes s2 conditional on s1 failing or being unknown, so this path is available.\",\"source_clause\":\"partial means some progress without complete fulfillment.\",\"counterexample\":\"The edited image is visibly changed toward a chalk drawing, but the overall endpoint cannot be distinguished reliably. s1 is unknown and s2 passes. The program returns unknown solely because s1 is unknown, although the rubric supports partial: progress is known and completion is not established.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1692,
+    "completionTokens": 203,
+    "totalTokens": 1895,
+    "latencySeconds": 3.0385429859161377,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The saved composition does not preserve the rubric’s unresolved-evidence rule for a potentially partial result. If s1 is unknown but s2 passes, the fulfillment criteria force unknown, even though the known progress evidence may establish partial: the rubric defines partial as some progress without complete fulfillment and says only insufficient evidence stays unresolved. The instruction explicitly says not to demand all evidence to be known when a legitimate alternative proves completion; here s2 is the alternative evidence of progress when the endpoint is not established. The program also makes s2 conditional on s1 failing or being unknown, so this path is available.",
+      "source_clause": "partial means some progress without complete fulfillment.",
+      "counterexample": "The edited image is visibly changed toward a chalk drawing, but the overall endpoint cannot be distinguished reliably. s1 is unknown and s2 passes. The program returns unknown solely because s1 is unknown, although the rubric supports partial: progress is known and completion is not established."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The saved composition does not preserve the rubric’s unresolved-evidence rule for a potentially partial result. If s1 is unknown but s2 passes, the fulfillment criteria force unknown, even though the known progress evidence may establish partial: the rubric defines partial as some progress without complete fulfillment and says only insufficient evidence stays unresolved. The instruction explicitly says not to demand all evidence to be known when a legitimate alternative proves completion; here s2 is the alternative evidence of progress when the endpoint is not established. The program also makes s2 conditional on s1 failing or being unknown, so this path is available.",
+    "source_clause": "partial means some progress without complete fulfillment.",
+    "counterexample": "The edited image is visibly changed toward a chalk drawing, but the overall endpoint cannot be distinguished reliably. s1 is unknown and s2 passes. The program returns unknown solely because s1 is unknown, although the rubric supports partial: progress is known and completion is not established."
+  }
+}

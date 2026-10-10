@@ -1,0 +1,129 @@
+{
+  "execution_ref": "e9c8d9b689856a7482e7adad4ad660d3e2101daea3a25e7a38f0506773b6fd94",
+  "stage": "audit_v4",
+  "slot": "common_seed_audit",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Put a frog in the toilet",
+        "source_phrase": "Put a frog in the toilet"
+      }
+    ],
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly show a frog placed inside the toilet bowl?",
+          "criteria": "Pass if a frog is clearly visible within the toilet bowl; fail if the image clearly shows no frog inside the bowl; unknown if the bowl or its contents are obscured or the evidence is otherwise insufficient to determine this.",
+          "binding": "The frog must be inside the toilet bowl of the toilet in the input image.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image show any progress toward placing a frog inside the toilet bowl, even if the frog is not yet visibly inside it?",
+          "criteria": "Pass if visible evidence shows a partial attempt toward placing a frog inside the bowl, such as a frog partly entering it; fail if there is clearly no such progress; unknown if the evidence is insufficient to distinguish progress from no progress. A frog clearly inside the bowl is complete, not partial progress.",
+          "binding": "Count only progress toward placing a frog inside the toilet bowl; unrelated edits do not count.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Add a frog inside the toilet.",
+          "criteria": "Apply the original rubric to the requested change only. Return yes when the frog is visibly placed inside the toilet bowl. Return no only when evidence establishes that no requested change has progressed. Return partial when evidence establishes some progress toward placing the frog inside the bowl but does not establish completion. Return unknown when the evidence cannot distinguish among these outcomes. A skipped support is unobserved, not a failure or not-applicable finding: if the completion check passes, that establishes yes without needing the partial-progress check; if completion fails, the progress check is needed to distinguish partial from no. Supporting observations earn no completion credit independently, and unrelated edits do not count.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "prepare/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is image-free and preserves the rubric’s yes/no/partial/unknown meanings, but the saved checks do not reliably establish whether the frog is inside the toilet bowl. The completion check asks about the bowl, while the original request only says “in the toilet”; the program narrows that to “inside the toilet bowl” and binds it to the toilet in the input image. The progress check also excludes a frog already inside the bowl from partial progress, so when completion is unknown it cannot establish partial progress for that case. These are unsupported interpretations and leave a requested outcome unresolved on some paths.\",\"source_clause\":\"Put a frog in the toilet\",\"counterexample\":\"A frog visibly placed in the toilet tank or elsewhere within the toilet could satisfy the original request but fail the bowl-only completion check. If the completion check is unknown and the progress check reports no partial attempt, the program may return no or unknown despite evidence that some requested change has progressed; the saved checks do not preserve the original rubric’s progress distinction for that case.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1473,
+    "completionTokens": 223,
+    "totalTokens": 1696,
+    "latencySeconds": 3.4056859016418457,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is image-free and preserves the rubric’s yes/no/partial/unknown meanings, but the saved checks do not reliably establish whether the frog is inside the toilet bowl. The completion check asks about the bowl, while the original request only says “in the toilet”; the program narrows that to “inside the toilet bowl” and binds it to the toilet in the input image. The progress check also excludes a frog already inside the bowl from partial progress, so when completion is unknown it cannot establish partial progress for that case. These are unsupported interpretations and leave a requested outcome unresolved on some paths.",
+      "source_clause": "Put a frog in the toilet",
+      "counterexample": "A frog visibly placed in the toilet tank or elsewhere within the toilet could satisfy the original request but fail the bowl-only completion check. If the completion check is unknown and the progress check reports no partial attempt, the program may return no or unknown despite evidence that some requested change has progressed; the saved checks do not preserve the original rubric’s progress distinction for that case."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is image-free and preserves the rubric’s yes/no/partial/unknown meanings, but the saved checks do not reliably establish whether the frog is inside the toilet bowl. The completion check asks about the bowl, while the original request only says “in the toilet”; the program narrows that to “inside the toilet bowl” and binds it to the toilet in the input image. The progress check also excludes a frog already inside the bowl from partial progress, so when completion is unknown it cannot establish partial progress for that case. These are unsupported interpretations and leave a requested outcome unresolved on some paths.",
+    "source_clause": "Put a frog in the toilet",
+    "counterexample": "A frog visibly placed in the toilet tank or elsewhere within the toilet could satisfy the original request but fail the bowl-only completion check. If the completion check is unknown and the progress check reports no partial attempt, the program may return no or unknown despite evidence that some requested change has progressed; the saved checks do not preserve the original rubric’s progress distinction for that case."
+  }
+}

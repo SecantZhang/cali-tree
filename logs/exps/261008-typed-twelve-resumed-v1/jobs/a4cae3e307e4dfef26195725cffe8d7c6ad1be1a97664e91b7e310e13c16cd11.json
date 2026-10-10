@@ -1,0 +1,423 @@
+{
+  "execution_ref": "a4cae3e307e4dfef26195725cffe8d7c6ad1be1a97664e91b7e310e13c16cd11",
+  "stage": "propose_typed",
+  "slot": "round/2/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Give the woman a helmet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Give the woman a helmet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Give the woman a helmet.",
+          "source_phrase": "Give the woman a helmet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a helmet to the woman.",
+          "target": "The woman is wearing or otherwise visibly has a helmet on her head.",
+          "reference": "The woman in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show a helmet visibly on the woman’s head?",
+          "criteria": "Pass if a helmet is visibly on the woman’s head; fail if the image clearly shows no helmet on her head; unknown if the woman or her head is not visible enough to determine this.",
+          "binding": "Assess only the woman in the input image and whether she is wearing or otherwise visibly has a helmet on her head. Ignore unrelated edits.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image evidence that a helmet has been added to the woman, even if the requested result is not complete?",
+          "criteria": "Pass if the image shows a helmet on or being placed on the woman’s head, but the evidence does not establish the complete result in s1; fail if the image clearly shows no progress toward adding a helmet; unknown if visibility is insufficient to determine whether such progress occurred. A complete result is not partial progress.",
+          "binding": "Assess only visible evidence of progress toward giving the woman in the input image a helmet. Do not count unrelated changes as progress.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is a helmet visibly present on the woman’s head?",
+          "criteria": "For R1, complete if s1 passes. Partial if s1 does not pass and s2 passes. Absent if s1 and s2 both fail. Unknown if neither complete nor partial nor absent is established because a required check is unknown. Unrelated edits do not count as progress; unknown evidence remains unresolved.",
+          "binding": "Target: The woman is wearing or otherwise visibly has a helmet on her head.. Reference: The woman in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "yes",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node is already performing well: the edited image visibly shows a helmet on the woman’s head, and both support checks and the fulfillment trace agree with the reference at high confidence. No semantic change is indicated. For robustness, ensure the binding identifies the woman in the source image and evaluates visible helmet placement on her head in the edited image; avoid treating a nearby helmet or unrelated object as fulfillment. The current wording’s “wearing (...) a helmet visibly present” is less precise than the node’s actual criterion, but do not alter the criterion or outcome based on this successful case."
+        ],
+        "s2": [
+          "The trace is strong and agrees with the reference, so no outcome change is indicated. For robustness, make the binding explicitly compare the edited image with the source: identify the woman from the source and count only a visibly added helmet worn on or being placed on her head as progress. Keep a helmet merely nearby, on another subject, or already present in the source from counting. Preserve the distinction between partial progress and complete fulfillment, and use unknown when the head or helmet placement cannot be judged; do not infer absence from low confidence alone."
+        ],
+        "s1": [
+          "The node’s criterion is supported by the images: the source woman is identifiable, and the edited image visibly adds a helmet worn on her head; the trace agrees at high confidence. No outcome change is indicated. For robustness, tighten the binding’s source-to-edited comparison so it evaluates that same woman and distinguishes a helmet worn on her head from one merely nearby or on another subject. Preserve unknown when her head or placement is not judgeable, and do not treat low confidence or variation alone as evidence of absence. There is no transport, schema, or dependency failure to address."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 1.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 140.0,
+        "traces": [
+          {
+            "program_ref": "75585b3c6d25945661759b4112fbb7bd558f4e88c62936d58f5c4d1654f9ca94",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a helmet is visibly worn on the woman’s head, satisfying the requested change."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image shows a helmet visibly worn on the woman’s head.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 40,
+                "dependencies": [],
+                "execution_ref": "1403278d1fa2142071ab8fa3a14102302ecd8449aa2229a0f57203b1a72e60ed",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows a helmet on the woman's head, which is visible progress toward the requested change.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 46,
+                "dependencies": [],
+                "execution_ref": "cc8be14e90b4d4fa03cd73d99f2fa15d514086337d895925c9c7059077213011",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a helmet is visibly worn on the woman’s head, satisfying the requested change.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 54,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image shows a helmet visibly worn on the woman’s head.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 40,
+                    "dependencies": [],
+                    "execution_ref": "1403278d1fa2142071ab8fa3a14102302ecd8449aa2229a0f57203b1a72e60ed",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a helmet on the woman's head, which is visible progress toward the requested change.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 46,
+                    "dependencies": [],
+                    "execution_ref": "cc8be14e90b4d4fa03cd73d99f2fa15d514086337d895925c9c7059077213011",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "c210e6bf8d577f9b7bd3357074e96f75259b1da4dfa7ccfe78a91bf98847322b",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "75585b3c6d25945661759b4112fbb7bd558f4e88c62936d58f5c4d1654f9ca94",
+          "semantic_rejection": "The fulfillment readout cannot faithfully distinguish a complete result from partial progress. s2 is defined to pass only when it shows progress but does not establish the complete result in s1, yet the readout says partial if s1 does not pass and s2 passes. If s1 is unknown while s2 passes, this can label the result partial without establishing incompleteness; if s1 fails, the checks may also conflict about whether a helmet is present. The composition should require evidenced incompleteness before assigning partial and resolve contradictory support observations rather than treating them as a valid outcome."
+        },
+        {
+          "program_ref": "52f8a82d20d61a464dd6343b9c3a3631fbf4d841a4dd9de74482842009dd8642",
+          "semantic_rejection": "The support checks do not provide sufficient evidence to distinguish partial progress from a complete result. s2 asks whether a helmet is on or being placed on the woman’s head, but its pass criterion also requires that the evidence not establish the complete result in s1. That completeness judgment is not an independent visual proposition for the support check to assess, and the fulfillment readout cannot reliably derive it from the saved observations. Consequently, the program can leave genuine partial progress unresolved or misclassify it; the readout’s conflict rule does not repair this gap."
+        },
+        {
+          "program_ref": "ff137e66a72353b17adb6756c827a7c14b8ce79b2a8985b52b0c20527408dd5a",
+          "semantic_rejection": "The fulfillment rule is incomplete for the rubric’s unresolved-evidence case. If s1 is unknown but s2 passes, it returns unknown even though the visible addition evidence establishes progress and the helmet’s completion status remains unresolved; the rubric calls for partial when some progress is evidenced without complete fulfillment. The rule also makes partial conditional on s1 failing, so it cannot faithfully compose that known progress with an unknown completion observation."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "4f6cf8c167891c97620071d7ef4dc99ce12ab5ef4683f2b06986e5b4fbd54042",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-538ef5e1e9d068bbfe6d::magic_reproduce_epoch=47-step=12999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "2808956880f369b3bfff591404536a5285fbd7a82ee09039e5a1d610c8c63fe4"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "9db75223b241adf57eb0ed15c22ba62621cccae10c25b708f19616692b90a949"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The existing supports both establish the same helmet-placement fact, while the readout’s partial rule cannot distinguish incomplete progress from a complete result. Revise the progress check to independently establish whether the requested change is visibly incomplete, and compose partial only when progress and incompleteness are both evidenced.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image show the source woman with a helmet-related change that is visibly incomplete—for example, a helmet being placed but not yet on her head?\",\"criteria\":\"Pass only if visible evidence shows a helmet-related change to the source woman that is in progress and not yet complete. Fail if no helmet-related change is visible, or if the helmet is already visibly on her head as a complete result. Unknown if the woman, helmet, or placement cannot be judged.\",\"binding\":\"Compare the edited image with the source, identify the same woman, and assess only visible helmet placement on her head. A helmet merely nearby, on another subject, or already present in the source is not progress. Do not infer incompleteness from uncertainty.\",\"readout_criteria\":\"For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count.\",\"evidence_from\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count as progress; insufficient evidence remains unresolved.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 5637,
+    "completionTokens": 479,
+    "totalTokens": 6116,
+    "latencySeconds": 5.330202102661133,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The existing supports both establish the same helmet-placement fact, while the readout’s partial rule cannot distinguish incomplete progress from a complete result. Revise the progress check to independently establish whether the requested change is visibly incomplete, and compose partial only when progress and incompleteness are both evidenced.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Does the edited image show the source woman with a helmet-related change that is visibly incomplete—for example, a helmet being placed but not yet on her head?",
+              "criteria": "Pass only if visible evidence shows a helmet-related change to the source woman that is in progress and not yet complete. Fail if no helmet-related change is visible, or if the helmet is already visibly on her head as a complete result. Unknown if the woman, helmet, or placement cannot be judged.",
+              "binding": "Compare the edited image with the source, identify the same woman, and assess only visible helmet placement on her head. A helmet merely nearby, on another subject, or already present in the source is not progress. Do not infer incompleteness from uncertainty.",
+              "readout_criteria": "For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count.",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count as progress; insufficient evidence remains unresolved.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The existing supports both establish the same helmet-placement fact, while the readout’s partial rule cannot distinguish incomplete progress from a complete result. Revise the progress check to independently establish whether the requested change is visibly incomplete, and compose partial only when progress and incompleteness are both evidenced.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Does the edited image show the source woman with a helmet-related change that is visibly incomplete—for example, a helmet being placed but not yet on her head?",
+            "criteria": "Pass only if visible evidence shows a helmet-related change to the source woman that is in progress and not yet complete. Fail if no helmet-related change is visible, or if the helmet is already visibly on her head as a complete result. Unknown if the woman, helmet, or placement cannot be judged.",
+            "binding": "Compare the edited image with the source, identify the same woman, and assess only visible helmet placement on her head. A helmet merely nearby, on another subject, or already present in the source is not progress. Do not infer incompleteness from uncertainty.",
+            "readout_criteria": "For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count.",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "For R1, complete if s1 passes. Partial only if s1 fails and s2 passes, establishing both no completed helmet-on-head result and visible incomplete helmet-related progress. Absent if s1 and s2 both fail. Unknown if these states do not establish complete, partial, or absent; in particular, s1 unknown with s2 pass remains unknown. Unrelated edits do not count as progress; insufficient evidence remains unresolved.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

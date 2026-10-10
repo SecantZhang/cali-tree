@@ -1,0 +1,132 @@
+{
+  "execution_ref": "b6e9d1e5080d8f095594e853c368a7e68e0de7fcddeb2379837d2223d30b9fca",
+  "stage": "audit_v4",
+  "slot": "audit/1374254d54aab7684f984e8c730aca622d70e1993e49b1b4684142447b1db6a9",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Stuff the paper into the cup.",
+        "source_phrase": "Stuffing the paper into the cup"
+      }
+    ],
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the source paper visibly stuffed inside the source cup in the edited image?",
+          "criteria": "Pass if the edited image shows the paper from the source image placed inside the cup from the source image, with visible evidence it has been stuffed into it. Fail if the matched paper and cup are assessable and the paper is visibly outside the cup or only resting nearby or on its rim. Unknown if the source objects cannot be reliably matched in the edited image, or their relationship cannot be assessed.",
+          "binding": "Identify the requested paper and cup by their visual and contextual roles in the source image, allowing their appearance to change in the edited image. Judge whether that paper is stuffed inside that cup; do not require exact color or shape matches.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Are the source paper and cup reliably identifiable in the edited image, and, if so, is there visible progress toward placing that paper into that cup without the requested result being complete?",
+          "criteria": "Pass only when both edited objects can be reliably matched to the source paper and cup and the image visibly shows the paper being moved toward or partly into the cup, without being fully inside. Fail when the matched objects and their relationship are assessable and there is no visible progress, or the paper is already visibly inside the cup. Unknown when either identity or the relevant placement cannot be established. Proximity, overlap, or a hand holding an item near an object alone is not evidence of progress.",
+          "binding": "Assess the requested source paper and source cup using visual and contextual evidence; appearance may change, but each edited object must be credibly matched to its source counterpart. Count only visible progress involving those matched objects.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when s1 passes and establishes completion. Return partial when s2 passes and establishes visible progress without completion, even if s1 is unknown. Return no only when the evidence establishes that the requested change has made no progress: s1 fails and s2 fails. Return unknown when the evidence does not establish completion, progress, or absence of progress; an unknown or skipped check is not a failure. Unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [
+            "s1",
+            "s2"
+          ],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_only/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout requires both support checks, but the rubric permits a known completion or no-progress judgment from sufficient evidence without requiring every check to be known. In particular, s2 can be unknown while s1 establishes completion, and s1 can be unknown while s2 establishes progress; the latter is handled, but the dependency declaration still makes both checks required and does not preserve the rubric’s general insufficient-evidence rule for all activation paths. The support chain also makes s2 conditional on s1’s result, although the checker template says uncertain advisory context must not block independent inspection; s2 is an independent image inspection and should not be blocked by an uncertain s1.\",\"source_clause\":\"Insufficient evidence stays unresolved.\",\"counterexample\":\"If s1 is unknown and s2 is skipped or unavailable, the fulfillment node’s required dependencies are unresolved, so it cannot return a known result even if the saved evidence otherwise establishes no progress. Also, if s1 is unknown, s2 is activated by that status in this instance, but the program’s general dependency/activation structure does not ensure independent inspection when an advisory observation is uncertain; the template’s instruction not to let uncertain context block inspection is not reflected as an explicit activation guarantee.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1651,
+    "completionTokens": 260,
+    "totalTokens": 1911,
+    "latencySeconds": 3.915972948074341,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout requires both support checks, but the rubric permits a known completion or no-progress judgment from sufficient evidence without requiring every check to be known. In particular, s2 can be unknown while s1 establishes completion, and s1 can be unknown while s2 establishes progress; the latter is handled, but the dependency declaration still makes both checks required and does not preserve the rubric’s general insufficient-evidence rule for all activation paths. The support chain also makes s2 conditional on s1’s result, although the checker template says uncertain advisory context must not block independent inspection; s2 is an independent image inspection and should not be blocked by an uncertain s1.",
+      "source_clause": "Insufficient evidence stays unresolved.",
+      "counterexample": "If s1 is unknown and s2 is skipped or unavailable, the fulfillment node’s required dependencies are unresolved, so it cannot return a known result even if the saved evidence otherwise establishes no progress. Also, if s1 is unknown, s2 is activated by that status in this instance, but the program’s general dependency/activation structure does not ensure independent inspection when an advisory observation is uncertain; the template’s instruction not to let uncertain context block inspection is not reflected as an explicit activation guarantee."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout requires both support checks, but the rubric permits a known completion or no-progress judgment from sufficient evidence without requiring every check to be known. In particular, s2 can be unknown while s1 establishes completion, and s1 can be unknown while s2 establishes progress; the latter is handled, but the dependency declaration still makes both checks required and does not preserve the rubric’s general insufficient-evidence rule for all activation paths. The support chain also makes s2 conditional on s1’s result, although the checker template says uncertain advisory context must not block independent inspection; s2 is an independent image inspection and should not be blocked by an uncertain s1.",
+    "source_clause": "Insufficient evidence stays unresolved.",
+    "counterexample": "If s1 is unknown and s2 is skipped or unavailable, the fulfillment node’s required dependencies are unresolved, so it cannot return a known result even if the saved evidence otherwise establishes no progress. Also, if s1 is unknown, s2 is activated by that status in this instance, but the program’s general dependency/activation structure does not ensure independent inspection when an advisory observation is uncertain; the template’s instruction not to let uncertain context block inspection is not reflected as an explicit activation guarantee."
+  }
+}

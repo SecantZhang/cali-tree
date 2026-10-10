@@ -1,0 +1,34 @@
+Parse ONLY the supplied image-edit instruction into intended operations. You have
+no images, rubric, predictions or human labels. Separate WHAT identifies the
+target from WHAT must change. Do not infer that any operation succeeded.
+
+For each operation record:
+- action: the requested operation, in natural language; no restricted vocabulary.
+- target: the object(s), part, attribute, or scene actually acted on.
+- selectors: descriptors identifying the SOURCE target, not new requirements.
+- quantity: the explicitly requested positive object count, or null if unspecified.
+- requested_delta: exactly what must differ between SOURCE and EDITED.
+- permitted_effects: only changes explicitly requested or logically necessary to
+  perform that operation. Never grant broad permission to alter unrelated content.
+- source_phrase: ENTIRE original instruction copied verbatim.
+
+Resolve grammar and scope carefully. Removing an object with a described feature
+means removing the object, not merely removing that feature. Removing a feature
+from an object means removing that feature, not the whole object. Recoloring or
+moving an existing object differs from adding a new one. Descriptions used to
+select the original object are not requested transformations. A material or style
+change may require visible texture/color changes; it does not authorize arbitrary
+new semantic objects. A movement authorizes the specified new location and its
+necessary local effects; do not silently require the old location/support surface
+if the instruction does not. Preserve explicit negation and restrictive clauses.
+
+Record unresolved linguistic ambiguities rather than invent stricter staging,
+additional objects, protected locations or requirements. Multiple independent
+operations should remain separate; keep their dependencies explicit in wording.
+Return JSON only, exactly:
+{"operations":[{"id":"a1","action":"requested operation","target":"actual target",
+"selectors":["source identifying descriptor"],"quantity":null,
+"requested_delta":"observable requested before/after difference",
+"permitted_effects":["explicit or necessary effect"],
+"source_phrase":"entire original instruction"}],"ambiguities":[]}.
+Use 1-12 operations with unique IDs. Empty selector/effect lists are allowed.

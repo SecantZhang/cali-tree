@@ -1,0 +1,978 @@
+{
+  "execution_ref": "3efa1621777ea3321e78f9269df7994c79d8990c563cd1351863a4479802ebf5",
+  "stage": "propose_typed",
+  "slot": "round/1/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the book behind the flower",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the book behind the flower",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the book behind the flower.",
+          "source_phrase": "Move the book behind the flower"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The book is moved behind the flower.",
+          "target": "The book is visibly positioned behind the flower, with the flower in front of it.",
+          "reference": "Compare the book’s and flower’s relative positions and occlusion in the edited image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the book visibly positioned behind the flower, with the flower in front of it?",
+          "criteria": "Pass if the image shows the flower in front of and occluding the book in a way that establishes the book is behind it. Fail if the image clearly shows the book is not behind the flower. Unknown if the relative depth or occlusion cannot be determined from the image.",
+          "binding": "Assess only the book’s and flower’s relative positions and visible occlusion in the edited image.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the image show any progress toward moving the book behind the flower, even if the requested placement is not complete?",
+          "criteria": "Pass if the image provides clear evidence of partial progress toward placing the book behind the flower, such as a changed relative position or partial occlusion consistent with that placement, without establishing complete fulfillment. Fail if the image clearly shows no progress toward the requested placement. Unknown if progress cannot be determined from the image.",
+          "binding": "Compare the book’s and flower’s relative positions and occlusion in the edited image; do not count unrelated edits as progress.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the book visibly positioned behind the flower?",
+          "criteria": "Apply the original rubric to R1 using s1 and s2. Complete (yes) if s1 passes. Partial if s1 does not pass and s2 passes. Absent (no) if both checks fail. Unknown if neither check passes and at least one is unknown; unresolved evidence must remain unknown. Do not count unrelated edits as progress.",
+          "binding": "Target: The book is visibly positioned behind the flower, with the flower in front of it.. Reference: Compare the book’s and flower’s relative positions and occlusion in the edited image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The binding is malformed and underspecified: it contains a dangling “Target: The book is visibly (...)” fragment, then a question that omits the flower’s foreground/occlusion relation. Repair the typed binding so it clearly identifies the book and the flower in the edited image and asks whether the book is behind that flower, using visible depth/occlusion evidence; preserve the existing rubric’s distinction between complete fulfillment, genuine partial progress, and no progress. The edited image shows the book and flowers separated, with no visible overlap or occlusion, so the repeated valid checks support “no”; changed flowers or book appearance are unrelated, not progress. Do not treat the one unresolved run as visual evidence: both dependencies failed at transport, so retain unknown for that run and address reliability separately rather than changing the visual criterion. The 4/5 aggregate agreement and high-confidence repeated failures suggest the criterion is broadly working; focus on clarifying the binding and keeping transport failures distinct from negative visual findings."
+        ],
+        "s2": [
+          "Repair the binding’s malformed, incomplete wording with a clear reference to the edited image and the requested depth relation: assess whether the book is behind the flower, using visible relative position and occlusion cues. Keep the node focused on progress toward that relation, not merely whether either object changed. In the supplied edit, the book and flowers remain spatially separate with no visible overlap or occlusion; the altered book appearance and changed flower(s) are unrelated, so they do not establish progress. Preserve the rubric’s distinction between complete fulfillment, genuine partial progress, and no progress—do not make occlusion an absolute requirement if other clear visual evidence supports movement toward the requested placement. Treat the unresolved run as a transport failure, not visual evidence; retain unknown for that run and handle reliability separately. The repeated high-confidence failures suggest the visual criterion is broadly working, so prioritize binding clarity rather than changing the criterion or forcing the aggregate label."
+        ],
+        "s1": [
+          "Repair the malformed binding so it unambiguously evaluates the requested book-behind-flower relation in the edited image, rather than containing a dangling fragment or omitting which object is foreground. Keep the node scoped to the book and the relevant flower, and assess visible depth/placement evidence; occlusion is strong evidence, but should not be an absolute requirement if other clear cues establish the relation. The edited image shows the book and flowers spatially separate, with no visible overlap or other evidence that the book is behind a flower, supporting no progress on this requested change. Do not count the book’s appearance or the changed flowers as progress toward placement. Preserve the rubric’s distinction between complete fulfillment, genuine partial progress, and no progress; do not force the reference label. The repeated valid, high-confidence failures suggest the visual criterion is broadly functioning, so prioritize binding clarity rather than changing the criterion. Keep the transport-failure run unknown and separate from visual evidence; reliability is not repaired by altering this node’s visual judgment."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.8,
+        "coverage": 0.8,
+        "label_consistency": 0.8,
+        "label_distribution": {
+          "no": 4,
+          "unresolved": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 4,
+              "unknown": 1
+            },
+            "consistency": 0.8,
+            "assessment": "assessed",
+            "confidence": [
+              0.99,
+              0.99,
+              0.99,
+              0.99,
+              null
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 4,
+              "unknown": 1
+            },
+            "consistency": 0.8,
+            "assessment": "assessed",
+            "confidence": [
+              0.94,
+              0.97,
+              0.94,
+              0.96,
+              null
+            ]
+          },
+          "fulfillment": {
+            "eligible": 4,
+            "queried": 4,
+            "activation_rate": 0.8,
+            "states": {
+              "absent": 4
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.98,
+              0.98,
+              0.98,
+              0.99
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "absent": 4,
+              "unknown": 1
+            },
+            "consistency": 0.8,
+            "coverage": 0.8
+          }
+        },
+        "requirement_consistency": 0.8,
+        "confidence_pass": false,
+        "mean_checks": 2.8,
+        "mean_completion_tokens": 571.8,
+        "traces": [
+          {
+            "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved support checks fail: the book and flowers are separate and non-overlapping, with no visible occlusion or progress toward placing the book behind a flower. Therefore, no requested change is evidenced."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "In the edited image, the book and flowers are separate and do not overlap; neither flower visibly occludes the book, so the book is not established as behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 61,
+                "dependencies": [],
+                "execution_ref": "9bdfe8f5e5f420d58f5cf9f8c109f8de82debe2c0e36c5b82377fbba5ee66843",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers in separate, non-overlapping positions; neither flower occludes the book, and there is no clear relative placement progress toward putting the book behind a flower. The scene also appears to introduce unrelated changes, which do not count as progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 81,
+                "dependencies": [],
+                "execution_ref": "d9509c736cdca33a00caba32bed6a1bcf8f14a86e8bb33fdc78694915f2f3bbb",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both saved support checks fail: the book and flowers are separate and non-overlapping, with no visible occlusion or progress toward placing the book behind a flower. Therefore, no requested change is evidenced.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 73,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "In the edited image, the book and flowers are separate and do not overlap; neither flower visibly occludes the book, so the book is not established as behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "9bdfe8f5e5f420d58f5cf9f8c109f8de82debe2c0e36c5b82377fbba5ee66843",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers in separate, non-overlapping positions; neither flower occludes the book, and there is no clear relative placement progress toward putting the book behind a flower. The scene also appears to introduce unrelated changes, which do not count as progress.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 81,
+                    "dependencies": [],
+                    "execution_ref": "d9509c736cdca33a00caba32bed6a1bcf8f14a86e8bb33fdc78694915f2f3bbb",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "3836744a13e1e6c43d32dadb448c434db0a7da63fdb9f9940483620110126e01",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved support checks fail: the book and flowers remain separate, with no overlap or occlusion showing the book behind a flower. The noted flower changes are unrelated to the requested placement."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "In the edited image, the book and flower are separate, with no visible overlap or occlusion establishing the book behind the flower. The book is to the left of the flowers.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 62,
+                "dependencies": [],
+                "execution_ref": "10fa76bbe8b7e7a60fe2926ca58f4b6b32cae4bd11a7fded72d01a8966503eb8",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers still separate, with no visible overlap or occlusion indicating that the book has moved behind a flower. The flowers also appear changed, but that is unrelated to the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "d1fbb943a29efcf2836c24d292ba3106b73198b3f2be96ee6dda96a46a87a51a",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both saved support checks fail: the book and flowers remain separate, with no overlap or occlusion showing the book behind a flower. The noted flower changes are unrelated to the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 70,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "In the edited image, the book and flower are separate, with no visible overlap or occlusion establishing the book behind the flower. The book is to the left of the flowers.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 62,
+                    "dependencies": [],
+                    "execution_ref": "10fa76bbe8b7e7a60fe2926ca58f4b6b32cae4bd11a7fded72d01a8966503eb8",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers still separate, with no visible overlap or occlusion indicating that the book has moved behind a flower. The flowers also appear changed, but that is unrelated to the requested placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "d1fbb943a29efcf2836c24d292ba3106b73198b3f2be96ee6dda96a46a87a51a",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "6b4057f77dadb98a8e505f800296d55b2e5a8c14f8a0e2634109062e3d56e788",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both supplied checks fail: the book remains separate from the flowers, with no flower visibly in front of or occluding it. No progress toward the requested placement is evidenced."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "In the edited image, the book and flowers are separate, with neither flower visibly in front of or occluding the book. The book is not positioned behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 60,
+                "dependencies": [],
+                "execution_ref": "c1dac1fdc613d1f720d9aec1a15487801fee331ead3825573dcbc793ccbe2880",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers in different positions, but the book remains separate and does not appear behind or partially occluded by either flower. The visible changes do not show progress toward the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 68,
+                "dependencies": [],
+                "execution_ref": "b01141076fe96c2e7ed7a37ee8070237061d39a67a5a54346b52b01c0cb53949",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both supplied checks fail: the book remains separate from the flowers, with no flower visibly in front of or occluding it. No progress toward the requested placement is evidenced.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 67,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "In the edited image, the book and flowers are separate, with neither flower visibly in front of or occluding the book. The book is not positioned behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "c1dac1fdc613d1f720d9aec1a15487801fee331ead3825573dcbc793ccbe2880",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers in different positions, but the book remains separate and does not appear behind or partially occluded by either flower. The visible changes do not show progress toward the requested placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 68,
+                    "dependencies": [],
+                    "execution_ref": "b01141076fe96c2e7ed7a37ee8070237061d39a67a5a54346b52b01c0cb53949",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "9a360003d8f2d29ee8c3850277cdc64b7eecd46918b67fe37065cd8b4d7c91e1",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved checks fail: the book and flowers remain separate with no overlap or occlusion showing the book behind a flower. The book’s unrelated alteration does not count as progress toward the requested placement."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "In the edited image, the book and flowers are separate and do not overlap; neither flower occludes the book, so the book is not visibly behind a flower.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 59,
+                "dependencies": [],
+                "execution_ref": "55b24120444ec1f90a93922d9f1b1c4943e83baf54ba2e64b8a5868ee2980765",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image shows the book and flowers separated, with no visible overlap or occlusion suggesting the book has moved behind a flower. The book also appears altered, but that does not show progress toward the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 69,
+                "dependencies": [],
+                "execution_ref": "8d28ae666b20c414e62d4c51f48c70a42f1f6cb560b735b5daee4e4cb76c1cfe",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both saved checks fail: the book and flowers remain separate with no overlap or occlusion showing the book behind a flower. The book’s unrelated alteration does not count as progress toward the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 72,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "In the edited image, the book and flowers are separate and do not overlap; neither flower occludes the book, so the book is not visibly behind a flower.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 59,
+                    "dependencies": [],
+                    "execution_ref": "55b24120444ec1f90a93922d9f1b1c4943e83baf54ba2e64b8a5868ee2980765",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image shows the book and flowers separated, with no visible overlap or occlusion suggesting the book has moved behind a flower. The book also appears altered, but that does not show progress toward the requested placement.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 69,
+                    "dependencies": [],
+                    "execution_ref": "8d28ae666b20c414e62d4c51f48c70a42f1f6cb560b735b5daee4e4cb76c1cfe",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "a8faddb54de6e5f81bc81bb0100c1cd085c0a4eb0cf4bafd9ca79cde3665abd8",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "Transport failure in slot 59cc01fdf2c82645f284fac72b7c06f8bdb33b0ce604cccd25e38203f91bbbe0: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "38de52fa1a420816d324f4ffc0a8149b7ee64828795ed27301492c09966e2309",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Transport failure in slot c75801345bd0b652c66970770acc656ac15ef69ac4c5fc9003c390ad67e07e53: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "cedd1a0fa0c33d0ce53fb55b0d0fff273e1dad7775d9212c79b7b71b4aac5da6",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot 59cc01fdf2c82645f284fac72b7c06f8bdb33b0ce604cccd25e38203f91bbbe0: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "38de52fa1a420816d324f4ffc0a8149b7ee64828795ed27301492c09966e2309",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot c75801345bd0b652c66970770acc656ac15ef69ac4c5fc9003c390ad67e07e53: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "cedd1a0fa0c33d0ce53fb55b0d0fff273e1dad7775d9212c79b7b71b4aac5da6",
+                    "failure": "CallFailure"
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "4a4379e33345779de449121c433a56b610cffcdfdc8a6c15b6aefb315c02cd00",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "439e59ec7c9c093406e69623282278681087458efe158cdc22e846bc95f3f828",
+          "semantic_rejection": "The fulfillment rule can misclassify unresolved evidence as absent: it says “Absent (no) if both checks fail” without requiring that the checks establish no requested progress across the relevant evidence. In particular, s1 can fail because the book is not fully behind a flower while s2 fails because progress is not established; those failures do not necessarily prove no progress. The rubric requires insufficient evidence to remain unresolved, so the readout must not treat these failures as sufficient evidence for no."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "91ee57e1355116ef780be3dea11f3b79538e486952a577717bfab3a38294bd31",
+            "findings": [
+              {
+                "kind": "missing_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Move the book behind the flower",
+                "parent_id": "",
+                "question": "Does the edited image still depict the same book and flower from the source, and is the book positioned behind that flower?",
+                "criteria": "Check object identity as well as relative depth: the source has one red rose and a blue-covered book. Do not treat a different flower or a separate book-like object as fulfillment without evidence it is the requested object; if identity is unclear, leave unresolved.",
+                "evidence": "The edited image shows two pale yellow flowers and what appears to be a blue book plus a separate open book. The saved checks discuss separation and occlusion but do not investigate whether the source rose/book remain identifiable or whether the requested objects were replaced.",
+                "rationale": "The instruction concerns moving the source book behind the source flower, not merely arranging any book-like object and any flower. The edited image’s apparent object changes make identity a relevant unresolved part of judging the requested relation; this is not proof that the objects were replaced."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "missing_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Move the book behind the flower",
+            "parent_id": "",
+            "question": "Does the edited image still depict the same book and flower from the source, and is the book positioned behind that flower?",
+            "criteria": "Check object identity as well as relative depth: the source has one red rose and a blue-covered book. Do not treat a different flower or a separate book-like object as fulfillment without evidence it is the requested object; if identity is unclear, leave unresolved.",
+            "evidence": "The edited image shows two pale yellow flowers and what appears to be a blue book plus a separate open book. The saved checks discuss separation and occlusion but do not investigate whether the source rose/book remain identifiable or whether the requested objects were replaced.",
+            "rationale": "The instruction concerns moving the source book behind the source flower, not merely arranging any book-like object and any flower. The edited image’s apparent object changes make identity a relevant unresolved part of judging the requested relation; this is not proof that the objects were replaced.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "91ee57e1355116ef780be3dea11f3b79538e486952a577717bfab3a38294bd31",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-88caae46533b0440f452::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "14f0627cf1f12feca994fa37573fdea18d23168017f6511624b5593830fab3f8"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "4dda5245b28d786ae82d831cc3deabad88fe3a176aa579ab872da7efcaee6ede"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The repeated visual checks support no progress, but the source rose/book identity is not assessed and the fulfillment binding is malformed. Preserve the three-check cap and clarify the existing evidence criteria without treating the reference label as an atomic target.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"In the edited image, is the same blue-covered book from the source visibly behind the same rose from the source, with the rose in front, as shown by relative depth or occlusion?\",\"criteria\":\"Pass if the source book and source rose are identifiable and visible evidence establishes the book behind that rose. Fail if the identifiable objects clearly are not in that relation. Unknown if object identity or their relative depth cannot be determined; do not assume changed-looking objects are replacements.\",\"binding\":\"Compare the edited image with the source image to identify the blue-covered book and rose, then assess only their requested behind/in-front relation using visible placement and occlusion cues. Occlusion is strong evidence but is not mandatory if other clear depth cues establish the relation.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image show genuine progress toward placing the same source book behind the same source rose, even if the requested placement is incomplete?\",\"criteria\":\"Pass only if identifiable source objects show a changed relative placement or other clear visual evidence of movement toward the book-behind-rose relation, without establishing complete fulfillment. Fail if the identifiable objects clearly show no such progress. Unknown if identity or progress cannot be determined. Changes to object appearance or unrelated objects alone are not progress.\",\"binding\":\"Compare source and edited images to track the source blue-covered book and rose. Judge progress toward their requested depth relation, not merely whether either object changed; use visible relative placement and depth cues, without requiring overlap when other clear evidence supports progress.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Apply the original rubric to R1 using both supports. Complete (yes) only if s1 passes. Partial only if s2 passes and s1 does not pass. Absent (no) only if both supports fail and their evidence establishes that the identifiable source objects show no requested progress. Unknown if either support is unknown, or if failures do not establish absence of progress. Do not count unrelated edits as progress; never infer a visual failure from transport failure or missing evidence.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 10822,
+    "completionTokens": 577,
+    "totalTokens": 11399,
+    "latencySeconds": 6.8067498207092285,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The repeated visual checks support no progress, but the source rose/book identity is not assessed and the fulfillment binding is malformed. Preserve the three-check cap and clarify the existing evidence criteria without treating the reference label as an atomic target.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "In the edited image, is the same blue-covered book from the source visibly behind the same rose from the source, with the rose in front, as shown by relative depth or occlusion?",
+              "criteria": "Pass if the source book and source rose are identifiable and visible evidence establishes the book behind that rose. Fail if the identifiable objects clearly are not in that relation. Unknown if object identity or their relative depth cannot be determined; do not assume changed-looking objects are replacements.",
+              "binding": "Compare the edited image with the source image to identify the blue-covered book and rose, then assess only their requested behind/in-front relation using visible placement and occlusion cues. Occlusion is strong evidence but is not mandatory if other clear depth cues establish the relation.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Does the edited image show genuine progress toward placing the same source book behind the same source rose, even if the requested placement is incomplete?",
+              "criteria": "Pass only if identifiable source objects show a changed relative placement or other clear visual evidence of movement toward the book-behind-rose relation, without establishing complete fulfillment. Fail if the identifiable objects clearly show no such progress. Unknown if identity or progress cannot be determined. Changes to object appearance or unrelated objects alone are not progress.",
+              "binding": "Compare source and edited images to track the source blue-covered book and rose. Judge progress toward their requested depth relation, not merely whether either object changed; use visible relative placement and depth cues, without requiring overlap when other clear evidence supports progress.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Apply the original rubric to R1 using both supports. Complete (yes) only if s1 passes. Partial only if s2 passes and s1 does not pass. Absent (no) only if both supports fail and their evidence establishes that the identifiable source objects show no requested progress. Unknown if either support is unknown, or if failures do not establish absence of progress. Do not count unrelated edits as progress; never infer a visual failure from transport failure or missing evidence.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The repeated visual checks support no progress, but the source rose/book identity is not assessed and the fulfillment binding is malformed. Preserve the three-check cap and clarify the existing evidence criteria without treating the reference label as an atomic target.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "In the edited image, is the same blue-covered book from the source visibly behind the same rose from the source, with the rose in front, as shown by relative depth or occlusion?",
+            "criteria": "Pass if the source book and source rose are identifiable and visible evidence establishes the book behind that rose. Fail if the identifiable objects clearly are not in that relation. Unknown if object identity or their relative depth cannot be determined; do not assume changed-looking objects are replacements.",
+            "binding": "Compare the edited image with the source image to identify the blue-covered book and rose, then assess only their requested behind/in-front relation using visible placement and occlusion cues. Occlusion is strong evidence but is not mandatory if other clear depth cues establish the relation.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Does the edited image show genuine progress toward placing the same source book behind the same source rose, even if the requested placement is incomplete?",
+            "criteria": "Pass only if identifiable source objects show a changed relative placement or other clear visual evidence of movement toward the book-behind-rose relation, without establishing complete fulfillment. Fail if the identifiable objects clearly show no such progress. Unknown if identity or progress cannot be determined. Changes to object appearance or unrelated objects alone are not progress.",
+            "binding": "Compare source and edited images to track the source blue-covered book and rose. Judge progress toward their requested depth relation, not merely whether either object changed; use visible relative placement and depth cues, without requiring overlap when other clear evidence supports progress.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Apply the original rubric to R1 using both supports. Complete (yes) only if s1 passes. Partial only if s2 passes and s1 does not pass. Absent (no) only if both supports fail and their evidence establishes that the identifiable source objects show no requested progress. Unknown if either support is unknown, or if failures do not establish absence of progress. Do not count unrelated edits as progress; never infer a visual failure from transport failure or missing evidence.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,1710 @@
+{
+  "execution_ref": "0ee553d2537a768560388bc09caab5860d9e020262e28aee81739808d4f3fd72",
+  "stage": "propose_typed",
+  "slot": "round/11/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the background into a basketball court",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the background into a basketball court",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the background into a basketball court",
+          "source_phrase": "Change the background into a basketball court"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Replace the image background with a basketball court.",
+          "target": "The background is visibly a basketball court, with recognizable court features such as a playing surface and court markings or basketball equipment.",
+          "reference": "The input image and the requested background change in R1.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show a basketball playing surface as part of the background?",
+          "criteria": "Pass if a recognizable basketball playing surface is visible in the background; fail if the background is visibly not a basketball playing surface; unknown if the background or its surface cannot be assessed.",
+          "binding": "Assess the background relative to the input image and requested replacement. A visible playing surface is evidence toward the requested basketball-court background, not by itself proof that the full change is complete.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the background show recognizable basketball-court markings or basketball equipment?",
+          "criteria": "Pass if recognizable court markings or basketball equipment are visible in the background; fail if neither is visible despite an assessable background; unknown if the background cannot be assessed.",
+          "binding": "Look for court markings or basketball equipment in the background as evidence that it is a basketball court. This evidence does not alone establish complete fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Do the visible court markings and playing surface together make the background read as a coherent basketball court, rather than isolated court features against a predominantly featureless backdrop?",
+          "criteria": "Pass if the background’s visible surface and markings together form a recognizable basketball playing area; fail if court features are isolated and the background does not read as a court; unknown if the surface or its relation to the markings cannot be assessed.",
+          "binding": "Assess the background as a whole, not merely the presence of a hoop, ball, or isolated line. A pass supports completion; a fail does not erase basketball-related progress evidenced by other supports. Do not treat ambiguity as a negative.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the image show the background changed into a recognizable basketball court?",
+          "criteria": "Complete only when s1 and s3 support a recognizable basketball-court background; s2 alone, including equipment or isolated markings, establishes at most progress. Partial when s2 or other support evidence shows basketball-related progress but s3 fails to establish a coherent court background. Absent when supports show no requested progress. Unknown when necessary evidence is unresolved; do not infer visual facts beyond the supports.",
+          "binding": "Target: The background is visibly a basketball court, with recognizable court features such as a playing surface and court markings or basketball equipment.. Reference: The input image and the requested background change in R1..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "yes",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The binding is too vague and its ellipsis leaves the decision criterion underspecified. Make the node assess the requested *background change* against the source and edited image, distinguishing a coherent, recognizable basketball-court setting from basketball equipment or a few isolated lines on an otherwise plain background. Preserve partial credit for visible basketball-related progress, and reserve unknown for genuinely unavailable visual evidence. The traces repeatedly find a hoop, balls, and some markings, but disagree on whether the surface and markings establish a court; clarify how to weigh those cues without treating any single feature as mandatory or inventing a stricter completeness requirement. The two unresolved runs stem from transport failures, not negative visual evidence; do not tune the visual criterion to those failures—address retries/dependency handling separately. The remaining partial judgments are consistent visual evidence against a complete court, despite the reference label, which constrains aggregate performance but is not atomic ground truth. Investigate the criterion/evidence mismatch rather than forcing a yes."
+        ],
+        "s3": [
+          "Replace the ellipsis/vague binding with a criterion tied to the requested change and a source-versus-edit comparison: judge whether the edited background reads as a basketball-court setting overall, not merely whether basketball objects or isolated lines appear. The image shows a hoop, balls, and a narrow, mostly plain floor with a few markings against a dark backdrop; traces consistently disagree about whether those cues establish a court. Clarify how to weigh the visible surface, markings, and overall scene impression, without making any one feature mandatory or adding an unstated completeness requirement. Keep partial progress distinct from completion, and use unknown only when visual evidence is genuinely unavailable. The unresolved runs are transport/dependency failures, not negative visual evidence; handle retries and dependency propagation separately rather than changing the visual criterion. Treat the reference label as an aggregate constraint, not proof that this node should pass."
+        ],
+        "s2": [
+          "Replace the ellipsis and vague binding with a source-versus-edit assessment of whether the requested background change is visibly achieved. The edit shows a recognizable hoop, net, basketballs, and court-like floor markings, so do not dismiss these as isolated objects or require every cue to be present; weigh them together with the overall scene. The source is a kitchen, while the edit replaces it with a dark basketball setting and marked floor, which supports a coherent court interpretation. Keep this node’s support role distinct from the aggregate fulfillment decision: visible basketball-related progress is evidence, but this check alone should not certify complete fulfillment. Use unknown only when the visual evidence is unavailable, not for transport errors; handle retries/schema or dependency failures separately. Treat the reference label as an aggregate constraint, not atomic ground truth."
+        ],
+        "s1": [
+          "Replace the ellipsis and vague binding with a source-versus-edit criterion tied to the requested background replacement. Assess the visible scene as a whole: distinguish a recognizable basketball-court setting from basketball equipment alone, while weighing the hoop, balls, and court-like floor markings together rather than requiring any single cue or unstated completeness detail. Here the kitchen is replaced by a dark basketball setting with a hoop, balls, and marked floor, which supports a court interpretation; do not let the plain/dark backdrop alone erase that evidence. Keep this support check distinct from the aggregate completion judgment, and reserve unknown for unavailable visual evidence. The two unknown traces are transport failures, not visual negatives; address retries/error propagation separately. Treat the reference label as an aggregate constraint, not atomic ground truth."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 0.6,
+        "label_consistency": 0.6,
+        "label_distribution": {
+          "unresolved": 2,
+          "partial": 3
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 2,
+              "fail": 3
+            },
+            "consistency": 0.6,
+            "assessment": "assessed",
+            "confidence": [
+              null,
+              null,
+              0.91,
+              0.91,
+              0.91
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 1,
+              "pass": 4
+            },
+            "consistency": 0.8,
+            "assessment": "assessed",
+            "confidence": [
+              null,
+              0.99,
+              0.99,
+              0.99,
+              0.99
+            ]
+          },
+          "s3": {
+            "eligible": 3,
+            "queried": 3,
+            "activation_rate": 0.6,
+            "states": {
+              "fail": 3
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.96,
+              0.98,
+              0.96
+            ]
+          },
+          "fulfillment": {
+            "eligible": 3,
+            "queried": 3,
+            "activation_rate": 0.6,
+            "states": {
+              "partial": 3
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.97,
+              0.98,
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "unknown": 2,
+              "partial": 3
+            },
+            "consistency": 0.6,
+            "coverage": 0.6
+          }
+        },
+        "requirement_consistency": 0.6,
+        "confidence_pass": false,
+        "mean_checks": 3.2,
+        "mean_completion_tokens": 793.4,
+        "traces": [
+          {
+            "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "Transport failure in slot fb00120733048e7de41f649561878ef0a682b22155be6eb5eec921a05389aa34: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "e6e75fbb0b4a0b5932ff1af59b4a57ae88790b4e0ec8720019a8549ee1d966f6",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Transport failure in slot f724899dffb9c9c77ae40f57e40a5accabc75a218b74c0c96c81deb092fbd99c: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "c54d35eb798b9f8c08ae278f5ebdd244556c1bbe5fb9b269f8c9b0c9e084a81a",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s3",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot fb00120733048e7de41f649561878ef0a682b22155be6eb5eec921a05389aa34: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "e6e75fbb0b4a0b5932ff1af59b4a57ae88790b4e0ec8720019a8549ee1d966f6",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot f724899dffb9c9c77ae40f57e40a5accabc75a218b74c0c96c81deb092fbd99c: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "c54d35eb798b9f8c08ae278f5ebdd244556c1bbe5fb9b269f8c9b0c9e084a81a",
+                    "failure": "CallFailure"
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot fb00120733048e7de41f649561878ef0a682b22155be6eb5eec921a05389aa34: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "e6e75fbb0b4a0b5932ff1af59b4a57ae88790b4e0ec8720019a8549ee1d966f6",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot f724899dffb9c9c77ae40f57e40a5accabc75a218b74c0c96c81deb092fbd99c: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "c54d35eb798b9f8c08ae278f5ebdd244556c1bbe5fb9b269f8c9b0c9e084a81a",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "Transport failure in slot fb00120733048e7de41f649561878ef0a682b22155be6eb5eec921a05389aa34: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                        "valid": false,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": null,
+                        "completion_tokens": 1024,
+                        "dependencies": [],
+                        "execution_ref": "e6e75fbb0b4a0b5932ff1af59b4a57ae88790b4e0ec8720019a8549ee1d966f6",
+                        "failure": "CallFailure"
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "unknown",
+                        "evidence": "Transport failure in slot f724899dffb9c9c77ae40f57e40a5accabc75a218b74c0c96c81deb092fbd99c: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                        "valid": false,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": null,
+                        "completion_tokens": 1024,
+                        "dependencies": [],
+                        "execution_ref": "c54d35eb798b9f8c08ae278f5ebdd244556c1bbe5fb9b269f8c9b0c9e084a81a",
+                        "failure": "CallFailure"
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "Retained transport_error slot 30cf97eaf768dcb6f2ab65083bcc0f1d96375e24a8b5c70cde6fa9cdc4fd4a06",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [],
+                "execution_ref": "22fd993a0bbe069a12db9a1810237044a8fb35af88035c122b59c3ae3d4efd2b",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 52,
+                "dependencies": [],
+                "execution_ref": "917015aafa015b86c7feddde0038e43bef60061f38d8d76951a90ca3d2e51d5f",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Retained transport_error slot 30cf97eaf768dcb6f2ab65083bcc0f1d96375e24a8b5c70cde6fa9cdc4fd4a06",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "22fd993a0bbe069a12db9a1810237044a8fb35af88035c122b59c3ae3d4efd2b",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "917015aafa015b86c7feddde0038e43bef60061f38d8d76951a90ca3d2e51d5f",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Inactive conditional branch",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "evidence": "Retained transport_error slot 30cf97eaf768dcb6f2ab65083bcc0f1d96375e24a8b5c70cde6fa9cdc4fd4a06",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [],
+                    "execution_ref": "22fd993a0bbe069a12db9a1810237044a8fb35af88035c122b59c3ae3d4efd2b",
+                    "failure": "CallFailure"
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "917015aafa015b86c7feddde0038e43bef60061f38d8d76951a90ca3d2e51d5f",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "unknown",
+                    "evidence": "Unknown required evidence dependency",
+                    "valid": false,
+                    "eligible": false,
+                    "queried": false,
+                    "confidence": null,
+                    "completion_tokens": 0,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "unknown",
+                        "evidence": "Retained transport_error slot 30cf97eaf768dcb6f2ab65083bcc0f1d96375e24a8b5c70cde6fa9cdc4fd4a06",
+                        "valid": false,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": null,
+                        "completion_tokens": 1024,
+                        "dependencies": [],
+                        "execution_ref": "22fd993a0bbe069a12db9a1810237044a8fb35af88035c122b59c3ae3d4efd2b",
+                        "failure": "CallFailure"
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 52,
+                        "dependencies": [],
+                        "execution_ref": "917015aafa015b86c7feddde0038e43bef60061f38d8d76951a90ca3d2e51d5f",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Inactive conditional branch"
+              }
+            ]
+          },
+          {
+            "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Basketball-related elements are present, including a hoop, balls, and some court markings, showing progress. However, the background does not form a coherent, recognizable basketball court: the visible surface and sparse lines are insufficient, and much of the background is a featureless dark wall."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other clear evidence of a basketball playing surface.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 60,
+                "dependencies": [],
+                "execution_ref": "e8a04b0b291cab3123c04531f67a4b547b6c79da28f21bc6adca8b01dadf87d1",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 52,
+                "dependencies": [],
+                "execution_ref": "b78d51798eb4b2e543604b5e92d6ffda580223b1de15cc668c11f8aba6834196",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "fail",
+                "evidence": "The edited background has a visible playing surface and a few court lines, but they do not form a coherent, recognizable basketball court; most of the background is a featureless dark wall. The hoop and balls show basketball-related progress, but the surface and markings together do not meet this check.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 90,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other clear evidence of a basketball playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "e8a04b0b291cab3123c04531f67a4b547b6c79da28f21bc6adca8b01dadf87d1",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "b78d51798eb4b2e543604b5e92d6ffda580223b1de15cc668c11f8aba6834196",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "1bc8401fe422ddf6019da20670faec2cc6771e0eed442fca1177e0e3a032a32d",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "Basketball-related elements are present, including a hoop, balls, and some court markings, showing progress. However, the background does not form a coherent, recognizable basketball court: the visible surface and sparse lines are insufficient, and much of the background is a featureless dark wall.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 91,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other clear evidence of a basketball playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "e8a04b0b291cab3123c04531f67a4b547b6c79da28f21bc6adca8b01dadf87d1",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "b78d51798eb4b2e543604b5e92d6ffda580223b1de15cc668c11f8aba6834196",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "fail",
+                    "evidence": "The edited background has a visible playing surface and a few court lines, but they do not form a coherent, recognizable basketball court; most of the background is a featureless dark wall. The hoop and balls show basketball-related progress, but the surface and markings together do not meet this check.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 90,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "fail",
+                        "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other clear evidence of a basketball playing surface.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 60,
+                        "dependencies": [],
+                        "execution_ref": "e8a04b0b291cab3123c04531f67a4b547b6c79da28f21bc6adca8b01dadf87d1",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 52,
+                        "dependencies": [],
+                        "execution_ref": "b78d51798eb4b2e543604b5e92d6ffda580223b1de15cc668c11f8aba6834196",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "1bc8401fe422ddf6019da20670faec2cc6771e0eed442fca1177e0e3a032a32d",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "acb562ea7a747452a1395ff30a4dcfe7b38f38f906b4ee5a04042b9702c19501",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Basketball-related progress is present: the background includes a hoop, basketballs, and court markings. However, the playing surface and markings do not form a coherent basketball court, and most of the background is a dark, featureless wall, so the requested background change is incomplete."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The background shows a basketball hoop and balls, but the visible floor is a plain, brightly lit surface without recognizable basketball-court markings or other clear features of a playing surface.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 61,
+                "dependencies": [],
+                "execution_ref": "c88d0d23cab23246e4edb447c8aafd1e7529f151f934eb70a5eab03e8f4a2369",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball equipment and markings.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 52,
+                "dependencies": [],
+                "execution_ref": "5d89ddd4c71c14ede3910e88a6659b3833c2a8ca94306713d953237e78fa4104",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "fail",
+                "evidence": "The background has a hoop, basketballs, and visible court lines, but the playing surface and markings do not form a coherent basketball court; most of the background is a dark, featureless wall, with only a narrow strip of floor visible.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 81,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The background shows a basketball hoop and balls, but the visible floor is a plain, brightly lit surface without recognizable basketball-court markings or other clear features of a playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "c88d0d23cab23246e4edb447c8aafd1e7529f151f934eb70a5eab03e8f4a2369",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball equipment and markings.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "5d89ddd4c71c14ede3910e88a6659b3833c2a8ca94306713d953237e78fa4104",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "ee9272020d5bba80856e32b6a93be1921c9ae14277e436b8aff7e288c80fb3f7",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "Basketball-related progress is present: the background includes a hoop, basketballs, and court markings. However, the playing surface and markings do not form a coherent basketball court, and most of the background is a dark, featureless wall, so the requested background change is incomplete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 91,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The background shows a basketball hoop and balls, but the visible floor is a plain, brightly lit surface without recognizable basketball-court markings or other clear features of a playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "c88d0d23cab23246e4edb447c8aafd1e7529f151f934eb70a5eab03e8f4a2369",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball equipment and markings.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "5d89ddd4c71c14ede3910e88a6659b3833c2a8ca94306713d953237e78fa4104",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "fail",
+                    "evidence": "The background has a hoop, basketballs, and visible court lines, but the playing surface and markings do not form a coherent basketball court; most of the background is a dark, featureless wall, with only a narrow strip of floor visible.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 81,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "fail",
+                        "evidence": "The background shows a basketball hoop and balls, but the visible floor is a plain, brightly lit surface without recognizable basketball-court markings or other clear features of a playing surface.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 61,
+                        "dependencies": [],
+                        "execution_ref": "c88d0d23cab23246e4edb447c8aafd1e7529f151f934eb70a5eab03e8f4a2369",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball equipment and markings.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 52,
+                        "dependencies": [],
+                        "execution_ref": "5d89ddd4c71c14ede3910e88a6659b3833c2a8ca94306713d953237e78fa4104",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "ee9272020d5bba80856e32b6a93be1921c9ae14277e436b8aff7e288c80fb3f7",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "971d06a50fc505859717fda2a51a92e78f6847b449a84e87c1338b08ab86cdd0",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Basketball-related elements are present, including a hoop, balls, and some court markings, showing progress. However, the visible playing surface is mostly plain and does not read as a coherent basketball-court background, so the requested change is incomplete."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other features establishing it as a basketball playing surface.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 61,
+                "dependencies": [],
+                "execution_ref": "3d3fd7ee43c6d4da596f669478d90e829343fd62f04878e35e577099288f206c",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 52,
+                "dependencies": [],
+                "execution_ref": "bd29baf61f5380c452bf6b297ba816b7ec25447b1287335f9e96a948d1601e21",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "fail",
+                "evidence": "The background has a hoop and basketballs, but the visible playing surface is mostly plain, with only a few isolated lines. Together they do not read as a coherent basketball court.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 68,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other features establishing it as a basketball playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "3d3fd7ee43c6d4da596f669478d90e829343fd62f04878e35e577099288f206c",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "bd29baf61f5380c452bf6b297ba816b7ec25447b1287335f9e96a948d1601e21",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "196c1460508ff586af1b04deb66969df328aa77e656d4a7a8b73b897ad34ca39",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "Basketball-related elements are present, including a hoop, balls, and some court markings, showing progress. However, the visible playing surface is mostly plain and does not read as a coherent basketball-court background, so the requested change is incomplete.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 84,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other features establishing it as a basketball playing surface.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "3d3fd7ee43c6d4da596f669478d90e829343fd62f04878e35e577099288f206c",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 52,
+                    "dependencies": [],
+                    "execution_ref": "bd29baf61f5380c452bf6b297ba816b7ec25447b1287335f9e96a948d1601e21",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "fail",
+                    "evidence": "The background has a hoop and basketballs, but the visible playing surface is mostly plain, with only a few isolated lines. Together they do not read as a coherent basketball court.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 68,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "fail",
+                        "evidence": "The edited background shows a basketball hoop and balls, but the visible floor is a plain surface without recognizable basketball-court markings or other features establishing it as a basketball playing surface.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.91,
+                        "completion_tokens": 61,
+                        "dependencies": [],
+                        "execution_ref": "3d3fd7ee43c6d4da596f669478d90e829343fd62f04878e35e577099288f206c",
+                        "failure": null
+                      },
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited background visibly includes a basketball hoop and net, basketballs, and court markings, which are recognizable basketball-court elements.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 52,
+                        "dependencies": [],
+                        "execution_ref": "bd29baf61f5380c452bf6b297ba816b7ec25447b1287335f9e96a948d1601e21",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "196c1460508ff586af1b04deb66969df328aa77e656d4a7a8b73b897ad34ca39",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "d40e75748f109ef4a5b48bced6229b26d1bd1c0aebc660c282b582f606346ead",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s1",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 1,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Add a nested check to distinguish genuine basketball-court line layout from the broad equipment/markings evidence. This investigates the visual ambiguity without treating the reference label as truth; existing supports already capture surface and overall coherence, while transport failures remain unknown.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "s3",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Are the visible court markings laid out across the playing surface as recognizable basketball-court lines, rather than being sparse or isolated lines?",
+                "criteria": "Pass if visible lines form recognizable basketball-court markings on the playing surface; fail if lines are only sparse or isolated and do not establish a court layout; unknown if the surface or lines cannot be assessed.",
+                "binding": "Inspect the edited background and distinguish court-line layout from basketball equipment or isolated marks. A pass is evidence toward a court background, not by itself proof of complete fulfillment; a fail does not erase other basketball-related progress.",
+                "readout_criteria": "Use all support observations. Complete only if the surface and court markings together establish a coherent, recognizable basketball-court background. Basketball equipment or isolated lines alone show at most progress. Partial if basketball-related progress is evidenced but the background is not established as a coherent court; absent if no requested progress is evidenced; unknown when necessary evidence is unresolved. Do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 2,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Add a nested, focused check to distinguish meaningful basketball-court line layout from the broad equipment-or-markings evidence. This investigates the visual ambiguity without treating the reference label as truth; the existing supports and readout retain the distinction between progress and a coherent court background.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "s3",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Are the visible court markings laid out across the playing surface as recognizable basketball-court lines, rather than being sparse or isolated lines?",
+                "criteria": "Pass if visible lines form recognizable basketball-court markings on the playing surface; fail if they are sparse or isolated and do not establish a court layout; unknown if the surface or lines cannot be assessed.",
+                "binding": "Inspect the edited background for the layout of court lines on the playing surface, not merely basketball equipment or isolated marks. A pass supports the court-background assessment but does not alone establish complete fulfillment; a fail does not erase other basketball-related progress.",
+                "readout_criteria": "Use all support observations. Complete only when the playing surface and markings together establish a coherent, recognizable basketball-court background. Basketball equipment or isolated lines alone show at most progress. Partial when basketball-related progress is evidenced but a coherent court background is not established; absent when no requested progress is evidenced; unknown when necessary evidence is unresolved. Do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        },
+        {
+          "program_ref": "21e489803c18a72a4145063eb746d7df357d6837d9451c7524391753ec6404de",
+          "semantic_rejection": "The fulfillment readout is not faithful to the saved outcome target: the target allows recognizable court features such as a playing surface and court markings or basketball equipment, but the readout requires both surface and markings and treats equipment alone as at most progress. This adds a mandatory technique and narrows the requested criterion. Also, the readout says absent when no progress is evidenced, although the rubric requires unresolved when evidence is insufficient; its unknown clause does not clearly preserve that distinction."
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot dbce353c8bf1bd46e6bca9f81b531b00f1f8cd938134cea00742cd2d1d9a6e07: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 4,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Add a nested visual check for whether the markings and visible floor form a broad, recognizable playing area. This investigates the gap between basketball-related elements and a court background without making the reference label an atomic truth. Keep the existing readout composition, which already distinguishes progress from completion and preserves unresolved evidence.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "s3",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Do the visible court markings belong to a sufficiently broad, recognizable basketball playing area, rather than being isolated lines on a narrow strip of floor?",
+                "criteria": "Pass if the visible surface and markings together show a broad, recognizable basketball playing area; fail if markings are sparse or confined to a narrow strip that does not read as a court; unknown if the surface or its extent cannot be assessed.",
+                "binding": "Assess the extent and layout of the visible playing surface and markings together. Do not count basketball equipment alone as proof of a court, and do not treat a fail as erasing other basketball-related progress.",
+                "readout_criteria": "",
+                "evidence_from": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "Insertion needs explicit readout criteria",
+          "accepted": false
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 5,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Add a focused nested check to resolve whether the visible lines are court markings on a recognizable playing surface, rather than relying on equipment or isolated lines. This investigates the visual ambiguity without treating the reference label as an atomic answer; the readout preserves partial progress and unresolved evidence.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "s3",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Do the visible court markings belong to a recognizable basketball playing surface, rather than merely appearing as isolated lines on a plain floor?",
+                "criteria": "Pass if the edited background shows a recognizable basketball playing surface with markings that read as part of that court; fail if the visible lines are isolated or the surface does not read as a basketball court; unknown if the surface or markings cannot be assessed.",
+                "binding": "Inspect the edited background directly, using the source image as context for the requested background change. Assess the floor and its markings together; a hoop or basketballs alone do not establish a court surface. This check is evidence about the court setting, not by itself a completion judgment.",
+                "readout_criteria": "Use all support observations. Complete only when the evidence establishes that the background is a recognizable basketball court, consistent with the target's recognizable court features; do not require any single feature beyond the target. Partial when basketball-related background progress is evidenced but a recognizable court background is not established. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unavailable or unresolved; do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 6,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Investigate the distinct unresolved issue of how much of the requested background was replaced. Existing traces consistently show basketball props and limited floor lines but disagree or remain unresolved about the playing surface; the new nested check directly assesses the visible background extent without treating the reference label as atomic truth. Preserve the distinction between partial progress and completion, and keep unresolved evidence unresolved.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s3",
+                "before": "fulfillment",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Does the edited background replace the original kitchen with a basketball-court setting across the visible background area, rather than leaving substantial non-court backdrop?",
+                "criteria": "Pass if the visible background around and behind the retained subject reads broadly as a basketball-court environment; fail if substantial visible background remains a plain or otherwise non-court surface; unknown if the extent or setting cannot be assessed.",
+                "binding": "Compare the edited background with the source context and assess the visible area around and behind the subject. Basketball equipment or a few court lines alone do not establish broad background replacement. A fail does not erase other basketball-related progress; use unknown when the extent cannot be judged.",
+                "readout_criteria": "Use all support observations. Complete only when the evidence establishes a recognizable basketball-court background consistent with the target; do not require any single feature beyond the target. Partial when basketball-related background progress is evidenced but the background is not established as a recognizable court across its visible area. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unavailable or unresolved; do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot 17f6e12d01ae2c597f37600046cc3090fe7f666a3619ce6038eb3ea9abccdbc7: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "program_ref": "cf905744e965a08c169e21c76c90feacc92d44248a1929cd20633ef29ad5d6e6",
+          "semantic_rejection": "The support checks overlap and contradict one another in scope: s1 and s3 both assess whether the background reads as a coherent court across a substantial area, while s2 treats either markings or equipment as progress. The fulfillment rule then requires both s1 and s3 for completion, duplicating the same extent condition rather than composing distinct evidence. More importantly, s1 can fail because the court occupies too little of the background, yet s3 can pass on a recognizable playing area without requiring substantial coverage; the readout does not resolve that conflict and could mark completion despite s1’s known incompleteness. The requested background replacement is otherwise represented, but the composition rules do not faithfully distinguish complete fulfillment from partial progress."
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot 45f7ad5ee0cdc17a8141fc9992dc87a1b8a18e3e10eca1f70f3ee9eb3dba5d70: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 9,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "Add a nested check that directly investigates whether the visible background has become a court setting across its area, distinct from detecting court-related objects or lines. Existing traces show those elements but repeatedly question whether the background reads as a coherent court. Preserve partial progress and unresolved evidence without using the reference label as an atomic answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s3",
+                "before": "fulfillment",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Does the visible background as a whole read as a recognizable basketball-court setting, rather than basketball equipment and a few lines against a predominantly non-court backdrop?",
+                "criteria": "Pass if the visible background, considered as a whole, reads as a basketball court; fail if basketball-related objects or markings are present but the background remains predominantly non-court and does not read as a court; unknown if the background cannot be assessed.",
+                "binding": "Assess the edited background in context, distinguishing the overall setting from the presence of a hoop, balls, or isolated lines. Do not require any single court feature beyond the requested recognizable basketball-court background. A fail does not erase evidence of basketball-related progress; use unknown only when the visual evidence cannot be assessed.",
+                "readout_criteria": "Use all support observations. Complete when the evidence establishes that the background is a recognizable basketball court, consistent with the target; no single feature is mandatory. Partial when basketball-related progress is evidenced but the background is not established as a recognizable court. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unresolved or insufficient; do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot b4629483e5f3c228541d779ccba01b8c12168fede10de9786614ed21eaa9458e: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "parent": "f3d27e2c533a2dde9d68362b861ec28cfbde52913f712942f005e95b932f345a",
+          "round": 10,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "The repeated traces show basketball equipment and some floor lines, but the existing surface/coherence checks repeatedly fail or become unresolved. A distinct nested check can investigate whether the visible floor markings form recognizable court geometry, without treating the reference label as an atomic answer or making that feature alone sufficient for completion. The readout must still allow other target-consistent court features and preserve unresolved evidence.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "s3",
+                "new_check_id": "s4",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Do the visible floor markings form recognizable basketball-court geometry, such as a boundary or key/arc, rather than isolated lines?",
+                "criteria": "Pass if the visible floor markings form recognizable basketball-court geometry; fail if assessable markings are only isolated or do not read as court geometry; unknown if the floor or markings cannot be assessed.",
+                "binding": "Inspect the edited background and assess the layout of floor markings, not merely the presence of a hoop or basketballs. This is evidence about the court setting, not by itself proof that the requested background change is complete. A fail does not erase other basketball-related progress.",
+                "readout_criteria": "Use all support observations. Complete only when the evidence establishes a recognizable basketball-court background consistent with the target; no single feature is mandatory. Partial when basketball-related background progress is evidenced but a recognizable court background is not established. Absent only when evidence establishes no requested progress. Unknown when necessary evidence is unresolved or insufficient; do not infer visual facts beyond the supports.",
+                "evidence_from": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "fulfillment exceeds depth four",
+          "accepted": false,
+          "validation": {
+            "code": "depth_limit",
+            "message": "fulfillment exceeds depth four",
+            "node_id": "fulfillment",
+            "dependency_id": "",
+            "relationship": ""
+          }
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "9de9dbc4c4289990a81baef465d676c68dce045e2e1372eaae2bf714c0aaa5ce",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Change the background into a basketball court",
+                "parent_id": "s2",
+                "question": "Do the visible court markings belong to a sufficiently extensive, connected playing surface that reads as a basketball court across the background, rather than a few lines on a narrow floor strip?",
+                "criteria": "Assess the extent and spatial continuity of the court surface and markings in the edited background. Pass if they form a recognizable playing area; fail if the court-like features are confined to sparse lines or a limited strip while most of the background remains non-court. Do not treat hoop or ball presence alone as proof of a court.",
+                "evidence": "The edited image shows a hoop and basketballs, with a narrow bright floor strip and a few lines at the bottom; most of the background is a dark, featureless wall. Saved observations likewise report sparse lines and an incoherent court, though these are claims to verify against the image.",
+                "rationale": "The existing s2 pass establishes basketball-related equipment or markings, but does not establish their extent or whether the background as a whole has been changed into a court. This focused nested check investigates that gap without treating transport failures as visual evidence."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Change the background into a basketball court",
+            "parent_id": "s2",
+            "question": "Do the visible court markings belong to a sufficiently extensive, connected playing surface that reads as a basketball court across the background, rather than a few lines on a narrow floor strip?",
+            "criteria": "Assess the extent and spatial continuity of the court surface and markings in the edited background. Pass if they form a recognizable playing area; fail if the court-like features are confined to sparse lines or a limited strip while most of the background remains non-court. Do not treat hoop or ball presence alone as proof of a court.",
+            "evidence": "The edited image shows a hoop and basketballs, with a narrow bright floor strip and a few lines at the bottom; most of the background is a dark, featureless wall. Saved observations likewise report sparse lines and an incoherent court, though these are claims to verify against the image.",
+            "rationale": "The existing s2 pass establishes basketball-related equipment or markings, but does not establish their extent or whether the background as a whole has been changed into a court. This focused nested check investigates that gap without treating transport failures as visual evidence.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "9de9dbc4c4289990a81baef465d676c68dce045e2e1372eaae2bf714c0aaa5ce",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "nested-required/aurora-task-65581617ad341fa398cb::magic_reproduce_epoch=47-step=12999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "c9b47a86f5c6559cf37bcbef035951742232314c315566de77b9ccb33a568b8d"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "78c298835dea80033b8471375d3d3ff8f769a81f4662b5de19b2e7d078dddb6a"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"Visual discovery and repeated traces identify a distinct gap: basketball equipment/markings are detected, but the extent and continuity of the playing surface are not. Add a nested check to investigate that gap; it does not make the reference label an atomic answer or let equipment alone establish completion.\",\"actions\":[{\"operation\":\"insert_support\",\"after\":\"s2\",\"before\":\"s3\",\"new_check_id\":\"s4\",\"target_id\":\"\",\"requirement_id\":\"R1\",\"question\":\"Do the visible court markings belong to a sufficiently extensive, connected playing surface that reads as a basketball court across the background, rather than a few lines on a narrow floor strip?\",\"criteria\":\"Pass if the visible surface and markings together form a recognizable basketball playing area across a meaningful portion of the background; fail if court-like features are confined to sparse lines or a limited strip while the background does not read as a court; unknown if the surface, markings, or their extent cannot be assessed.\",\"binding\":\"Assess the edited background in context of the source and requested background replacement. Judge the extent and spatial continuity of the surface and markings together; a hoop or basketballs alone do not establish a court. This support is evidence toward fulfillment, not a completion decision, and a fail does not erase other basketball-related progress.\",\"readout_criteria\":\"Use all support observations. Complete only when the evidence establishes a recognizable basketball-court background consistent with the target; no single feature is mandatory. Partial when basketball-related background progress is evidenced but a recognizable court background is not established. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unavailable, unresolved, or insufficient; do not infer visual facts beyond the supports.\",\"evidence_from\":[\"s1\",\"s2\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 18407,
+    "completionTokens": 373,
+    "totalTokens": 18780,
+    "latencySeconds": 5.976579189300537,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "Visual discovery and repeated traces identify a distinct gap: basketball equipment/markings are detected, but the extent and continuity of the playing surface are not. Add a nested check to investigate that gap; it does not make the reference label an atomic answer or let equipment alone establish completion.",
+          "actions": [
+            {
+              "operation": "insert_support",
+              "after": "s2",
+              "before": "s3",
+              "new_check_id": "s4",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "Do the visible court markings belong to a sufficiently extensive, connected playing surface that reads as a basketball court across the background, rather than a few lines on a narrow floor strip?",
+              "criteria": "Pass if the visible surface and markings together form a recognizable basketball playing area across a meaningful portion of the background; fail if court-like features are confined to sparse lines or a limited strip while the background does not read as a court; unknown if the surface, markings, or their extent cannot be assessed.",
+              "binding": "Assess the edited background in context of the source and requested background replacement. Judge the extent and spatial continuity of the surface and markings together; a hoop or basketballs alone do not establish a court. This support is evidence toward fulfillment, not a completion decision, and a fail does not erase other basketball-related progress.",
+              "readout_criteria": "Use all support observations. Complete only when the evidence establishes a recognizable basketball-court background consistent with the target; no single feature is mandatory. Partial when basketball-related background progress is evidenced but a recognizable court background is not established. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unavailable, unresolved, or insufficient; do not infer visual facts beyond the supports.",
+              "evidence_from": [
+                "s1",
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "Visual discovery and repeated traces identify a distinct gap: basketball equipment/markings are detected, but the extent and continuity of the playing surface are not. Add a nested check to investigate that gap; it does not make the reference label an atomic answer or let equipment alone establish completion.",
+        "actions": [
+          {
+            "operation": "insert_support",
+            "after": "s2",
+            "before": "s3",
+            "new_check_id": "s4",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "Do the visible court markings belong to a sufficiently extensive, connected playing surface that reads as a basketball court across the background, rather than a few lines on a narrow floor strip?",
+            "criteria": "Pass if the visible surface and markings together form a recognizable basketball playing area across a meaningful portion of the background; fail if court-like features are confined to sparse lines or a limited strip while the background does not read as a court; unknown if the surface, markings, or their extent cannot be assessed.",
+            "binding": "Assess the edited background in context of the source and requested background replacement. Judge the extent and spatial continuity of the surface and markings together; a hoop or basketballs alone do not establish a court. This support is evidence toward fulfillment, not a completion decision, and a fail does not erase other basketball-related progress.",
+            "readout_criteria": "Use all support observations. Complete only when the evidence establishes a recognizable basketball-court background consistent with the target; no single feature is mandatory. Partial when basketball-related background progress is evidenced but a recognizable court background is not established. Absent only when evidence establishes that no requested background progress occurred. Unknown when necessary evidence is unavailable, unresolved, or insufficient; do not infer visual facts beyond the supports.",
+            "evidence_from": [
+              "s1",
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

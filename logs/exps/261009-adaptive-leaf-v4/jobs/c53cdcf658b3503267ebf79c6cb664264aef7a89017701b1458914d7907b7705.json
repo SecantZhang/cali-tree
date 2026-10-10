@@ -1,0 +1,466 @@
+{
+  "execution_ref": "c53cdcf658b3503267ebf79c6cb664264aef7a89017701b1458914d7907b7705",
+  "stage": "propose_v4",
+  "slot": "round/1/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "In the edited image, can the source-image paper and cup be identified, and is that paper visibly stuffed inside that cup?",
+          "criteria": "Pass only if the edited image provides enough visual evidence to identify the same paper and cup shown in the source and shows the paper placed inside the cup with evidence it has been stuffed into it. Fail only if both objects are identifiable and the paper is visibly outside the cup or merely on its rim. Unknown if either object's identity, or their placement, cannot be established.",
+          "binding": "Anchor “the paper” and “the cup” to the objects in the source image. Do not treat a visually different-looking item or object in the edited image as the same object without sufficient evidence.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "In the edited image, can the source-image paper and cup be identified, and is there visible progress toward stuffing that paper into that cup without the paper already being stuffed inside?",
+          "criteria": "Pass only if the edited image provides enough evidence to identify the same paper and cup shown in the source, shows movement or placement advancing the paper toward or into the cup, and s1 has not established completion. Fail only if both objects are identifiable and there is visibly no progress toward the requested placement, or s1 establishes completion. Unknown if either object's identity or the relevant progress relation cannot be established.",
+          "binding": "Progress counts only when it advances stuffing the source-image paper into the source-image cup. Do not infer absence of progress from uncertain object identity or proximity.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Paper is stuffed into the cup.",
+          "criteria": "Return yes when support 1 passes: the requested outcome is visibly complete. Return no only when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing some progress without completion. Return unknown whenever the evidence needed to distinguish these alternatives is unresolved. A skipped support is unobserved, not automatically inapplicable; on any skipped path, return a decision only if the remaining evidence establishes that same outcome under the rubric, otherwise return unknown. Supporting evidence earns no completion credit independently, and unrelated edits do not count as progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s outcome logic is appropriately conservative, but its evidence binding is too brittle: it treats the edited objects as unidentifiable rather than assessing whether the blue printed item could be the source paper and whether the reddish object could be the cup. Improve the supporting checks to compare source and edited objects using visible shape, material, color, and scene context while allowing appearance changes; separately assess completion (paper visibly inside the cup) and partial progress (a plausible attempt to insert the same paper into the same cup). Here, the edit shows a hand holding a blue printed item against or near a reddish rounded object, with no clear evidence that the paper is inside a cup or that either object matches the source. That supports no progress only if the checks can establish the objects and rule out relevant progress; otherwise retain unknown. Do not convert high confidence in unresolved identity into negative evidence. Keep the existing distinction between complete, partial, no progress, and unresolved, and investigate whether the checks’ identity-matching criterion is causing valid visual evidence to be discarded. No transport, schema, or dependency failure is indicated."
+        ],
+        "s2": [
+          "The binding is too restrictive when it requires confidently identifying the exact source objects before evaluating progress. Make the supporting check compare plausible object correspondence using visible shape, material, color, and scene context while allowing substantial appearance changes; then assess the action relation separately. In these images, the edited blue printed item may be the paper and the reddish rounded object may be the cup, but neither match nor insertion is clear. Do not treat high-confidence uncertainty as evidence of no progress: return unknown unless the objects can be matched and relevant progress ruled out. Preserve the distinction between completion, partial progress, no progress, and unresolved; no transport, schema, or dependency failure is indicated."
+        ],
+        "s1": [
+          "The binding and criteria are overly strict about matching the exact source objects, so the check returns unknown instead of evaluating visible evidence. Compare plausible correspondence using shape, material, color, and scene context while allowing appearance changes; then assess object identity and the action relation separately. Here, the source has a white sheet and blue cup, while the edit shows a hand holding a blue printed sheet against a reddish rounded object. The sheet could be the paper, but the object is not clearly identifiable as the cup and the paper is not visibly inside it. Do not infer no progress from uncertain identity, or treat high confidence in uncertainty as negative evidence. Preserve the distinction between complete, partial, no progress, and unresolved; return no only when the relevant objects can be matched and the image rules out progress, otherwise retain unknown. The reference label constrains the aggregate, not the atomic check. No transport, schema, or dependency failure is indicated."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 0.0,
+        "label_consistency": 0.0,
+        "label_distribution": {
+          "unresolved": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 1
+            },
+            "consistency": 0.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 1
+            },
+            "consistency": 0.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 1
+            },
+            "consistency": 0.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "unknown": 1
+            },
+            "consistency": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "requirement_consistency": 0.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 220.0,
+        "traces": [
+          {
+            "program_ref": "ea872a3922328b7c5ff614deb6068b84102dcb784e18f950a7b668dd335a9f90",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both supporting checks are unresolved: neither establishes that the paper is stuffed into the cup nor whether any progress toward that outcome occurred."
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "unknown",
+                "evidence": "The source shows a white paper-like item and a blue cup, but the edited image shows a blue printed item and a reddish object. There is not enough visual evidence to identify these as the same paper and cup from the source or establish that the paper was stuffed inside the cup.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 82,
+                "dependencies": [],
+                "event": "valid_uncertainty",
+                "failure": null,
+                "execution_ref": "259f3dda367688b76ab2d8fb721ab9a091b365d2611b825a5ff59f938127505a"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source shows a white paper and a blue cup, but the edited image shows a hand holding a blue printed item near a reddish object. The source paper and cup cannot be reliably identified in the edited image, so progress toward stuffing the paper into the cup cannot be established.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 81,
+                "dependencies": [],
+                "event": "valid_uncertainty",
+                "failure": null,
+                "execution_ref": "5548ed42a95c98ca838215d85bbc04bf0e86f890b309faee7c61078636ae0c59"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Both supporting checks are unresolved: neither establishes that the paper is stuffed into the cup nor whether any progress toward that outcome occurred.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 57,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "unknown",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The source shows a white paper-like item and a blue cup, but the edited image shows a blue printed item and a reddish object. There is not enough visual evidence to identify these as the same paper and cup from the source or establish that the paper was stuffed inside the cup.",
+                    "confidence": 0.98
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The source shows a white paper and a blue cup, but the edited image shows a hand holding a blue printed item near a reddish object. The source paper and cup cannot be reliably identified in the edited image, so progress toward stuffing the paper into the cup cannot be established.",
+                    "confidence": 0.98
+                  }
+                ],
+                "event": "valid_uncertainty",
+                "failure": null,
+                "execution_ref": "bbfdf12476f521872ee9243d244994f794cea336ba8aef3b2934698758ea7370"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "unknown",
+                "event": "valid_uncertainty",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": null,
+                "eligible": true,
+                "state": "unknown",
+                "event": "valid_uncertainty",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "unknown",
+                "event": "valid_uncertainty",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "50815047cc6077783c5276ab3d1f567dfb8e46ecec590c123231e146402e4eb4",
+            "findings": [
+              {
+                "kind": "missing_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Stuffing the paper into the cup",
+                "parent_id": "",
+                "question": "Does the edited image show the source paper being folded, crumpled, or otherwise compressed as it is inserted into the source cup, rather than merely held near another object?",
+                "criteria": "Assess visible evidence of the paper entering and being compressed within the cup; do not infer stuffing from proximity or a hand holding paper alone.",
+                "evidence": "The edited image shows a hand holding a blue printed sheet in front of a reddish rounded object. The source shows a white sheet and a blue cup; the edited image does not visibly establish that the sheet is entering a cup or being compressed inside it.",
+                "rationale": "The existing checks focus on identifying the source objects and whether the paper is inside or progressing toward the cup. A focused check for the defining stuffing action could help distinguish actual insertion from nearby handling, while remaining unresolved if object identity cannot be established."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "missing_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Stuffing the paper into the cup",
+            "parent_id": "",
+            "question": "Does the edited image show the source paper being folded, crumpled, or otherwise compressed as it is inserted into the source cup, rather than merely held near another object?",
+            "criteria": "Assess visible evidence of the paper entering and being compressed within the cup; do not infer stuffing from proximity or a hand holding paper alone.",
+            "evidence": "The edited image shows a hand holding a blue printed sheet in front of a reddish rounded object. The source shows a white sheet and a blue cup; the edited image does not visibly establish that the sheet is entering a cup or being compressed inside it.",
+            "rationale": "The existing checks focus on identifying the source objects and whether the paper is inside or progressing toward the cup. A focused check for the defining stuffing action could help distinguish actual insertion from nearby handling, while remaining unresolved if object identity cannot be established.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "50815047cc6077783c5276ab3d1f567dfb8e46ecec590c123231e146402e4eb4",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "25b5a44c2b8a44936cb9f27ed1800bc9c4afc490510157002d52e25a27191f5d",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "Shared seed audit unavailable; Audit rejection needs an exact original clause and concrete counterexample"
+          }
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_then_sol/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "db4f4c94fb6291dd275ffcc4ebef3e8e262594c66e1cf1407ea63209693504f6"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "be3df08b51fb88f0f543940723d8b01c85262c89d0682b9f964e2fa6e3a7f9ce"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v2\",\"reason\":\"The checks conflate correspondence with the action judgment, so plausible but uncertain matches force both completion and progress to unknown. Separate a source-to-edit correspondence assessment from an independent endpoint inspection; do not turn uncertain correspondence into evidence of no progress. The edited image does not clearly show insertion, so the repair preserves unresolved outcomes where correspondence or action evidence is insufficient.\",\"actions\":[{\"operation\":\"replace_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image visibly show paper inside a cup, with evidence that it has been stuffed into it?\",\"criteria\":\"Pass only when the edited image visibly shows paper inside a cup and its placement indicates stuffing rather than merely resting on the rim. Fail only when the relevant paper and cup are identifiable in the edited image and the paper is visibly outside or merely on the rim. Otherwise return unknown. Judge the edited endpoint directly; do not require proving that the objects match the source before assessing what is visible.\",\"binding\":\"The requested result is paper stuffed into a cup. Compare plausible source-to-edit correspondence using visible shape, material, color, and scene context while allowing appearance changes, but do not treat uncertain correspondence as proof of absence or failure.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]},{\"operation\":\"replace_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image show visible progress toward putting paper into a cup, short of paper already being stuffed inside?\",\"criteria\":\"Pass only if the edited image shows an action or placement that advances paper into a cup, and s1 has not established completion. Fail only if the relevant paper and cup are identifiable and the image shows no progress toward insertion, or s1 establishes completion. Return unknown if correspondence or the action relation cannot be established. Compare plausible correspondence using shape, material, color, and scene context while allowing appearance changes; proximity or a hand holding paper alone is not progress.\",\"binding\":\"Progress must concern the requested paper-to-cup insertion. Do not require exact appearance matching, and do not infer no progress from uncertain identity. A plausible match is not by itself evidence of progress.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4886,
+    "completionTokens": 522,
+    "totalTokens": 5408,
+    "latencySeconds": 5.44328498840332,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v2",
+          "reason": "The checks conflate correspondence with the action judgment, so plausible but uncertain matches force both completion and progress to unknown. Separate a source-to-edit correspondence assessment from an independent endpoint inspection; do not turn uncertain correspondence into evidence of no progress. The edited image does not clearly show insertion, so the repair preserves unresolved outcomes where correspondence or action evidence is insufficient.",
+          "actions": [
+            {
+              "operation": "replace_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Does the edited image visibly show paper inside a cup, with evidence that it has been stuffed into it?",
+              "criteria": "Pass only when the edited image visibly shows paper inside a cup and its placement indicates stuffing rather than merely resting on the rim. Fail only when the relevant paper and cup are identifiable in the edited image and the paper is visibly outside or merely on the rim. Otherwise return unknown. Judge the edited endpoint directly; do not require proving that the objects match the source before assessing what is visible.",
+              "binding": "The requested result is paper stuffed into a cup. Compare plausible source-to-edit correspondence using visible shape, material, color, and scene context while allowing appearance changes, but do not treat uncertain correspondence as proof of absence or failure.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            },
+            {
+              "operation": "replace_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Does the edited image show visible progress toward putting paper into a cup, short of paper already being stuffed inside?",
+              "criteria": "Pass only if the edited image shows an action or placement that advances paper into a cup, and s1 has not established completion. Fail only if the relevant paper and cup are identifiable and the image shows no progress toward insertion, or s1 establishes completion. Return unknown if correspondence or the action relation cannot be established. Compare plausible correspondence using shape, material, color, and scene context while allowing appearance changes; proximity or a hand holding paper alone is not progress.",
+              "binding": "Progress must concern the requested paper-to-cup insertion. Do not require exact appearance matching, and do not infer no progress from uncertain identity. A plausible match is not by itself evidence of progress.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v2",
+        "reason": "The checks conflate correspondence with the action judgment, so plausible but uncertain matches force both completion and progress to unknown. Separate a source-to-edit correspondence assessment from an independent endpoint inspection; do not turn uncertain correspondence into evidence of no progress. The edited image does not clearly show insertion, so the repair preserves unresolved outcomes where correspondence or action evidence is insufficient.",
+        "actions": [
+          {
+            "operation": "replace_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Does the edited image visibly show paper inside a cup, with evidence that it has been stuffed into it?",
+            "criteria": "Pass only when the edited image visibly shows paper inside a cup and its placement indicates stuffing rather than merely resting on the rim. Fail only when the relevant paper and cup are identifiable in the edited image and the paper is visibly outside or merely on the rim. Otherwise return unknown. Judge the edited endpoint directly; do not require proving that the objects match the source before assessing what is visible.",
+            "binding": "The requested result is paper stuffed into a cup. Compare plausible source-to-edit correspondence using visible shape, material, color, and scene context while allowing appearance changes, but do not treat uncertain correspondence as proof of absence or failure.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          },
+          {
+            "operation": "replace_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Does the edited image show visible progress toward putting paper into a cup, short of paper already being stuffed inside?",
+            "criteria": "Pass only if the edited image shows an action or placement that advances paper into a cup, and s1 has not established completion. Fail only if the relevant paper and cup are identifiable and the image shows no progress toward insertion, or s1 establishes completion. Return unknown if correspondence or the action relation cannot be established. Compare plausible correspondence using shape, material, color, and scene context while allowing appearance changes; proximity or a hand holding paper alone is not progress.",
+            "binding": "Progress must concern the requested paper-to-cup insertion. Do not require exact appearance matching, and do not infer no progress from uncertain identity. A plausible match is not by itself evidence of progress.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          }
+        ]
+      }
+    ]
+  }
+}

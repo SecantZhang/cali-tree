@@ -1,0 +1,132 @@
+{
+  "execution_ref": "66ffceb8e805427ceef4de1258b8e637aaa1b4921f790a8038caceaa7db35b91",
+  "stage": "audit",
+  "slot": "audit/9cf37ae311ef50d94b74bead3c6008658a5f21bd188630d7e2b05dc6aa859579",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the paper visibly inside the cup, with evidence it has been stuffed into it rather than merely resting nearby or on the rim?",
+          "criteria": "Pass if the image shows the paper placed inside the cup and visibly stuffed into it. Fail if the paper is only nearby or on the rim, or the image shows no progress toward placing it inside. Unknown if the image does not provide enough evidence to determine whether it is inside and stuffed.",
+          "binding": "Assess only the requested paper-in-cup edit, using the image evidence; unrelated edits do not count as progress.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the image provide enough evidence to determine whether the paper has been stuffed into the cup?",
+          "criteria": "Pass if the image clearly resolves whether the paper is inside the cup and stuffed into it. Fail if the image clearly shows it is not stuffed into the cup. Unknown if visibility or ambiguity prevents a determination; retain this as unresolved rather than inferring completion or absence.",
+          "binding": "Use only visible evidence of the paper’s placement relative to the cup; do not treat proximity or contact with the rim alone as proof of stuffing.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Comparing the source and edited images, is there identifiable evidence that the same paper has moved toward being stuffed into the same cup, and can its placement relative to that cup be determined?",
+          "criteria": "Pass only when the source paper and cup can be identified in the edited image and visible change shows the paper moving toward or into the cup; distinguish incomplete movement toward the cup from completed stuffing. Fail only when the relevant objects and their relation are clear and the edited image shows no movement toward the requested placement. Unknown when object continuity, cup identity, or paper-to-cup placement cannot be established; do not infer absence from a different-looking object or an obscured cup.",
+          "binding": "Compare source and edited images for the frozen request. Assess only visible continuity and spatial evidence relevant to putting the paper into the cup; unrelated edits do not count. A paper-like object or round object alone does not establish identity. Preserve uncertainty rather than treating ambiguity as negative evidence.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the image show the paper stuffed inside the cup?",
+          "criteria": "Use all three support observations. Complete only with clear evidence that the paper is stuffed inside the cup. Partial only with clear evidence of some movement toward that placement but incomplete fulfillment. Absent only when evidence establishes no requested progress; do not infer absence from uncertain object identity or placement. If necessary evidence is unresolved, report unknown. Unrelated edits are not progress.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "luna-proposer/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks do not provide a reliable, non-overlapping composition for the requested outcome. s1 combines completion evidence with a no-progress judgment, while s2 asks whether the same stuffing condition is determinable and treats a clear failure of stuffing as a pass for determinability. The fulfillment readout then relies on these overlapping observations without a clear rule for reconciling them. In particular, s3 can establish movement toward the cup, but its fail condition is limited to no movement; it does not establish that movement is incomplete, which the readout requires for partial. Thus the saved evidence cannot consistently distinguish complete, partial, absent, and unresolved outcomes.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1590,
+    "completionTokens": 146,
+    "totalTokens": 1736,
+    "latencySeconds": 2.0872488021850586,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks do not provide a reliable, non-overlapping composition for the requested outcome. s1 combines completion evidence with a no-progress judgment, while s2 asks whether the same stuffing condition is determinable and treats a clear failure of stuffing as a pass for determinability. The fulfillment readout then relies on these overlapping observations without a clear rule for reconciling them. In particular, s3 can establish movement toward the cup, but its fail condition is limited to no movement; it does not establish that movement is incomplete, which the readout requires for partial. Thus the saved evidence cannot consistently distinguish complete, partial, absent, and unresolved outcomes."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks do not provide a reliable, non-overlapping composition for the requested outcome. s1 combines completion evidence with a no-progress judgment, while s2 asks whether the same stuffing condition is determinable and treats a clear failure of stuffing as a pass for determinability. The fulfillment readout then relies on these overlapping observations without a clear rule for reconciling them. In particular, s3 can establish movement toward the cup, but its fail condition is limited to no movement; it does not establish that movement is incomplete, which the readout requires for partial. Thus the saved evidence cannot consistently distinguish complete, partial, absent, and unresolved outcomes."
+  }
+}

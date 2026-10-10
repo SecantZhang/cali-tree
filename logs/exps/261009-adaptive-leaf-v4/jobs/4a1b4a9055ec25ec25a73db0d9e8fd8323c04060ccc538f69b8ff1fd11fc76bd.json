@@ -1,0 +1,137 @@
+{
+  "execution_ref": "4a1b4a9055ec25ec25a73db0d9e8fd8323c04060ccc538f69b8ff1fd11fc76bd",
+  "stage": "audit_v4",
+  "slot": "audit/24bcf3dc53ff7a01e0f9b344d61e9956e721a35e4bbd96ff660d6ae05b5a1492",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Make her close her jacket fully",
+        "source_phrase": "close her jacket fully"
+      }
+    ],
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "In the edited image, is the woman's jacket fully closed, with its front panels together and no visible opening remaining along the closure?",
+          "criteria": "Pass: the jacket is visibly fully closed, with its front panels together and no opening along the closure. Fail: the jacket is visibly not fully closed, including any visible opening along the closure. Unknown: the closure or its full extent cannot be judged from the image.",
+          "binding": "Directly inspect the requested endpoint in the edited image; the input image is context for identifying the woman's jacket, not a prerequisite for checking the endpoint.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Compared with the input image, does the edited image show visible progress toward closing the woman's jacket?",
+          "criteria": "Pass: observable corresponding closure cues show progress toward closing the jacket, such as increased joining of its front edges or a visibly greater closed portion of the closure. This proposition checks progress only; s1 separately checks completeness. Fail: sufficiently comparable closure cues establish no progress toward closing. The fact that both jackets remain open is not alone sufficient for fail. Unknown: pose, drape, occlusion, resolution, or uncertain correspondence prevents establishing whether closure progressed. Apparent changes in projected panel separation or overlap count only when they can be distinguished from pose or fabric movement. Do not assume that a pose change necessarily prevents comparison; inspect the available cues.",
+          "binding": "Compare the same woman's jacket in the input and edited images; count only visible progress toward the requested closure, not unrelated edits.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "The woman's jacket is closed completely.",
+          "criteria": "Apply the original rubric to jacket closure only. Return complete when s1 passes, regardless of s2 being skipped or unresolved. When s1 fails, return partial if s2 passes, absent if s2 fails, and unknown if s2 is unknown or unobserved. When s1 is unknown, return unknown because full completion cannot be established. s2 is skipped when s1 passes; skipped evidence is unobserved, not negative. Unrelated edits do not count as requested progress.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_then_sol/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is not always scheduled: it is active only on s2 pass, fail, or unknown, while s2 is itself skipped when s1 passes. Thus the complete outcome has no scheduled readout on the s1-pass path. Also, s2 is a required dependency of fulfillment, so when s1 is unknown and s2 is skipped or unobserved, the readout cannot use the stated rule that s1 unknown alone yields unknown without resolving the required s2 dependency.\",\"source_clause\":\"“an always-scheduled image-free fulfillment readout”\",\"counterexample\":\"If s1 passes, s2 is skipped and fulfillment is not active, so no image-free readout reports complete. If s1 is unknown and s2 is unobserved, fulfillment depends on s2 and the program does not preserve the required unresolved outcome independently of that missing evidence.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1585,
+    "completionTokens": 191,
+    "totalTokens": 1776,
+    "latencySeconds": 2.566797971725464,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is not always scheduled: it is active only on s2 pass, fail, or unknown, while s2 is itself skipped when s1 passes. Thus the complete outcome has no scheduled readout on the s1-pass path. Also, s2 is a required dependency of fulfillment, so when s1 is unknown and s2 is skipped or unobserved, the readout cannot use the stated rule that s1 unknown alone yields unknown without resolving the required s2 dependency.",
+      "source_clause": "“an always-scheduled image-free fulfillment readout”",
+      "counterexample": "If s1 passes, s2 is skipped and fulfillment is not active, so no image-free readout reports complete. If s1 is unknown and s2 is unobserved, fulfillment depends on s2 and the program does not preserve the required unresolved outcome independently of that missing evidence."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is not always scheduled: it is active only on s2 pass, fail, or unknown, while s2 is itself skipped when s1 passes. Thus the complete outcome has no scheduled readout on the s1-pass path. Also, s2 is a required dependency of fulfillment, so when s1 is unknown and s2 is skipped or unobserved, the readout cannot use the stated rule that s1 unknown alone yields unknown without resolving the required s2 dependency.",
+    "source_clause": "“an always-scheduled image-free fulfillment readout”",
+    "counterexample": "If s1 passes, s2 is skipped and fulfillment is not active, so no image-free readout reports complete. If s1 is unknown and s2 is unobserved, fulfillment depends on s2 and the program does not preserve the required unresolved outcome independently of that missing evidence."
+  }
+}

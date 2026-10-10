@@ -1,0 +1,112 @@
+{
+  "execution_ref": "bc4540c35dafdeb7e5763fe2e6894ea4825160103e3ea632323fe72d6ac3c45f",
+  "stage": "audit",
+  "slot": "audit/eefd8aeb6cb56e80164c7b6942c7437ddaed4c1f6b76578c3654e243c746ce10",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is a frog visibly present inside the toilet bowl?",
+          "criteria": "Pass if the image clearly shows a frog within the toilet bowl; fail if the bowl is visible and no frog is inside it; unknown if the bowl or its contents cannot be assessed reliably.",
+          "binding": "Assess the frog’s placement relative to the toilet bowl in the image, using the toilet in the input image as the reference. A frog elsewhere does not satisfy this check.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the source and edited image provide sufficient evidence to assess the requested frog placement and any other conspicuous frog placements in the edited scene?",
+          "criteria": "Pass if the relevant toilet area and edited scene are sufficiently visible to assess whether a frog was placed in the toilet and whether conspicuous additional frogs were placed elsewhere; fail if the scene is assessable and shows no evidence of requested progress; unknown if visibility or source-to-edit comparison is inadequate. This is an evidence check, not a fulfillment decision.",
+          "binding": "Compare the edited image with the source image. Report evidence for a frog within the toilet bowl separately from any other visible frog placements, such as on the lid, tank, or floor. Do not treat extra frogs as automatically invalidating the requested placement.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is a frog visibly placed inside the toilet bowl?",
+          "criteria": "For R1, complete only when the evidence establishes the requested frog placement in the toilet and the full edited scene supports that the requested edit is fulfilled, rather than merely showing the target alongside conspicuous misplaced instances that leave fulfillment incomplete. Partial when there is visible progress toward placing a frog in the toilet but the completion criterion is not met, including a target placement accompanied by conspicuous additional misplaced frogs. Absent only when evidence establishes no requested progress. Unknown when necessary evidence is insufficient or unresolved; do not infer completion or absence from uncertainty. Extra placements are relevant context, not automatic disqualification; unrelated edits are not progress.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "criterion-only/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout depends on s1 and s2, but s2 is only an evidence-sufficiency check: its criteria do not establish whether additional misplaced frogs actually exist. The readout nevertheless treats conspicuous additional misplaced frogs as evidence of incompleteness, so it can require a fact the supports do not reliably establish. This leaves the requested completion criterion unsupported and can make the readout unresolved despite sufficient evidence of the requested placement.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1331,
+    "completionTokens": 103,
+    "totalTokens": 1434,
+    "latencySeconds": 1.9113800525665283,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout depends on s1 and s2, but s2 is only an evidence-sufficiency check: its criteria do not establish whether additional misplaced frogs actually exist. The readout nevertheless treats conspicuous additional misplaced frogs as evidence of incompleteness, so it can require a fact the supports do not reliably establish. This leaves the requested completion criterion unsupported and can make the readout unresolved despite sufficient evidence of the requested placement."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout depends on s1 and s2, but s2 is only an evidence-sufficiency check: its criteria do not establish whether additional misplaced frogs actually exist. The readout nevertheless treats conspicuous additional misplaced frogs as evidence of incompleteness, so it can require a fact the supports do not reliably establish. This leaves the requested completion criterion unsupported and can make the readout unresolved despite sufficient evidence of the requested placement."
+  }
+}

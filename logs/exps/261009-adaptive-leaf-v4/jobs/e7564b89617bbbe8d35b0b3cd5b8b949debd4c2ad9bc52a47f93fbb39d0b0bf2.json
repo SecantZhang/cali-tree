@@ -1,0 +1,129 @@
+{
+  "execution_ref": "e7564b89617bbbe8d35b0b3cd5b8b949debd4c2ad9bc52a47f93fbb39d0b0bf2",
+  "stage": "audit_v4",
+  "slot": "audit/672c0008306b642ca9999708239cb89201f41ca7f9e1f1a9e113dabd92372267",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "original_requirements": [
+      {
+        "id": "R1",
+        "text": "Put a frog in the toilet",
+        "source_phrase": "Put a frog in the toilet"
+      }
+    ],
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image clearly show at least one frog placed inside the toilet itself?",
+          "criteria": "Pass if a frog is visibly located within an interior part of the toilet, such as the bowl or tank. Fail if the image clearly shows no frog inside the toilet. Unknown if the relevant area or the frog’s location is obscured or ambiguous. A frog on the raised lid or seat, or on the nearby floor, does not by itself establish placement inside the toilet.",
+          "binding": "Judge the frog’s actual spatial location relative to the toilet’s interior, not proximity or overlap with the toilet’s exterior. Do not restrict the request to the bowl if another interior part of the toilet is clearly shown.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "If placement inside the toilet is not established, does the image show incomplete progress toward putting a frog inside the toilet?",
+          "criteria": "Pass if visible evidence shows an incomplete attempt toward placing a frog inside the toilet, such as a frog partly entering an interior opening, without establishing completed placement. Fail if there is clearly no such incomplete progress. Unknown if the evidence cannot distinguish progress from no progress. A frog clearly inside the toilet is completion, not partial progress; a frog merely on the raised lid or seat, or on the nearby floor, does not by itself establish progress toward placement inside.",
+          "binding": "Count only incomplete progress toward placing a frog inside the toilet; do not count unrelated placements or mere proximity.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Add a frog inside the toilet.",
+          "criteria": "Apply the original rubric to the requested change only. Return yes when the frog is visibly placed inside the toilet bowl. Return no only when evidence establishes that no requested change has progressed. Return partial when evidence establishes some progress toward placing the frog inside the bowl but does not establish completion. Return unknown when the evidence cannot distinguish among these outcomes. A skipped support is unobserved, not a failure or not-applicable finding: if the completion check passes, that establishes yes without needing the partial-progress check; if completion fails, the progress check is needed to distinguish partial from no. Supporting observations earn no completion credit independently, and unrelated edits do not count.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    }
+  },
+  "case_id": "luna_only/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The program narrows the requested placement from “in the toilet” to “inside the toilet bowl” in its fulfillment criteria and target. That can reject a frog visibly placed in another interior part of the toilet, even though the support check explicitly recognizes such placement as satisfying the request. This weakens the original completion criterion.\",\"source_clause\":\"Put a frog in the toilet\",\"counterexample\":\"A frog is visibly placed inside the toilet tank but not the bowl. The support check treats this as placement inside the toilet, but fulfillment requires the frog to be inside the bowl, so the program could report partial or unknown instead of yes.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1576,
+    "completionTokens": 140,
+    "totalTokens": 1716,
+    "latencySeconds": 3.3446431159973145,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The program narrows the requested placement from “in the toilet” to “inside the toilet bowl” in its fulfillment criteria and target. That can reject a frog visibly placed in another interior part of the toilet, even though the support check explicitly recognizes such placement as satisfying the request. This weakens the original completion criterion.",
+      "source_clause": "Put a frog in the toilet",
+      "counterexample": "A frog is visibly placed inside the toilet tank but not the bowl. The support check treats this as placement inside the toilet, but fulfillment requires the frog to be inside the bowl, so the program could report partial or unknown instead of yes."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The program narrows the requested placement from “in the toilet” to “inside the toilet bowl” in its fulfillment criteria and target. That can reject a frog visibly placed in another interior part of the toilet, even though the support check explicitly recognizes such placement as satisfying the request. This weakens the original completion criterion.",
+    "source_clause": "Put a frog in the toilet",
+    "counterexample": "A frog is visibly placed inside the toilet tank but not the bowl. The support check treats this as placement inside the toilet, but fulfillment requires the frog to be inside the bowl, so the program could report partial or unknown instead of yes."
+  }
+}

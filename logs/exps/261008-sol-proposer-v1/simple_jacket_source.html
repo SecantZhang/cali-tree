@@ -1,0 +1,137 @@
+<div id="jacket-simple">
+  <style>
+    #jacket-simple { color:var(--foreground); }
+    #jacket-simple .heading { padding-inline-end:96px; }
+    #jacket-simple .question { margin-block:18px; overflow-wrap:anywhere; }
+    #jacket-simple .answer { font-weight:500; margin-block:6px; }
+    #jacket-simple .answers { display:flex; flex-wrap:wrap; gap:8px; margin-block:8px; }
+    #jacket-simple .decision-label { padding:4px 8px; color:var(--foreground); }
+    #jacket-simple .decision-label[data-kind="yes"] { background:color-mix(in srgb,var(--viz-series-1) 15%,transparent); }
+    #jacket-simple .decision-label[data-kind="no"] { background:color-mix(in srgb,var(--viz-series-2) 15%,transparent); }
+    #jacket-simple .decision-label[data-kind="unknown"] { background:color-mix(in srgb,var(--viz-series-3) 15%,transparent); }
+    #jacket-simple .decision-label[data-kind="skipped"] { background:var(--muted); }
+    #jacket-simple .long { white-space:pre-wrap; overflow-wrap:anywhere; }
+    #jacket-simple .arrow { color:var(--muted-foreground); margin-block:8px; }
+    #jacket-simple .photos { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+    #jacket-simple figure { margin:0; }
+    #jacket-simple img { display:block; width:256px; max-width:100%; height:auto; }
+    #jacket-simple details { margin-block:10px; }
+    #jacket-simple .step-title { margin-block:16px 6px; }
+    #jacket-simple [hidden] { display:none; }
+  </style>
+  <h3 class="heading">Close the jacket · optimization walkthrough</h3>
+  <div>Instruction: <span id="js-instruction"></span></div>
+  <p><strong>Reference label: SATISFIED</strong></p>
+  <div class="viz-controls">
+    <label class="form-label">Proposer<select id="js-arm" class="form-select"><option value="luna-proposer">Luna</option><option value="sol-proposer">Sol 6.1</option></select></label>
+    <label class="form-label">Step<select id="js-step" class="form-select"></select></label>
+  </div>
+  <div class="viz-row"><button class="btn btn-ghost" id="js-prev" type="button">Previous</button><button class="btn btn-primary" id="js-next" type="button">Next</button><span id="js-position" class="text-small tabular-nums"></span></div>
+  <div id="js-current" aria-live="polite">
+    <h3 id="js-title" class="step-title"></h3>
+    <div id="js-decision" class="answer"></div>
+    <div id="js-next-action"></div>
+    <div id="js-questions"></div>
+    <details id="js-reason" hidden><summary>Why this repair was proposed or rejected</summary><div class="long" id="js-reason-text"></div></details>
+  </div>
+  <hr>
+  <details><summary>Before and after images</summary><div id="js-images" class="photos"></div></details>
+  <details><summary>What the labels mean</summary>
+    <div>YES / NO: the visual model’s answer to that specific evidence question.</div>
+    <div>UNCERTAIN: the model was asked but could not establish the fact.</div>
+    <div>NOT RUN: the model was not asked; this is not a No.</div>
+    <div>CALL FAILED: no valid answer was obtained.</div>
+    <div>SATISFIED / PARTIAL / UNSATISFIED: the fulfillment model’s overall edit label.</div>
+    <div>Reference agreement and repair acceptance are checked separately.</div>
+  </details>
+  <div class="text-small text-muted">Saved jacket experiment · Luna performs every visual check and meaning review · no new model calls</div>
+  <div id="js-error" role="alert" hidden></div>
+  <script id="js-data" type="application/json">__JACKET_DATA__</script>
+  <script>
+  (()=>{
+    const root=document.getElementById('jacket-simple'),$=id=>root.querySelector('#'+id);
+    const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+    const full=s=>({yes:'SATISFIED',partial:'PARTIAL',no:'UNSATISFIED',complete:'SATISFIED',absent:'UNSATISFIED',unknown:'UNRESOLVED'}[s]||'UNRESOLVED');
+    const answer=o=>!o?'NOT RUN':!o.queried?'NOT RUN':o.failure?'CALL FAILED':o.status==='unknown'?'UNCERTAIN':({pass:'YES',fail:'NO',complete:'SATISFIED',partial:'PARTIAL',absent:'UNSATISFIED'}[o.status]||'UNCERTAIN');
+    const kind=a=>['YES','SATISFIED'].includes(a)?'yes':['NO','UNSATISFIED'].includes(a)?'no':a==='NOT RUN'?'skipped':'unknown';
+    try{
+      const c=JSON.parse($('js-data').textContent);let arm='luna-proposer',index=0,steps=[];
+      const state=()=>({view:'jacket-simple-v1',case_id:c.id,proposer:arm,step:steps[index]?.id});
+      const save=()=>window.openai?.setWidgetState?.({modelContent:state(),privateContent:{arm,index}}).catch(()=>{});
+      const restore=w=>{if(w?.modelContent?.view!=='jacket-simple-v1')return;const p=w.privateContent;if(c.runs[p?.arm]){arm=p.arm;index=Number(p.index)||0;}};
+      restore(window.openai?.widgetState);
+      function build(){
+        const r=c.runs[arm],e=r.evaluations[c.seed.ref];
+        const a=[{id:'seed',title:'Starting checks',program:c.seed,report:e.screen,
+          message:'Overall decision: UNSATISFIED → does not match SATISFIED reference.',next:'Generate feedback and search for a repair.'},
+          {id:'audit',title:'Review the starting checks',program:c.seed,message:c.audit.accepted?'Meaning review: APPROVED':'Meaning review: REJECTED',
+            next:'This review makes no new visual decision.',reason:c.audit.reason}];
+        for(const rd of r.rounds){
+          if(!rd.transactions.length){a.push({id:'round-'+rd.number,title:'Round '+rd.number+' · no repair proposed',message:'No new questions were proposed.',next:rd.complete?(rd.number===r.rounds.at(-1).number?'The 15-round limit is reached. Freeze the available result.':'Continue searching.'):'This round did not complete.',reason:rd.gradient_failure?.error});continue;}
+          rd.transactions.forEach((tx,t)=>{
+            const p=r.programmes[tx.program_ref],ev=r.evaluations[tx.program_ref]||{};
+            const rejected=tx.error||tx.audit?.accepted===false;
+            const title='Round '+rd.number+(rd.transactions.length>1?' · repair '+(t+1):'');
+            a.push({id:'round-'+rd.number+'-proposal-'+t,title:title+' · proposed questions',program:p,actions:!p?tx.transaction.actions:null,
+              message:tx.error?'Repair REJECTED before execution.':tx.audit?.accepted===false?'Repair REJECTED by meaning review.':tx.duplicate?'Previously proposed programme.':'Meaning review: APPROVED. Questions not yet measured at this step.',
+              next:rejected?'Do not use this repair; keep searching.':'Execute the candidate to measure its answers.',
+              reason:'Proposer: '+tx.transaction.reason+'\n\n'+(tx.error?'Rejection: '+tx.error:tx.audit?'Reviewer: '+tx.audit.reason:'No new review recorded.')});
+            for(const tier of ['screen','confirmation'])if(ev[tier]&&!tx.duplicate){
+              const rep=ev[tier],matches=Math.round(rep.agreement*rep.draws),resolved=Math.round(rep.coverage*rep.draws);
+              a.push({id:'round-'+rd.number+'-'+tier+'-'+t,title:title+' · '+(tier==='screen'?'test the questions once':'repeat the questions five times'),program:p,report:rep,
+                message:'Target matches: '+matches+'/'+rep.draws+' · resolved decisions: '+resolved+'/'+rep.draws,
+                next:tier==='screen'?'The saved run also measured this candidate with fresh repeats.':matches<4||resolved<5?'Does not meet confirmation thresholds; continue searching.':'Check the remaining robustness gates before acceptance.'});
+            }
+          });
+        }
+        a.push({id:'freeze',title:'Stop searching and freeze the result',program:r.programmes[r.selected],
+          message:r.selected===c.seed.ref?'No eligible repair survived. Keep the starting programme as fallback.':'Keep the selected repaired programme for final testing.',
+          next:'Selection is fixed. Final results cannot change it.'});
+        for(const which of ['seed','selected']){
+          const rep=r.final[which],matches=Math.round(rep.agreement*5),resolved=Math.round(rep.coverage*5);
+          a.push({id:'final-'+which,title:'Final test · '+(which==='seed'?'starting checks':'selected checks'),program:which==='seed'?c.seed:r.programmes[r.selected],report:rep,
+            message:'Target matches: '+matches+'/5 · resolved decisions: '+resolved+'/5',
+            next:which==='seed'?'Next: independently test the frozen selected programme.':r.acceptance.qualified?'Final acceptance: LOCALLY ROBUST.':'Final acceptance: NOT LOCALLY ROBUST. Target agreement or other required gates failed.'});
+        }
+        return a;
+      }
+      function question(node,number,report,description){
+        const group=el('section',undefined,'question');
+        group.append(el('div',(node.role==='requested'?'OVERALL EDIT DECISION':'QUESTION '+number)+(description?' · '+description:''),'text-small'));
+        group.append(el('div',node.question,'long'));
+        const obs=(report?.traces||[]).map(t=>t.observations.find(o=>o.check_id===node.id));
+        const labels=obs.length?obs.map(answer):['NOT RUN'];
+        const same=labels.every(v=>v===labels[0]);
+        group.append(el('div','Decision: '+(same?labels[0]+(labels.length>1?' in all '+labels.length+' runs':''):'varies across runs'),'answer'));
+        if(labels.length>1){const row=el('div',undefined,'answers');labels.forEach((a,i)=>{const s=el('span','Run '+(i+1)+': '+a,'decision-label');s.dataset.kind=kind(a);row.append(s);});group.append(row);}
+        const detail=el('details');detail.append(el('summary','Evidence and saved rule'));
+        detail.append(el('div','Rule: '+(node.criteria||'No criterion changed in this action.'),'long'));
+        if(node.dependencies?.length)detail.append(el('div','Earlier evidence used: '+node.dependencies.join(', '),'text-small'));
+        obs.forEach((o,i)=>{if(o)detail.append(el('p','Run '+(i+1)+' · '+(o.queried&&o.confidence!=null?'confidence '+o.confidence.toFixed(2)+' · ':'')+(o.evidence||'No evidence recorded'),'long'));});
+        group.append(detail);return group;
+      }
+      function render(){
+        steps=build();index=Math.max(0,Math.min(steps.length-1,index));const s=steps[index];
+        $('js-arm').value=arm;$('js-step').replaceChildren();steps.forEach((v,i)=>$('js-step').append(new Option(v.title,String(i))));$('js-step').value=String(index);
+        $('js-position').textContent=(index+1)+' / '+steps.length;$('js-prev').disabled=index===0;$('js-next').disabled=index===steps.length-1;
+        $('js-title').textContent=s.title;$('js-decision').textContent=s.message;$('js-next-action').textContent=s.next;
+        const box=$('js-questions');box.replaceChildren();
+        if(s.program){s.program.nodes.forEach((n,i)=>{box.append(question(n,i+1,s.report,!c.seed.nodes.some(v=>v.id===n.id)?'ADDED CHECK':''));if(i<s.program.nodes.length-1)box.append(el('div',s.program.nodes[i+1].role==='requested'?'↓ Combine the recorded evidence':'↓ Next visual question','arrow text-small'));});}
+        else if(s.actions){s.actions.forEach((action,i)=>{
+          const requested=action.operation==='revise_readout';
+          box.append(question({id:action.new_check_id||action.target_id,role:requested?'requested':'support',question:action.question||c.seed.nodes.find(v=>v.id===action.target_id)?.question||action.operation.replaceAll('_',' '),criteria:action.criteria},i+1,null,'PROPOSED '+action.operation.replaceAll('_',' ')));
+        });}
+        $('js-reason').hidden=!s.reason;$('js-reason-text').textContent=s.reason||'';
+      }
+      $('js-instruction').textContent=c.instruction;
+      for(const [key,title]of [['source_image','Before'],['edited_image','After']]){const f=el('figure'),im=el('img');im.src=c.images[key];im.alt=title+' jacket image';f.append(im,el('figcaption',title+' · saved preview'));$('js-images').append(f);}
+      const change=fn=>{fn();render();save();};
+      $('js-arm').addEventListener('change',e=>change(()=>{arm=e.target.value;index=0;}));
+      $('js-step').addEventListener('change',e=>change(()=>{index=Number(e.target.value);}));
+      $('js-prev').addEventListener('click',()=>change(()=>index--));$('js-next').addEventListener('click',()=>change(()=>index++));
+      window.addEventListener('openai:set_globals',e=>{restore(e.detail?.globals?.widgetState);render();});
+      render();
+    }catch(e){$('js-error').hidden=false;$('js-error').textContent=e.message;}
+  })();
+  </script>
+</div>

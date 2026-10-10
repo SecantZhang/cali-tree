@@ -1,0 +1,1351 @@
+{
+  "execution_ref": "6dedcd27d678b8b6173679baaa6e8065fc13eb7dfbb2254eef016b4320d28699",
+  "stage": "propose_typed",
+  "slot": "round/4/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the image show the original visual content rendered in a pencil-drawn style?",
+          "criteria": "Pass if the image visibly represents its content as a pencil drawing; fail if there is sufficient evidence that no pencil-drawing transformation has occurred; unknown if the image or its style cannot be assessed reliably. Partial evidence of a pencil-drawn style is progress, not completion.",
+          "binding": "Compare the supplied image with the requested transformation: assess whether its visual content is rendered in a pencil-drawn style. Do not require a particular pencil technique.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Is there image-grounded evidence of any progress toward rendering the content as a pencil drawing, even if the transformation is incomplete?",
+          "criteria": "Pass if the image shows some visible pencil-drawing-style treatment of its content, including an incomplete treatment; fail if sufficient evidence shows no requested transformation has progressed; unknown if evidence is insufficient to determine whether any such progress occurred. Unrelated edits do not count as progress.",
+          "binding": "Assess only visible changes in the supplied image that move its visual content toward a pencil-drawn style; do not infer progress from unrelated changes.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s2"
+          ],
+          "question": "Does the edited image, considered as a whole, visibly read as a pencil drawing of its content rather than an image with only limited pencil-style treatment?",
+          "criteria": "Pass if the edited image as a whole is visibly rendered in a pencil-drawing style. Fail if sufficient evidence shows that the image retains a predominantly non-drawing appearance and only limited areas or details have pencil-style treatment. Unknown if the overall style or extent of treatment cannot be assessed reliably. Do not require any particular pencil technique, monochrome rendering, or method of transformation.",
+          "binding": "Inspect source and edited images directly. Use the ancestor's observation of possible progress as context, then independently assess whether the edited image as a whole reads as a pencil drawing. Judge the visible result, not the method or specific marks used.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the image visibly appear as a completed pencil drawing?",
+          "criteria": "Compose all supports explicitly. Complete (yes) only when s3 passes, establishing that the image as a whole reads as a pencil drawing. Partial only when s1 or s2 establishes requested progress and s3 fails, establishing that the whole-image transformation is incomplete. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to establish progress or distinguish completion from partial is unresolved; in particular, s3 unknown with established progress leaves completion unresolved. Do not treat support passes alone as completion, and do not count unrelated edits as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s completion criterion is too permissive and inconsistently applied: several traces call the image complete based on muted tones, grain, and softened shading, while another identifies substantial photographic color/detail and correctly treats the same kind of evidence as incomplete. In the edited image, the scene is desaturated and textured, but recognizable photographic lighting, smooth surfaces, and color remain; those style cues alone do not establish that the whole image reads as a pencil drawing. Tighten the whole-image check to distinguish a drawing-like appearance from a photographic image with a pencil-like filter, and require explicit evidence for that distinction before marking complete. Keep support checks as evidence of progress, not proof of completion; when progress is established but the whole-image criterion fails, preserve partial. Do not infer absence from an unresolved check: the transport failure is an execution/dependency issue, not negative visual evidence, so retain unresolved there. The reference label constrains the aggregate, but should not override the visual evidence or be treated as atomic ground truth."
+        ],
+        "s3": [
+          "Refine the binding so it operationalizes the whole-image criterion rather than treating muted color, grain, or softened shading as sufficient proof of completion. Require the node to weigh whether the scene’s overall rendering reads as a drawing versus a photograph with a pencil-like filter, citing visible evidence for that distinction (for example, how surfaces, lighting, edges, and detail are rendered). The supplied edit shows broad desaturation and texture, but retains photographic-looking lighting and surface detail; those cues support progress, not necessarily full fulfillment. Keep the ancestor’s progress observation as context, not a substitute for this independent completion judgment. Preserve the three-way distinction: pass only when the whole image reads as a pencil drawing; fail when assessable evidence shows it does not; unknown when visual assessment is genuinely unavailable. A pass from the progress check followed by a fail here should contribute partial fulfillment, not be collapsed into no progress. Do not treat the transport failure as negative visual evidence: it is an execution failure and should remain unresolved. Avoid using the reference label as atomic ground truth or adding requirements such as monochrome or a particular pencil technique."
+        ],
+        "s2": [
+          "The binding already targets visible progress, so keep this node as a support check rather than turning it into a whole-image completion test. Make its evidence standard more discriminating and repeatable: require a visible drawing-like rendering cue (such as sketchy contours, pencil-like tonal marks, or altered surface rendering), and distinguish that from desaturation, grain, or a color shift alone. In this edit, the food and surrounding objects are broadly muted and grainy with softened edges, which supports some progress; photographic lighting, smooth surfaces, and recognizable photographic detail remain, so do not let those cues establish full fulfillment. State explicitly that a pass here records progress only, leaving completion to the downstream criterion. Use fail only when assessable visual evidence shows no requested change, and unknown when visual assessment is unavailable; do not convert transport or dependency failures into negative visual evidence. Treat repeated high-confidence passes as a consistency signal to inspect the criterion, not as proof of completion or a reason to suppress genuine progress."
+        ],
+        "s1": [
+          "Keep this node as a support check for visible progress, not a whole-image completion test. Its current binding is broad enough that muted color, grain, and softened edges are repeatedly mistaken for a completed pencil drawing. Require evidence of an actual drawing-like rendering change—such as sketch-like contours, tonal marks, or altered surface rendering—and distinguish those cues from desaturation or texture alone. In the supplied edit, the meal and setting are preserved and visibly muted, grainy, and softened, supporting progress; however, photographic lighting and recognizable surface detail remain, so these cues should not by themselves establish completion. Record the evidence and leave the final whole-image judgment to the downstream criterion. Preserve the three-way distinction: fail only when assessable evidence shows no requested progress, and unknown when visual assessment is unavailable. Treat transport or dependency failures as execution issues, not negative visual evidence. Repeated high-confidence passes are a reason to inspect the criterion’s consistency, not proof that it is calibrated correctly."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.2,
+        "coverage": 0.8,
+        "label_consistency": 0.6,
+        "label_distribution": {
+          "yes": 3,
+          "unresolved": 1,
+          "partial": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.97,
+              0.94,
+              0.98,
+              0.96,
+              0.94
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.97,
+              0.98,
+              0.97,
+              0.96,
+              0.94
+            ]
+          },
+          "s3": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 3,
+              "unknown": 1,
+              "fail": 1
+            },
+            "consistency": 0.6,
+            "assessment": "assessed",
+            "confidence": [
+              0.96,
+              0.98,
+              null,
+              0.94,
+              0.91
+            ]
+          },
+          "fulfillment": {
+            "eligible": 4,
+            "queried": 4,
+            "activation_rate": 0.8,
+            "states": {
+              "complete": 3,
+              "partial": 1
+            },
+            "consistency": 0.75,
+            "assessment": "assessed",
+            "confidence": [
+              0.96,
+              0.98,
+              0.96,
+              0.94
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 3,
+              "unknown": 1,
+              "partial": 1
+            },
+            "consistency": 0.6,
+            "coverage": 0.8
+          }
+        },
+        "requirement_consistency": 0.6,
+        "confidence_pass": false,
+        "mean_checks": 3.8,
+        "mean_completion_tokens": 437.0,
+        "traces": [
+          {
+            "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s3 passes, establishing that the image as a whole reads as a pencil drawing. s1 and s2 also establish visible pencil-style progress."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting while rendering them with muted, grainy, pencil-like shading and outlines.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 51,
+                "dependencies": [],
+                "execution_ref": "e67ed801bf9c03808e09d3539ca93a283601e88be1a5425317fddb19ce0c322f",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines compared with the source.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 58,
+                "dependencies": [],
+                "execution_ref": "7d1588cf7466ec25a83e59f65382a95530f5583090e1207bdbdf24e587bf82a1",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "pass",
+                "evidence": "The edited image as a whole visibly reads as a pencil drawing: muted colors and sketch-like shading and outlines are present across the food, tableware, and surrounding scene, rather than only in isolated details.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 70,
+                "dependencies": [
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 58,
+                    "dependencies": [],
+                    "execution_ref": "7d1588cf7466ec25a83e59f65382a95530f5583090e1207bdbdf24e587bf82a1",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "0e811ac3e76db71e129dfc847d2023cc502b2bba9c24f24802c7036730cc0ff2",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "s3 passes, establishing that the image as a whole reads as a pencil drawing. s1 and s2 also establish visible pencil-style progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 64,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting while rendering them with muted, grainy, pencil-like shading and outlines.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 51,
+                    "dependencies": [],
+                    "execution_ref": "e67ed801bf9c03808e09d3539ca93a283601e88be1a5425317fddb19ce0c322f",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 58,
+                    "dependencies": [],
+                    "execution_ref": "7d1588cf7466ec25a83e59f65382a95530f5583090e1207bdbdf24e587bf82a1",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "pass",
+                    "evidence": "The edited image as a whole visibly reads as a pencil drawing: muted colors and sketch-like shading and outlines are present across the food, tableware, and surrounding scene, rather than only in isolated details.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 70,
+                    "dependencies": [
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food and surrounding objects have sketch-like shading and outlines compared with the source.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.97,
+                        "completion_tokens": 58,
+                        "dependencies": [],
+                        "execution_ref": "7d1588cf7466ec25a83e59f65382a95530f5583090e1207bdbdf24e587bf82a1",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "0e811ac3e76db71e129dfc847d2023cc502b2bba9c24f24802c7036730cc0ff2",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "ddac239094045c628761259da5f7da076852aa11e3519bdd6f03f6f940c11720",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s3 passes, establishing that the image as a whole reads as a pencil drawing. s1 and s2 also establish requested pencil-style progress."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting, but renders them with muted, mostly monochrome tones and visible fine grain and sketch-like shading consistent with a pencil-drawn style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 63,
+                "dependencies": [],
+                "execution_ref": "a92842db432d4264460c26ddfcbc516745b902194e7c39a5c2a0a35865d93c45",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows a visible pencil-drawing-style treatment across the scene, with muted colors, grainy shading, and sketch-like outlines on the food and surrounding objects.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 60,
+                "dependencies": [],
+                "execution_ref": "d83f80dbf2642751418e6914bbbfbd91c640c515cc0f818ccc449cf3c9928baf",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "pass",
+                "evidence": "The edited image as a whole visibly reads as a pencil drawing: muted colors, grainy shading, and sketch-like outlines are applied across the food, plate, and surrounding objects, rather than only to isolated details.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 72,
+                "dependencies": [
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment across the scene, with muted colors, grainy shading, and sketch-like outlines on the food and surrounding objects.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "d83f80dbf2642751418e6914bbbfbd91c640c515cc0f818ccc449cf3c9928baf",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "f5c14b7720a542abfecba804bfffe675b8c464e3cb622f5a0a5d48380ac0b1ea",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "s3 passes, establishing that the image as a whole reads as a pencil drawing. s1 and s2 also establish requested pencil-style progress.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 64,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting, but renders them with muted, mostly monochrome tones and visible fine grain and sketch-like shading consistent with a pencil-drawn style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "a92842db432d4264460c26ddfcbc516745b902194e7c39a5c2a0a35865d93c45",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment across the scene, with muted colors, grainy shading, and sketch-like outlines on the food and surrounding objects.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "d83f80dbf2642751418e6914bbbfbd91c640c515cc0f818ccc449cf3c9928baf",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "pass",
+                    "evidence": "The edited image as a whole visibly reads as a pencil drawing: muted colors, grainy shading, and sketch-like outlines are applied across the food, plate, and surrounding objects, rather than only to isolated details.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 72,
+                    "dependencies": [
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited image shows a visible pencil-drawing-style treatment across the scene, with muted colors, grainy shading, and sketch-like outlines on the food and surrounding objects.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.98,
+                        "completion_tokens": 60,
+                        "dependencies": [],
+                        "execution_ref": "d83f80dbf2642751418e6914bbbfbd91c640c515cc0f818ccc449cf3c9928baf",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "f5c14b7720a542abfecba804bfffe675b8c464e3cb622f5a0a5d48380ac0b1ea",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "4786e8a2714b6366c6b606e6950eb534ce3e90b1696c6d9f13233aafa25f8115",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting while rendering them in a muted, textured pencil-drawing style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 49,
+                "dependencies": [],
+                "execution_ref": "d030791c3dffae9fa78c7809c66a13e396ffc5a0527052e932e678e27dd79911",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food, dishes, and tableware have softened, sketch-like shading and texture compared with the source.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.97,
+                "completion_tokens": 63,
+                "dependencies": [],
+                "execution_ref": "6fc38a3ce6bc2c237a07310428adb6bf1657c7632cf54952f4afdf48a00bc8a9",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "unknown",
+                "evidence": "Transport failure in slot c65558b412797e59dd7a5aa398e4e9ee8e8a6fc1c789e0c5e8ad4137badd5354: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                "valid": false,
+                "eligible": true,
+                "queried": true,
+                "confidence": null,
+                "completion_tokens": 1024,
+                "dependencies": [
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food, dishes, and tableware have softened, sketch-like shading and texture compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "6fc38a3ce6bc2c237a07310428adb6bf1657c7632cf54952f4afdf48a00bc8a9",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "c4f582a9d34d6347f2d14d6dc01bd01ced80331f100ebf11d3e01b5268a7289b",
+                "failure": "CallFailure"
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting while rendering them in a muted, textured pencil-drawing style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 49,
+                    "dependencies": [],
+                    "execution_ref": "d030791c3dffae9fa78c7809c66a13e396ffc5a0527052e932e678e27dd79911",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food, dishes, and tableware have softened, sketch-like shading and texture compared with the source.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.97,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "6fc38a3ce6bc2c237a07310428adb6bf1657c7632cf54952f4afdf48a00bc8a9",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "unknown",
+                    "evidence": "Transport failure in slot c65558b412797e59dd7a5aa398e4e9ee8e8a6fc1c789e0c5e8ad4137badd5354: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))",
+                    "valid": false,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": null,
+                    "completion_tokens": 1024,
+                    "dependencies": [
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited image shows a visible pencil-drawing-style treatment: colors are muted and the food, dishes, and tableware have softened, sketch-like shading and texture compared with the source.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.97,
+                        "completion_tokens": 63,
+                        "dependencies": [],
+                        "execution_ref": "6fc38a3ce6bc2c237a07310428adb6bf1657c7632cf54952f4afdf48a00bc8a9",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "c4f582a9d34d6347f2d14d6dc01bd01ced80331f100ebf11d3e01b5268a7289b",
+                    "failure": "CallFailure"
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+            "label": "partial",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "partial",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "s1 and s2 establish pencil-like treatment and progress toward the requested style. s3 fails: despite that treatment, the image retains substantial photographic color, shading, and detail and does not read as a completed pencil drawing."
+              }
+            },
+            "requirements": {
+              "R1": "partial"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting while rendering them with muted, grainy, pencil-like shading and softened outlines, consistent with a pencil-drawn style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 60,
+                "dependencies": [],
+                "execution_ref": "75862b215434bb6c22aefcc8e7e9913385b860d712086580d7c5cd65da6e38db",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image has a visible muted, grainy, pencil-like treatment across the food and surrounding objects, indicating progress toward a pencil drawing, though it retains substantial photographic color and detail.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 63,
+                "dependencies": [],
+                "execution_ref": "2f3799bc47b04f9c0d86549926338b61b963bfec7f140e45151babb3dc1c86a4",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "fail",
+                "evidence": "The edited image has a muted, grainy pencil-like treatment across the scene, but it retains substantial photographic color, shading, and detail. As a whole, it does not visibly read as a pencil drawing.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 71,
+                "dependencies": [
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image has a visible muted, grainy, pencil-like treatment across the food and surrounding objects, indicating progress toward a pencil drawing, though it retains substantial photographic color and detail.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "2f3799bc47b04f9c0d86549926338b61b963bfec7f140e45151babb3dc1c86a4",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "eac38aed8f626a51ec7eb3302274423b1cf09ffe97fc428cfb4e0109d2756c80",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "partial",
+                "evidence": "s1 and s2 establish pencil-like treatment and progress toward the requested style. s3 fails: despite that treatment, the image retains substantial photographic color, shading, and detail and does not read as a completed pencil drawing.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 80,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting while rendering them with muted, grainy, pencil-like shading and softened outlines, consistent with a pencil-drawn style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 60,
+                    "dependencies": [],
+                    "execution_ref": "75862b215434bb6c22aefcc8e7e9913385b860d712086580d7c5cd65da6e38db",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image has a visible muted, grainy, pencil-like treatment across the food and surrounding objects, indicating progress toward a pencil drawing, though it retains substantial photographic color and detail.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 63,
+                    "dependencies": [],
+                    "execution_ref": "2f3799bc47b04f9c0d86549926338b61b963bfec7f140e45151babb3dc1c86a4",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "fail",
+                    "evidence": "The edited image has a muted, grainy pencil-like treatment across the scene, but it retains substantial photographic color, shading, and detail. As a whole, it does not visibly read as a pencil drawing.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 71,
+                    "dependencies": [
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited image has a visible muted, grainy, pencil-like treatment across the food and surrounding objects, indicating progress toward a pencil drawing, though it retains substantial photographic color and detail.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.96,
+                        "completion_tokens": 63,
+                        "dependencies": [],
+                        "execution_ref": "2f3799bc47b04f9c0d86549926338b61b963bfec7f140e45151babb3dc1c86a4",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "eac38aed8f626a51ec7eb3302274423b1cf09ffe97fc428cfb4e0109d2756c80",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "3d6db77c0811c43c3f709fcead88aa090f70d44b8dc26c0bb53e5711c5631778",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "partial",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved whole-image check s3 passes: the image as a whole reads as a pencil drawing, with muted gray tones, grain, and sketch-like shading across the food and surrounding objects."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the original meal and table setting but renders them with muted, desaturated tones and visible fine grain and sketch-like shading consistent with a pencil-drawn style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 61,
+                "dependencies": [],
+                "execution_ref": "70359a05b0b8a1671888233e12f2ca6338dc62f82649e73e2c60b350dfbb176b",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The edited image has a visibly muted, gray-toned, grainy treatment across the food and surrounding objects, with softened, sketch-like shading consistent with some progress toward a pencil-drawing style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 65,
+                "dependencies": [],
+                "execution_ref": "8e7fd275736ccb7efeba939d023ebd948e73fecae588333b517bf725cfe2976d",
+                "failure": null
+              },
+              {
+                "check_id": "s3",
+                "status": "pass",
+                "evidence": "The edited image as a whole has a muted, gray-toned, grainy appearance with softened, sketch-like shading across the food and surrounding objects. It reads as a pencil drawing rather than showing only isolated pencil-style details.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 74,
+                "dependencies": [
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly muted, gray-toned, grainy treatment across the food and surrounding objects, with softened, sketch-like shading consistent with some progress toward a pencil-drawing style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 65,
+                    "dependencies": [],
+                    "execution_ref": "8e7fd275736ccb7efeba939d023ebd948e73fecae588333b517bf725cfe2976d",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "879b5106e7ea1fc7f00f86273a29b3d460f9cf7c95b253c563e72735d92522e7",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved whole-image check s3 passes: the image as a whole reads as a pencil drawing, with muted gray tones, grain, and sketch-like shading across the food and surrounding objects.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 73,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image preserves the original meal and table setting but renders them with muted, desaturated tones and visible fine grain and sketch-like shading consistent with a pencil-drawn style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 61,
+                    "dependencies": [],
+                    "execution_ref": "70359a05b0b8a1671888233e12f2ca6338dc62f82649e73e2c60b350dfbb176b",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The edited image has a visibly muted, gray-toned, grainy treatment across the food and surrounding objects, with softened, sketch-like shading consistent with some progress toward a pencil-drawing style.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 65,
+                    "dependencies": [],
+                    "execution_ref": "8e7fd275736ccb7efeba939d023ebd948e73fecae588333b517bf725cfe2976d",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s3",
+                    "status": "pass",
+                    "evidence": "The edited image as a whole has a muted, gray-toned, grainy appearance with softened, sketch-like shading across the food and surrounding objects. It reads as a pencil drawing rather than showing only isolated pencil-style details.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 74,
+                    "dependencies": [
+                      {
+                        "check_id": "s2",
+                        "status": "pass",
+                        "evidence": "The edited image has a visibly muted, gray-toned, grainy treatment across the food and surrounding objects, with softened, sketch-like shading consistent with some progress toward a pencil-drawing style.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.94,
+                        "completion_tokens": 65,
+                        "dependencies": [],
+                        "execution_ref": "8e7fd275736ccb7efeba939d023ebd948e73fecae588333b517bf725cfe2976d",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "879b5106e7ea1fc7f00f86273a29b3d460f9cf7c95b253c563e72735d92522e7",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "f65bcc30efda693a89cd82422063f50918cbd073b4320283a86a7c220e0be9c5",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s3",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s3",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "parent": "74929fd5e52a62d4000ff763de51056d9cd063ece93deeb96c931416e3a2af32",
+          "round": 0,
+          "batch": 0,
+          "index": 0,
+          "transaction": {
+            "version": "typed-evidence-v1",
+            "reason": "The existing checks establish visible sketch-like progress but do not distinguish that from a substantially completed pencil drawing. Add a nested, image-grounded check for the extent and consistency of the style conversion; revise the readout so progress alone supports partial, not completion. The added check uses the broad progress observation as context, not as independent confirmation.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s2",
+                "before": "fulfillment",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Does the pencil-drawing treatment substantially and consistently render the image's visual content as a drawing, rather than merely applying a pale or grainy sketch-like effect while retaining a predominantly photographic appearance?",
+                "criteria": "Pass only if comparison of source and edit shows that the requested pencil-drawing style is substantially realized across the image's salient content, with drawing-like rendering rather than merely a partial or superficial effect. Fail if there is sufficient visual evidence that the treatment falls short of substantial conversion. Unknown if the extent or consistency cannot be assessed reliably. A pass on the ancestor establishes only progress and is not itself evidence of substantial completion.",
+                "binding": "Inspect the source and edited images directly. Use the ancestor's progress observation as context, then independently assess the extent and consistency of the style transformation across the meal and surrounding scene. Do not treat muted color, grain, or isolated sketch-like details alone as proof of completion.",
+                "readout_criteria": "",
+                "evidence_from": [
+                  "s2"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Compose all three supports without treating correlated observations as independent proof. Complete (yes) only when s3 passes, establishing substantial and consistent conversion. Partial only when s1 or s2 establishes visible requested progress and s3 fails, establishing that the transformation falls short of substantial completion. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to distinguish these states is unresolved; in particular, a pass on s1 or s2 alone cannot establish completion, and an unknown s3 prevents deciding between complete and partial. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "",
+                "evidence_from": []
+              }
+            ]
+          },
+          "error": "Insertion needs explicit readout criteria",
+          "accepted": false
+        },
+        {
+          "program_ref": "9c7e9e680298d4279037009570019d9cac67d47ef8d2b00701e238061dc3dde5",
+          "semantic_rejection": "The program adds an unjustified completion constraint: s3 requires drawing-like marks, tonal structure, and reduced photographic appearance across salient content, and rejects a pencil-like filter. The instruction asks for a pencil drawing but does not exclude filters or prescribe those techniques. The fulfillment rule then makes s3 the sole route to completion, so it can deny completion despite an image that visibly fulfills the requested pencil-drawing style. The support checks otherwise distinguish progress from completion and preserve unresolved evidence appropriately."
+        },
+        {
+          "stage": "gradient",
+          "failure": "CallFailure",
+          "error": "Transport failure in slot 6797b8c0b4be3c356b17bc7e5c02159c3ec32967fcbdacc500c74665638f603e: RuntimeError: All chat/completions endpoints failed:\n  api.openai.com: SSLError: HTTPSConnectionPool(host='api.openai.com', port=443): Max retries exceeded with url: /v1/chat/completions (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_BAD_RECORD_MAC] ssl/tls alert bad record mac (_ssl.c:2648)')))"
+        },
+        {
+          "program_ref": "d2e093ae2c3216be4a2314375d91afa6720334341b9d2f65403aa95835702c3f",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s3",
+              "node_instability:fulfillment",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "641e972ce172844638e60ab16f2567486fd5e19fe89fd29b530c8f91a114068b",
+          "semantic_rejection": "The fulfillment composition is contradictory: it says to compose all supports, but defines partial only when s3 fails and unknown when s3 is unknown. If s1 or s2 establishes progress while s3 is unknown, the image may be incomplete, but incompleteness is not established; the rubric requires unresolved evidence to stay unknown. More importantly, s1 and s2 do not provide independent evidence of progress: both define progress as visible pencil-drawing-style treatment, while s1 is also framed as the whole-image transformation check. This leaves no reliable way to distinguish partial treatment from a completed drawing when s3 fails, since s3's failure criterion specifically allows visible pencil-like treatment. The readout therefore cannot faithfully determine partial versus absent from the saved observations."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "4a83ce6e78282ea3dd7028c3f2cce27680eb1bbe09b78dbc7d92e5221abb9d7f",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "nested-required/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "5db0d279451fb04e45ed07b8175f3e31efc00865814e8cb6d22bd41242f00e4e"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "48495e33d4e2a16df287ae85edb941fc526fbf395f446f74cc1990dd6d0c3a91"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The existing progress checks repeatedly pass on muted color, grain, and softened shading, while the whole-image check inconsistently treats those cues as sufficient for completion. Refine the nested check to assess the overall drawing-like rendering against retained photographic appearance, without prescribing a technique or rejecting filters categorically; make the readout explicitly preserve partial progress and unresolved evidence.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s3\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image as a whole visibly read as a pencil drawing of its content, rather than as a photograph with only a pencil-like treatment?\",\"criteria\":\"Pass only when the overall rendering visibly reads as a pencil drawing across the image's salient content. Fail when assessable evidence shows it still reads predominantly as a photograph with a pencil-like treatment, despite visible style changes. Consider the overall appearance, including surfaces, lighting, edges, and detail; muted color, grain, or softened shading alone do not establish a drawing-like result. Unknown when the image or its overall style cannot be assessed reliably. Do not require monochrome, particular marks, or a particular transformation method.\",\"binding\":\"Inspect source and edited images directly. Use the ancestor's observation only as context, then independently judge the edited image's overall appearance. Distinguish a drawing-like rendering from a photograph with a pencil-like filter by weighing visible cues across the scene, including how surfaces, lighting, edges, and detail appear. A pass or fail here concerns whole-image fulfillment, not whether any progress occurred.\",\"readout_criteria\":\"\",\"evidence_from\":[\"s2\"]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Compose all supports explicitly. Complete (yes) only when s3 passes, establishing that the image as a whole visibly reads as a pencil drawing. Partial only when s1 or s2 establishes requested progress and s3 fails, establishing that the whole-image result remains predominantly photographic rather than drawing-like. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to establish progress or distinguish completion from partial is unresolved; in particular, established progress with s3 unknown leaves completion unresolved, and unknown progress evidence cannot be treated as failure. Do not treat support passes alone as completion or count unrelated edits as progress.\",\"binding\":\"\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 13376,
+    "completionTokens": 527,
+    "totalTokens": 13903,
+    "latencySeconds": 5.783179044723511,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The existing progress checks repeatedly pass on muted color, grain, and softened shading, while the whole-image check inconsistently treats those cues as sufficient for completion. Refine the nested check to assess the overall drawing-like rendering against retained photographic appearance, without prescribing a technique or rejecting filters categorically; make the readout explicitly preserve partial progress and unresolved evidence.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s3",
+              "requirement_id": "R1",
+              "question": "Does the edited image as a whole visibly read as a pencil drawing of its content, rather than as a photograph with only a pencil-like treatment?",
+              "criteria": "Pass only when the overall rendering visibly reads as a pencil drawing across the image's salient content. Fail when assessable evidence shows it still reads predominantly as a photograph with a pencil-like treatment, despite visible style changes. Consider the overall appearance, including surfaces, lighting, edges, and detail; muted color, grain, or softened shading alone do not establish a drawing-like result. Unknown when the image or its overall style cannot be assessed reliably. Do not require monochrome, particular marks, or a particular transformation method.",
+              "binding": "Inspect source and edited images directly. Use the ancestor's observation only as context, then independently judge the edited image's overall appearance. Distinguish a drawing-like rendering from a photograph with a pencil-like filter by weighing visible cues across the scene, including how surfaces, lighting, edges, and detail appear. A pass or fail here concerns whole-image fulfillment, not whether any progress occurred.",
+              "readout_criteria": "",
+              "evidence_from": [
+                "s2"
+              ]
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Compose all supports explicitly. Complete (yes) only when s3 passes, establishing that the image as a whole visibly reads as a pencil drawing. Partial only when s1 or s2 establishes requested progress and s3 fails, establishing that the whole-image result remains predominantly photographic rather than drawing-like. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to establish progress or distinguish completion from partial is unresolved; in particular, established progress with s3 unknown leaves completion unresolved, and unknown progress evidence cannot be treated as failure. Do not treat support passes alone as completion or count unrelated edits as progress.",
+              "binding": "",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The existing progress checks repeatedly pass on muted color, grain, and softened shading, while the whole-image check inconsistently treats those cues as sufficient for completion. Refine the nested check to assess the overall drawing-like rendering against retained photographic appearance, without prescribing a technique or rejecting filters categorically; make the readout explicitly preserve partial progress and unresolved evidence.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s3",
+            "requirement_id": "R1",
+            "question": "Does the edited image as a whole visibly read as a pencil drawing of its content, rather than as a photograph with only a pencil-like treatment?",
+            "criteria": "Pass only when the overall rendering visibly reads as a pencil drawing across the image's salient content. Fail when assessable evidence shows it still reads predominantly as a photograph with a pencil-like treatment, despite visible style changes. Consider the overall appearance, including surfaces, lighting, edges, and detail; muted color, grain, or softened shading alone do not establish a drawing-like result. Unknown when the image or its overall style cannot be assessed reliably. Do not require monochrome, particular marks, or a particular transformation method.",
+            "binding": "Inspect source and edited images directly. Use the ancestor's observation only as context, then independently judge the edited image's overall appearance. Distinguish a drawing-like rendering from a photograph with a pencil-like filter by weighing visible cues across the scene, including how surfaces, lighting, edges, and detail appear. A pass or fail here concerns whole-image fulfillment, not whether any progress occurred.",
+            "readout_criteria": "",
+            "evidence_from": [
+              "s2"
+            ]
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Compose all supports explicitly. Complete (yes) only when s3 passes, establishing that the image as a whole visibly reads as a pencil drawing. Partial only when s1 or s2 establishes requested progress and s3 fails, establishing that the whole-image result remains predominantly photographic rather than drawing-like. Absent (no) only when s1 and s2 both fail with sufficient evidence of no requested progress. Unknown when evidence needed to establish progress or distinguish completion from partial is unresolved; in particular, established progress with s3 unknown leaves completion unresolved, and unknown progress evidence cannot be treated as failure. Do not treat support passes alone as completion or count unrelated edits as progress.",
+            "binding": "",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "execution_ref": "e1e1cb63c50dff16bc5f9038744c21478b431d4966ce13966ab85a1096ab18f8",
+  "stage": "visual_discovery",
+  "slot": "round/11/discovery/primary",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly show at least one frog placed within the toilet, rather than merely on its lid, rim, or nearby floor?",
+          "criteria": "Pass if at least one frog is visibly situated within the toilet bowl interior, with spatial cues such as its position relative to the bowl opening and rim, contact, or occlusion supporting that it is inside rather than perched on the rim or merely overlapping the opening. Fail if the visible evidence establishes that no frog is placed within the toilet. Unknown if the relevant spatial relation cannot be resolved from the image. A frog on the lid, rim, or nearby floor alone does not establish placement within the toilet; additional frogs in those locations do not negate a genuine placement within it.",
+          "binding": "Assess placement within the toilet shown in the edited image; do not require a particular number of frogs beyond at least one, and do not treat mere overlap with the toilet as placement within it.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "If no frog is established as placed within the toilet, does the edited image show visible progress toward placing a frog within it?",
+          "criteria": "Pass only for visible evidence of an incomplete placement attempt directed toward the toilet interior, such as a frog visibly entering the bowl or being positioned at its opening in a way that indicates placement into it. A frog merely on the lid, rim, or nearby floor is not by itself evidence of progress toward placement. Fail if the image clearly shows no such progress. Unknown if the evidence cannot distinguish an attempted placement from an unrelated position. If a frog is established as placed within the toilet, this check is not needed to establish completion.",
+          "binding": "Count only progress toward placing a frog within the toilet; do not count unrelated edits or frogs merely near the toilet. Do not let extra frogs outside the toilet negate a genuine placement within it.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Add a frog inside the toilet.",
+          "criteria": "Use only the saved support observations. Return complete when s1 passes; s2 may then be skipped and is unnecessary for completion. When s1 fails, return partial if s2 establishes requested progress, absent if s2 establishes no requested progress, and unknown if s2 is unknown or unexpectedly skipped. When s1 is unknown, return partial only if s2's evidence establishes requested progress short of completion; return absent only if its evidence explicitly establishes no requested progress, including no completed placement. Otherwise return unknown: failure to find an incomplete placement attempt does not itself resolve uncertain completion. A skipped support is unobserved, not a failure. Extra frogs outside the bowl neither establish requested progress by themselves nor negate a genuine placement inside it. Do not add requirements for frog count, realism, removal of extra frogs, or alteration of pre-existing bowl details.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "observations": [
+      [
+        {
+          "check_id": "s1",
+          "status": "pass",
+          "evidence": "A frog is visibly situated inside the toilet bowl, below the rim and within the bowl opening. Other frogs on the lid and nearby floor do not negate this placement.",
+          "valid": true,
+          "eligible": true,
+          "queried": true,
+          "confidence": 0.99,
+          "completion_tokens": 59,
+          "dependencies": [],
+          "event": "observed",
+          "failure": null,
+          "execution_ref": "dfc02fae395391587c3ff9f084e286d4eb287d092caa8c41443432f321358e89"
+        },
+        {
+          "check_id": "s2",
+          "status": "unknown",
+          "evidence": "Saved activation condition not satisfied",
+          "valid": false,
+          "eligible": false,
+          "queried": false,
+          "confidence": null,
+          "completion_tokens": 0,
+          "dependencies": [],
+          "event": "conditional_skip",
+          "failure": null,
+          "execution_ref": ""
+        },
+        {
+          "check_id": "fulfillment",
+          "status": "complete",
+          "evidence": "s1 passes: a frog is visibly situated inside the toilet bowl. Under the saved criteria, s2 is unnecessary for completion.",
+          "valid": true,
+          "eligible": true,
+          "queried": true,
+          "confidence": 0.99,
+          "completion_tokens": 58,
+          "dependencies": [
+            {
+              "check_id": "s1",
+              "status": "pass",
+              "valid": true,
+              "queried": true,
+              "evidence": "A frog is visibly situated inside the toilet bowl, below the rim and within the bowl opening. Other frogs on the lid and nearby floor do not negate this placement.",
+              "confidence": 0.99
+            },
+            {
+              "check_id": "s2",
+              "status": "unknown",
+              "valid": false,
+              "queried": false,
+              "evidence": "No valid observation: conditional_skip",
+              "confidence": null
+            }
+          ],
+          "event": "observed",
+          "failure": null,
+          "execution_ref": "03a41877f078b9bf3148551033e16ed459e5bb928765ad3d252fa426e2b5b022"
+        }
+      ]
+    ],
+    "max_findings": 2
+  },
+  "case_id": "luna_then_sol/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "747d20cf1f5d24ca9e65e6d5f0edefa6cc7f5c0082549b599494b947d0dd61ee"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "5858e639272ff378e7cd315b34785a3aa87448555282f50c65f60d3f05dc03fd"
+    }
+  ],
+  "response": {
+    "content": "{\"findings\":[]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4643,
+    "completionTokens": 12,
+    "totalTokens": 4655,
+    "latencySeconds": 1.6920239925384521,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "findings": []
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "findings": []
+  }
+}

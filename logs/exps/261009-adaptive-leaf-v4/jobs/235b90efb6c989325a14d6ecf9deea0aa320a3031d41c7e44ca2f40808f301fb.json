@@ -1,0 +1,462 @@
+{
+  "execution_ref": "235b90efb6c989325a14d6ecf9deea0aa320a3031d41c7e44ca2f40808f301fb",
+  "stage": "propose_v4",
+  "slot": "round/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly render its content in a pencil-drawn style?",
+          "criteria": "Pass if the edited image is clearly rendered as a pencil drawing while representing the image’s visual content. Fail if it is clearly not rendered as a pencil drawing. Unknown if the edited image is unavailable or the style cannot be determined.",
+          "binding": "Inspect the edited image against the requested pencil-drawing outcome; do not require a source-to-edit progress check.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is there evidence that the requested pencil-drawing change has made some progress, even if the edited image is not yet a pencil drawing?",
+          "criteria": "Pass if comparison with the supplied image shows a change toward a pencil-drawn style, but the endpoint is not established by the first support. Fail if the image is unchanged or changes are unrelated to the requested style. Unknown if comparison is unavailable or the direction of change cannot be determined.",
+          "binding": "Use the supplied image only to assess progress toward the requested pencil-drawing transformation; unrelated edits are not progress. This check is needed only when the endpoint check does not establish completion.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a pencil drawing.",
+          "criteria": "Return yes only when support 1 passes: the edited image is rendered as a pencil drawing representing its visual content. Return no when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing progress without complete fulfillment. Return unknown when the available observations do not establish one of those outcomes, including when a needed observation is unknown. Support 2 is skipped when support 1 passes; on that path, the endpoint evidence alone establishes completion, so the skipped progress check is unobserved and earns no independent credit. Unrelated edits do not count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s endpoint criterion is too permissive: it treats muted grayscale and pencil-like texture as sufficient for a complete pencil drawing, although the reference is partial. The edited image has clear sketch-like shading and texture, but retains substantial photographic detail and smooth tonal areas, so this is evidence of progress—not by itself proof of full fulfillment. Refine the completion check to assess whether the image is consistently rendered in a recognizable pencil-drawing style across the scene, rather than accepting a few style cues; keep the separate progress check available to distinguish partial from no progress. Do not infer that support 2 failed: it was skipped because support 1 passed, so its status is unobserved. This is a criterion/binding calibration issue, not a transport or schema failure; the trace is valid and high-confidence, making the overly broad pass criterion the main issue to investigate."
+        ],
+        "s1": [
+          "The node is valid and its high-confidence pass reflects real progress: the edit is muted and has visible pencil-like texture. But those cues alone do not establish that the requested transformation is complete; much of the scene still retains photographic detail and smooth tonal rendering. Tighten the endpoint criterion to judge whether the pencil-drawing treatment is recognizable and consistent across the image, rather than accepting isolated style cues. Keep this completion check distinct from any progress check so partial transformation can be represented without treating it as either full success or no change. This is a binding/criterion calibration issue, not a transport or schema failure. The skipped support check is unobserved, not evidence of failure."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.94
+            ]
+          },
+          "s2": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.94
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 2.0,
+        "mean_completion_tokens": 120.0,
+        "traces": [
+          {
+            "program_ref": "5b6d58f7dbb924ad6b56cc2d312a80c7b5b3cf7b756eab7de63d8ae0e27f05a8",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Support 1 passes: the edited image preserves the visual content and renders it with pencil-like shading and sketch texture. This establishes completion; support 2 was conditionally skipped and is not needed."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the meal and surrounding objects, rendered in muted grayscale with visible pencil-like shading and sketch texture.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 49,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "fed32d320e60627f72a78b4618963103513be31a74495b9358ad6558ca504a29"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Saved activation condition not satisfied",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image preserves the meal and surrounding objects, rendered in muted grayscale with visible pencil-like shading and sketch texture.",
+                    "confidence": 0.94
+                  }
+                ],
+                "event": "conditional_skip",
+                "failure": null,
+                "execution_ref": ""
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "Support 1 passes: the edited image preserves the visual content and renders it with pencil-like shading and sketch texture. This establishes completion; support 2 was conditionally skipped and is not needed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 71,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image preserves the meal and surrounding objects, rendered in muted grayscale with visible pencil-like shading and sketch texture.",
+                    "confidence": 0.94
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "valid": false,
+                    "queried": false,
+                    "evidence": "No valid observation: conditional_skip",
+                    "confidence": null
+                  }
+                ],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "cf86b225612f29e81fa81f7a1b656f07d578ca85623eb5a043e756efd54d0dc3"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "pass",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": {
+                  "check_id": "s1",
+                  "states": [
+                    "fail",
+                    "unknown"
+                  ]
+                },
+                "eligible": false,
+                "state": "unknown",
+                "event": "conditional_skip",
+                "skip_reason": "Saved activation condition not satisfied"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "complete",
+                "event": "observed",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "38e7a89e101b303b225e7c376b5ff343090936aa8d46ba21b15f04dfbb9e7f6b",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "5b6d58f7dbb924ad6b56cc2d312a80c7b5b3cf7b756eab7de63d8ae0e27f05a8",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "Shared seed audit unavailable; Audit rejection needs an exact original clause and concrete counterexample"
+          }
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_only/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "5db0d279451fb04e45ed07b8175f3e31efc00865814e8cb6d22bd41242f00e4e"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "48495e33d4e2a16df287ae85edb941fc526fbf395f446f74cc1990dd6d0c3a91"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v2\",\"reason\":\"The endpoint check passed on muted grayscale and sketch-like texture, but the supplied edit retains substantial photographic detail and smooth tonal areas; the reference is partial. Tighten the endpoint criterion while preserving the separate progress check, which should run whenever completion is not established. This calibrates the existing requirement without treating the skipped progress check as a failure.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image visibly render its content in a recognizable pencil-drawing style consistently across the scene?\",\"criteria\":\"Pass only if the image as a whole is recognizably rendered as a pencil drawing, with pencil-drawn treatment consistently replacing photographic detail and smooth photographic tonal rendering across the scene while preserving its visual content. Isolated pencil-like texture, sketch shading, or muted grayscale while substantial photographic rendering remains is not sufficient. Fail if the image is clearly not rendered in a pencil-drawing style. Unknown if the edited image is unavailable or the overall style cannot be determined.\",\"binding\":\"Inspect the edited image against the requested pencil-drawing outcome. Judge the overall rendering, not isolated style cues; do not require a source-to-edit progress check for this endpoint.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]},{\"operation\":\"configure_activation\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"\",\"binding\":\"\",\"readout_criteria\":\"Return unknown if the endpoint check is unknown. If the endpoint check fails, use this progress check: pass means requested-style progress is established, fail means no requested progress is established, and unknown means progress cannot be determined. If the endpoint check passes, this check is skipped and contributes no independent evidence.\",\"activation_check\":\"s1\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[\"fail\",\"unknown\"],\"support_order\":[],\"readout_required\":[\"s1\",\"s2\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 4272,
+    "completionTokens": 440,
+    "totalTokens": 4712,
+    "latencySeconds": 4.8916497230529785,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v2",
+          "reason": "The endpoint check passed on muted grayscale and sketch-like texture, but the supplied edit retains substantial photographic detail and smooth tonal areas; the reference is partial. Tighten the endpoint criterion while preserving the separate progress check, which should run whenever completion is not established. This calibrates the existing requirement without treating the skipped progress check as a failure.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Does the edited image visibly render its content in a recognizable pencil-drawing style consistently across the scene?",
+              "criteria": "Pass only if the image as a whole is recognizably rendered as a pencil drawing, with pencil-drawn treatment consistently replacing photographic detail and smooth photographic tonal rendering across the scene while preserving its visual content. Isolated pencil-like texture, sketch shading, or muted grayscale while substantial photographic rendering remains is not sufficient. Fail if the image is clearly not rendered in a pencil-drawing style. Unknown if the edited image is unavailable or the overall style cannot be determined.",
+              "binding": "Inspect the edited image against the requested pencil-drawing outcome. Judge the overall rendering, not isolated style cues; do not require a source-to-edit progress check for this endpoint.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            },
+            {
+              "operation": "configure_activation",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "",
+              "binding": "",
+              "readout_criteria": "Return unknown if the endpoint check is unknown. If the endpoint check fails, use this progress check: pass means requested-style progress is established, fail means no requested progress is established, and unknown means progress cannot be determined. If the endpoint check passes, this check is skipped and contributes no independent evidence.",
+              "activation_check": "s1",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [
+                "fail",
+                "unknown"
+              ],
+              "support_order": [],
+              "readout_required": [
+                "s1",
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v2",
+        "reason": "The endpoint check passed on muted grayscale and sketch-like texture, but the supplied edit retains substantial photographic detail and smooth tonal areas; the reference is partial. Tighten the endpoint criterion while preserving the separate progress check, which should run whenever completion is not established. This calibrates the existing requirement without treating the skipped progress check as a failure.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Does the edited image visibly render its content in a recognizable pencil-drawing style consistently across the scene?",
+            "criteria": "Pass only if the image as a whole is recognizably rendered as a pencil drawing, with pencil-drawn treatment consistently replacing photographic detail and smooth photographic tonal rendering across the scene while preserving its visual content. Isolated pencil-like texture, sketch shading, or muted grayscale while substantial photographic rendering remains is not sufficient. Fail if the image is clearly not rendered in a pencil-drawing style. Unknown if the edited image is unavailable or the overall style cannot be determined.",
+            "binding": "Inspect the edited image against the requested pencil-drawing outcome. Judge the overall rendering, not isolated style cues; do not require a source-to-edit progress check for this endpoint.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          },
+          {
+            "operation": "configure_activation",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "",
+            "binding": "",
+            "readout_criteria": "Return unknown if the endpoint check is unknown. If the endpoint check fails, use this progress check: pass means requested-style progress is established, fail means no requested progress is established, and unknown means progress cannot be determined. If the endpoint check passes, this check is skipped and contributes no independent evidence.",
+            "activation_check": "s1",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [
+              "fail",
+              "unknown"
+            ],
+            "support_order": [],
+            "readout_required": [
+              "s1",
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

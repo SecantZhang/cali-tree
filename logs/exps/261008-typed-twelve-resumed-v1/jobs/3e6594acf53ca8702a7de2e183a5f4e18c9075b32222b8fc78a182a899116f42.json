@@ -1,0 +1,962 @@
+{
+  "execution_ref": "3e6594acf53ca8702a7de2e183a5f4e18c9075b32222b8fc78a182a899116f42",
+  "stage": "propose_typed",
+  "slot": "round/4/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the mug to the right of the headphones",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the mug to the right of the headphones",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the mug to the right of the headphones",
+          "source_phrase": "Move the mug to the right of the headphones"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Move the mug so that it is positioned to the right of the headphones.",
+          "target": "The mug is visibly positioned to the right of the headphones.",
+          "reference": "The headphones in the image; compare the mug’s position with the headphones.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Can the source mug be identified and tracked in the edited image well enough to judge its position relative to the headphones?",
+          "criteria": "Pass only if the source mug can be matched to an edited object using visible identity or continuity cues, and that same object's position relative to the headphones can be judged. Fail if clear evidence shows the source mug is absent or unchanged and no matching moved mug is present. Unknown if blur, occlusion, or ambiguity prevents reliable matching or position judgment. Do not count a different mug as the source mug merely because it is visible.",
+          "binding": "Compare source and edited images. Anchor the target to the single blue mug left of the headphones in the source; inspect the blurred blue remnant and any edited mugs for evidence of continuity. Record which edited object, if any, matches the source mug and why. This is evidence availability, not fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Did the source mug itself move toward or to the right of the headphones, and is the requested relation complete?",
+          "criteria": "Compare the source-identified mug with its edited counterpart, not any other mug. Pass only when evidence identifies that same mug and shows it to the right of the headphones. Fail when the same mug is identifiable but is not to the right; explicitly report whether it moved toward the requested position (progress) or shows no movement toward it. Unknown when identity, movement, or relative position cannot be resolved. A different mug on the right does not establish completion or progress. For R1, complete only on a verified same-mug right-side relation; partial only on evidenced movement of that mug toward the right without completion; absent only with clear evidence of no requested progress; otherwise unknown.",
+          "binding": "Use source and edited images and the source-mug identity/continuity evidence from s1. State which edited object is tracked and the visual basis for matching it. Compare its source and edited positions relative to the headphones; do not infer movement from the presence of other mugs.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the mug visibly positioned to the right of the headphones?",
+          "criteria": "Apply the original rubric to R1 using only the saved support observations. Complete (yes) only if s1 and s2 establish that the source mug itself is identified in the edit and is visibly to the right of the headphones. Partial only if s2 records evidence that this same mug moved toward the requested position but is not yet to the right. Absent (no) only if the observations provide clear evidence that no requested movement progressed. Unknown if source-mug identity, movement, or position is unresolved, or if the observations do not establish progress or absence. A different mug's position, object presence, or unrelated edits cannot establish fulfillment.",
+          "binding": "Target: The mug is visibly positioned to the right of the headphones.. Reference: The headphones in the image; compare the mug’s position with the headphones..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "s2": [
+          "The repeated unknowns are valid executions, not transport or schema failures, but the binding is too vague and does not operationalize the supplied s1 identity/continuity evidence. Make the node explicitly consume s1’s tracked-object evidence and compare source-to-edited visual features and relative positions, while distinguishing a blurred remnant from a confidently matched mug. Require an explicit progress finding: whether the same mug moved rightward toward the headphones even if it did not reach the right side; reserve unknown for genuinely unresolved identity or displacement, not merely because the edited mug looks different or other mugs are present. Here the source is a distinctive large light-blue mug left of the headphones; the edit shows a blue blurred shape at far left and multiple smaller mugs, so assess whether the shape/placement and scene continuity support partial movement, without treating another mug as the source or assuming the reference label proves it. Report the matching cues, displacement, and confidence separately so the aggregate can distinguish evidenced partial progress from unresolved evidence."
+        ],
+        "s1": [
+          "The binding is too vague and does not direct the node to use its identity/continuity evidence to assess progress. Make it explicitly compare the source mug’s distinctive features and location with the edited scene, identify any plausible match without assuming either white mug is the source, and assess whether the same mug shows rightward displacement toward the headphones even if its identity or final position remains uncertain. The edited image has a blurred blue shape at the former location and two smaller pale mugs, so distinguish evidence of movement from a confident object match; report match cues, displacement, and confidence separately. Keep unknown for genuinely unresolved identity or displacement, not merely because appearance changed or multiple mugs are present. Do not use the partial reference label as proof. The traces are valid executions, not transport/schema failures."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 0.0,
+        "label_consistency": 0.0,
+        "label_distribution": {
+          "unresolved": 5
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.98,
+              0.78,
+              0.78,
+              0.94,
+              0.96
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.91,
+              0.91,
+              0.94,
+              0.94,
+              0.91
+            ]
+          },
+          "fulfillment": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "unknown": 5
+            },
+            "consistency": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "requirement_consistency": 0.0,
+        "confidence_pass": false,
+        "mean_checks": 2.0,
+        "mean_completion_tokens": 214.4,
+        "traces": [
+          {
+            "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The source target is the single light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while the visible mugs are white and lack clear identity cues linking either to the source mug. The remnant and mugs do not establish which edited object, if any, is the source mug, so its position relative to the headphones cannot be judged reliably.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 106,
+                "dependencies": [],
+                "execution_ref": "3dbbc564a096949c8379332684421fcbf381b96c29909fe24965faa90f44efb0",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left, but the source mug cannot be confidently matched to a specific edited object. The white mugs do not provide a reliable visual match to the source mug, so its movement and position relative to the headphones cannot be resolved.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 103,
+                "dependencies": [],
+                "execution_ref": "4455fca340ac2cee0f407a179d9765684ad102baac20837e2183d7634d801a2f",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The source target is the single light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while the visible mugs are white and lack clear identity cues linking either to the source mug. The remnant and mugs do not establish which edited object, if any, is the source mug, so its position relative to the headphones cannot be judged reliably.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.98,
+                    "completion_tokens": 106,
+                    "dependencies": [],
+                    "execution_ref": "3dbbc564a096949c8379332684421fcbf381b96c29909fe24965faa90f44efb0",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left, but the source mug cannot be confidently matched to a specific edited object. The white mugs do not provide a reliable visual match to the source mug, so its movement and position relative to the headphones cannot be resolved.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 103,
+                    "dependencies": [],
+                    "execution_ref": "4455fca340ac2cee0f407a179d9765684ad102baac20837e2183d7634d801a2f",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The source target is the light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the former left position, while two distinct mugs are visible: a small pale mug near the left headphone and a pale mug on the far right. The remnant and visible mugs provide enough continuity/context to identify a likely moved mug and judge its position relative to the headphones, though the exact match is ambiguous because the edited mugs differ visibly from the source mug.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.78,
+                "completion_tokens": 122,
+                "dependencies": [],
+                "execution_ref": "8f8da5031204d5ea2a279a3c10a2394e9fbabecfc24d4c519455dae406f8d2b2",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the left, but the source mug cannot be confidently matched to a specific edited object. Therefore its movement and relation to the headphones cannot be resolved.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 86,
+                "dependencies": [],
+                "execution_ref": "0dd5f62840db79dd299a93195e64f629d982463b33cefc113c0343ff909f498d",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The source target is the light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the former left position, while two distinct mugs are visible: a small pale mug near the left headphone and a pale mug on the far right. The remnant and visible mugs provide enough continuity/context to identify a likely moved mug and judge its position relative to the headphones, though the exact match is ambiguous because the edited mugs differ visibly from the source mug.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.78,
+                    "completion_tokens": 122,
+                    "dependencies": [],
+                    "execution_ref": "8f8da5031204d5ea2a279a3c10a2394e9fbabecfc24d4c519455dae406f8d2b2",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the left, but the source mug cannot be confidently matched to a specific edited object. Therefore its movement and relation to the headphones cannot be resolved.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 86,
+                    "dependencies": [],
+                    "execution_ref": "0dd5f62840db79dd299a93195e64f629d982463b33cefc113c0343ff909f498d",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The source target is the light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the former left position, while two distinct mugs are visible: a small pale mug near the left headphone and a pale mug on the far right. The remnant and visible mugs provide enough continuity/identity context to track the source mug and judge its position relative to the headphones, though the exact match among the edited mugs is ambiguous.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.78,
+                "completion_tokens": 117,
+                "dependencies": [],
+                "execution_ref": "62d42a9ef5e05b588368347f289f07de36d0690ed55ab63fb21cc800310f8342",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left; the edited objects do not provide a clear visual match to the source mug, so its identity and movement cannot be resolved. The mug on the right cannot be assumed to be the source mug.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 99,
+                "dependencies": [],
+                "execution_ref": "a2cfe690625160232636b82aff7eca263c79edc46e057968d77cfbb8610e1ca4",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The source target is the light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the former left position, while two distinct mugs are visible: a small pale mug near the left headphone and a pale mug on the far right. The remnant and visible mugs provide enough continuity/identity context to track the source mug and judge its position relative to the headphones, though the exact match among the edited mugs is ambiguous.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.78,
+                    "completion_tokens": 117,
+                    "dependencies": [],
+                    "execution_ref": "62d42a9ef5e05b588368347f289f07de36d0690ed55ab63fb21cc800310f8342",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left; the edited objects do not provide a clear visual match to the source mug, so its identity and movement cannot be resolved. The mug on the right cannot be assumed to be the source mug.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 99,
+                    "dependencies": [],
+                    "execution_ref": "a2cfe690625160232636b82aff7eca263c79edc46e057968d77cfbb8610e1ca4",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The source target is the distinctive light-blue mug with a handle, left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while two smaller mugs appear: a white mug near the left side of the headphones and a white mug to their right. The remnant and mugs do not provide reliable visible identity or continuity cues to match the original blue mug to either edited mug, so the source mug's position relative to the headphones cannot be judged reliably.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 124,
+                "dependencies": [],
+                "execution_ref": "5d23537dcc142e4d7572bf3c4cc6f4b29bc0a1d03c145e5a3052a7cd82447fcf",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left; the edited objects do not provide a clear visual match to the source mug, so its identity and movement cannot be resolved. The mug on the right cannot be assumed to be the source mug.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 99,
+                "dependencies": [],
+                "execution_ref": "2ea0d952d70d1cd63e6c506f7afb9dba54f8867fe645b1a99785fec5e7b35e63",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The source target is the distinctive light-blue mug with a handle, left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while two smaller mugs appear: a white mug near the left side of the headphones and a white mug to their right. The remnant and mugs do not provide reliable visible identity or continuity cues to match the original blue mug to either edited mug, so the source mug's position relative to the headphones cannot be judged reliably.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 124,
+                    "dependencies": [],
+                    "execution_ref": "5d23537dcc142e4d7572bf3c4cc6f4b29bc0a1d03c145e5a3052a7cd82447fcf",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the far left; the edited objects do not provide a clear visual match to the source mug, so its identity and movement cannot be resolved. The mug on the right cannot be assumed to be the source mug.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.94,
+                    "completion_tokens": 99,
+                    "dependencies": [],
+                    "execution_ref": "2ea0d952d70d1cd63e6c506f7afb9dba54f8867fe645b1a99785fec5e7b35e63",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          },
+          {
+            "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+            "label": null,
+            "resolved": false,
+            "outcomes": {
+              "O1": {
+                "status": "unknown",
+                "applicability": "applicable",
+                "source": "unresolved",
+                "reason": "Fulfillment has not been established"
+              }
+            },
+            "requirements": {
+              "R1": "unknown"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The source target is the single light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while two distinct white mugs appear: one near the left headphone earcup and one to the right of the headphones. The blur and lack of clear identity/continuity cues make it ambiguous which, if either, is the source mug, so the source mug cannot be reliably matched to an edited object for judging its position.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.96,
+                "completion_tokens": 120,
+                "dependencies": [],
+                "execution_ref": "5935268afd3ca5db9af2393f68d93706fa1b7d32a825063c56bfdf2d404f4d1b",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the left, but the source mug cannot be confidently matched to a specific edited object. The visible mugs are not clearly the same mug, so its movement and relation to the headphones cannot be resolved.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.91,
+                "completion_tokens": 96,
+                "dependencies": [],
+                "execution_ref": "84d33e0626dda0cfcce6f84571843c08dd79aaaa0ae0eca8502abac9d480c1e1",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "unknown",
+                "evidence": "Unknown required evidence dependency",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The source target is the single light-blue mug left of the headphones. In the edited image, a blurred blue remnant remains at the far left, while two distinct white mugs appear: one near the left headphone earcup and one to the right of the headphones. The blur and lack of clear identity/continuity cues make it ambiguous which, if either, is the source mug, so the source mug cannot be reliably matched to an edited object for judging its position.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.96,
+                    "completion_tokens": 120,
+                    "dependencies": [],
+                    "execution_ref": "5935268afd3ca5db9af2393f68d93706fa1b7d32a825063c56bfdf2d404f4d1b",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "evidence": "The source mug is the large light-blue mug to the left of the headphones. In the edited image, there are multiple mugs and a blue blurred shape at the left, but the source mug cannot be confidently matched to a specific edited object. The visible mugs are not clearly the same mug, so its movement and relation to the headphones cannot be resolved.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.91,
+                    "completion_tokens": 96,
+                    "dependencies": [],
+                    "execution_ref": "84d33e0626dda0cfcce6f84571843c08dd79aaaa0ae0eca8502abac9d480c1e1",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "unknown",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": false,
+                "state": "unknown",
+                "skip_reason": "Unknown required evidence dependency"
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "3c7e31688d1efb3e724bce4f6460f55ab3854865b39416ed4b96ed41ada8d243",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "target_mismatch"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "29906bda523e3a069fc01d1dde646e95c36ed06f0e75e465df8a5ed629858dc0",
+          "semantic_rejection": "The fulfillment readout is a requested node with parent s2, but its activation requires s2 to be pass, fail, or unknown, so it is reachable. However, s2’s criteria only say to report visible movement toward the target as progress; they do not require recording whether such movement occurred when the mug is not yet to the right. The readout therefore cannot reliably distinguish partial progress from no progress and may misclassify the requested outcome. The support evidence is insufficient for the rubric’s partial-versus-no distinction."
+        },
+        {
+          "program_ref": "f903001c1718a78b7cb4a395f47ef05b55f9bee2e3076058e5267e2fa35fd855",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "unresolved",
+              "target_mismatch",
+              "requirement_instability",
+              "node_instability:s2",
+              "confidence"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        },
+        {
+          "program_ref": "a643dc6e4c0b16e2b7d599394fab87e8740622a115dbfc869e910e5bb4db4288",
+          "semantic_rejection": "The support checks do not preserve the requested relation and extent reliably. s2 treats movement “toward” the right as partial even though the instruction only requests the final relation “to the right”; movement toward it could be in an unrelated direction or leave the mug still left of the headphones. Conversely, s2’s fail condition (“did not move toward”) does not establish that no requested progress occurred, so it cannot support absence. The fulfillment readout inherits this unsupported partial/absent logic. Require evidence of movement toward the right-side relation for partial, and clear evidence of no such progress for absent; otherwise leave unresolved."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "5f11c1b52128affa94e8de22d8a98185f7a783599b497c6f9e0fef7e2c381e06",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Move the mug to the right of the headphones",
+                "parent_id": "s1",
+                "question": "Can the edited objects be matched to the source mug by comparing their visible shape, handle, color, and scale, and does that evidence distinguish the mug on the right from the mug near the headphones?",
+                "criteria": "Investigate identity/continuity directly rather than treating the blue blur or mere presence of mugs as sufficient. Report whether either edited mug is reliably the source mug, and the visual cues supporting or limiting that match.",
+                "evidence": "The source shows one large light-blue mug with a handle left of the headphones. The edit shows a blue blurred remnant at the former location, a smaller pale mug near the headphones, and another pale mug to their right. The saved s1 observations conflict: some call the source mug unmatchable, while others say context may identify a likely moved mug despite ambiguity.",
+                "rationale": "The broad s1 support is repeatedly marked pass even when its evidence says the source mug cannot be matched reliably; a focused identity investigation could resolve this inconsistency. This is necessary before judging whether the right-side mug fulfills the requested move, without assuming that it does."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Move the mug to the right of the headphones",
+            "parent_id": "s1",
+            "question": "Can the edited objects be matched to the source mug by comparing their visible shape, handle, color, and scale, and does that evidence distinguish the mug on the right from the mug near the headphones?",
+            "criteria": "Investigate identity/continuity directly rather than treating the blue blur or mere presence of mugs as sufficient. Report whether either edited mug is reliably the source mug, and the visual cues supporting or limiting that match.",
+            "evidence": "The source shows one large light-blue mug with a handle left of the headphones. The edit shows a blue blurred remnant at the former location, a smaller pale mug near the headphones, and another pale mug to their right. The saved s1 observations conflict: some call the source mug unmatchable, while others say context may identify a likely moved mug despite ambiguity.",
+            "rationale": "The broad s1 support is repeatedly marked pass even when its evidence says the source mug cannot be matched reliably; a focused identity investigation could resolve this inconsistency. This is necessary before judging whether the right-side mug fulfills the requested move, without assuming that it does.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "5f11c1b52128affa94e8de22d8a98185f7a783599b497c6f9e0fef7e2c381e06",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-7b78f1229d9bb014bcc5::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "a382bec3f8920c15c470a630705c3fa658ecdeed140df0e5a85f07c62c36133a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "26d1c35d03f27bd0405dab8d5f2b3d6d672156d664eb0a6047e1eafc7c5a9f62"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v1\",\"reason\":\"The repeated traces show s1 passing despite evidence that identity is unresolved, while s2 then cannot distinguish progress from uncertainty. Tighten the existing checks to make their statuses and evidence criteria coherent; do not treat the rightmost mug or the reference label as proof of source identity or progress.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Can the source mug be reliably matched to an edited object, and what visible continuity cues support that match?\",\"criteria\":\"Pass only if visible identity or continuity evidence reliably links the source mug to a specific edited object and permits its position to be judged. Fail only if clear evidence establishes that no matching source mug is present. Unknown if the blue blur, changed appearance, multiple mugs, or other ambiguity prevents a reliable match. Report the source mug's distinctive shape, handle, color, and scale against each plausible edited object; do not treat mere scene continuity or a plausible location as a match.\",\"binding\":\"Compare the source's large light-blue handled mug left of the headphones with the edited scene. Assess the blue blurred remnant and each pale mug separately, including the mug right of the headphones. State the specific matching cues and limitations; do not assume either pale mug is the source mug.\",\"readout_criteria\":\"\",\"evidence_from\":[]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Using the source-mug identity evidence, is the same mug to the right of the headphones, or is there clear evidence of movement toward that right-side relation without completion?\",\"criteria\":\"Pass only if the same source mug is reliably identified and is visibly to the right of the headphones. Fail only if the same mug is reliably identified and clear comparison shows no movement toward the right-side relation; report its source and edited positions. Unknown if identity or displacement cannot be resolved. Movement toward the right-side relation without reaching it is evidence of partial progress only when the same mug and that displacement are established; movement in another direction, a different mug on the right, or object presence alone is not progress.\",\"binding\":\"Use s1's specific identity/continuity observations, then compare the tracked mug's source and edited positions relative to the headphones. Explicitly report identity cues, displacement direction, and whether the right-side relation is achieved. Do not infer movement from the other mugs or the blue blur alone.\",\"readout_criteria\":\"\",\"evidence_from\":[]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 11188,
+    "completionTokens": 537,
+    "totalTokens": 11725,
+    "latencySeconds": 6.299240827560425,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The repeated traces show s1 passing despite evidence that identity is unresolved, while s2 then cannot distinguish progress from uncertainty. Tighten the existing checks to make their statuses and evidence criteria coherent; do not treat the rightmost mug or the reference label as proof of source identity or progress.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Can the source mug be reliably matched to an edited object, and what visible continuity cues support that match?",
+              "criteria": "Pass only if visible identity or continuity evidence reliably links the source mug to a specific edited object and permits its position to be judged. Fail only if clear evidence establishes that no matching source mug is present. Unknown if the blue blur, changed appearance, multiple mugs, or other ambiguity prevents a reliable match. Report the source mug's distinctive shape, handle, color, and scale against each plausible edited object; do not treat mere scene continuity or a plausible location as a match.",
+              "binding": "Compare the source's large light-blue handled mug left of the headphones with the edited scene. Assess the blue blurred remnant and each pale mug separately, including the mug right of the headphones. State the specific matching cues and limitations; do not assume either pale mug is the source mug.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Using the source-mug identity evidence, is the same mug to the right of the headphones, or is there clear evidence of movement toward that right-side relation without completion?",
+              "criteria": "Pass only if the same source mug is reliably identified and is visibly to the right of the headphones. Fail only if the same mug is reliably identified and clear comparison shows no movement toward the right-side relation; report its source and edited positions. Unknown if identity or displacement cannot be resolved. Movement toward the right-side relation without reaching it is evidence of partial progress only when the same mug and that displacement are established; movement in another direction, a different mug on the right, or object presence alone is not progress.",
+              "binding": "Use s1's specific identity/continuity observations, then compare the tracked mug's source and edited positions relative to the headphones. Explicitly report identity cues, displacement direction, and whether the right-side relation is achieved. Do not infer movement from the other mugs or the blue blur alone.",
+              "readout_criteria": "",
+              "evidence_from": []
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The repeated traces show s1 passing despite evidence that identity is unresolved, while s2 then cannot distinguish progress from uncertainty. Tighten the existing checks to make their statuses and evidence criteria coherent; do not treat the rightmost mug or the reference label as proof of source identity or progress.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Can the source mug be reliably matched to an edited object, and what visible continuity cues support that match?",
+            "criteria": "Pass only if visible identity or continuity evidence reliably links the source mug to a specific edited object and permits its position to be judged. Fail only if clear evidence establishes that no matching source mug is present. Unknown if the blue blur, changed appearance, multiple mugs, or other ambiguity prevents a reliable match. Report the source mug's distinctive shape, handle, color, and scale against each plausible edited object; do not treat mere scene continuity or a plausible location as a match.",
+            "binding": "Compare the source's large light-blue handled mug left of the headphones with the edited scene. Assess the blue blurred remnant and each pale mug separately, including the mug right of the headphones. State the specific matching cues and limitations; do not assume either pale mug is the source mug.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Using the source-mug identity evidence, is the same mug to the right of the headphones, or is there clear evidence of movement toward that right-side relation without completion?",
+            "criteria": "Pass only if the same source mug is reliably identified and is visibly to the right of the headphones. Fail only if the same mug is reliably identified and clear comparison shows no movement toward the right-side relation; report its source and edited positions. Unknown if identity or displacement cannot be resolved. Movement toward the right-side relation without reaching it is evidence of partial progress only when the same mug and that displacement are established; movement in another direction, a different mug on the right, or object presence alone is not progress.",
+            "binding": "Use s1's specific identity/continuity observations, then compare the tracked mug's source and edited positions relative to the headphones. Explicitly report identity cues, displacement direction, and whether the right-side relation is achieved. Do not infer movement from the other mugs or the blue blur alone.",
+            "readout_criteria": "",
+            "evidence_from": []
+          }
+        ]
+      }
+    ]
+  }
+}

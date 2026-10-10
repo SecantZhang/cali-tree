@@ -1,0 +1,987 @@
+{
+  "execution_ref": "690c39343443756e90d780642576eacc4d1a01eb9a7d340865a700bd7c00168d",
+  "stage": "propose_v4",
+  "slot": "round/9/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.",
+          "reference": "The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image appear to be a drawing made from chalk?",
+          "criteria": "Pass if the edited image as a whole has the appearance of a chalk-made drawing. Fail if it clearly does not have that appearance, including when it shows only an unrelated edit or a partial chalk effect. Unknown if the edited image is unavailable or the appearance cannot be determined.",
+          "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; supporting evidence does not independently earn completion credit.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does comparison with the input image show that the requested chalk-drawing transformation has progressed?",
+          "criteria": "Pass if comparison shows some change toward rendering the image as a chalk drawing, even if the transformation is incomplete. Fail if there is no requested progress; unrelated edits alone do not count. Unknown if the images or comparison are insufficient to determine progress.",
+          "binding": "O1 and the rubric: assess progress toward the requested chalk-drawing transformation, not unrelated edits.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a chalk drawing.",
+          "criteria": "Apply the original rubric to R1. Return yes only when support 1 passes: the edited image is a chalk-made drawing. Return no only when support 1 fails and support 2 fails, establishing no requested progress. Return partial when support 1 fails and support 2 passes, establishing some but incomplete requested progress. Return unknown when the evidence needed to distinguish these outcomes is unresolved. Support 2 is conditionally skipped when support 1 passes; that skipped observation remains unobserved, and the endpoint evidence alone establishes completion. A skipped support does not count as a failure or as evidence of progress. Unrelated edits never count as requested progress.",
+          "binding": "Target: The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.. Reference: The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s yes rule is too permissive: it treats soft grain, smudging, and muted color as sufficient proof of a chalk-made drawing, although those cues can also describe a filtered or partially stylized photograph. The edited image does show clear chalk-like texture and softened scenery, so this is not evidence of no progress; however, the giraffes retain detailed photographic-looking forms and the scene is not unambiguously rendered throughout as a chalk drawing. Make the completion criterion assess the overall image against the requested medium, distinguishing a convincing chalk-drawing appearance from isolated texture or color effects, and ensure partial progress is evaluated when completion is not established. The trace says s2 was conditionally skipped because s1 passed; that is a valid execution path, not negative visual evidence. Investigate the s1 pass criterion and its evidence-to-decision mapping rather than treating the skipped observation as a failure. Keep the original rubric’s unresolved outcome available when visual evidence cannot distinguish completion from partial fulfillment."
+        ],
+        "s1": [
+          "The binding is underspecified: it asks whether the image “appears” chalk-made, while the trace treats grain, smudging, and muted color as sufficient evidence. Tighten the decision mapping so those cues count as supporting evidence, not proof of completion; assess whether the image as a whole convincingly reads as a chalk drawing rather than a photograph with a chalk-like filter. In this example, the scene is visibly softened and textured, but the giraffes retain photographic detail, so the evidence supports progress without establishing full completion. Preserve the rubric’s partial and unresolved outcomes rather than forcing a yes/no result. Keep the node focused on the edited image and requested medium; the conditional skip of s2 is an execution-path detail, not negative visual evidence."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.94
+            ]
+          },
+          "s2": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.94
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 2.0,
+        "mean_completion_tokens": 140.0,
+        "traces": [
+          {
+            "program_ref": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Support s1 passes: the edited image is rendered with a soft, grainy, smudged texture and muted colors that give the scene the appearance of a chalk drawing. Under the saved criteria, this establishes completion; s2 was conditionally skipped."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image has a soft, grainy, smudged texture and muted colors that make the giraffes and scene appear rendered as a chalk drawing.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 57,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "33562a05f1b9212997d9d997630384abd84ce76980f7cf67b1598aa4ee215a33"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Saved activation condition not satisfied",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image has a soft, grainy, smudged texture and muted colors that make the giraffes and scene appear rendered as a chalk drawing.",
+                    "confidence": 0.94
+                  }
+                ],
+                "event": "conditional_skip",
+                "failure": null,
+                "execution_ref": ""
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "Support s1 passes: the edited image is rendered with a soft, grainy, smudged texture and muted colors that give the scene the appearance of a chalk drawing. Under the saved criteria, this establishes completion; s2 was conditionally skipped.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.94,
+                "completion_tokens": 83,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image has a soft, grainy, smudged texture and muted colors that make the giraffes and scene appear rendered as a chalk drawing.",
+                    "confidence": 0.94
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "valid": false,
+                    "queried": false,
+                    "evidence": "No valid observation: conditional_skip",
+                    "confidence": null
+                  }
+                ],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "fea9427da523d0d159282df38a006cd6bf47b4b358f92b99c4c4c718462ec1e6"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "pass",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": {
+                  "check_id": "s1",
+                  "states": [
+                    "fail",
+                    "unknown"
+                  ]
+                },
+                "eligible": false,
+                "state": "unknown",
+                "event": "conditional_skip",
+                "skip_reason": "Saved activation condition not satisfied"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "complete",
+                "event": "observed",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "19703f5915f69331f46b803e6c3593a7b9cdd8495ed1ae18f051b931f4b0a904",
+            "findings": [
+              {
+                "kind": "nested_evidence",
+                "requirement_id": "R1",
+                "source_phrase": "Turn the image into a drawing made from chalk",
+                "parent_id": "s1",
+                "question": "Beyond the grainy, smudged texture and muted colors, does the edited image show the scene as a drawing made from chalk across its main subjects and background, rather than retaining substantial photographic rendering?",
+                "criteria": "Inspect the giraffes and surrounding scene separately for drawing-like chalk rendering; judge the overall extent of the transformation, not texture cues alone. A pass on s1 does not settle this finer question.",
+                "evidence": "The edited image retains recognizable giraffes and scene details, with strong grain and softened colors; the giraffes' patterned bodies and outlines remain relatively crisp compared with the heavily blurred, textured background.",
+                "rationale": "s1's broad appearance judgment cites texture and color cues, but does not examine whether the requested drawing treatment extends across the image. This check investigates that evidence without treating stylistic cues as proof of full conversion."
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "kind": "nested_evidence",
+            "requirement_id": "R1",
+            "source_phrase": "Turn the image into a drawing made from chalk",
+            "parent_id": "s1",
+            "question": "Beyond the grainy, smudged texture and muted colors, does the edited image show the scene as a drawing made from chalk across its main subjects and background, rather than retaining substantial photographic rendering?",
+            "criteria": "Inspect the giraffes and surrounding scene separately for drawing-like chalk rendering; judge the overall extent of the transformation, not texture cues alone. A pass on s1 does not settle this finer question.",
+            "evidence": "The edited image retains recognizable giraffes and scene details, with strong grain and softened colors; the giraffes' patterned bodies and outlines remain relatively crisp compared with the heavily blurred, textured background.",
+            "rationale": "s1's broad appearance judgment cites texture and color cues, but does not examine whether the requested drawing treatment extends across the image. This check investigates that evidence without treating stylistic cues as proof of full conversion.",
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "19703f5915f69331f46b803e6c3593a7b9cdd8495ed1ae18f051b931f4b0a904",
+            "status": "hypothesis"
+          }
+        ],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "The fulfillment readout can return a known result without the evidence needed to establish it. If s1 is unknown, s2 is activated, but s2 only assesses progress; it cannot establish whether the image is a complete chalk drawing. The fulfillment criteria nevertheless say to return partial when s1 fails and s2 passes, without requiring s1 to be known to fail. That permits a partial result despite unresolved completion evidence, contrary to the rubric’s requirement that insufficient evidence stay unresolved.",
+            "source_clause": "Insufficient evidence stays unresolved.",
+            "counterexample": "s1 returns unknown because the edited image is unavailable, while s2 returns pass based on a comparison that indicates some progress. The fulfillment criteria allow partial because s1 did not pass and s2 passed, even though completion cannot be ruled out. The result should remain unknown.",
+            "execution_ref": "e604b1d3b827a12a72ca7bb4590a6458f8ba2f63ed2e5bbf12f013fae8d78eb1"
+          }
+        },
+        {
+          "round": 0,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The existing endpoint check conflates chalk-like texture with completion of the requested drawing transformation. Add a targeted check for whether the scene is rendered as a drawing rather than retaining photographic detail under an effect, then require that evidence alongside the broad endpoint before returning yes. Keep progress assessment available when completion is known to be absent, and preserve unknown when completion evidence is unresolved. The image-grounded finding is a hypothesis, not an assumed answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond a chalk-like surface effect, does the edited scene read as a drawing rather than as a photograph with texture applied?",
+                "criteria": "Pass if the scene is rendered as a drawing, with drawing-like forms or marks rather than retaining predominantly photographic detail beneath a chalk-like effect. Fail if it remains predominantly photographic despite chalk-like grain, smudging, or softened color. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested image transformation into a chalk drawing is present; this check distinguishes drawing from a photographic image with a chalk-like effect and does not independently establish completion.",
+                "readout_criteria": "Use this observation with s1 to assess whether the requested chalk-drawing transformation is complete; do not treat a pass here alone as completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes: the whole image has the appearance of a chalk drawing and reads as a drawing rather than a photograph with a chalk-like surface effect. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails, s2 passes, and s3 fails, establishing visible progress but incomplete transformation. If s1 is unknown, or if s1 fails and either s2 or s3 is unknown, return unknown; progress evidence cannot rule out completion when completion evidence is unresolved. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric; completion requires both endpoint evidence checks, while partial requires known failure of the endpoint and known progress.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "round": 1,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The observed pass for s1 relies on grain, smudging, and muted color, which can describe a chalk-like filter without establishing that the image as a whole reads as a drawing. Add a focused endpoint check for drawing-like rendering versus retained photographic detail, and require both endpoint checks for completion. Preserve the progress path only when completion is known to be absent; unresolved endpoint evidence must remain unknown. The visual finding is a hypothesis, not an assumed atomic answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond a chalk-like surface effect, does the edited scene read as a drawing rather than as a photograph with texture applied?",
+                "criteria": "Pass if the scene is rendered as a drawing, with drawing-like forms or marks rather than predominantly photographic detail beneath a chalk-like effect. Fail if it remains predominantly photographic despite chalk-like grain, smudging, or softened color. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess completion; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering rather than merely a chalk-like effect. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails, s2 passes, and s3 fails, establishing progress but an incomplete transformation. Return unknown if s1 is unknown, or if s1 fails and either s2 or s3 is unknown; progress evidence cannot rule out completion when endpoint evidence is unresolved. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; partial requires known endpoint failure and known progress.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "round": 2,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The observed pass for s1 is based on grain, smudging, and softened color, which do not by themselves establish that the image has been transformed into a drawing. Add a focused check for drawing-like rendering versus retained photographic detail, and require it alongside s1 for completion. Preserve the existing progress check for known incomplete work, while keeping unresolved endpoint evidence unknown. The image-based distinction is a hypothesis, not an assumed answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond a chalk-like surface effect, does the edited scene read as a drawing rather than as a photograph with texture applied?",
+                "criteria": "Pass if the scene is rendered as a drawing, with drawing-like forms or marks rather than predominantly photographic detail beneath a chalk-like effect. Fail if it remains predominantly photographic despite chalk-like grain, smudging, or softened color. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess completion; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering rather than merely a chalk-like effect. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial only when s1 fails, s2 passes, and s3 fails, establishing progress but an incomplete transformation. Return unknown if s1 is unknown, or if s1 fails and either s2 or s3 is unknown; progress evidence cannot rule out completion when endpoint evidence is unresolved. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; partial requires known endpoint failure and known progress.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "program_ref": "3710ccc03331ffd6d7eee32b9b143c9a73f5ce1d0dc40a4edb4fb59dbaa6b010",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "The fulfillment logic does not preserve the rubric’s progress/endpoint meaning. It makes s3 a required condition for partial, so known progress can be reported unknown when s3 is unresolved, even though the rubric defines partial as some progress without complete fulfillment. It also treats s1 failure as necessary for partial, although s1’s failure means the image lacks the overall chalk-drawing appearance and does not establish that the requested transformation has not been completed under the more specific s3 evidence.",
+            "source_clause": "partial means some progress without complete fulfillment.",
+            "counterexample": "Suppose s1 fails, s2 passes, and s3 is unknown. The saved criteria establish requested progress and do not establish completion, but fulfillment returns unknown because s3 is unresolved. The rubric calls for partial when progress is known and fulfillment is incomplete; s3 uncertainty should not erase that known progress.",
+            "execution_ref": "0ab42c109824c39274482ab6b5bd195ad12a0112be0e2acfc253c3c883b432e7"
+          }
+        },
+        {
+          "round": 4,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The endpoint check currently treats chalk-like texture as sufficient for completion. The edited image has visible chalk-like grain and smudging, but the giraffes retain detailed, photo-like patterning; a focused whole-image drawing-versus-filter check can distinguish that without assuming its answer. Keep the existing progress route, and ensure unresolved endpoint evidence does not become a completion or absence judgment. The visual finding is a hypothesis, not an expected atomic answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across the main subjects and scene, rather than as a photograph with a chalk-like effect?",
+                "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess whether the whole image is a chalk drawing; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s1",
+                "requirement_id": "R1",
+                "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+                "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+                "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+                "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering across the image. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial when completion is not established and s2 passes, establishing some requested progress; do not require s3 to be known to recognize known progress as partial when s1 fails. If s1 is unknown, return unknown because completion and progress cannot be distinguished. If s1 fails and s2 is unknown, return unknown. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; absent requires known lack of progress; partial requires known progress without established completion. Preserve unresolved evidence as unknown when it prevents distinguishing these outcomes.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "round": 5,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The existing completion check can pass on texture and muted color alone, while the edited image retains substantial photographic detail in the giraffes. Add a focused check of drawing-like rendering across the subjects and scene, and require it alongside the broad endpoint check for completion. Preserve the existing progress check and ensure unresolved completion evidence is not treated as partial or absent. The visual assessment is evidence to investigate, not a predetermined answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across the main subjects and scene, rather than as a photograph with a chalk-like effect?",
+                "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess whether the whole image is a chalk drawing; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s1",
+                "requirement_id": "R1",
+                "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+                "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+                "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+                "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering across the image. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial when completion is not established and s2 passes, establishing some requested progress; do not require s3 to be known to recognize known progress as partial when s1 fails. If s1 is unknown, return unknown because completion and progress cannot be distinguished. If s1 fails and s2 is unknown, return unknown. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; absent requires known lack of progress; partial requires known progress without established completion. Preserve unresolved evidence as unknown when it prevents distinguishing these outcomes.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "round": 6,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The existing endpoint check can treat grain and smudging as sufficient, although those cues alone do not establish that the scene has become a chalk drawing. Add a focused check for drawing-like rendering across the subjects and scene, then require both endpoint observations for completion. Preserve the existing progress check for known incomplete work and keep unresolved evidence unresolved. The visual finding is a hypothesis, not a predetermined answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across the main subjects and scene, rather than as a photograph with a chalk-like effect?",
+                "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess whether the whole image is a chalk drawing; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s1",
+                "requirement_id": "R1",
+                "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+                "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+                "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+                "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering across the image. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial when completion is not established and s2 passes, establishing some requested progress; do not require s3 to be known to recognize known progress as partial when s1 fails. If s1 is unknown, return unknown because completion and progress cannot be distinguished. If s1 fails and s2 is unknown, return unknown. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; absent requires known lack of progress; partial requires known progress without established completion. Preserve unresolved evidence as unknown when it prevents distinguishing these outcomes.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "program_ref": "3fb17eead09e93fd632df4e7655109dfab2f9713cbfd6a7651557684fd78aaa2",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "The fulfillment readout is not always scheduled: it is a child of s2, which is activated only when s1 fails or is unknown. If s1 passes, s2 and fulfillment are skipped, so the program cannot always determine the rubric outcome. Also, s1 can fail on a partial chalk effect, while the rubric requires partial—not no progress—when some requested change has progressed; the conditional s2 check is not activated on s1 pass to resolve that case.",
+            "source_clause": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment.",
+            "counterexample": "An image with a partial chalk effect may fail s1, then s2 can establish progress and support partial. But an image that passes s1 while still short of the requested end result skips s2 and fulfillment entirely, leaving no scheduled readout to distinguish complete from partial. The program therefore does not preserve the rubric’s progress/endpoint meaning across activation paths.",
+            "execution_ref": "c1ec9a0f0ea634f1547f7ad77fa0673cd5f897940f8193af617a017dcadc9708"
+          }
+        },
+        {
+          "round": 8,
+          "parent": "dd7f4e414a7d790a148b6f51f76af4da0a493deeb157b4ea42b43cbd858ea830",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The existing endpoint check can treat texture and muted color as sufficient, while the edited image still retains detailed giraffe patterning and recognizable photographic structure. Add a focused whole-scene rendering check and require it alongside s1 for completion. Keep progress assessment available when the endpoint is known not to be complete, and preserve unresolved evidence as unknown. The visual assessment is a hypothesis, not an assumed answer.",
+            "actions": [
+              {
+                "operation": "insert_support",
+                "after": "s1",
+                "before": "s2",
+                "new_check_id": "s3",
+                "target_id": "",
+                "requirement_id": "R1",
+                "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across the main subjects and scene, rather than as a photograph with a chalk-like effect?",
+                "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+                "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+                "readout_criteria": "Use with s1 to assess completion; a pass here alone does not establish completion.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s1",
+                "requirement_id": "R1",
+                "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+                "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+                "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+                "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s3"
+                ]
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Apply the original rubric to R1. Return complete only when s1 passes and s3 passes, establishing both the overall chalk-drawing appearance and drawing-like rendering across the image. Return absent only when s1 fails and s2 fails, establishing no requested progress. Return partial when completion is not established and s2 passes, establishing some requested progress; do not require s3 to be known to recognize known progress as partial when s1 fails. If s1 is unknown, return unknown because completion and progress cannot be distinguished. If s1 fails and s2 is unknown, return unknown. s2 is conditionally skipped when s1 passes; that skipped observation is unobserved, not a failure or evidence of progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Use the original instruction and rubric. Completion requires both endpoint checks to pass; absent requires known lack of progress; partial requires known progress without established completion. Preserve unresolved evidence as unknown when it prevents distinguishing these outcomes.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2",
+                  "s3"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_only/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "76a06e20f42156268378372428ce173605b34af5db9f80e995c08ead17c4099a"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "4595aa2c3cabf3bdd81bb18de8a4e937c50c39e5d9ec798cbbb3be647c734be0"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v2\",\"reason\":\"The observed s1 pass was justified mainly by grain, smudging, and muted color, which can indicate a chalk-like filter without establishing a drawing. The edited image visibly has a chalk-like treatment, but the giraffes retain detailed, photo-like patterning; this is a hypothesis to investigate, not a predetermined answer. Add a focused rendering check and make the existing endpoint check’s criteria distinguish overall drawing appearance from surface effects. Keep the progress check available when the endpoint is known incomplete, and preserve unresolved evidence rather than inferring completion or absence.\",\"actions\":[{\"operation\":\"insert_support\",\"after\":\"s1\",\"before\":\"s2\",\"new_check_id\":\"s3\",\"target_id\":\"\",\"requirement_id\":\"R1\",\"question\":\"Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across its main subjects and scene, rather than as a photograph with a chalk-like effect?\",\"criteria\":\"Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.\",\"binding\":\"O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.\",\"readout_criteria\":\"Use with s1 to assess whether the requested image as a whole is a chalk drawing; a pass here alone does not establish completion.\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[\"s1\",\"s3\"]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?\",\"criteria\":\"Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.\",\"binding\":\"O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.\",\"readout_criteria\":\"Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[\"s3\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 11911,
+    "completionTokens": 617,
+    "totalTokens": 12528,
+    "latencySeconds": 5.9491260051727295,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v2",
+          "reason": "The observed s1 pass was justified mainly by grain, smudging, and muted color, which can indicate a chalk-like filter without establishing a drawing. The edited image visibly has a chalk-like treatment, but the giraffes retain detailed, photo-like patterning; this is a hypothesis to investigate, not a predetermined answer. Add a focused rendering check and make the existing endpoint check’s criteria distinguish overall drawing appearance from surface effects. Keep the progress check available when the endpoint is known incomplete, and preserve unresolved evidence rather than inferring completion or absence.",
+          "actions": [
+            {
+              "operation": "insert_support",
+              "after": "s1",
+              "before": "s2",
+              "new_check_id": "s3",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across its main subjects and scene, rather than as a photograph with a chalk-like effect?",
+              "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+              "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+              "readout_criteria": "Use with s1 to assess whether the requested image as a whole is a chalk drawing; a pass here alone does not establish completion.",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": [
+                "s1",
+                "s3"
+              ]
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+              "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+              "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+              "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": [
+                "s3"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v2",
+        "reason": "The observed s1 pass was justified mainly by grain, smudging, and muted color, which can indicate a chalk-like filter without establishing a drawing. The edited image visibly has a chalk-like treatment, but the giraffes retain detailed, photo-like patterning; this is a hypothesis to investigate, not a predetermined answer. Add a focused rendering check and make the existing endpoint check’s criteria distinguish overall drawing appearance from surface effects. Keep the progress check available when the endpoint is known incomplete, and preserve unresolved evidence rather than inferring completion or absence.",
+        "actions": [
+          {
+            "operation": "insert_support",
+            "after": "s1",
+            "before": "s2",
+            "new_check_id": "s3",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "Beyond chalk-like grain and smudging, does the edited image read as a chalk drawing across its main subjects and scene, rather than as a photograph with a chalk-like effect?",
+            "criteria": "Pass if the main subjects and scene are rendered in a drawing-like manner consistent with a chalk drawing, rather than retaining predominantly photographic detail beneath surface texture. Fail if chalk-like cues are present but the image remains predominantly photographic. Unknown if the edited image is unavailable or this distinction cannot be determined. Do not require a particular drawing technique.",
+            "binding": "O1: assess whether the requested transformation into a chalk drawing is present. This check distinguishes drawing-like rendering from a photographic image with a chalk-like effect; it does not independently establish completion.",
+            "readout_criteria": "Use with s1 to assess whether the requested image as a whole is a chalk drawing; a pass here alone does not establish completion.",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": [
+              "s1",
+              "s3"
+            ]
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Does the edited image as a whole appear to be a drawing made from chalk, rather than merely having chalk-like texture or color?",
+            "criteria": "Pass if the image as a whole has the appearance of a chalk-made drawing, considering the rendering of the main subjects and scene rather than relying only on grain, smudging, or muted color. Fail if it clearly does not have that overall appearance, including when it shows only a chalk-like surface effect or a partial chalk effect. Unknown if the edited image is unavailable or the overall appearance cannot be determined.",
+            "binding": "O1: Judge the edited image against the requested outcome of a chalk drawing; texture cues alone do not establish completion, and supporting evidence does not independently earn completion credit.",
+            "readout_criteria": "Assess the overall chalk-drawing appearance; completion also requires the focused drawing-versus-photographic-rendering evidence from s3.",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": [
+              "s3"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

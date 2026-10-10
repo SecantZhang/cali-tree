@@ -1,0 +1,572 @@
+{
+  "execution_ref": "1a53def776e1cb090b9fd894b4fbb297e6b8e0f1afd446df7d02678081b0ef4e",
+  "stage": "propose_v4",
+  "slot": "round/2/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Change the image into pencil drawing",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Change the image into pencil drawing",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Change the image into pencil drawing",
+          "source_phrase": "Change the image into pencil drawing"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a pencil drawing.",
+          "target": "The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.",
+          "reference": "The supplied image and the requested pencil-drawing transformation.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly render its content in a pencil-drawn style?",
+          "criteria": "Pass if the edited image is clearly rendered as a pencil drawing while representing the image’s visual content. Fail if it is clearly not rendered as a pencil drawing. Unknown if the edited image is unavailable or the style cannot be determined.",
+          "binding": "Inspect the edited image against the requested pencil-drawing outcome; do not require a source-to-edit progress check.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is there evidence that the requested pencil-drawing change has made some progress, even if the edited image is not yet a pencil drawing?",
+          "criteria": "Pass if comparison with the supplied image shows a change toward a pencil-drawn style, but the endpoint is not established by the first support. Fail if the image is unchanged or changes are unrelated to the requested style. Unknown if comparison is unavailable or the direction of change cannot be determined.",
+          "binding": "Use the supplied image only to assess progress toward the requested pencil-drawing transformation; unrelated edits are not progress. This check is needed only when the endpoint check does not establish completion.",
+          "requirement_id": "R1",
+          "required_dependencies": [],
+          "activation": {
+            "check_id": "s1",
+            "states": [
+              "fail",
+              "unknown"
+            ]
+          },
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Transform the image into a pencil drawing.",
+          "criteria": "Return yes only when support 1 passes: the edited image is rendered as a pencil drawing representing its visual content. Return no when support 1 fails and support 2 fails, establishing that no requested change has progressed. Return partial when support 1 fails and support 2 passes, establishing progress without complete fulfillment. Return unknown when the available observations do not establish one of those outcomes, including when a needed observation is unknown. Support 2 is skipped when support 1 passes; on that path, the endpoint evidence alone establishes completion, so the skipped progress check is unobserved and earns no independent credit. Unrelated edits do not count as progress.",
+          "binding": "Target: The image is rendered as a pencil drawing, with its visual content represented in a pencil-drawn style.. Reference: The supplied image and the requested pencil-drawing transformation..",
+          "requirement_id": "",
+          "required_dependencies": [],
+          "activation": null,
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. You receive no reference label or optimization feedback. Return status, evidence, reported confidence (0..1 or null), and used_dependency_ids naming every supplied context check_id exactly once in saved order.\nSupports receive source and edited images. Answer only the saved proposition using its binding and criteria. Use pass/fail/unknown. Context is advisory unless listed in required_dependencies. A negative context observation is usable evidence. Unknown, skipped, or invalid context is not a failure and must not stop an independent image inspection. Inspect the images yourself; do not repeat a parent's answer. Return unknown when the relevant fact cannot be established. Confidence reports confidence in this answer, not calibrated correctness.\nFulfillment receives NO images. Use only saved support evidence, original instruction/rubric and frozen composition criteria. Return complete/partial/absent/unknown. Supporting passes answer specific propositions, not a count of completed edits. Their polarity can differ. Apply saved alternatives: optional uncertainty need not prevent a known outcome, but a required unresolved fact makes that outcome unresolved. Never invent a visual fact or convert missing evidence into failure. A conditional skip is not non-applicability. All applicable requested outcomes complete gives yes; no requested progress gives no; known progress short of completion gives partial. Unrelated changes are not progress.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v4",
+      "aggregation": "requested-all-some-none-v4"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The trace’s “yes” is not supported by the supplied images: the edit is muted and grainy, but retains substantial color and photographic shading rather than clearly becoming a pencil drawing. The node’s binding is also truncated/vague (“image (...)”), and its criterion treats any pencil-like texture as sufficient, without distinguishing a genuine style transformation from a light filter. Repair the binding to identify the source and edited image and make the requested style change the criterion; require evidence of a visibly pencil-drawn rendering while preserving recognizable content. Keep the existing partial-progress logic: assess whether some requested transformation occurred separately from whether it is complete, and return unknown when observations cannot establish either. Do not infer completion from high confidence or from the skipped support-2 check. The trace reports valid observations, so this is a visual-criterion/evidence problem, not a transport or schema failure; the reference label constrains the aggregate but does not establish which atomic check is wrong."
+        ],
+        "s1": [
+          "The trace’s confident “yes” overstates the visual evidence: the edit is noticeably desaturated and grainy, with some sketch-like texture, but much of the scene still has photographic shading and does not clearly read as a pencil drawing. Tighten the node’s binding so it explicitly evaluates the edited image against the source for the requested pencil-drawing transformation, rather than judging the edited image in isolation or relying on a vague/truncated reference. Make the criterion distinguish partial stylistic progress from a clearly completed pencil rendering, while checking that the meal and surrounding objects remain recognizable. Preserve unknown for genuinely indeterminate evidence; do not treat confidence or a skipped check as proof. This is a visual criterion/evidence issue, not a transport or schema failure. The aggregate reference label constrains the overall result but does not establish an atomic answer."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          },
+          "s2": {
+            "eligible": 0,
+            "queried": 0,
+            "activation_rate": 0.0,
+            "states": {},
+            "consistency": null,
+            "assessment": "untested",
+            "confidence": []
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.98
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 2.0,
+        "mean_completion_tokens": 116.0,
+        "traces": [
+          {
+            "program_ref": "5b6d58f7dbb924ad6b56cc2d312a80c7b5b3cf7b756eab7de63d8ae0e27f05a8",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Support 1 passes: the edited image preserves the meal and surrounding objects in a pencil-drawing style, establishing completion. Support 2 was conditionally skipped and is not needed."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image preserves the meal and surrounding objects while rendering them in a muted, textured pencil-drawing style.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 48,
+                "dependencies": [],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "917f49c8d2eedc4f688f3ac18548a7bdd51ba8ad6e615fef172e6c7fa23822be"
+              },
+              {
+                "check_id": "s2",
+                "status": "unknown",
+                "evidence": "Saved activation condition not satisfied",
+                "valid": false,
+                "eligible": false,
+                "queried": false,
+                "confidence": null,
+                "completion_tokens": 0,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image preserves the meal and surrounding objects while rendering them in a muted, textured pencil-drawing style.",
+                    "confidence": 0.98
+                  }
+                ],
+                "event": "conditional_skip",
+                "failure": null,
+                "execution_ref": ""
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "Support 1 passes: the edited image preserves the meal and surrounding objects in a pencil-drawing style, establishing completion. Support 2 was conditionally skipped and is not needed.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.98,
+                "completion_tokens": 68,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "valid": true,
+                    "queried": true,
+                    "evidence": "The edited image preserves the meal and surrounding objects while rendering them in a muted, textured pencil-drawing style.",
+                    "confidence": 0.98
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "unknown",
+                    "valid": false,
+                    "queried": false,
+                    "evidence": "No valid observation: conditional_skip",
+                    "confidence": null
+                  }
+                ],
+                "event": "observed",
+                "failure": null,
+                "execution_ref": "84d599ca4ba20abeb1c8615e69142b2b3e9744ad9333bb3690f2c44e2244bdb9"
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "activation": null,
+                "eligible": true,
+                "state": "pass",
+                "event": "observed",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "activation": {
+                  "check_id": "s1",
+                  "states": [
+                    "fail",
+                    "unknown"
+                  ]
+                },
+                "eligible": false,
+                "state": "unknown",
+                "event": "conditional_skip",
+                "skip_reason": "Saved activation condition not satisfied"
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "activation": null,
+                "eligible": true,
+                "state": "complete",
+                "event": "observed",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "f231f3885f5fd5a377720502e1b3f0dcbdb8c372fdd9cd7ad4073ceac16ac1db",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "5b6d58f7dbb924ad6b56cc2d312a80c7b5b3cf7b756eab7de63d8ae0e27f05a8",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "Shared seed audit unavailable; Audit rejection needs an exact original clause and concrete counterexample"
+          }
+        },
+        {
+          "round": 0,
+          "parent": "5b6d58f7dbb924ad6b56cc2d312a80c7b5b3cf7b756eab7de63d8ae0e27f05a8",
+          "index": 0,
+          "route": "primary",
+          "transaction": {
+            "version": "typed-evidence-v2",
+            "reason": "The observed edit is substantially desaturated and grainy, but retains photographic shading and does not clearly establish pencil-drawn linework and shading. The endpoint check should not treat those effects or content preservation as completion. Keep the separate source comparison reachable on endpoint fail or uncertainty so genuine stylistic progress can still be assessed; preserve the exclusion of unrelated edits.",
+            "actions": [
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s1",
+                "requirement_id": "R1",
+                "question": "Does the edited image clearly render its visual content as a pencil drawing?",
+                "criteria": "Pass only when pencil-like linework and drawn shading are clearly visible across the image, rather than merely muted color, grain, or softened photographic detail. Fail when the image is clearly not rendered in a pencil-drawn style. Unknown when the edited image is unavailable or the style cannot be determined.",
+                "binding": "Inspect the edited image for clear completion of the requested pencil-drawing style transformation. Preserving the depicted content does not by itself establish completion.",
+                "readout_criteria": "",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": []
+              },
+              {
+                "operation": "revise_support",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "s2",
+                "requirement_id": "R1",
+                "question": "Compared with the supplied image, does the edit show a visible change toward pencil-like linework or drawn shading, without clearly completing the pencil-drawing transformation?",
+                "criteria": "Pass when comparison with the supplied image establishes a visible stylistic movement toward pencil-like linework or drawn shading, but the endpoint is not established by s1. Fail when the image is unchanged or changes are unrelated to the requested style. Unknown when comparison is unavailable or the direction of stylistic change cannot be determined.",
+                "binding": "Use the supplied image only to assess progress toward the requested pencil-drawing transformation; unrelated edits do not count as progress. This check is needed when the endpoint check fails or is uncertain.",
+                "readout_criteria": "",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": []
+              },
+              {
+                "operation": "revise_readout",
+                "after": "",
+                "before": "",
+                "new_check_id": "",
+                "target_id": "fulfillment",
+                "requirement_id": "",
+                "question": "",
+                "criteria": "Return complete only when s1 passes. When s1 fails, return absent if s2 fails, partial if s2 passes, and unknown if s2 is unknown or skipped. When s1 is unknown, use s2 only if it independently establishes progress: return partial if s2 passes; otherwise return unknown. A skipped s2 is not evidence of failure or progress. Unrelated edits do not count as progress.",
+                "binding": "",
+                "readout_criteria": "Apply the requested-image-editing rubric using the endpoint and progress evidence as specified; do not infer completion from content preservation, muted color, or grain alone.",
+                "activation_check": "",
+                "evidence_from": [],
+                "required_evidence_from": [],
+                "activation_states": [],
+                "support_order": [],
+                "readout_required": [
+                  "s1",
+                  "s2"
+                ]
+              }
+            ]
+          },
+          "error": "revise_readout changes fields outside its typed contract"
+        },
+        {
+          "program_ref": "90cfbd7ae7ffa53e3e52fc83e1ea857764ee06922fafbf49c3fa7ebe84ac3d4e",
+          "semantic_rejection": {
+            "accepted": false,
+            "reason": "The chain does not preserve the rubric’s progress/endpoint meaning for all activation paths. If s1 is unknown, s2 is activated, but fulfillment requires both s1 and s2; thus even a known s2 pass showing progress cannot yield partial, and a known s2 fail showing no progress cannot yield no. The required unresolved s1 blocks either result. This makes an uncertain endpoint check prevent independent progress inspection from determining the outcome.",
+            "source_clause": "Insufficient evidence stays unresolved.",
+            "counterexample": "The edited image is unavailable for s1, so s1 is unknown. The supplied-image comparison is available and s2 establishes that the image has made some progress toward pencil drawing but is not complete. Fulfillment remains unresolved because s1 is a required dependency, although the rubric calls for partial when known progress falls short of completion.",
+            "execution_ref": "fb4e0b37a6ce5ba3e907f116f0668b96d74765e2be9cca2e4df882b67ba2b711"
+          }
+        }
+      ]
+    },
+    "protocol": "typed-evidence-v2",
+    "limit": 2
+  },
+  "case_id": "luna_then_sol/aurora-task-52fd3fa52d915723d12d::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "5db0d279451fb04e45ed07b8175f3e31efc00865814e8cb6d22bd41242f00e4e"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "48495e33d4e2a16df287ae85edb941fc526fbf395f446f74cc1990dd6d0c3a91"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[{\"version\":\"typed-evidence-v2\",\"reason\":\"The edit has visible desaturation and grain, but the food and surrounding scene retain substantial photographic shading; that evidence does not clearly establish a completed pencil drawing. Tighten the endpoint criterion while keeping the independent source comparison available when the endpoint is fail or unknown, so progress can still be judged without treating uncertainty as failure.\",\"actions\":[{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s1\",\"requirement_id\":\"R1\",\"question\":\"Does the edited image clearly render its visual content as a pencil drawing?\",\"criteria\":\"Pass only when the image is visibly rendered with pencil-drawn linework and shading across the depicted content, rather than merely being desaturated, grainy, or softened while retaining photographic appearance. Fail when it is clearly not rendered in a pencil-drawn style. Unknown when the edited image is unavailable or the style cannot be determined.\",\"binding\":\"Compare the edited image with the supplied source to assess whether the requested pencil-drawing transformation is complete. Recognizable content is relevant but does not by itself establish completion.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]},{\"operation\":\"revise_support\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"s2\",\"requirement_id\":\"R1\",\"question\":\"Compared with the supplied image, does the edit show some progress toward a pencil-drawn style, without clearly establishing a completed pencil drawing?\",\"criteria\":\"Pass when comparison establishes a visible stylistic change toward pencil-drawn linework or shading, but the completed endpoint is not established by s1. Fail when the image is unchanged or changes are unrelated to the requested style. Unknown when comparison is unavailable or the direction of stylistic change cannot be determined.\",\"binding\":\"Use the supplied source only to assess progress toward the requested pencil-drawing transformation; unrelated edits do not count. Assess this independently when s1 fails or is unknown.\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[]},{\"operation\":\"revise_readout\",\"after\":\"\",\"before\":\"\",\"new_check_id\":\"\",\"target_id\":\"fulfillment\",\"requirement_id\":\"\",\"question\":\"\",\"criteria\":\"Return complete when s1 passes. When s1 fails, return absent if s2 fails, partial if s2 passes, and unknown if s2 is unknown or skipped. When s1 is unknown, return partial if s2 independently passes; otherwise return unknown. A skipped s2 is not evidence of failure or progress. Unrelated edits do not count as progress.\",\"binding\":\"\",\"readout_criteria\":\"\",\"activation_check\":\"\",\"evidence_from\":[],\"required_evidence_from\":[],\"activation_states\":[],\"support_order\":[],\"readout_required\":[\"s1\",\"s2\"]}]}]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 5425,
+    "completionTokens": 597,
+    "totalTokens": 6022,
+    "latencySeconds": 5.011891841888428,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v2",
+          "reason": "The edit has visible desaturation and grain, but the food and surrounding scene retain substantial photographic shading; that evidence does not clearly establish a completed pencil drawing. Tighten the endpoint criterion while keeping the independent source comparison available when the endpoint is fail or unknown, so progress can still be judged without treating uncertainty as failure.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Does the edited image clearly render its visual content as a pencil drawing?",
+              "criteria": "Pass only when the image is visibly rendered with pencil-drawn linework and shading across the depicted content, rather than merely being desaturated, grainy, or softened while retaining photographic appearance. Fail when it is clearly not rendered in a pencil-drawn style. Unknown when the edited image is unavailable or the style cannot be determined.",
+              "binding": "Compare the edited image with the supplied source to assess whether the requested pencil-drawing transformation is complete. Recognizable content is relevant but does not by itself establish completion.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Compared with the supplied image, does the edit show some progress toward a pencil-drawn style, without clearly establishing a completed pencil drawing?",
+              "criteria": "Pass when comparison establishes a visible stylistic change toward pencil-drawn linework or shading, but the completed endpoint is not established by s1. Fail when the image is unchanged or changes are unrelated to the requested style. Unknown when comparison is unavailable or the direction of stylistic change cannot be determined.",
+              "binding": "Use the supplied source only to assess progress toward the requested pencil-drawing transformation; unrelated edits do not count. Assess this independently when s1 fails or is unknown.",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": []
+            },
+            {
+              "operation": "revise_readout",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "fulfillment",
+              "requirement_id": "",
+              "question": "",
+              "criteria": "Return complete when s1 passes. When s1 fails, return absent if s2 fails, partial if s2 passes, and unknown if s2 is unknown or skipped. When s1 is unknown, return partial if s2 independently passes; otherwise return unknown. A skipped s2 is not evidence of failure or progress. Unrelated edits do not count as progress.",
+              "binding": "",
+              "readout_criteria": "",
+              "activation_check": "",
+              "evidence_from": [],
+              "required_evidence_from": [],
+              "activation_states": [],
+              "support_order": [],
+              "readout_required": [
+                "s1",
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v2",
+        "reason": "The edit has visible desaturation and grain, but the food and surrounding scene retain substantial photographic shading; that evidence does not clearly establish a completed pencil drawing. Tighten the endpoint criterion while keeping the independent source comparison available when the endpoint is fail or unknown, so progress can still be judged without treating uncertainty as failure.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Does the edited image clearly render its visual content as a pencil drawing?",
+            "criteria": "Pass only when the image is visibly rendered with pencil-drawn linework and shading across the depicted content, rather than merely being desaturated, grainy, or softened while retaining photographic appearance. Fail when it is clearly not rendered in a pencil-drawn style. Unknown when the edited image is unavailable or the style cannot be determined.",
+            "binding": "Compare the edited image with the supplied source to assess whether the requested pencil-drawing transformation is complete. Recognizable content is relevant but does not by itself establish completion.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Compared with the supplied image, does the edit show some progress toward a pencil-drawn style, without clearly establishing a completed pencil drawing?",
+            "criteria": "Pass when comparison establishes a visible stylistic change toward pencil-drawn linework or shading, but the completed endpoint is not established by s1. Fail when the image is unchanged or changes are unrelated to the requested style. Unknown when comparison is unavailable or the direction of stylistic change cannot be determined.",
+            "binding": "Use the supplied source only to assess progress toward the requested pencil-drawing transformation; unrelated edits do not count. Assess this independently when s1 fails or is unknown.",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": []
+          },
+          {
+            "operation": "revise_readout",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "fulfillment",
+            "requirement_id": "",
+            "question": "",
+            "criteria": "Return complete when s1 passes. When s1 fails, return absent if s2 fails, partial if s2 passes, and unknown if s2 is unknown or skipped. When s1 is unknown, return partial if s2 independently passes; otherwise return unknown. A skipped s2 is not evidence of failure or progress. Unrelated edits do not count as progress.",
+            "binding": "",
+            "readout_criteria": "",
+            "activation_check": "",
+            "evidence_from": [],
+            "required_evidence_from": [],
+            "activation_states": [],
+            "support_order": [],
+            "readout_required": [
+              "s1",
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

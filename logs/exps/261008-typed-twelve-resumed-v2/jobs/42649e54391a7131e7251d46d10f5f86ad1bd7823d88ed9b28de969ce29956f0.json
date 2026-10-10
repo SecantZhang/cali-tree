@@ -1,0 +1,131 @@
+{
+  "execution_ref": "42649e54391a7131e7251d46d10f5f86ad1bd7823d88ed9b28de969ce29956f0",
+  "stage": "audit",
+  "slot": "audit/c2b0350054f94f01aee70b5b4f258a7fa83f7efd64d1c1cf1b4a9e655f192bec",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Turn the image into a drawing made from chalk",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Turn the image into a drawing made from chalk",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Turn the image into a drawing made from chalk",
+          "source_phrase": "Turn the image into a drawing made from chalk"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image into a chalk drawing.",
+          "target": "The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.",
+          "reference": "The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image show visual evidence of a chalk-like drawing treatment applied to the input image?",
+          "criteria": "Pass if the image visibly has a chalk-like drawing appearance; fail if there is sufficient evidence that it remains without a chalk-like drawing treatment; unknown if the image evidence is insufficient to determine this.",
+          "binding": "Compare the edited image with the input image for a chalk-like drawing appearance. Judge the visible result, not a particular technique; unrelated edits do not count as progress.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the edited image show drawing-like marks and forms consistent with a chalk-made drawing, beyond a softened or grainy treatment?",
+          "criteria": "Pass if the scene visibly reads as a chalk-made drawing, with drawing-like rendering rather than merely photographic structure under a softened or grainy filter. Fail if the evidence shows only such filtering and no convincing drawing-like rendering. Unknown if the visual evidence cannot resolve this distinction.",
+          "binding": "Compare the edited image with the source. Assess drawing-like rendering and chalk-drawing appearance, not texture alone; do not require a particular technique. Treat this as a distinct style judgment, not independent corroboration of the broad chalk-like appearance in the ancestor check.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the chalk-like drawing treatment transform the image as a whole, rather than appearing only as a partial effect?",
+          "criteria": "Pass if the image as a whole is rendered as a chalk-made drawing; fail if sufficient evidence shows no chalk-drawing progress, or only a partial chalk effect; unknown if the evidence cannot establish whether the transformation is complete or partial.",
+          "binding": "Assess the extent of the chalk-like drawing appearance across the image against the input image. Do not treat unrelated changes as progress or require a specific artistic technique.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "question": "Does the edited image visibly fulfill the request to turn the image into a drawing made from chalk?",
+          "criteria": "Use all support findings. Complete only when evidence establishes both a convincing chalk-drawing appearance and whole-image transformation. Partial when visible chalk-like progress exists but drawing-like rendering or full transformation is not established. Absent only when evidence establishes no requested progress; unrelated edits do not count. Unknown when necessary evidence is insufficient or unresolved. Do not count overlapping descriptions of texture or coverage as independent confirmation.",
+          "binding": "Target: The image is rendered as a drawing made from chalk, rather than merely showing an unrelated edit or a partial chalk effect.. Reference: The input image and the edited image; compare whether the edited image has the appearance of a chalk-made drawing..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-ce641cb29939011016cc::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks do not compose cleanly. s1 asks only for broad chalk-like appearance, while s3 separately tests drawing-like rendering; s2 then tests whole-image coverage but is activated even when s3 is unknown or fails. Its criteria can label a partial effect as fail without establishing that no requested progress occurred, and the fulfillment rule does not clearly distinguish that known partial progress from absence when support findings conflict or remain unresolved. The readout therefore lacks a reliable, non-overlapping mapping of the available evidence to complete, partial, absent, or unknown.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1524,
+    "completionTokens": 127,
+    "totalTokens": 1651,
+    "latencySeconds": 2.3045709133148193,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks do not compose cleanly. s1 asks only for broad chalk-like appearance, while s3 separately tests drawing-like rendering; s2 then tests whole-image coverage but is activated even when s3 is unknown or fails. Its criteria can label a partial effect as fail without establishing that no requested progress occurred, and the fulfillment rule does not clearly distinguish that known partial progress from absence when support findings conflict or remain unresolved. The readout therefore lacks a reliable, non-overlapping mapping of the available evidence to complete, partial, absent, or unknown."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks do not compose cleanly. s1 asks only for broad chalk-like appearance, while s3 separately tests drawing-like rendering; s2 then tests whole-image coverage but is activated even when s3 is unknown or fails. Its criteria can label a partial effect as fail without establishing that no requested progress occurred, and the fulfillment rule does not clearly distinguish that known partial progress from absence when support findings conflict or remain unresolved. The readout therefore lacks a reliable, non-overlapping mapping of the available evidence to complete, partial, absent, or unknown."
+  }
+}

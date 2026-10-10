@@ -1,0 +1,132 @@
+{
+  "execution_ref": "ef92198d38218f604e98a2485d4c2cdc2cdd207ea31057e8cf8e06509f9ea97b",
+  "stage": "audit",
+  "slot": "audit/c0e013412ac474e4aa4706e02e05b1a5054195eb690a51d596f808482b3f00e9",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Move the mug to the right of the headphones",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Move the mug to the right of the headphones",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Move the mug to the right of the headphones",
+          "source_phrase": "Move the mug to the right of the headphones"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Move the mug so that it is positioned to the right of the headphones.",
+          "target": "The mug is visibly positioned to the right of the headphones.",
+          "reference": "The headphones in the image; compare the mug’s position with the headphones.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Are both the mug and the headphones visible enough to compare their positions?",
+          "criteria": "Pass if the mug and headphones are identifiable and their relative positions can be judged; fail if the image clearly shows either is absent or the comparison is impossible; unknown if visibility or identification is inconclusive.",
+          "binding": "Use only the image to identify the mug and headphones and assess whether their relative placement is observable. This establishes evidence availability, not fulfillment.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Is the mug positioned to the right of the headphones?",
+          "criteria": "Pass if the image shows the mug positioned to the right of the headphones; fail if it clearly shows the mug is not to their right; unknown if their relative position cannot be determined. For R1, complete if this check passes; absent if it fails and no requested change has progressed; partial if the mug has moved toward the requested position but is not yet to the right; unknown if required evidence remains unresolved. Unrelated edits do not count as progress.",
+          "binding": "Compare the mug’s visible position with the headphones in the image. Judge the requested spatial relationship, without requiring a particular editing technique.",
+          "inferences": []
+        },
+        {
+          "id": "source_mug_continuity",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Comparing the source and edited images, does the original blue mug appear to have been moved to the right of the headphones, rather than remaining at its source position while another mug appears on the right?",
+          "criteria": "Pass only if visual correspondence supports that the original blue mug is now to the right of the headphones and there is no clear evidence it remains at its source position. Fail if clear evidence shows the original mug remains left of the headphones and a different mug is on the right, or otherwise establishes that the original mug was not moved toward the requested position. Unknown if identity, correspondence, or placement is ambiguous; a blur or remnant alone does not establish movement or its absence.",
+          "binding": "Inspect both source and edited images. Anchor the comparison to the source blue mug and the headphones; assess whether that mug, rather than any mug, is now to their right. Do not infer relocation from the presence of a right-side mug alone, or infer no progress from blur alone.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "source_mug_continuity",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "source_mug_continuity"
+          ],
+          "question": "Is the mug visibly positioned to the right of the headphones?",
+          "criteria": "Apply the original rubric to R1 using all and only the saved support observations. Complete if source_mug_continuity passes, establishing the original mug is to the right of the headphones. Partial only if the observations establish some progress toward moving the original mug rightward but not completion. Absent only if they establish no requested progress; failure of continuity alone does not establish absence unless it also establishes no progress. Unknown if necessary evidence is unresolved and progress cannot be established. A mug on the right, without evidence it is the original mug or that it progressed toward the requested position, is not sufficient for completion or partial. Ignore unrelated edits.",
+          "binding": "Target: The mug is visibly positioned to the right of the headphones.. Reference: The headphones in the image; compare the mug’s position with the headphones..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-7b78f1229d9bb014bcc5::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout cannot faithfully determine partial progress. The continuity check only distinguishes the original mug being to the right from certain cases where it was not moved toward the target; it leaves other non-complete placements unresolved, and no support check separately establishes whether the original mug moved closer to the right without reaching it. Thus the program can report unknown where the rubric requires partial for evidenced progress, or cannot distinguish no progress from progress in relevant cases. The broad visibility check and current-position check do not supply that missing evidence.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1640,
+    "completionTokens": 118,
+    "totalTokens": 1758,
+    "latencySeconds": 2.346590995788574,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout cannot faithfully determine partial progress. The continuity check only distinguishes the original mug being to the right from certain cases where it was not moved toward the target; it leaves other non-complete placements unresolved, and no support check separately establishes whether the original mug moved closer to the right without reaching it. Thus the program can report unknown where the rubric requires partial for evidenced progress, or cannot distinguish no progress from progress in relevant cases. The broad visibility check and current-position check do not supply that missing evidence."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout cannot faithfully determine partial progress. The continuity check only distinguishes the original mug being to the right from certain cases where it was not moved toward the target; it leaves other non-complete placements unresolved, and no support check separately establishes whether the original mug moved closer to the right without reaching it. Thus the program can report unknown where the rubric requires partial for evidenced progress, or cannot distinguish no progress from progress in relevant cases. The broad visibility check and current-position check do not supply that missing evidence."
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "execution_ref": "6081b2fc41cfbfc31d1fc4f8e059d5aec29cbfb9d5b1404e52702110b912691b",
+  "stage": "audit",
+  "slot": "audit/fe5ad0cf6c4e46419a0e7528e8a3bd8ceaeffb52d31517c80a0000cf026961d1",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make her close her jacket fully",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make her close her jacket fully",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make her close her jacket fully",
+          "source_phrase": "close her jacket fully"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "The woman's jacket is closed completely.",
+          "target": "The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.",
+          "reference": "The woman's jacket in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Compared with the source image, is there clear visible evidence that the same woman's jacket front closure has moved toward closing in the edited image?",
+          "criteria": "Pass only when the closure itself is visible enough to compare and shows progress toward bringing the front panels together, even if an opening remains. Fail only when the closure is clearly assessable and shows no progress or is more open. Unknown when the turned pose, drape, or occlusion prevents reliable comparison; do not infer progress or its absence from silhouette alone.",
+          "binding": "Compare the same jacket's front closure in the source and edited images. Judge actual alignment or separation along the closure, not the woman's pose or the jacket's outward flare. This is a progress check, not a full-closure check.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "In the edited image, is the same woman's jacket fully closed, with no visible opening remaining along its front closure?",
+          "criteria": "Pass only if the visible closure itself shows the panels meeting with no opening. Fail only if an opening along the closure is clearly visible; panels appearing separated solely because the jacket flares with the turned pose is not sufficient. Unknown if pose, drape, or occlusion prevents judging the closure itself.",
+          "binding": "Assess the same woman's jacket. Inspect the edited image's front closure, distinguishing a visible opening along the closure from outward flare or silhouette caused by pose and drape. Full closure is required; partial closure is not complete fulfillment. Use the source only to identify the garment, not to infer the edited endpoint.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is the woman's jacket fully closed?",
+          "criteria": "Complete only when s1 passes (visible progress toward closing relative to the source) and s2 passes (the edited jacket is fully closed). Partial only when s1 passes and s2 fails, establishing progress with a remaining visible opening. Absent only when s1 fails and s2 fails, establishing no progress and an incomplete endpoint. Unknown whenever either observation is unknown, or when s2 passes but s1 does not pass; endpoint closure alone does not establish that the requested change occurred. Use only the saved support observations.",
+          "binding": "Target: The jacket is fully closed, with its front panels brought together and no visible opening remaining along the closure.. Reference: The woman's jacket in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "criterion-only/aurora-task-4d9932789529604a30e8::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment composition is incomplete: it returns unknown whenever s2 passes but s1 does not pass, including when s1 fails. A failed progress check is known negative evidence, not an unknown; with s2 passing, the endpoint is complete and the requested change is evidenced. This rule therefore misclassifies a complete outcome and contradicts the rubric’s all-changes-complete rule.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1387,
+    "completionTokens": 92,
+    "totalTokens": 1479,
+    "latencySeconds": 3.0298187732696533,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment composition is incomplete: it returns unknown whenever s2 passes but s1 does not pass, including when s1 fails. A failed progress check is known negative evidence, not an unknown; with s2 passing, the endpoint is complete and the requested change is evidenced. This rule therefore misclassifies a complete outcome and contradicts the rubric’s all-changes-complete rule."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment composition is incomplete: it returns unknown whenever s2 passes but s1 does not pass, including when s1 fails. A failed progress check is known negative evidence, not an unknown; with s2 passing, the endpoint is complete and the requested change is evidenced. This rule therefore misclassifies a complete outcome and contradicts the rubric’s all-changes-complete rule."
+  }
+}

@@ -1,0 +1,48 @@
+Compile the supplied rubric_lines into a data-only JSON policy.
+Read only the rubric. Preserve supported checks, requirements, exceptions, and
+labels. Do not approximate unsupported semantics; output an unsupported reason.
+Return exactly seven fields:
+supported_edits: array of supported names selected from color, shape, position, count.
+criteria: array of FIXED requirements stated in the rubric, each with exactly key,
+operator, expected. Use one condition per object. Operators are equals, one_of,
+at_least. For instruction-dependent color/position/count targets, criteria is empty;
+those conditions come from the instruction plan. For fixed red/circular requirements,
+criteria contains explicit color and shape predicates. Do not invent requirements.
+guards: array of preservation obligations with exactly key, expected, unless_permission.
+Each key is ONE of content_recognizable, subject_identity, background. Expected is
+boolean for recognizability or preserved/changed for identity/background. Permission
+is null or allow_identity_change/allow_background_change bound to its matching guard.
+veto_rules: array of definitive overriding decisions explicitly stated in the rubric.
+decision_rules: array of ordered rules determining the BASE result from edit facts.
+caps: array of conditional upper bounds on the result, evaluated AFTER the base result.
+default: object with exactly label, source for the base result if no decision rule matches.
+Each rule in veto_rules, decision_rules, caps has exactly when, label, source.
+Labels are the literal strings no, partial, yes. source is a nonempty rubric line
+number. Derive all rubric-specific labels and applicability from the rubric.
+
+Execution: first matching veto returns immediately. Otherwise first matching
+ decision_rule (or default) sets the base label. Matching caps can only LOWER that
+label in the order no < partial < yes; they never promote a failure. A cap at
+partial therefore leaves no unchanged. A statement that uncertainty caps success
+belongs in caps, not veto_rules or decision_rules. A definite forbidden change may
+be a veto. Do not flatten these different semantics into one first-match list.
+Preserve the rubric's empty-applicable-set behavior separately from zero successes
+among a nonempty set. Do not put satisfied_count == 0 before an empty-set success
+without constraining edit_count > 0 when the rubric distinguishes those cases.
+
+Expression forms are {"all": [expressions]}, {"any": [expressions]}, or an object
+with exactly fact, operator, value. Count facts are edit_count, satisfied_count,
+violated_count, unknown_count. Count operators are eq, ne, lt, le, gt, ge.
+Values are nonnegative integers or {"fact": count_fact}.
+Guard facts are guard.KEY for declared guards. Their statuses are satisfied,
+violated, unknown. Guard comparisons use ONLY eq and ONE explicit status value.
+An unknown value is not violated or satisfied. Boolean groups must be nonempty.
+When an explicit permission exempts a guard, no check is made and its preservation
+obligation is fulfilled; its policy fact is satisfied, with the exemption traced
+separately. It is not an observation of actual preservation.
+
+Only requested supported edits plus fixed rubric criteria contribute to edit counts.
+A fixed criterion takes precedence for its key; no duplicate keys are counted.
+All empty edit-set counts are zero. Generate only required guards. Ignore metadata
+unless the rubric explicitly uses it. Every source reference must cite the rubric,
+not this compiler specification. Output JSON, not code.

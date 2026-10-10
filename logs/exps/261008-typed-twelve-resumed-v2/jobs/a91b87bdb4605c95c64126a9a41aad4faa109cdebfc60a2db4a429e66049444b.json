@@ -1,0 +1,112 @@
+{
+  "execution_ref": "a91b87bdb4605c95c64126a9a41aad4faa109cdebfc60a2db4a429e66049444b",
+  "stage": "audit",
+  "slot": "audit_common_seed",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the paper visibly inside the cup, with evidence it has been stuffed into it rather than merely resting nearby or on the rim?",
+          "criteria": "Pass if the image shows the paper placed inside the cup and visibly stuffed into it. Fail if the paper is only nearby or on the rim, or the image shows no progress toward placing it inside. Unknown if the image does not provide enough evidence to determine whether it is inside and stuffed.",
+          "binding": "Assess only the requested paper-in-cup edit, using the image evidence; unrelated edits do not count as progress.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the image provide enough evidence to determine whether the paper has been stuffed into the cup?",
+          "criteria": "Pass if the image clearly resolves whether the paper is inside the cup and stuffed into it. Fail if the image clearly shows it is not stuffed into the cup. Unknown if visibility or ambiguity prevents a determination; retain this as unresolved rather than inferring completion or absence.",
+          "binding": "Use only visible evidence of the paper’s placement relative to the cup; do not treat proximity or contact with the rim alone as proof of stuffing.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Does the image show the paper stuffed inside the cup?",
+          "criteria": "Combine the supports under the frozen target: complete only when the paper is visibly inside the cup and evidence shows it has been stuffed into it; absent only when there is no progress toward that requested change; partial when there is some progress but the target is not complete. Unrelated edits are not progress. If required evidence remains insufficient or unresolved, report unknown rather than assuming complete, partial, or absent.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "prepare/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The support checks do not provide sufficient evidence for the requested distinction between paper stuffed inside the cup and paper merely placed inside it. s1 asks for visible evidence of stuffing, but its criteria treat placement inside plus visible stuffing as a pass without defining what evidence establishes stuffing; s2 repeats that same ambiguity rather than checking a distinct, finer condition. The fulfillment readout then relies on those supports to decide completion, partial progress, or absence, so it cannot faithfully distinguish incomplete progress from no progress. The program also makes the fulfillment node active on every s2 status, including unknown, despite its parent being a support check; this is not itself a valid basis for resolving the missing evidence.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1340,
+    "completionTokens": 151,
+    "totalTokens": 1491,
+    "latencySeconds": 2.482072114944458,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The support checks do not provide sufficient evidence for the requested distinction between paper stuffed inside the cup and paper merely placed inside it. s1 asks for visible evidence of stuffing, but its criteria treat placement inside plus visible stuffing as a pass without defining what evidence establishes stuffing; s2 repeats that same ambiguity rather than checking a distinct, finer condition. The fulfillment readout then relies on those supports to decide completion, partial progress, or absence, so it cannot faithfully distinguish incomplete progress from no progress. The program also makes the fulfillment node active on every s2 status, including unknown, despite its parent being a support check; this is not itself a valid basis for resolving the missing evidence."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The support checks do not provide sufficient evidence for the requested distinction between paper stuffed inside the cup and paper merely placed inside it. s1 asks for visible evidence of stuffing, but its criteria treat placement inside plus visible stuffing as a pass without defining what evidence establishes stuffing; s2 repeats that same ambiguity rather than checking a distinct, finer condition. The fulfillment readout then relies on those supports to decide completion, partial progress, or absence, so it cannot faithfully distinguish incomplete progress from no progress. The program also makes the fulfillment node active on every s2 status, including unknown, despite its parent being a support check; this is not itself a valid basis for resolving the missing evidence."
+  }
+}

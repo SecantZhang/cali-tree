@@ -1,0 +1,488 @@
+{
+  "execution_ref": "e7363e94f8dc7a9f8c45c884dd8249e23737d755b04b5373f4da0f7d2f61c150",
+  "stage": "propose_typed",
+  "slot": "round/0/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Stuffing the paper into the cup",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Stuffing the paper into the cup",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Stuff the paper into the cup.",
+          "source_phrase": "Stuffing the paper into the cup"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Paper is stuffed into the cup.",
+          "target": "The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.",
+          "reference": "The requested edit is stated in the instruction: “Stuffing the paper into the cup”.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is the paper visibly inside the cup, with evidence it has been stuffed into it rather than merely resting nearby or on the rim?",
+          "criteria": "Pass if the image shows the paper placed inside the cup and visibly stuffed into it. Fail if the paper is only nearby or on the rim, or the image shows no progress toward placing it inside. Unknown if the image does not provide enough evidence to determine whether it is inside and stuffed.",
+          "binding": "Assess only the requested paper-in-cup edit, using the image evidence; unrelated edits do not count as progress.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Does the image provide enough evidence to determine whether the paper has been stuffed into the cup?",
+          "criteria": "Pass if the image clearly resolves whether the paper is inside the cup and stuffed into it. Fail if the image clearly shows it is not stuffed into the cup. Unknown if visibility or ambiguity prevents a determination; retain this as unresolved rather than inferring completion or absence.",
+          "binding": "Use only visible evidence of the paper’s placement relative to the cup; do not treat proximity or contact with the rim alone as proof of stuffing.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Does the image show the paper stuffed inside the cup?",
+          "criteria": "Combine the supports under the frozen target: complete only when the paper is visibly inside the cup and evidence shows it has been stuffed into it; absent only when there is no progress toward that requested change; partial when there is some progress but the target is not complete. Unrelated edits are not progress. If required evidence remains insufficient or unresolved, report unknown rather than assuming complete, partial, or absent.",
+          "binding": "Target: The paper is visibly placed inside the cup, with evidence that it has been stuffed into it rather than merely resting nearby or on its rim.. Reference: The requested edit is stated in the instruction: “Stuffing the paper into the cup”..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "no",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s outcome matches the reference, but its evidence is not grounded in the supplied edited image: the image shows a hand holding a blue-and-white paper/card near a reddish object, not a clearly identifiable cup, and does not establish that the paper is being stuffed into it. The support traces’ confident claims about a cup and paper outside it therefore appear unsupported; do not treat their agreement as independent visual confirmation, especially since s2 depends on s1. Refine the binding/criteria to require checking object identity and visible spatial relation against the actual image, and distinguish clear absence of progress from insufficient evidence (unknown). Preserve the partial-progress criterion: proximity alone is not progress, but visible insertion or an intermediate stuffing action may be. No transport, schema, or execution failure is reported."
+        ],
+        "s2": [
+          "The binding is too narrow and presupposes that the reddish object is a cup. Require the node to verify the target object’s identity from visible image evidence before judging the paper’s placement; here the edited image shows a hand holding a blue-and-white card beside a reddish, partly occluded object, whose identity and interior are not established. Do not convert that ambiguity into a confident claim that the paper is outside a cup or that no progress occurred: use unknown when the target or spatial relation cannot be determined. Conversely, reserve fail for clear visual evidence that no requested progress has occurred, and recognize visible insertion or an intermediate stuffing action as partial progress rather than requiring completed stuffing. Assess the edited image directly and treat the dependent s1 trace as corroboration only, not independent evidence. The execution traces report no transport, schema, or dependency failure; the issue is visual grounding and confidence calibration, not infrastructure."
+        ],
+        "s1": [
+          "The binding should not presuppose that the target is a cup: in the supplied images, the source clearly shows a blue cup, while the edited image shows a hand holding a blue-and-white card beside a partly occluded reddish object, with no clearly visible cup interior. Require direct comparison with the source to identify the target and assess the paper’s spatial relation; do not infer that the reddish object is the cup or confidently claim the paper is outside it. Keep the rubric’s distinction between no progress, partial progress, completion, and unresolved evidence: proximity alone is not progress, but visible insertion or an intermediate stuffing action is partial progress; use unknown when object identity or placement cannot be determined. The reference label is an aggregate constraint, not proof of the visual facts. Treat dependent traces as non-independent corroboration. No transport, schema, or execution failure is reported; focus edits on visual grounding and confidence calibration."
+        ]
+      },
+      "report": {
+        "draws": 1,
+        "agreement": 1.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "no": 1
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "s2": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "fail": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          },
+          "fulfillment": {
+            "eligible": 1,
+            "queried": 1,
+            "activation_rate": 1.0,
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "assessment": "insufficient",
+            "confidence": [
+              0.99
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "absent": 1
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 162.0,
+        "traces": [
+          {
+            "program_ref": "f9febc5b0bcaa55f45855bdb49a68fac9594a53782e850c805008639aee51e8c",
+            "label": "no",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "absent",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both supplied support observations report that the paper remains outside the cup, held near it; neither shows progress toward stuffing it inside."
+              }
+            },
+            "requirements": {
+              "R1": "absent"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "fail",
+                "evidence": "The edited image shows a hand holding the paper near the cup, but the paper is not visibly inside or stuffed into it.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 51,
+                "dependencies": [],
+                "execution_ref": "0e70b01de93e864d93f1e46a721c739f8eb771f9b46f2a07fd9bf94aa743f896",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "fail",
+                "evidence": "The edited image clearly shows the hand holding the paper outside the cup; it is not visibly inside or stuffed into it.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 53,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited image shows a hand holding the paper near the cup, but the paper is not visibly inside or stuffed into it.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 51,
+                    "dependencies": [],
+                    "execution_ref": "0e70b01de93e864d93f1e46a721c739f8eb771f9b46f2a07fd9bf94aa743f896",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "4f31210aa1a8e9462e95afb64ec315dcc6d233404f8565933dd759e9f04975ba",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "absent",
+                "evidence": "Both supplied support observations report that the paper remains outside the cup, held near it; neither shows progress toward stuffing it inside.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 58,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "fail",
+                    "evidence": "The edited image shows a hand holding the paper near the cup, but the paper is not visibly inside or stuffed into it.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 51,
+                    "dependencies": [],
+                    "execution_ref": "0e70b01de93e864d93f1e46a721c739f8eb771f9b46f2a07fd9bf94aa743f896",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "fail",
+                    "evidence": "The edited image clearly shows the hand holding the paper outside the cup; it is not visibly inside or stuffed into it.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 53,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "fail",
+                        "evidence": "The edited image shows a hand holding the paper near the cup, but the paper is not visibly inside or stuffed into it.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 51,
+                        "dependencies": [],
+                        "execution_ref": "0e70b01de93e864d93f1e46a721c739f8eb771f9b46f2a07fd9bf94aa743f896",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "4f31210aa1a8e9462e95afb64ec315dcc6d233404f8565933dd759e9f04975ba",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "71888d493e81b1ba0d0519a55f2cb8dd30f1b8cc4c60bffe3a6ec2c1fb057752",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "fail",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "absent",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "f9febc5b0bcaa55f45855bdb49a68fac9594a53782e850c805008639aee51e8c",
+          "semantic_rejection": "The support checks do not provide sufficient evidence to distinguish partial progress from no progress. Both focus on whether the paper is already stuffed inside the cup; s1 treats paper not inside as fail, and s2 only resolves whether the target is complete. The fulfillment readout therefore cannot reliably identify cases where the paper has progressed toward the cup but is not yet stuffed inside. Its absent/partial rules require that distinction, so the saved evidence does not support the requested extent."
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "9a70b4994917b84c7259e59954babce7549352b374d55d35e39c6bc598e98edd",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "nested-required",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "sol-proposer/aurora-task-9a1ea55edac097679512::mgie",
+  "phase": "search",
+  "max_tokens": 4096,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "db4f4c94fb6291dd275ffcc4ebef3e8e262594c66e1cf1407ea63209693504f6"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "be3df08b51fb88f0f543940723d8b01c85262c89d0682b9f964e2fa6e3a7f9ce"
+    }
+  ],
+  "route": "sol-proposer",
+  "requested_identity": {
+    "model": "gpt-6.1-sol",
+    "provider": "openai",
+    "temperature": null,
+    "reasoning_effort": "medium"
+  },
+  "response": {
+    "content": "{\n  \"transactions\": [\n    {\n      \"version\": \"typed-evidence-v1\",\n      \"reason\": \"The traces presume a cup in the edited image and conflate incomplete stuffing with no progress. Ground object identity before assessing completion, then add a nested investigation of actual insertion progress. The reddish object's identity is a hypothesis to investigate, not an established cup. This proposal requires structural validation, label-blind semantic audit, and fresh forward verification.\",\n      \"actions\": [\n        {\n          \"operation\": \"revise_support\",\n          \"after\": \"\",\n          \"before\": \"\",\n          \"new_check_id\": \"\",\n          \"target_id\": \"s1\",\n          \"requirement_id\": \"R1\",\n          \"question\": \"Can the requested paper and cup be identified in the edited image, using the source for context, with sufficient visibility to assess their placement?\",\n          \"criteria\": \"Pass if visible features establish the paper and a cup in the edited image and permit assessment of their spatial relation. Fail only if adequate visibility positively establishes that the required paper or cup is absent from the relevant edited scene. Unknown if identity, occlusion, framing, or visibility prevents that determination. Not recognizing a cup is not proof that no cup exists. Report concrete identifying features and visibility limitations; do not judge completion here.\",\n          \"binding\": \"Compare source and edited images directly. The source's blue cup provides context, not proof that a reddish object in the edit is a cup. Investigate cup-like opening, interior, walls, and paper boundaries without requiring preservation of the source's color. Do not infer an unseen interior or object identity from the instruction.\",\n          \"readout_criteria\": \"\",\n          \"evidence_from\": []\n        },\n        {\n          \"operation\": \"revise_support\",\n          \"after\": \"\",\n          \"before\": \"\",\n          \"new_check_id\": \"\",\n          \"target_id\": \"s2\",\n          \"requirement_id\": \"R1\",\n          \"question\": \"Given the object-identification evidence, does the edited image establish that the paper is inside the cup and stuffed into it rather than merely nearby or resting on its rim?\",\n          \"criteria\": \"Pass if identified paper visibly extends into an identified cup's interior and visible containment, compression, or insertion establishes stuffing. Fail if adequate visual evidence establishes that this full target is not met, including clearly external paper, rim-only placement, visibly incomplete insertion, or positively established absence of a required object. A fail means incomplete, not necessarily no progress. Unknown if object identity or the interior relation is unresolved. Describe the decisive spatial evidence and distinguish incomplete insertion from merely external placement.\",\n          \"binding\": \"Use s1 as ancestor context, then inspect the edited image independently for the specific containment and stuffing relation. Do not repeat s1 as independent corroboration. A hand holding paper beside an unidentified reddish object establishes neither completion nor absence of progress. Do not demand that all paper disappear inside the cup.\",\n          \"readout_criteria\": \"\",\n          \"evidence_from\": [\n            \"s1\"\n          ]\n        },\n        {\n          \"operation\": \"insert_support\",\n          \"after\": \"s2\",\n          \"before\": \"fulfillment\",\n          \"new_check_id\": \"s3_insertion_progress\",\n          \"target_id\": \"\",\n          \"requirement_id\": \"R1\",\n          \"question\": \"Within the paper-and-cup relation investigated by s1 and s2, is any requested insertion or stuffing progress visibly established, whether complete or intermediate?\",\n          \"criteria\": \"Pass if the edited image establishes paper entering or occupying an identified cup's interior, or a visible intermediate stuffing action directed into its opening. State whether the evidence shows completed stuffing or incomplete insertion. Fail only if sufficient evidence positively establishes no insertion or stuffing progress: for example, identified paper is wholly external with no entry into the cup, mere proximity or rim contact without insertion, or a required object is demonstrably absent. Unknown if cup identity, paper boundaries, opening, or occlusion prevents distinguishing actual insertion from proximity. Failure of s2 alone does not establish failure here.\",\n          \"binding\": \"Use s1 and s2 as ancestor context and inspect the narrower progress proposition directly in the edited image. Compare the source where useful, but do not count changed paper appearance, a hand, a new background, or proximity alone as requested progress. Do not infer motion or insertion from a static grip. Preserve uncertainty when the reddish object's identity or interior cannot be established.\",\n          \"readout_criteria\": \"Use all and only s1, s2, and s3_insertion_progress observations. Complete requires grounded identification and placement evidence from s1, affirmative stuffing evidence from s2, and affirmative insertion evidence from s3_insertion_progress. Partial requires positively established insertion or stuffing progress from s3_insertion_progress and positively established incompleteness from s2; mere proximity and unrelated changes do not qualify. Absent requires s3_insertion_progress to positively establish no requested progress, with trustworthy object identification and spatial evidence or explicit, adequately visible absence of a required object. A failed completion check alone never establishes absent. Unknown applies when required identity, placement, completion, or progress evidence remains unresolved, or when observations conflict without a supported resolution. Dependent agreement is not independent visual confirmation, and supporting passes do not themselves earn completion credit.\",\n          \"evidence_from\": [\n            \"s1\",\n            \"s2\"\n          ]\n        }\n      ]\n    }\n  ]\n}",
+    "model": "gpt-6.1-sol",
+    "engine": "gpt",
+    "promptTokens": 4602,
+    "completionTokens": 1352,
+    "totalTokens": 5954,
+    "latencySeconds": 27.996975898742676,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": [
+        {
+          "version": "typed-evidence-v1",
+          "reason": "The traces presume a cup in the edited image and conflate incomplete stuffing with no progress. Ground object identity before assessing completion, then add a nested investigation of actual insertion progress. The reddish object's identity is a hypothesis to investigate, not an established cup. This proposal requires structural validation, label-blind semantic audit, and fresh forward verification.",
+          "actions": [
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s1",
+              "requirement_id": "R1",
+              "question": "Can the requested paper and cup be identified in the edited image, using the source for context, with sufficient visibility to assess their placement?",
+              "criteria": "Pass if visible features establish the paper and a cup in the edited image and permit assessment of their spatial relation. Fail only if adequate visibility positively establishes that the required paper or cup is absent from the relevant edited scene. Unknown if identity, occlusion, framing, or visibility prevents that determination. Not recognizing a cup is not proof that no cup exists. Report concrete identifying features and visibility limitations; do not judge completion here.",
+              "binding": "Compare source and edited images directly. The source's blue cup provides context, not proof that a reddish object in the edit is a cup. Investigate cup-like opening, interior, walls, and paper boundaries without requiring preservation of the source's color. Do not infer an unseen interior or object identity from the instruction.",
+              "readout_criteria": "",
+              "evidence_from": []
+            },
+            {
+              "operation": "revise_support",
+              "after": "",
+              "before": "",
+              "new_check_id": "",
+              "target_id": "s2",
+              "requirement_id": "R1",
+              "question": "Given the object-identification evidence, does the edited image establish that the paper is inside the cup and stuffed into it rather than merely nearby or resting on its rim?",
+              "criteria": "Pass if identified paper visibly extends into an identified cup's interior and visible containment, compression, or insertion establishes stuffing. Fail if adequate visual evidence establishes that this full target is not met, including clearly external paper, rim-only placement, visibly incomplete insertion, or positively established absence of a required object. A fail means incomplete, not necessarily no progress. Unknown if object identity or the interior relation is unresolved. Describe the decisive spatial evidence and distinguish incomplete insertion from merely external placement.",
+              "binding": "Use s1 as ancestor context, then inspect the edited image independently for the specific containment and stuffing relation. Do not repeat s1 as independent corroboration. A hand holding paper beside an unidentified reddish object establishes neither completion nor absence of progress. Do not demand that all paper disappear inside the cup.",
+              "readout_criteria": "",
+              "evidence_from": [
+                "s1"
+              ]
+            },
+            {
+              "operation": "insert_support",
+              "after": "s2",
+              "before": "fulfillment",
+              "new_check_id": "s3_insertion_progress",
+              "target_id": "",
+              "requirement_id": "R1",
+              "question": "Within the paper-and-cup relation investigated by s1 and s2, is any requested insertion or stuffing progress visibly established, whether complete or intermediate?",
+              "criteria": "Pass if the edited image establishes paper entering or occupying an identified cup's interior, or a visible intermediate stuffing action directed into its opening. State whether the evidence shows completed stuffing or incomplete insertion. Fail only if sufficient evidence positively establishes no insertion or stuffing progress: for example, identified paper is wholly external with no entry into the cup, mere proximity or rim contact without insertion, or a required object is demonstrably absent. Unknown if cup identity, paper boundaries, opening, or occlusion prevents distinguishing actual insertion from proximity. Failure of s2 alone does not establish failure here.",
+              "binding": "Use s1 and s2 as ancestor context and inspect the narrower progress proposition directly in the edited image. Compare the source where useful, but do not count changed paper appearance, a hand, a new background, or proximity alone as requested progress. Do not infer motion or insertion from a static grip. Preserve uncertainty when the reddish object's identity or interior cannot be established.",
+              "readout_criteria": "Use all and only s1, s2, and s3_insertion_progress observations. Complete requires grounded identification and placement evidence from s1, affirmative stuffing evidence from s2, and affirmative insertion evidence from s3_insertion_progress. Partial requires positively established insertion or stuffing progress from s3_insertion_progress and positively established incompleteness from s2; mere proximity and unrelated changes do not qualify. Absent requires s3_insertion_progress to positively establish no requested progress, with trustworthy object identification and spatial evidence or explicit, adequately visible absence of a required object. A failed completion check alone never establishes absent. Unknown applies when required identity, placement, completion, or progress evidence remains unresolved, or when observations conflict without a supported resolution. Dependent agreement is not independent visual confirmation, and supporting passes do not themselves earn completion credit.",
+              "evidence_from": [
+                "s1",
+                "s2"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": [
+      {
+        "version": "typed-evidence-v1",
+        "reason": "The traces presume a cup in the edited image and conflate incomplete stuffing with no progress. Ground object identity before assessing completion, then add a nested investigation of actual insertion progress. The reddish object's identity is a hypothesis to investigate, not an established cup. This proposal requires structural validation, label-blind semantic audit, and fresh forward verification.",
+        "actions": [
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s1",
+            "requirement_id": "R1",
+            "question": "Can the requested paper and cup be identified in the edited image, using the source for context, with sufficient visibility to assess their placement?",
+            "criteria": "Pass if visible features establish the paper and a cup in the edited image and permit assessment of their spatial relation. Fail only if adequate visibility positively establishes that the required paper or cup is absent from the relevant edited scene. Unknown if identity, occlusion, framing, or visibility prevents that determination. Not recognizing a cup is not proof that no cup exists. Report concrete identifying features and visibility limitations; do not judge completion here.",
+            "binding": "Compare source and edited images directly. The source's blue cup provides context, not proof that a reddish object in the edit is a cup. Investigate cup-like opening, interior, walls, and paper boundaries without requiring preservation of the source's color. Do not infer an unseen interior or object identity from the instruction.",
+            "readout_criteria": "",
+            "evidence_from": []
+          },
+          {
+            "operation": "revise_support",
+            "after": "",
+            "before": "",
+            "new_check_id": "",
+            "target_id": "s2",
+            "requirement_id": "R1",
+            "question": "Given the object-identification evidence, does the edited image establish that the paper is inside the cup and stuffed into it rather than merely nearby or resting on its rim?",
+            "criteria": "Pass if identified paper visibly extends into an identified cup's interior and visible containment, compression, or insertion establishes stuffing. Fail if adequate visual evidence establishes that this full target is not met, including clearly external paper, rim-only placement, visibly incomplete insertion, or positively established absence of a required object. A fail means incomplete, not necessarily no progress. Unknown if object identity or the interior relation is unresolved. Describe the decisive spatial evidence and distinguish incomplete insertion from merely external placement.",
+            "binding": "Use s1 as ancestor context, then inspect the edited image independently for the specific containment and stuffing relation. Do not repeat s1 as independent corroboration. A hand holding paper beside an unidentified reddish object establishes neither completion nor absence of progress. Do not demand that all paper disappear inside the cup.",
+            "readout_criteria": "",
+            "evidence_from": [
+              "s1"
+            ]
+          },
+          {
+            "operation": "insert_support",
+            "after": "s2",
+            "before": "fulfillment",
+            "new_check_id": "s3_insertion_progress",
+            "target_id": "",
+            "requirement_id": "R1",
+            "question": "Within the paper-and-cup relation investigated by s1 and s2, is any requested insertion or stuffing progress visibly established, whether complete or intermediate?",
+            "criteria": "Pass if the edited image establishes paper entering or occupying an identified cup's interior, or a visible intermediate stuffing action directed into its opening. State whether the evidence shows completed stuffing or incomplete insertion. Fail only if sufficient evidence positively establishes no insertion or stuffing progress: for example, identified paper is wholly external with no entry into the cup, mere proximity or rim contact without insertion, or a required object is demonstrably absent. Unknown if cup identity, paper boundaries, opening, or occlusion prevents distinguishing actual insertion from proximity. Failure of s2 alone does not establish failure here.",
+            "binding": "Use s1 and s2 as ancestor context and inspect the narrower progress proposition directly in the edited image. Compare the source where useful, but do not count changed paper appearance, a hand, a new background, or proximity alone as requested progress. Do not infer motion or insertion from a static grip. Preserve uncertainty when the reddish object's identity or interior cannot be established.",
+            "readout_criteria": "Use all and only s1, s2, and s3_insertion_progress observations. Complete requires grounded identification and placement evidence from s1, affirmative stuffing evidence from s2, and affirmative insertion evidence from s3_insertion_progress. Partial requires positively established insertion or stuffing progress from s3_insertion_progress and positively established incompleteness from s2; mere proximity and unrelated changes do not qualify. Absent requires s3_insertion_progress to positively establish no requested progress, with trustworthy object identification and spatial evidence or explicit, adequately visible absence of a required object. A failed completion check alone never establishes absent. Unknown applies when required identity, placement, completion, or progress evidence remains unresolved, or when observations conflict without a supported resolution. Dependent agreement is not independent visual confirmation, and supporting passes do not themselves earn completion credit.",
+            "evidence_from": [
+              "s1",
+              "s2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

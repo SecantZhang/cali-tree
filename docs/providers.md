@@ -23,6 +23,16 @@ not `/v1beta/openai`. No implicit mirror or cross-provider key fallback is used.
 
 ## Models and experiment behavior
 
+Explicit GPT-6.1 Sol calls support enabled reasoning and omit temperature:
+
+```python
+from critical.lm_engine import get_engine
+engine = get_engine("gpt", model="gpt-6.1-sol", temperature=None,
+                    reasoning_effort="medium", max_http_attempts=1)
+```
+
+The adapter rejects `none` reasoning and a non-null temperature for Sol. Default Luna and legacy wire settings stay compatible. The typed optimizer can route only its proposer through this engine while other roles share the original Luna client and durable budget. See the [official Sol settings](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+
 Graph engines route by engine kind. AURORA standalone judge/optimizer clients route
 by model prefix (`gpt-*`, `o1/o3/o4`, `text-embedding-*`, `gemini-*`). Set the model
 in the workflow/CLI as before; no historical workflow or prompt is rewritten.

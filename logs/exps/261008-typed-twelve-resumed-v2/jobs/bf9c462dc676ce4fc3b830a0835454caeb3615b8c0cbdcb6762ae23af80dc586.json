@@ -1,0 +1,129 @@
+{
+  "execution_ref": "bf9c462dc676ce4fc3b830a0835454caeb3615b8c0cbdcb6762ae23af80dc586",
+  "stage": "audit",
+  "slot": "audit/27dc58d2fb0baaac3908dc7dced4eafacdca464625e5a847c674396cb4caca07",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Make this look like a comic book photo",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Make this look like a comic book photo",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Make this look like a comic book photo",
+          "source_phrase": "Make this look like a comic book photo"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Transform the image so it has a comic-book visual style while retaining its photographic subject matter.",
+          "target": "The image visibly combines comic-book styling with a photographic appearance.",
+          "reference": "The supplied image, as edited; assess the overall visual treatment for comic-book styling and photographic subject matter.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Does the edited image visibly have comic-book styling?",
+          "criteria": "Pass if comic-book visual styling is visibly present; fail if there is no visible comic-book styling; unknown if the image evidence is insufficient to determine this.",
+          "binding": "Assess the overall visual treatment of the supplied image as edited, without requiring a particular technique.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [],
+          "question": "Does the edited image as a whole visibly achieve the requested comic-book-photo appearance?",
+          "criteria": "Pass if the overall image clearly combines recognizable photographic subject matter with visible comic-book visual styling. Fail if the overall image does not achieve that combination, including if it remains essentially a realistic photograph without clear comic-book treatment. Unknown if the visual evidence is insufficient. Do not require a particular technique.",
+          "binding": "Assess the edited image as a whole against the requested appearance. Judge the result rather than a checklist of effects; photographic subject matter alone is not sufficient, and examples of graphic styling are illustrative, not mandatory.",
+          "inferences": []
+        },
+        {
+          "id": "s3",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Compared with the supplied source, does the edited image show visible, attributable progress toward the requested comic-book-photo appearance?",
+          "criteria": "Pass if comparison shows a visible change that advances the requested appearance; fail if there is no such progress, including mere retention of the source's photographic scene or incidental framing or tonal differences; unknown if comparison evidence is insufficient.",
+          "binding": "Compare source and edited images for attributable progress toward the requested comic-book-photo appearance. Do not count unrelated changes or mere retention as progress, and do not require a particular technique.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s3",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "question": "Does the edited image fully look like a comic-book photo?",
+          "criteria": "Complete only when s1 passes and this overall-appearance check passes. Partial when s3 establishes visible progress but this check fails, evidencing an incomplete result. Absent when s3 establishes no requested progress. Unknown when necessary evidence is unresolved; never treat unknown as failure. Ignore unrelated edits.",
+          "binding": "Target: The image visibly combines comic-book styling with a photographic appearance.. Reference: The supplied image, as edited; assess the overall visual treatment for comic-book styling and photographic subject matter..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "contract": "nested-evidence-readout-v1"
+  },
+  "case_id": "nested-required/aurora-task-bfa82afe32a86d47dfdf::finetune_magicbrush_ag_something_kubric_15-15-1-1_init-magic_first_epoch=02-step=41999",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [],
+  "response": {
+    "content": "{\"accepted\":false,\"reason\":\"The fulfillment readout is not composed faithfully from the available support evidence. It requires s1 and s2 to pass for completion, but s2 already checks the overall requested appearance, so this adds a redundant gate rather than composing the outcome from the relevant evidence. More importantly, its partial rule requires s3 progress and s2 failure, while s2 can fail because the image lacks the requested photographic-and-comic combination even when s1 passes; the rules do not clearly distinguish an incomplete result from a result with no progress. The readout also omits the rubric’s explicit rule that no progress yields no, using “absent” without a saved mapping to that rubric label.\"}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 1429,
+    "completionTokens": 151,
+    "totalTokens": 1580,
+    "latencySeconds": 4.270465135574341,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "accepted": false,
+      "reason": "The fulfillment readout is not composed faithfully from the available support evidence. It requires s1 and s2 to pass for completion, but s2 already checks the overall requested appearance, so this adds a redundant gate rather than composing the outcome from the relevant evidence. More importantly, its partial rule requires s3 progress and s2 failure, while s2 can fail because the image lacks the requested photographic-and-comic combination even when s1 passes; the rules do not clearly distinguish an incomplete result from a result with no progress. The readout also omits the rubric’s explicit rule that no progress yields no, using “absent” without a saved mapping to that rubric label."
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "accepted": false,
+    "reason": "The fulfillment readout is not composed faithfully from the available support evidence. It requires s1 and s2 to pass for completion, but s2 already checks the overall requested appearance, so this adds a redundant gate rather than composing the outcome from the relevant evidence. More importantly, its partial rule requires s3 progress and s2 failure, while s2 can fail because the image lacks the requested photographic-and-comic combination even when s1 passes; the rules do not clearly distinguish an incomplete result from a result with no progress. The readout also omits the rubric’s explicit rule that no progress yields no, using “absent” without a saved mapping to that rubric label."
+  }
+}

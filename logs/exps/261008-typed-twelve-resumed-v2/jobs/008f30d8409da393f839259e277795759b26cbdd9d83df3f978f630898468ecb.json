@@ -1,0 +1,1020 @@
+{
+  "execution_ref": "008f30d8409da393f839259e277795759b26cbdd9d83df3f978f630898468ecb",
+  "stage": "propose_typed",
+  "slot": "round/9/batch/0/proposal",
+  "outcome": "completed",
+  "payload": {
+    "instruction": "Put a frog in the toilet",
+    "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+    "program": {
+      "instruction": "Put a frog in the toilet",
+      "rubric": "Judge requested image editing: yes means all requested changes are complete, no means no requested change has progressed, partial means some progress without complete fulfillment. Unrelated edits are not requested progress. Insufficient evidence stays unresolved.",
+      "requirements": [
+        {
+          "id": "R1",
+          "text": "Put a frog in the toilet",
+          "source_phrase": "Put a frog in the toilet"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "O1",
+          "requirement_ids": [
+            "R1"
+          ],
+          "description": "Add a frog inside the toilet.",
+          "target": "A frog is visibly placed within the toilet bowl.",
+          "reference": "The toilet in the input image.",
+          "applicability": "applicable"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s1",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "",
+          "active_on": [],
+          "dependencies": [],
+          "question": "Is a recognizable frog visibly situated within the toilet bowl, rather than merely on the lid, tank, rim, or floor?",
+          "criteria": "Pass if a recognizable frog is visibly within the bowl opening/interior; fail if the bowl is assessable and no frog is within it, even if frogs appear elsewhere; unknown if the relevant placement cannot be assessed reliably. Report the observed location(s) and any ambiguity about whether the apparent frog is actually in the bowl.",
+          "binding": "Compare the edited image with the source toilet. Localize the frog relative to the bowl interior, rim, lid, tank, and floor; do not mistake the pre-existing dark object in the source bowl for a frog. This is evidence of placement, not a completion judgment.",
+          "inferences": []
+        },
+        {
+          "id": "s2",
+          "role": "support",
+          "outcome_id": "",
+          "parent": "s1",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1"
+          ],
+          "question": "Are the toilet bowl and its contents sufficiently visible to assess frog placement, and what frog locations are visibly distinguishable?",
+          "criteria": "Pass if the bowl and relevant contents are assessable; fail only if they are clearly visible and establish no frog within the bowl; unknown if visibility or evidence is insufficient. State whether frogs are visible in the bowl, on the lid/tank, or on the floor, distinguishing these locations; this check supplies evidence only and does not decide fulfillment.",
+          "binding": "Use the edited image and source toilet to assess visibility and report observable locations separately. Do not conflate a frog on the lid or tank with one in the bowl, and do not infer an empty bowl from uncertainty.",
+          "inferences": []
+        },
+        {
+          "id": "fulfillment",
+          "role": "requested",
+          "outcome_id": "O1",
+          "parent": "s2",
+          "active_on": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "dependencies": [
+            "s1",
+            "s2"
+          ],
+          "question": "Is a frog visibly placed inside the toilet bowl?",
+          "criteria": "Complete only when s1 reliably establishes a frog within the bowl. Partial only when support evidence establishes requested progress short of that placement; frogs solely on unrelated surfaces do not count. Absent when evidence establishes no requested progress. Unknown when necessary evidence is unresolved. Do not infer incompleteness merely from additional frogs elsewhere.",
+          "binding": "Target: A frog is visibly placed within the toilet bowl.. Reference: The toilet in the input image..",
+          "inferences": []
+        }
+      ],
+      "checker_template": "Execute ONE saved check. Return status, evidence, confidence (0 to 1 or null), and used_dependency_ids. You receive no reference label or optimizer feedback. Do not predict what the optimizer wants.\nSupport checks receive source and edited images. Inspect only the saved visual proposition and binding. When dependencies are supplied, use those ancestor observations as context and investigate the more specific proposition yourself; do not simply repeat the parent answer. Use pass/fail/unknown. A pass on a broad parent does not imply a nested check passes. Known negative evidence is usable; uncertain or missing evidence is unknown. Do not award requested completion credit to supporting facts.\nThe requested fulfillment readout receives NO images. Use ALL and ONLY saved support observations, the original instruction, rubric and saved composition criteria. Use complete/partial/absent/unknown. Mere texture or object presence must not silently establish whole-image conversion or a requested spatial relation. Known progress plus evidenced incompleteness may be partial; absence means no requested progress. Missing necessary evidence is unknown, never a fabricated failure or completion. Do not infer new visual facts.\nused_dependency_ids must name every supplied dependency check_id exactly once in saved order (empty when none). Confidence is self-report, not calibrated correctness.\n",
+      "mode": "tree",
+      "version": "decision-leaf-v3",
+      "aggregation": "requested-all-some-none-v3"
+    },
+    "reference_label": "partial",
+    "feedback": {
+      "textual_gradients": {
+        "fulfillment": [
+          "The node’s criterion already distinguishes a frog inside the bowl from frogs on unrelated surfaces, and the traces repeatedly report clear bowl placement with high confidence; there is no transport, schema, or dependency failure to fix. The mismatch is therefore not explained by the current evidence: the edited image visibly has a frog seated in the bowl, while the aggregate reference is partial. Do not force “partial” or treat the extra frogs as negating fulfillment. Investigate whether the binding/criterion is underspecified about what counts as the requested edit versus pre-existing content, and ensure the node evaluates the requested change against the source image as well as the edited image. Preserve the distinction between genuine partial progress and complete placement, and return unknown only if that comparison or placement evidence is unresolved. The repeated identical yes outcomes are a signal to inspect the criterion/reference alignment, not evidence that the bowl frog is absent."
+        ],
+        "s2": [
+          "The binding already asks for source-versus-edited visibility and separates bowl, lid/tank, and floor locations; the traces consistently and clearly identify a frog in the bowl, so do not alter the node to force the aggregate label or treat the extra frogs as negating fulfillment. The images show the source bowl has no frog (only a small dark object), while the edited image adds frogs in several locations, including clearly inside the bowl. The unresolved issue is criterion ownership: this support node reports evidence, but its pass/fail semantics may be consumed downstream as if they decide whether the requested edit is complete. Keep its output strictly observational and ensure the fulfillment decision compares source with edited image and applies the rubric: unrelated additions do not count, but the requested bowl placement is visibly present. Investigate why the reference is partial despite that evidence rather than weakening the placement criterion; use unknown only if the source comparison or placement is genuinely unclear. Repeated high-confidence identical traces indicate criterion/reference alignment to inspect, not a visual or transport failure."
+        ],
+        "s1": [
+          "The node is already doing its narrow support job: it compares source and edited images, distinguishes the bowl from other surfaces, and reports clear added bowl placement. The images confirm a frog in the bowl, alongside unrelated frogs on the lid and floor; the source contains only a dark object in the bowl. Do not change the placement criterion to force the aggregate `partial` label or count unrelated additions as negating the requested edit. The mismatch is more likely in how this support result is mapped to fulfillment or how the reference label is assigned: inspect that criterion ownership and aggregation path. Keep the node observational, explicitly recording source-versus-edited presence and each frog’s location, so downstream logic can distinguish requested progress from unrelated edits. Repeated high-confidence `yes` traces are an alignment-investigation signal, not evidence of missing placement; there is no indicated transport, schema, or dependency failure."
+        ]
+      },
+      "report": {
+        "draws": 5,
+        "agreement": 0.0,
+        "coverage": 1.0,
+        "label_consistency": 1.0,
+        "label_distribution": {
+          "yes": 5
+        },
+        "nodes": {
+          "s1": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.99,
+              0.99,
+              0.99,
+              0.99,
+              0.99
+            ]
+          },
+          "s2": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "pass": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.99,
+              0.99,
+              0.99,
+              0.99,
+              0.99
+            ]
+          },
+          "fulfillment": {
+            "eligible": 5,
+            "queried": 5,
+            "activation_rate": 1.0,
+            "states": {
+              "complete": 5
+            },
+            "consistency": 1.0,
+            "assessment": "assessed",
+            "confidence": [
+              0.99,
+              0.99,
+              0.99,
+              0.99,
+              0.99
+            ]
+          }
+        },
+        "requirements": {
+          "R1": {
+            "states": {
+              "complete": 5
+            },
+            "consistency": 1.0,
+            "coverage": 1.0
+          }
+        },
+        "requirement_consistency": 1.0,
+        "confidence_pass": true,
+        "mean_checks": 3.0,
+        "mean_completion_tokens": 194.6,
+        "traces": [
+          {
+            "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement. Additional frogs elsewhere do not change that conclusion."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "The edited image shows a recognizable green frog inside the toilet bowl opening, seated within the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 83,
+                "dependencies": [],
+                "execution_ref": "d37faf23ee1e2bc4774c2e8668e64d1566099469a6d30ad4d1fd86310965e216",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also on the raised lid/tank area and on the floor beside the toilet.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 66,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image shows a recognizable green frog inside the toilet bowl opening, seated within the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 83,
+                    "dependencies": [],
+                    "execution_ref": "d37faf23ee1e2bc4774c2e8668e64d1566099469a6d30ad4d1fd86310965e216",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "9b5abbf9abc59f0112875d5360c979678e7ea6e44badfbd9feb3e6c2d080cb4f",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement. Additional frogs elsewhere do not change that conclusion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 62,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "The edited image shows a recognizable green frog inside the toilet bowl opening, seated within the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 83,
+                    "dependencies": [],
+                    "execution_ref": "d37faf23ee1e2bc4774c2e8668e64d1566099469a6d30ad4d1fd86310965e216",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also on the raised lid/tank area and on the floor beside the toilet.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 66,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "The edited image shows a recognizable green frog inside the toilet bowl opening, seated within the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 83,
+                        "dependencies": [],
+                        "execution_ref": "d37faf23ee1e2bc4774c2e8668e64d1566099469a6d30ad4d1fd86310965e216",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "9b5abbf9abc59f0112875d5360c979678e7ea6e44badfbd9feb3e6c2d080cb4f",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "cd0b7177c009089d2914d411558e96895320f56e80776d0f5aa09c8d319c9574",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a recognizable frog is visibly seated inside the toilet bowl, fulfilling the requested placement."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated in the bowl interior. Other frogs are also visible on the raised lid and on the floor beside the toilet, but the bowl frog is clearly within the bowl.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 71,
+                "dependencies": [],
+                "execution_ref": "823c0120be0a9e7dc209dafa61e08f1b5a64d96de459a334cfdc3dd9b1625620",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also visible on the raised lid and on the floor beside the toilet.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 64,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated in the bowl interior. Other frogs are also visible on the raised lid and on the floor beside the toilet, but the bowl frog is clearly within the bowl.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 71,
+                    "dependencies": [],
+                    "execution_ref": "823c0120be0a9e7dc209dafa61e08f1b5a64d96de459a334cfdc3dd9b1625620",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "1c12d728acdf03cc17b5a1d19c379272118871efa3f7594eaead40889b693c56",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a recognizable frog is visibly seated inside the toilet bowl, fulfilling the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 54,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated in the bowl interior. Other frogs are also visible on the raised lid and on the floor beside the toilet, but the bowl frog is clearly within the bowl.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 71,
+                    "dependencies": [],
+                    "execution_ref": "823c0120be0a9e7dc209dafa61e08f1b5a64d96de459a334cfdc3dd9b1625620",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also visible on the raised lid and on the floor beside the toilet.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 64,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated in the bowl interior. Other frogs are also visible on the raised lid and on the floor beside the toilet, but the bowl frog is clearly within the bowl.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 71,
+                        "dependencies": [],
+                        "execution_ref": "823c0120be0a9e7dc209dafa61e08f1b5a64d96de459a334cfdc3dd9b1625620",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "1c12d728acdf03cc17b5a1d19c379272118871efa3f7594eaead40889b693c56",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "7ed7a7ef06cb711535f9c4d586f2c16eae9bb7f93ec868823b87b397e24fbb96",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "Both saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, positioned over the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 81,
+                "dependencies": [],
+                "execution_ref": "245560e20d518f256363d99982765635bd9e3bdd7957837f145298c36e2a0c89",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also visible on the raised lid and on the floor beside the toilet.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 64,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, positioned over the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 81,
+                    "dependencies": [],
+                    "execution_ref": "245560e20d518f256363d99982765635bd9e3bdd7957837f145298c36e2a0c89",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "5963716bb05499e40ae88c50f594a8512f9a4109157af9d9c21580fced3e155d",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "Both saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 53,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, positioned over the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 81,
+                    "dependencies": [],
+                    "execution_ref": "245560e20d518f256363d99982765635bd9e3bdd7957837f145298c36e2a0c89",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are also visible on the raised lid and on the floor beside the toilet.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 64,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, positioned over the bowl interior. Other frogs are also visible on the lid and on the floor, but the bowl frog is clearly within the bowl. The dark object in the source bowl remains distinct from the added frog.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 81,
+                        "dependencies": [],
+                        "execution_ref": "245560e20d518f256363d99982765635bd9e3bdd7957837f145298c36e2a0c89",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "5963716bb05499e40ae88c50f594a8512f9a4109157af9d9c21580fced3e155d",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "e5d9acced3c17c8aa3a6eb5f7b2fd190970e70420800f63d1e63fc6b99e9a73e",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a recognizable frog is visibly seated inside the toilet bowl, fulfilling the requested placement. Additional frogs elsewhere do not change that conclusion."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated within the bowl interior. Other frogs are also on the lid and nearby floor, but the bowl placement is clear.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 62,
+                "dependencies": [],
+                "execution_ref": "0b5f6323e79e8bc06aeef444f35d290648205c594c0a4c8884f3e8b97cb21d66",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are on the raised lid/tank area and on the floor beside the toilet.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 65,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated within the bowl interior. Other frogs are also on the lid and nearby floor, but the bowl placement is clear.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 62,
+                    "dependencies": [],
+                    "execution_ref": "0b5f6323e79e8bc06aeef444f35d290648205c594c0a4c8884f3e8b97cb21d66",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "b93bbfa764eaaf6747e2f567090ae36232f725cd844c6e2b5239dfc706f736cf",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a recognizable frog is visibly seated inside the toilet bowl, fulfilling the requested placement. Additional frogs elsewhere do not change that conclusion.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 63,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated within the bowl interior. Other frogs are also on the lid and nearby floor, but the bowl placement is clear.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 62,
+                    "dependencies": [],
+                    "execution_ref": "0b5f6323e79e8bc06aeef444f35d290648205c594c0a4c8884f3e8b97cb21d66",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; separate frogs are on the raised lid/tank area and on the floor beside the toilet.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 65,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, seated within the bowl interior. Other frogs are also on the lid and nearby floor, but the bowl placement is clear.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 62,
+                        "dependencies": [],
+                        "execution_ref": "0b5f6323e79e8bc06aeef444f35d290648205c594c0a4c8884f3e8b97cb21d66",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "b93bbfa764eaaf6747e2f567090ae36232f725cd844c6e2b5239dfc706f736cf",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "7bd0eb686d04563412a21a07bcdfc3e4a640ec856800beec2e56c2a0ba41ce3a",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          },
+          {
+            "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+            "label": "yes",
+            "resolved": true,
+            "outcomes": {
+              "O1": {
+                "status": "complete",
+                "applicability": "applicable",
+                "source": "queried",
+                "reason": "The saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement."
+              }
+            },
+            "requirements": {
+              "R1": "complete"
+            },
+            "observations": [
+              {
+                "check_id": "s1",
+                "status": "pass",
+                "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, sitting in the bowl interior. Other frogs are also on the raised lid and on the floor, but the bowl frog is clearly within the bowl.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 67,
+                "dependencies": [],
+                "execution_ref": "49aabda21d34fc5ff895e6f9f583639e254ddea294143bf0510b6cbc7dcaa7bd",
+                "failure": null
+              },
+              {
+                "check_id": "s2",
+                "status": "pass",
+                "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; other frogs are on the raised lid and on the floor. These locations are distinguishable.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 65,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, sitting in the bowl interior. Other frogs are also on the raised lid and on the floor, but the bowl frog is clearly within the bowl.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 67,
+                    "dependencies": [],
+                    "execution_ref": "49aabda21d34fc5ff895e6f9f583639e254ddea294143bf0510b6cbc7dcaa7bd",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "441011d2636bf00d03fea1ba2247cdb8d0257c3cda3d7fd7662ef6fc08a54038",
+                "failure": null
+              },
+              {
+                "check_id": "fulfillment",
+                "status": "complete",
+                "evidence": "The saved support observations establish that a recognizable frog is visibly inside the toilet bowl, fulfilling the requested placement.",
+                "valid": true,
+                "eligible": true,
+                "queried": true,
+                "confidence": 0.99,
+                "completion_tokens": 53,
+                "dependencies": [
+                  {
+                    "check_id": "s1",
+                    "status": "pass",
+                    "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, sitting in the bowl interior. Other frogs are also on the raised lid and on the floor, but the bowl frog is clearly within the bowl.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 67,
+                    "dependencies": [],
+                    "execution_ref": "49aabda21d34fc5ff895e6f9f583639e254ddea294143bf0510b6cbc7dcaa7bd",
+                    "failure": null
+                  },
+                  {
+                    "check_id": "s2",
+                    "status": "pass",
+                    "evidence": "The toilet bowl and its contents are clearly visible. A frog is visibly inside the bowl; other frogs are on the raised lid and on the floor. These locations are distinguishable.",
+                    "valid": true,
+                    "eligible": true,
+                    "queried": true,
+                    "confidence": 0.99,
+                    "completion_tokens": 65,
+                    "dependencies": [
+                      {
+                        "check_id": "s1",
+                        "status": "pass",
+                        "evidence": "A recognizable green frog is visibly inside the toilet bowl opening, sitting in the bowl interior. Other frogs are also on the raised lid and on the floor, but the bowl frog is clearly within the bowl.",
+                        "valid": true,
+                        "eligible": true,
+                        "queried": true,
+                        "confidence": 0.99,
+                        "completion_tokens": 67,
+                        "dependencies": [],
+                        "execution_ref": "49aabda21d34fc5ff895e6f9f583639e254ddea294143bf0510b6cbc7dcaa7bd",
+                        "failure": null
+                      }
+                    ],
+                    "execution_ref": "441011d2636bf00d03fea1ba2247cdb8d0257c3cda3d7fd7662ef6fc08a54038",
+                    "failure": null
+                  }
+                ],
+                "execution_ref": "e547e5217cbcabbc6c0b861484be3d5b5a059cb260fb473eae95e44181b46a57",
+                "failure": null
+              }
+            ],
+            "transitions": [
+              {
+                "node": "s1",
+                "parent": "",
+                "active_on": [],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "s2",
+                "parent": "s1",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "pass",
+                "skip_reason": ""
+              },
+              {
+                "node": "fulfillment",
+                "parent": "s2",
+                "active_on": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ],
+                "eligible": true,
+                "state": "complete",
+                "skip_reason": ""
+              }
+            ]
+          }
+        ]
+      },
+      "rejected_diagnostics": [
+        {
+          "program_ref": "0b63d9a99bbfbfc240fbd2dcfc94b88a91b5edc813b510db5d1dff35dcd3e942",
+          "semantic_rejection": "The support checks do not provide separate evidence for partial progress. s1 only distinguishes a frog visibly inside the bowl from its absence or uncertainty, and s2 repeats that same visibility assessment. The fulfillment rule nevertheless allows partial when there is some progress toward placing a frog inside without a frog clearly within the bowl. With no support observation capable of establishing that progress, the readout cannot faithfully distinguish partial from no progress or unknown."
+        },
+        {
+          "program_ref": "25db991663569673ca02673e39a74ce793a72eba8aa677368480fb9df63ad218",
+          "semantic_rejection": "The support checks do not preserve the requested property reliably. s1 treats a frog visibly inside the bowl as sufficient, but the instruction only says to put a frog in the toilet; it does not require the frog to be visibly inside the bowl. s2 also conflates insufficient visibility with a clear bowl containing no frog by assigning both fail, so the readout cannot distinguish known absence of progress from unresolved evidence. The fulfillment criteria then assert that a frog in the bowl is progress without support for the broader requested relation, and do not provide a sound composition rule for deciding completion versus partial fulfillment. These gaps make the saved evidence insufficient for faithful fulfillment judgments."
+        },
+        {
+          "program_ref": "eefd8aeb6cb56e80164c7b6942c7437ddaed4c1f6b76578c3654e243c746ce10",
+          "semantic_rejection": "The fulfillment readout depends on s1 and s2, but s2 is only an evidence-sufficiency check: its criteria do not establish whether additional misplaced frogs actually exist. The readout nevertheless treats conspicuous additional misplaced frogs as evidence of incompleteness, so it can require a fact the supports do not reliably establish. This leaves the requested completion criterion unsupported and can make the readout unresolved despite sufficient evidence of the requested placement."
+        },
+        {
+          "program_ref": "fd1d3fac8e58fb2b10d46cd67315142c89c2f254cf630c8f7e06fbd6f3b10ec5",
+          "semantic_rejection": "The support checks do not provide a distinct, reliable observation of progress short of completion. s1 only distinguishes a frog inside the bowl from no frog inside or uncertainty; s2 repeats that same distinction and explicitly supplies no independent progress evidence. Consequently, the fulfillment readout cannot faithfully identify partial progress (such as a frog placed in the toilet but not established inside the bowl) and may classify it as absent or unknown. The requested outcome is otherwise appropriately scoped to a frog inside the input toilet."
+        },
+        {
+          "program_ref": "35d8108cb7d2645b94839eb7a6f1c1bee1ee079d853289db75c3a96936509305",
+          "semantic_rejection": "The fulfillment rule is too permissive: it treats a frog placed “in or on” the original toilet as complete, although the request and target require a frog inside the toilet bowl. Support s2 also treats placement “in or on” the toilet as progress, so a frog merely on the toilet could be reported as progress despite not satisfying the requested spatial relation. The readout therefore cannot faithfully distinguish the requested placement from a weaker one."
+        },
+        {
+          "program_ref": "008208c41f95719c835e6e502ed336f4769824fdde3eedf121228fa3ec45b38d",
+          "semantic_rejection": "The fulfillment rule adds an unsupported requirement: it treats conspicuous extra frogs outside the toilet as making the result partial, although the instruction only asks to put a frog in the toilet and the rubric says unrelated edits are not requested progress. No support check assesses extra frogs, so the readout cannot establish either their presence or absence; it also explicitly forbids inferring that evidence from the existing checks. Thus a frog correctly placed in the bowl cannot be judged complete from the saved evidence, and the composition rule does not faithfully preserve the request."
+        },
+        {
+          "program_ref": "42905ff69c4aefd0b36b1da6611e78581e761dcc4fd7c26bfe5467fcfe654d02",
+          "semantic_rejection": "The support checks provide sufficient evidence for the requested relation: s1 directly assesses whether a recognizable frog is inside the bowl, and s2 records broader placements as progress evidence. However, the fulfillment readout is nested under s2 and activates only on s2’s pass, fail, or unknown; that is exhaustive, so activation is not the issue. The composition rule is contradictory: it says complete only when the requested placement is established, but also says partial when progress is established without complete fulfillment. Since s2 treats a frog on the lid or tank as progress, that evidence can support partial even when s1 establishes the bowl is assessable and empty; the program does not clearly distinguish that known incomplete case from unresolved evidence, and its “absent only” rule does not resolve the conflict. Reject for ambiguous composition of known negative and progress evidence."
+        },
+        {
+          "program_ref": "946c02594629977c6ab2f9377e145cd82ac7fa1b7e59d21c853eac8f67f4c804",
+          "semantic_rejection": "The fulfillment rule is incomplete when s1 fails but s2 passes: it says “otherwise partial only when support evidence establishes such progress,” yet s2 only records frogs outside the bowl and explicitly does not establish progress toward the requested bowl placement. This leaves the case of no bowl placement but conspicuous added frogs unresolved, despite the rubric requiring unrelated edits not to count as progress and no progress to be no. The composition therefore lacks a determinate outcome for an applicable evidence combination."
+        },
+        {
+          "program_ref": "71f9d71a989bb61b0bd19751209b7ae802421af8bbeb9c8106414f1ceda375d4",
+          "confirmation_rejection": {
+            "qualified": false,
+            "reasons": [
+              "target_mismatch"
+            ],
+            "policy": {
+              "repeats": 5,
+              "agreement": 0.8,
+              "consistency": 0.8,
+              "confidence": 0.8,
+              "minimum_eligible": 3
+            }
+          },
+          "next_action": "repair this failed candidate; no atomic expected state is implied"
+        }
+      ],
+      "visual_discovery": {
+        "reviews": [
+          {
+            "reviewer": "primary",
+            "family": "gpt-6-luna",
+            "requested_identity": {
+              "model": "gpt-6-luna",
+              "provider": "openai",
+              "temperature": 0,
+              "reasoning_effort": "none"
+            },
+            "execution_ref": "704c2673f107d309b2ac3e7c21ab456c23376ee34f02cb0335491eed04e486e0",
+            "findings": []
+          }
+        ],
+        "findings": [],
+        "failures": [],
+        "hypotheses_only": true
+      }
+    },
+    "profile": "criterion-only",
+    "protocol": "typed-evidence-v1",
+    "limit": 2
+  },
+  "case_id": "criterion-only/aurora-task-e0f9b97dc3bc00415cf2::mgie",
+  "phase": "search",
+  "max_tokens": 2048,
+  "media_identity": [
+    {
+      "type": "text",
+      "text": "SOURCE image"
+    },
+    {
+      "type": "image",
+      "sha256": "747d20cf1f5d24ca9e65e6d5f0edefa6cc7f5c0082549b599494b947d0dd61ee"
+    },
+    {
+      "type": "text",
+      "text": "EDITED image"
+    },
+    {
+      "type": "image",
+      "sha256": "5858e639272ff378e7cd315b34785a3aa87448555282f50c65f60d3f05dc03fd"
+    }
+  ],
+  "response": {
+    "content": "{\"transactions\":[]}",
+    "model": "gpt-6-luna",
+    "engine": "gpt",
+    "promptTokens": 13203,
+    "completionTokens": 11,
+    "totalTokens": 13214,
+    "latencySeconds": 2.2875590324401855,
+    "endpointHost": "api.openai.com",
+    "parsed": {
+      "transactions": []
+    },
+    "finishReason": "stop"
+  },
+  "parsed": {
+    "transactions": []
+  }
+}
