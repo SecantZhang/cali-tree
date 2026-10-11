@@ -1,3 +1,6 @@
+> Current implementation: [fulfillment pipeline](calitree_fulfillment_optimizer.md). This document records the evolving
+> research design; historical semantic-audited/tree variants below are not the default runtime.
+
 # Robust casewise leaf-judge optimization
 
 Status: v3 implementation added 2026-10-07; opt-in missing/nested evidence repair added 2026-10-08; v4 independent scheduling and adaptive proposer added 2026-10-09. The user-selected current v5 default disables semantic auditing and uses flat all/some/none counting. See [implementation and usage](calitree_robust_leaf_optimizer.md) for versioned contracts and pilot commands. Historical audited designs below remain references rather than the current default.

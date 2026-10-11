@@ -14,6 +14,9 @@ from critical.core.optimization.program.models import AppliedProgramEdit
 from .counting import (Decision, CountingProgram, CountingChecker, CountingExecutor,
                       validate as validate_legacy, aggregate_trace, AGGREGATION)
 
+from .shared.flat import GroundedDecision
+from .shared.execution import TransportRecoveryMixin
+
 VERSION='decision-leaf-v6'
 PROTOCOL='typed-counting-v2'
 TEMPLATES=Path(__file__).parents[1]/'prompts/templates/typed_counting_v2'
@@ -22,12 +25,7 @@ TEMPLATES=Path(__file__).parents[1]/'prompts/templates/typed_counting_v2'
 def template(name):return (TEMPLATES/(name+'.txt')).read_text()
 
 
-@dataclass(frozen=True)
-class EndpointDecision(Decision):
-    source_quote: str = ''
-    aspect: str = ''
-    endpoint: str = ''
-    necessity: str = ''
+EndpointDecision = GroundedDecision
 
 
 @dataclass(frozen=True)
@@ -153,7 +151,7 @@ class EndpointChecker(CountingChecker):
         super().__init__(calls);self.identity['checker']='independent-endpoints-v2'
 
 
-class EndpointExecutor(CountingExecutor):
+class EndpointExecutor(TransportRecoveryMixin,CountingExecutor):
     aggregate=staticmethod(aggregate_trace)
     def __init__(self,checker,**kw):super().__init__(checker,validator=validate,**kw)
 
@@ -167,36 +165,3 @@ class EndpointExecutor(CountingExecutor):
                     o['event']=t['event']='interrupted_attempt'
         trace['counting']['partial_representable']=trace['counting']['total']>1
         return trace
-
-    def recover_transport(self,p,evidence,trace,index,*,repeat,final):
-        """A new single-attempt slot for ONE failed check; all other observations stay exact."""
-        self.validate(p)
-        if trace['program_ref']!=p.ref:raise ValueError('Recovery program mismatch')
-        original=trace['observations'][index]
-        if original['event']!='transport_failure':raise ValueError('Only transport failures qualify; never replace valid wrong/uncertain answers')
-        n=p.nodes[index]
-        if original['check_id']!=n.id:raise ValueError('Recovery check mismatch')
-        recovered=deepcopy(original);recovered.update(execution_ref='',failure=None,completion_tokens=0)
-        try:
-            row=self.checker.check(p,n,evidence,slot=repeat+'/'+n.id,final=final)
-            recovered.update(execution_ref=row['execution_ref'],completion_tokens=row['completion_tokens'])
-            if row.get('status') not in self.observation_states or not isinstance(row.get('evidence'),str) or not row['evidence'].strip():raise ValueError('Invalid recovery observation')
-            c=row.get('confidence');c=c if type(c) in (int,float) and math.isfinite(c) and 0<=c<=1 else None
-            recovered.update(status=row['status'],valid=True,evidence=row['evidence'],confidence=c,
-                event='valid_uncertainty' if row['status']=='unknown' else 'observed')
-            recovered.update({k:row.get(k) for k in self.observation_fields})
-        except CallFailure as exc:
-            keys=re.findall(r'\b[a-f0-9]{64}\b',str(exc));path=self.checker.calls.directory/'jobs'/f'{keys[0]}.json' if keys else None
-            job=json.loads(path.read_text()) if path and path.exists() else {}
-            recovered.update(status='unknown',valid=False,confidence=None,evidence=str(exc),failure='CallFailure',
-                event='invalid_response' if job.get('outcome')=='invalid' else 'transport_failure',
-                execution_ref=job.get('execution_ref',''),completion_tokens=int((job.get('response') or {}).get('completionTokens',1024)))
-        except (ValueError,TypeError,KeyError) as exc:
-            recovered.update(status='unknown',valid=False,confidence=None,evidence=str(exc),failure=type(exc).__name__,event='invalid_response')
-        recovered['attempts']=[deepcopy(original),deepcopy(recovered)]
-        recovered['completion_tokens']+=original['completion_tokens']
-        observations=deepcopy(trace['observations']);observations[index]=recovered
-        transitions=deepcopy(trace['transitions']);transitions[index].update(state=recovered['status'],event=recovered['event'])
-        result=self.aggregate(p,observations,transitions)
-        if 'counting' in result:result['counting']['partial_representable']=result['counting']['total']>1
-        return result

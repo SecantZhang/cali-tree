@@ -17,53 +17,7 @@ from critical.core.decision.artifacts import save_json
 from run.calitree_resume_frozen import ROOT, fingerprint, frozen_workspace
 
 
-def install_failure_replay():
-    """Preserve historical diagnostics so downstream request hashes replay exactly.
-
-    This changes no execution, prompt or schema. No request is retried: a retained
-    transport failure raises the same diagnostic as its original failed attempt.
-    """
-    from critical.core.decision.calls import DurableCalls,CallFailure
-    from critical.core.decision.calls import ProviderStopped
-    from critical.core.decision.artifacts import digest
-    original=DurableCalls.call
-    if getattr(original,'historical_diagnostics',False):return
-    signature=inspect.signature(original)
-    def call(self,*args,**kwargs):
-        bound=signature.bind(self,*args,**kwargs);bound.apply_defaults();values=bound.arguments
-        if not hasattr(self,'_inherited_logical_slots'):
-            slots={};path=self.directory/'initial_budget.json'
-            existing=json.loads(path.read_text()) if path.exists() else self.budget
-            if existing:
-                for key in existing.get('attempted_slots',[]):
-                    job=self.directory/'jobs'/f'{key}.json'
-                    if job.exists():
-                        row=json.loads(job.read_text())
-                        slots.setdefault((row['case_id'],row['stage'],row['slot']),set()).add(key)
-            self._inherited_logical_slots=slots
-        logical=(values['case_id'],values['stage'],values['slot'])
-        inherited=self._inherited_logical_slots.get(logical)
-        if inherited:
-            identity=self.identity if values['route'] is None else self.routes[values['route']]['identity']
-            media=[{'type':m['type'],'sha256':fingerprint(m['path'])} if m['type']=='image' else m for m in values['media']]
-            key=digest([identity,values['case_id'],values['stage'],values['payload'],values['schema'],
-                        values['template'],media,values['slot'],values['max_tokens']])
-            if values['route'] is not None:key=digest([key,values['route']])
-            if key not in inherited:
-                raise ProviderStopped('Replay divergence at previously attempted logical slot: '+str(logical))
-        try:return original(self,*args,**kwargs)
-        except CallFailure as exc:
-            prefix='Retained transport_error slot '
-            if str(exc).startswith(prefix):
-                key=str(exc)[len(prefix):]
-                row=json.loads((self.directory/'jobs'/f'{key}.json').read_text())
-                raise CallFailure(f"Transport failure in slot {key}: {row['error']}") from exc
-            invalid='Retained invalid slot '
-            if str(exc).startswith(invalid):
-                raise CallFailure('Invalid model response in slot '+str(exc)[len(invalid):]) from exc
-            raise
-    call.historical_diagnostics=True
-    DurableCalls.call=call
+from critical.core.optimization.program.shared.experiments import install_failure_replay
 
 
 def prepare(source, output):

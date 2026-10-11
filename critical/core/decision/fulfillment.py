@@ -10,8 +10,8 @@ import re
 from .artifacts import digest,save_json
 from .compiler import TEXT,array,enum,object_schema,media_inputs
 from .models import Requirement,Outcome
-from .counting import CountingProgram,CountingExecutor,validate as validate_base,count_states
-from .counting_v6 import EndpointDecision,EndpointExecutor
+from .shared.flat import FlatProgram, GroundedDecision, validate_flat as validate_base, count_states
+from .shared.execution import IndependentExecutor, TransportRecoveryMixin
 from critical.core.optimization.program.models import AppliedProgramEdit
 
 VERSION='decision-leaf-v7'
@@ -38,7 +38,7 @@ class WeightRoot:
 
 
 @dataclass(frozen=True)
-class FulfillmentDecision(EndpointDecision):
+class FulfillmentDecision(GroundedDecision):
     zero_when:str=''
     half_when:str=''
     full_when:str=''
@@ -51,7 +51,7 @@ class FulfillmentDecision(EndpointDecision):
 
 
 @dataclass(frozen=True)
-class FulfillmentProgram(CountingProgram):
+class FulfillmentProgram(FlatProgram):
     version:str=VERSION
     aggregation:str=AGGREGATION
     decomposition_reason:str=''
@@ -244,13 +244,13 @@ class FulfillmentChecker:
             'execution_ref':ref,'completion_tokens':int(job['response'].get('completionTokens',1024))}
 
 
-class FulfillmentExecutor(EndpointExecutor):
+class FulfillmentExecutor(TransportRecoveryMixin,IndependentExecutor):
     aggregate=staticmethod(aggregate_trace)
     def __init__(self,checker,**kw):
-        CountingExecutor.__init__(self,checker,validator=validate,observation_states=('pass','fail','partial','unknown'),
+        IndependentExecutor.__init__(self,checker,validator=validate,observation_states=('pass','fail','partial','unknown'),
             observation_fields=('fulfillment_score','binary_status'),**kw)
     def execute(self,p,evidence,**kw):
-        base=CountingExecutor.execute(self,p,evidence,**kw)
+        base=IndependentExecutor.execute(self,p,evidence,**kw)
         for o,t in zip(base['observations'],base['transitions']):
             if o['event']=='transport_failure':
                 path=self.checker.calls.directory/'jobs'/f"{o['execution_ref']}.json"

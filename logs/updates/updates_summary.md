@@ -1,3 +1,10 @@
+## 261010-21:50:50 — Canonical fulfillment pipeline and archived optimizers
+- Type: refactor
+- Scope: shared decision/search/feedback infrastructure, optimizer archive, default runner/API, compatibility, tests and documentation
+- What: Fulfillment is the default; extracted shared components and archived older optimizers behind stable aliases. Preserved v2–v7 saved programs and exact current/pinned twelve-case replay with no model calls.
+- Why: Reduce competing algorithm versions while retaining saved execution and experimental reproducibility.
+- Details: logs/updates/details/261010-21:50:50-updates.md
+
 ## 261010-10:21:16 — CaliTree fulfillment and experiment checkpoint
 - Type: checkpoint
 - Scope: decision runtime, structural optimization, provider configuration, templates, tests, documentation and experiment artifacts

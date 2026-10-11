@@ -264,11 +264,11 @@ def test_whole_paired_workflow_reservations_final_isolation_and_zero_call_resume
 
 
 def test_preflight_preserves_twelve_ids_hashes_and_frozen_configuration(tmp_path):
-    m=preflight(tmp_path/'run');assert len(m['cases'])==len({c['group'] for c in m['cases']})==12
+    m=preflight(tmp_path/'run',scoring='semantic');assert len(m['cases'])==len({c['group'] for c in m['cases']})==12
     assert {t:sum(c['target']==t for c in m['cases']) for t in ['yes','partial','no']}=={'yes':4,'partial':4,'no':4}
-    assert m['reserve_calls']==960 and m['max_calls']==3600 and preflight(tmp_path/'run')==m
+    assert m['reserve_calls']==960 and m['max_calls']==3600 and preflight(tmp_path/'run',scoring='semantic')==m
     m['stall_threshold']=4;save_json(tmp_path/'run/manifest.json',m)
-    with pytest.raises(ValueError,match='Frozen'):preflight(tmp_path/'run')
+    with pytest.raises(ValueError,match='Frozen'):preflight(tmp_path/'run',scoring='semantic')
 
 
 def test_budget_exhaustion_retains_seed_and_final_reservation(case,tmp_path):

@@ -12,6 +12,9 @@ from critical.core.decision.compiler import TEXT, array, enum, object_schema, me
 from critical.core.decision.models import Requirement, Outcome
 from critical.core.optimization.program.models import AppliedProgramEdit
 
+from .shared.flat import Decision, FlatProgram, validate_flat, count_states
+from .shared.execution import IndependentExecutor
+
 VERSION='decision-leaf-v5'
 PROTOCOL='typed-counting-v1'
 AGGREGATION='required-condition-all-some-none-count-v1'
@@ -21,29 +24,10 @@ TEMPLATES=Path(__file__).parents[1]/'prompts/templates/typed_counting_v1'
 def template(name):return (TEMPLATES/(name+'.txt')).read_text()
 
 
-@dataclass(frozen=True)
-class Decision:
-    id: str
-    requirement_id: str
-    question: str
-    criteria: str
-    binding: str
-    role: str = 'decision'
 
 
 @dataclass(frozen=True)
-class CountingProgram:
-    instruction: str
-    rubric: str
-    requirements: tuple[Requirement,...]
-    outcomes: tuple[Outcome,...]
-    nodes: tuple[Decision,...]
-    checker_template: str
-    version: str = VERSION
-    mode: str = 'flat'
-    aggregation: str = AGGREGATION
-
-    def to_dict(self):return json.loads(json.dumps(asdict(self)))
+class CountingProgram(FlatProgram):
     @property
     def ref(self):validate(self);return digest(self.to_dict())
     @classmethod
@@ -55,29 +39,7 @@ class CountingProgram:
 
 
 def validate(p,original=None,*,expected_version=VERSION,expected_aggregation=AGGREGATION,allowed_roles=('decision',)):
-    if (p.version,p.mode,p.aggregation)!=(expected_version,'flat',expected_aggregation):raise ValueError('Unsupported counting contract; legacy evidence programs cannot be reinterpreted')
-    if not all(isinstance(v,str) and v.strip() for v in (p.instruction,p.rubric,p.checker_template)):
-        raise ValueError('Missing original instruction, rubric or frozen template')
-    if not p.requirements or not p.outcomes or not 1<=len(p.nodes)<=4:raise ValueError('Need covered requirements and one to four independent decisions')
-    for group in (p.requirements,p.outcomes,p.nodes):
-        if len({v.id for v in group})!=len(group) or any(not isinstance(v.id,str) or not v.id.strip() for v in group):raise ValueError('Duplicate/empty identity')
-    reqs={r.id for r in p.requirements}
-    for r in p.requirements:
-        if not r.text.strip() or not r.source_phrase.strip() or r.source_phrase not in p.instruction:raise ValueError('Invalid requirement provenance')
-    for n in p.nodes:
-        if n.role not in allowed_roles or n.requirement_id not in reqs or not all(isinstance(v,str) and v.strip() for v in (n.question,n.criteria,n.binding)):
-            raise ValueError('Only independent required-condition decisions can earn counted votes')
-    if {n.requirement_id for n in p.nodes}!=reqs:raise ValueError('Removal leaves an original requirement uncovered')
-    covered=set()
-    for o in p.outcomes:
-        if not o.requirement_ids or not set(o.requirement_ids)<=reqs or o.applicability not in ('applicable','not_applicable','unknown'):
-            raise ValueError('Invalid original outcome mapping/applicability')
-        covered.update(o.requirement_ids)
-    if covered!=reqs:raise ValueError('Original outcome ledger is incomplete')
-    if len({' '.join(n.question.lower().split()) for n in p.nodes})!=len(p.nodes):raise ValueError('Duplicate decision question')
-    if original is not None and (p.instruction,p.rubric,p.requirements,p.outcomes)!=(original.instruction,original.rubric,original.requirements,original.outcomes):
-        raise ValueError('Original instruction, rubric, requirements and requested bindings stay frozen')
-    return p
+    return validate_flat(p,original,expected_version=expected_version,expected_aggregation=expected_aggregation,allowed_roles=allowed_roles)
 
 
 def export_program(p):return {'program_ref':p.ref,'program':p.to_dict()}
@@ -87,11 +49,6 @@ def restore_program(row):
     return p
 
 
-def count_states(states):
-    """Unknowns, failures and an empty set remain unresolved; no model adjudication."""
-    if not states or any(v not in ('pass','fail') for v in states):return 'unknown'
-    passed=states.count('pass')
-    return 'complete' if passed==len(states) else 'absent' if passed==0 else 'partial'
 
 
 DECISION_SCHEMA=object_schema({k:TEXT for k in ('id','requirement_id','question','criteria','binding')})
@@ -170,50 +127,11 @@ class CountingChecker:
         return {**value,'execution_ref':ref,'completion_tokens':int(job['response'].get('completionTokens',1024))}
 
 
-class CountingExecutor:
-    def __init__(self,checker,*,checkpoint=None,max_checks=4,validator=validate,
-                 observation_states=('pass','fail','unknown'),observation_fields=()):
-        if max_checks!=4:raise ValueError('Counting execution cap is four')
-        self.checker,self.checkpoint,self.max_checks=checker,checkpoint,max_checks;self.cache={};self.validate=validator
-        self.observation_states,self.observation_fields=observation_states,observation_fields
-    def execute(self,p,evidence,*,repeat='0',final=False):
-        self.validate(p);evidence={k:evidence[k] for k in ('source_image','edited_image')}
-        images={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in evidence.items()}
-        observations=[];transitions=[]
-        applicable_req={rid for o in p.outcomes if o.applicability=='applicable' for rid in o.requirement_ids}
-        unknown_req={rid for o in p.outcomes if o.applicability=='unknown' for rid in o.requirement_ids}
-        for n in p.nodes:
-            applicable=n.requirement_id in applicable_req and n.requirement_id not in unknown_req
-            obs={'check_id':n.id,'status':'unknown','valid':False,'eligible':applicable,'queried':False,'confidence':None,
-                'evidence':'Declared applicability does not establish an applicable decision' if not applicable else '',
-                'event':'applicability_skip' if not applicable else '', 'completion_tokens':0,'execution_ref':'','failure':None,'dependencies':[]}
-            if applicable:
-                key=digest([p.ref,self.checker.identity,images,n.id,str(repeat),final])
-                if key in self.cache:obs=self.cache[key]
-                elif self.checkpoint is not None and self.checkpoint.has('count-observe:'+key):obs=self.checkpoint.get('count-observe:'+key)
-                else:
-                    obs.update(queried=True,execution_ref=key)
-                    try:
-                        row=self.checker.check(p,n,evidence,slot=f'{repeat}/{n.id}',final=final)
-                        obs.update(execution_ref=row.get('execution_ref',key),completion_tokens=int(row.get('completion_tokens',0)))
-                        if row.get('status') not in self.observation_states or not isinstance(row.get('evidence'),str) or not row['evidence'].strip():raise ValueError('Invalid independent observation')
-                        confidence=row.get('confidence')
-                        if type(confidence) not in (int,float) or not math.isfinite(confidence) or not 0<=confidence<=1:confidence=None
-                        obs.update(status=row['status'],valid=True,evidence=row['evidence'],confidence=confidence,
-                            event='valid_uncertainty' if row['status']=='unknown' else 'observed')
-                        obs.update({k:row.get(k) for k in self.observation_fields})
-                    except (CallFailure,ValueError,TypeError,KeyError) as exc:
-                        obs.update(event='invalid_response',evidence=str(exc),failure=type(exc).__name__)
-                        if isinstance(exc,CallFailure):
-                            obs.update(event='transport_failure',completion_tokens=1024)
-                            keys=re.findall(r'\b[a-f0-9]{64}\b',str(exc));path=self.checker.calls.directory/'jobs'/f'{keys[0]}.json' if keys else None
-                            job=json.loads(path.read_text()) if path and path.exists() else {}
-                            if job.get('outcome')=='invalid':obs['event']='invalid_response'
-                            if job.get('response'):obs['completion_tokens']=int(job['response'].get('completionTokens',1024))
-                            if job.get('execution_ref'):obs['execution_ref']=job['execution_ref']
-                    self.cache[key]=obs
-                    if self.checkpoint is not None:self.checkpoint.put('count-observe:'+key,obs)
-            observations.append(obs);transitions.append({'node':n.id,'parent':'','activation':None,'eligible':applicable,'state':obs['status'],'event':obs['event']})
+class CountingExecutor(IndependentExecutor):
+    def __init__(self,checker,*,validator=validate,**kw):
+        super().__init__(checker,validator=validator,**kw)
+    @staticmethod
+    def aggregate(p,observations,transitions):
         return aggregate_trace(p,observations,transitions)
 
 

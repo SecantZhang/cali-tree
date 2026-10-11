@@ -176,19 +176,22 @@ def test_saved_leaf_and_label_isolation(case,tmp_path):
     assert all('reference_label' not in j['payload'] and 'feedback' not in j['payload'] for j in jobs if j['stage'] in ('compile_fulfillment','check_fulfillment'))
 
 
-def test_paired_runner_seeds_share_roots_and_fresh_final_slots(case,tmp_path):
+@pytest.mark.parametrize('runner', ['canonical', 'compatibility'])
+def test_paired_runner_seeds_share_roots_and_fresh_final_slots(case,tmp_path,runner):
+    from run.calitree_fulfillment import execute as current_execute
+    run_execute=current_execute if runner=='canonical' else execute
     original=example_program();m={'cases':[{'id':case.id,'instruction':case.instruction,'rubric':original.rubric,'evidence':case.evidence,
         'target':'partial','group':case.group,'original':{'program_ref':original.ref,'program':original.to_dict()}}],
         'arms':['binary','fulfillment'],'scope':'Synthetic paired aggregation comparison','scoring':'fulfillment','primary_identity':PRIMARY,
         'routes':{},'max_sol_proposal_calls':0,'max_calls':300,'max_completion_tokens':384000,'reserve_calls':84,'reserve_tokens':86016,
         'scope_limits':{'search':107,'final':42},'policy':{'repeats':5,'agreement':1,'consistency':.8,'confidence':.8,'minimum_eligible':3},'max_rounds':2}
     seen=[];out=tmp_path/'paired';save_json(out/'manifest.json',m)
-    r=execute(out,m,lambda cap:Engine(seen),lambda cap:Engine(seen),progress=False)
+    r=run_execute(out,m,lambda cap:Engine(seen),lambda cap:Engine(seen),progress=False)
     assert r['status']=='completed';assert r['cases'][case.id]['fulfillment']['final']['selected']['agreement']==1
     assert r['cases'][case.id]['binary']['final']['selected']['agreement']==0
     artifacts=[next(iter(json.loads((out/'frozen'/a/'0.json').read_text())['nodes'].values()))['result']['seed']['program'] for a in m['arms']]
     assert artifacts[0]['weight_roots']==artifacts[1]['weight_roots'] and artifacts[0]['nodes']==artifacts[1]['nodes']
-    before=len(seen);again=execute(out,m,lambda cap:Engine(seen),lambda cap:Engine(seen),progress=False)
+    before=len(seen);again=run_execute(out,m,lambda cap:Engine(seen),lambda cap:Engine(seen),progress=False)
     assert before==len(seen) and r['cases']==again['cases'] and r['budget']==again['budget']
 
 

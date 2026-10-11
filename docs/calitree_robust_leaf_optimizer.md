@@ -1,3 +1,8 @@
+# Current entry point
+
+Use [the consolidated fulfillment guide](calitree_fulfillment_optimizer.md) and `run.calitree_fulfillment` for new work.
+Fulfillment is the default; historical algorithms below remain available through compatibility imports.
+
 # Local leaf optimization
 
 ## Weighted fulfillment (v7)

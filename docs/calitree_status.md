@@ -1,3 +1,7 @@
+> **Current leaf optimizer:** [consolidated fulfillment pipeline](calitree_fulfillment_optimizer.md),
+> `run.calitree_fulfillment`, with shared components and archived compatibility implementations.
+> The prompt-hierarchy paths described below remain available and are separate from the leaf optimizer.
+
 # Cali-Tree / Rubric-Lite: canonical path and version status
 
 This is the one-page map of what is **live**, what is a **frozen baseline**, and what is a

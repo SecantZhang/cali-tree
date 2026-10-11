@@ -275,3 +275,9 @@ See the [protocol](../docs/calitree_dsg_fidelity.md) and
 `python -m run.calitree_robust_leaf_optimization --preflight --output-dir logs/exps/NEW-RUN` freezes a six-case flat/tree × greedy/Pareto experiment. Use `--demo` for offline repair, `--live` for the explicitly gated OpenAI pilot, `--live --resume` for unattempted slots, and `--report` to regenerate the report. See [v3 usage](../docs/calitree_robust_leaf_optimizer.md). Old leaf runners and artifact formats remain available.
 
 `python -m run.calitree_robust_hard_cases --preflight --output-dir logs/exps/NEW-HARD-RUN` freezes three prior-failure cases outside the six-case v3 pilot. Use `--live` to run the same four optimizer arms with a 1,800-call/2,304,000-completion-token ceiling, `--live --resume` for unattempted slots, or `--report` for saved results. Selection evidence and image hashes are pinned; runtime, prompts and thresholds are unchanged. See [v3 usage](../docs/calitree_robust_leaf_optimizer.md#failure-selected-harder-cases).
+
+## Current CaliTree leaf optimizer
+
+Use `.venv/bin/python -m run.calitree_fulfillment --offline-demo --output-dir /tmp/calitree-demo`
+for the default fulfillment pipeline. See [usage and compatibility](../docs/calitree_fulfillment_optimizer.md).
+Historical optimizer modes are retained behind compatibility APIs in `run/legacy/` and `critical/core/optimization/program/legacy/`.
