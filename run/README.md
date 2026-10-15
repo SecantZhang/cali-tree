@@ -281,3 +281,170 @@ See the [protocol](../docs/calitree_dsg_fidelity.md) and
 Use `.venv/bin/python -m run.calitree_fulfillment --offline-demo --output-dir /tmp/calitree-demo`
 for the default fulfillment pipeline. See [usage and compatibility](../docs/calitree_fulfillment_optimizer.md).
 Historical optimizer modes are retained behind compatibility APIs in `run/legacy/` and `critical/core/optimization/program/legacy/`.
+
+## Single-call evidence judge
+
+Use `.venv/bin/python -m run.calitree_single_call --preflight --output-dir logs/exps/NEW-EVIDENCE-RUN`,
+then the same command with `--live` to benchmark explicit evidence checks plus a
+fixed Python label policy against the saved flat twelve-case baseline. `--replay`
+verifies the saved results without new API calls. Each case gets one shared model
+response, using GPT-6.1 Sol high and one SOURCE-first image presentation. This is
+an opt-in comparison; the default optimizer is unchanged. See the
+[protocol and policy](../docs/calitree_single_call_evidence.md).
+
+For a separate 36-case class-balanced calibration fit, use
+`.venv/bin/python -m run.calitree_batch_calibration --preflight --output-dir logs/exps/NEW-CALIBRATION-RUN`,
+then `--live`, then `--replay`. The layer fits on official training sources and
+compares the same twelve cached records with flat and fixed-policy baselines,
+without new evaluation model calls. See the
+[batch calibration protocol](../docs/calitree_batch_evidence_calibration.md).
+
+For **local fitting on the same twelve cached cases**, use
+`.venv/bin/python -m run.calitree_local_calibration --preflight --output-dir logs/exps/NEW-LOCAL-RULE-RUN`,
+then `--fit` and `--replay`. This makes no API calls and learns a bounded,
+monotone tree over anonymous categorical evidence only. See the
+[reusable-rule constraints and local fitting protocol](../docs/calitree_local_evidence_calibration.md).
+
+For richer label-blind observations on those same twelve cases, use
+`.venv/bin/python -m run.calitree_rich_local_calibration --preflight --output-dir logs/exps/NEW-RICH-LOCAL-RUN`,
+then `--live` and `--replay`. This makes twelve new single-response image calls,
+keeps the depth/support limits, and includes fresh-base controls against the
+previous 10/12 local fit. See the [rich evidence protocol](../docs/calitree_rich_evidence_calibration.md).
+
+For a matched **36-case flat versus frozen rich-evidence CaliTree** comparison,
+use `.venv/bin/python -m run.calitree_benchmark36 --preflight --output-dir logs/exps/NEW-BENCHMARK36`,
+then `--live` and `--replay`. It uses 36 source-disjoint evaluation cases, 72 calls
+maximum, the same model/presentation in both arms, and no policy refitting. See
+the [comparison protocol](../docs/calitree_benchmark36.md).
+
+For **corrected three-label local calibration**, use
+`.venv/bin/python -m run.calitree_recalibrate --preflight --output-dir logs/exps/NEW-V3-LOCAL`,
+then `--fit` and `--replay`. This reuses the 36 cached records, learns No/Partial/Yes,
+and resolves uncertainty only when it cannot affect the learned decision. No API
+calls are made. The preceding benchmark commands pin historical v2 policies;
+see the [v3 contract and usage](../docs/calitree_evidence_rules_v3.md) for corrected fits.
+
+For **class-balanced optimization that prevents Partial collapse**, use
+`.venv/bin/python -m run.calitree_recalibrate_balanced --preflight --output-dir logs/exps/NEW-V4-LOCAL`,
+then `--fit` and `--replay`. V4 maximizes macro-F1 and requires two correctly
+recognized sources per class while retaining v3's evidence and rule limits.
+See the [v4 objective and usage](../docs/calitree_evidence_rules_v4.md).
+
+To repeat v4 local fitting on **four disjoint balanced twelve-case groups**, use
+`.venv/bin/python -m run.calitree_four_groups --preflight --output-dir logs/exps/NEW-FOUR-GROUPS`,
+then `--live` and `--replay`. It samples 48 separate cases, makes at most 96
+matched baseline/extraction calls, fits only within each group, and reports any
+infeasible three-class fits without resampling. See the [four-group protocol](../docs/calitree_four_groups.md).
+
+For the **fixed-group richer-check and clustering comparison**, replay the saved
+evidence with `.venv/bin/python -m run.calitree_semantic_evidence --replay --output-dir logs/exps/261014-semantic-contract-evidence-v5`,
+then run `.venv/bin/python -m run.calitree_visibility_calibration --output-dir logs/exps/261014-semantic-visibility-calibration-v6`
+and `.venv/bin/python -m run.audit_calitree_semantic`. These commands use caches
+and make zero API calls. Shared and clustered policies reach 10/12, 12/12, 10/12,
+10/12 on the same fixed groups, with four failed requests retained. See the
+[semantic evidence, observability, budgets, and limitations](../docs/calitree_semantic_calibration.md).
+
+For the **approved fast-model comparison on those same fixed 48 cases**, replay
+`.venv/bin/python -m run.calitree_small_models --replay --models luna mini --output-dir logs/exps/261014-fast-models-four-groups-v2`,
+then run `run.calitree_small_models_calibration` and `run.report_calitree_small_models`
+as Python modules with the same `--output-dir`. All replay/fitting/report commands
+make zero API calls. See [fast-model settings, results, and formatting diagnostic](../docs/calitree_fast_models.md).
+
+For the **instruction-dependent interaction prototype**, run
+`.venv/bin/python -m run.calitree_instruction_rules --replay --output-dir logs/exps/261014-instruction-interactions-v7`
+and `run.report_calitree_instruction_rules` as a Python module with the same
+`--output-dir`. Required checks are noncompensatory, and train-group policies
+are frozen before scoring other groups. This cached experiment adds zero API
+calls and is not promoted as an accuracy improvement. See the
+[rule semantics, transfer protocol, and negative results](../docs/calitree_instruction_interactions.md).
+
+For **learned-policy → semantic-rule translation**, use
+`run.calitree_policy_translation --certify` or `--replay` with
+`--output-dir logs/exps/261014-policy-semantic-translation-v8`, then
+`run.calitree_semantic_refinement --replay` and `run.report_calitree_policy_translation`
+with `--output-dir logs/exps/261014-policy-semantic-refinement-v9` (all as Python
+modules). These commands add zero API calls. Exact condition compilation and
+refined prose-only execution preserve the learned Sol local result, 42/48.
+See [semantic rule compilation, boundary refinement, and limits](../docs/calitree_policy_translation.md).
+
+For **instruction-grounded semantic rule induction**, replay the three cached
+stages with `run.calitree_observable_facts`, `run.calitree_postconditions`, and
+`run.calitree_intermediate_facts`, then run `run.calitree_instruction_distillation`
+and `run.report_calitree_instruction_distillation` with
+`--output-dir logs/exps/261014-instruction-semantic-distillation-v16` (all as Python
+modules). Teacher-only physical-rule distillation matches 42/48 local accuracy;
+it uses physical postconditions and witness evidence rather than renamed grades.
+See [the pipeline, exact replay commands, and limitations](../docs/calitree_grounded_semantic_distillation.md).
+
+For **frozen semantic-rule transfer to new cases**, use
+`.venv/bin/python -m run.calitree_semantic_transfer --replay --output-dir logs/exps/261014-frozen-semantic-transfer12-v1`
+and `.venv/bin/python -m run.audit_calitree_semantic_transfer logs/exps/261014-frozen-semantic-transfer12-v1`.
+Replay and audit make zero model calls. The original live run used 48 shared
+extraction calls and restored four v16 policies without fitting. New accuracies
+were G1 6/12, G2 9/12, G3 9/12, and G4 8/12; Partial transfer remains weak.
+`--preflight` prepares a sealed protocol and `--live` explicitly enables calls.
+The sample seed and cohort are fixed; failures are retained and never resampled.
+
+For **M0's reserved fifty-case semantic-hierarchy protocol**, run
+`.venv/bin/python -m run.calitree_m0 verify --output-dir logs/exps/261014-semantic-hierarchy-m0-fifty-v1`
+and `.venv/bin/python -m run.calitree_m0_finalize --check --output-dir logs/exps/261014-semantic-hierarchy-m0-fifty-v1`.
+Both are offline. The sealed split is 48 training / 12 development / 50 final;
+the final set has 17 No / 17 Partial / 16 Yes and no overlap with development.
+Historical project exposure is explicitly disclosed, so it is not globally
+untouched. No final-test model calls were made. See the
+[M0 protocol, audit limits, and future budgets](../docs/calitree_m0_fifty_case_protocol.md).
+
+For **M1 exact-question physical evidence**, replay
+`.venv/bin/python -m run.calitree_bound_evidence_v2 --replay --output-dir logs/exps/261014-m1-bound-evidence-development12-v2`
+and audit with `.venv/bin/python -m run.audit_calitree_bound_evidence logs/exps/261014-m1-bound-evidence-development12-v2`.
+The current component is `critical.core.decision.bound_evidence_v2`; the initial
+v1 implementation/run is retained. V2 has twelve valid development records and
+90 checked question bindings. Its fixed, uncalibrated diagnostic scores 9/12
+with two unresolved cases. No final-set calls or policy fitting occurred.
+See [M1 contracts, visual disputes, and scope](../docs/calitree_m1_bound_evidence.md).
+
+For **M2–M4 scalable semantic baselines and instruction-only routing**, replay
+`.venv/bin/python -m run.calitree_semantic_baselines_v3 --replay --output-dir logs/exps/261014-m2-m4-semantic-baselines-v3`
+and audit with `.venv/bin/python -m run.audit_semantic_baselines logs/exps/261014-m2-m4-semantic-baselines-v3`.
+Training evidence replays through `run.calitree_hierarchy_collect --replay` with
+`--output-dir logs/exps/261014-m2-m4-bound-training48-v1`. These commands make no
+new model calls. Current APIs are `features_v2`, `rule_search_v3`, and `routing_v3`
+in `critical.core.calibration.semantic_hierarchy`. Grouped OOF accuracy is pooled
+16/48 and routed 18/48; the prototype is not deployment-qualified. The reserved
+fifty remain unqueried. See [milestone verification and negative findings](../docs/calitree_m2_m4_semantic_baselines.md).
+# M2 v4 local fitting and conflict-aware regrouping
+
+The opt-in `calitree_m2_conflict_v4` runner uses frozen M1 observations and makes
+no model calls. It removes mandatory label vetoes, retains richer role/kind
+distributions, reports feature conflicts, and learns semantic groups with local
+rule subtrees. Full training accuracy is 47/48; one missing observation remains
+unresolved. Held-out-group accuracy is 23/48, so the result is experimental.
+
+```bash
+.venv/bin/python -m run.calitree_m2_conflict_v4 --output-dir logs/exps/261014-m2-conflict-regrouping-v4 --replay
+.venv/bin/python -m run.audit_calitree_m2_v4 logs/exps/261014-m2-conflict-regrouping-v4
+```
+
+See [the detailed v4 report](../docs/calitree_m2_conflict_regrouping_v4.md) for
+scope predicates, frozen artifacts, tests, and the distinction between fitting
+capacity and semantic generalization. The reserved fifty remain unevaluated.
+
+# M2 v8: portable semantic rules
+
+The portability-first M2 learner excludes case/object/instruction literals,
+image coordinates, raw check cardinalities and majority thresholds. Its reviewed
+policy scores 44/48 (91.7%) with fourteen rules. This follows the user's clarified
+rule-reuse objective; it is not a statistical-generalization claim.
+
+```bash
+.venv/bin/python -m run.calitree_m2_portable_v8 --replay --output-dir logs/exps/261014-m2-portable-semantic-v8
+.venv/bin/python -m run.calitree_m2_portable_review_v8 --output-dir logs/exps/261014-m2-portable-semantic-v8
+.venv/bin/python -m run.audit_m2_portability_v8 --output-dir logs/exps/261014-m2-portable-semantic-v8
+```
+
+Use `deployment_policy.json` with `PortableRuleExecutor` for execution;
+`reviewed_policy.json` retains training provenance separately. Fresh-case input
+currently uses two M1 model calls plus one text-only semantic interpretation.
+All model calls for the recorded study are cached. See
+[the v8 report](../docs/calitree_m2_portable_semantic_v8.md) for rule definitions,
+verification, the preserved transfer failures, and limitations.

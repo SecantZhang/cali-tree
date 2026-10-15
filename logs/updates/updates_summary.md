@@ -1,3 +1,395 @@
+## 261014 — M2 v8 implements reusable semantic rules above 90% local accuracy
+- Type: experimental semantic calibration and portability verification
+- Scope: case-independent predicate language, count/majority removal, semantic exception pruning, and deployment-only rules
+- What: Reviewed policy scores 44/48 (91.7%) using fourteen rules and thirteen predicates. Every rule has two or more distinct sources/instructions. 147 tests pass; 515 equivalent-check probes are invariant; source-ID replacement preserves deployed content.
+- Why: Follow the user's clarified definition of generalizability as rule reuse across case inputs. Preserve failed held-out experiments without treating their scores as the current acceptance gate.
+- Details: logs/updates/details/261014-m2-v8-portable-semantic-rules.md
+
+## 261014 — M2 v4 removes label vetoes and learns conflict-aware semantic groups
+- Type: experimental calibration and local-capacity evaluation
+- Scope: role/kind evidence distributions, conflict reports, supported rule search, and joint semantic grouping
+- What: Training improves from 29/48 to 47/48; all 47 observed cases fit. Three learned groups score 26/26, 12/12, 9/9. Held-out-group score is 23/48 and development 9/12. 114 tests and an independent source/metric audit pass.
+- Why: Resolve the demonstrated evidence/grammar capacity limits before merging while making the remaining generalization limitations explicit.
+- Details: logs/updates/details/261014-m2-v4-conflict-regrouping.md
+
+## 261014-20:33:58 — M2–M4 implement scalable rules and audited instruction routing
+- Type: feature and development evaluation
+- Scope: packed rule search, candidate/source support, grouped baselines, scope routing, independent verification and preserved revisions
+- What: M2 passes 12/24/48/96-row checks and exact scoring over 1,131,312 actual retained pairs. Pooled/routed OOF scores 16/48 and 18/48; routed Partial recall 2/16. 97 tests and nested-source audits pass. 96 new training calls, one retained failure, zero reserved-final calls.
+- Why: Complete and verify the planned learning/routing components while exposing weak transfer rather than promoting a misleading local-fit result.
+- Details: logs/updates/details/261014-20:33:58-updates.md
+
+## 261014-17:12:25 — M1 binds exact physical questions and preserves uncertainty
+- Type: feature and development audit
+- Scope: two-stage bound evidence v2, versioned schemas/prompts, regression fixtures, raw-call replay and image review
+- What: Twelve valid development records, 90 verified bindings, twelve mismatch rejections and 35 absence probes. Fixed diagnostic 9/12 with two unresolved; 47 calls across two preserved versions, zero final-test calls. 67 scoped tests pass; visual disputes remain explicit.
+- Why: Prevent question rebinding, vacuous absence, preservation-as-progress, and lost intermediate evidence before learning larger policies.
+- Details: logs/updates/details/261014-17:12:25-updates.md
+
+## 261014-16:28:40 — M0 seals a fifty-case study-relative AURORA final test
+- Type: experiment infrastructure
+- Scope: historical exposure inventory, split manifests, protocol/budget seals, independent verification and tests
+- What: Reserved 48 training / 12 development / 50 final cases with 110 distinct sources. Final labels 17/17/16 across all categories. Historical exposure disclosed by explicit user choice; 49 final cases have prior references. All 220 images and 814 original artifacts verified; 17 tests pass; zero model calls.
+- Why: Finish M0 with a concrete fifty-case reservation without falsely claiming global freshness or using final cases for development.
+- Details: logs/updates/details/261014-16:28:40-updates.md
+
+## 261014-14:12:33 — Frozen semantic policies transfer at 50–75% on new balanced cases
+- Type: experiment
+- Scope: frozen-policy transfer runner, independent audit, six tests, documentation and preserved evidence
+- What: Four unchanged v16 policies score 6/12,9/12,9/12,8/12 on the same new source-disjoint AURORA set; Partial recall remains 0–50%. All 48 calls succeed and all cases resolve. Thirteen tests, independent 48-prediction audit and exact replay pass.
+- Why: Separate local fitting success from new-case generalization without recalibration or selecting rules using test labels.
+- Details: logs/updates/details/261014-14:12:33-updates.md
+
+## 261014-13:27:25 — Physical instruction-bound semantic rules match 42/48 local accuracy
+- Type: feature
+- Scope: physical fact/intermediate extraction, instruction-only postconditions, teacher-guided semantic DNF, role tests, audit/docs and preserved v10-v16 exploration
+- What: Teacher-only semantic student matches 42/48 and groups 10/12,12/12,10/12,10/12. Rules use concrete witnesses and instruction roles, not quality levels. Macro-F1 .913→.933; coverage 44→42 of 48 disclosed. 132 text calls, zero new images, ~$2.43; 741 tests and independent replay/audit pass.
+- Why: Recover operationally meaningful conditions from the successful policy traces without using renamed ordinal grades or case lookups.
+- Details: logs/updates/details/261014-13:27:25-updates.md
+
+## 261014-11:53:57 — Semantic rule translation preserves learned local accuracy
+- Type: feature
+- Scope: v8 semantic condition compiler/executor, v9 teacher-derived definitions, live cached-prose tests, audit/tests/docs
+- What: Refined grade-blind prose execution matches Sol 42/48 and all 48 teacher predictions; groups 10/12,12/12,10/12,10/12. Exact semantic-state translation also preserves Luna 39/48 and mini 34/48. 88 text calls, zero new images, ~$0.478 estimate; 711 tests, 2,412-domain audit and exact replays pass.
+- Why: Recover learned condition interactions and feature meanings without imposing new vetoes or losing local accuracy.
+- Details: logs/updates/details/261014-11:53:57-updates.md
+
+## 261014-10:37:55 — Instruction-dependent rules with explicit interactions and transfer tests
+- Type: feature
+- Scope: opt-in v7 gate calibrator, cached local/frozen-transfer runner, independent audit/report, twelve tests/docs
+- What: Required identity/relation/count/endpoint/preservation cannot be compensated by scope. Guarantees pass; accuracy does not broadly improve. Primary Luna/G1 fit unsupported; G2/G3 frozen scores 15/36 and 18/36. Fixed semantic Luna/Sol/mini 27/26/21 of 48. Zero API calls; 704 tests, exact replay and 192-metric audit pass.
+- Why: Replace accidental weighted-score fits with explicit instruction-dependent semantics and validate frozen cross-group behavior.
+- Details: logs/updates/details/261014-10:37:55-updates.md
+
+## 261014-10:18:15 — Fast-model benchmark on the fixed 48 AURORA cases
+- Type: feature
+- Scope: approved Luna/mini collector, offline v6 comparison, literal-quote diagnostic, audit/tests/docs
+- What: Luna flat 31/48 → local 39/48 (81.3%). Mini strict shared 23/48; format-only normalization 34/48, clustered 37/48. Preserved ten SSL failures and seven strict mini validation errors. 192 attempts, ~$0.2934 returned-usage estimate; 692 tests and exact replay/audit pass.
+- Why: Measure current pipeline accuracy, cost and latency on explicitly approved smaller models without changing cases, prompts or class-support limits.
+- Details: logs/updates/details/261014-10:18:15-updates.md
+
+## 261014-03:08:11 — Rich semantic evidence meets all four local thresholds
+- Type: feature
+- Scope: semantic evidence v5, bounded shared/clustered ordinal calibration, v6 observability, runners/tests/docs and fixed-group artifacts
+- What: Both methods reach 10/12, 12/12, 10/12, 10/12 (42/48), versus cached flat 30/48. Clustering adds no correct cases; richer evidence/observability drive gains. Four SSL failures retained; 48 attempts, ~$0.981 returned-usage estimate. 687 tests and independent audit/replay pass.
+- Why: Separate evidence collisions from boundary errors and test reusable check-semantic clustering at a matched fitted-term budget.
+- Details: logs/updates/details/261014-03:08:11-updates.md
+
+## 261014-00:04:16 — Four disjoint balanced twelve-case local replications
+- Type: feature
+- Scope: four-group runner/tests/docs; 48-case matched calls and independent v4 local fits
+- What: G1 local 9/12 vs flat 7/12; G2 no qualifying policy vs flat 9/12; G3 8/12 vs 8/12; G4 8/12 vs 6/12. Three groups qualify; common resolved cohort local 22/32 vs flat 21/32. Retained four flat/one rich SSL failures. 124 tests, fit/source/payload audit and exact zero-new-call replay passed.
+- Why: Test local-fitting consistency across four new nonoverlapping balanced batches without weakening class/support rules.
+- Details: logs/updates/details/261014-00:04:16-updates.md
+
+## 261013-23:47:53 — Class-balanced objective prevents Partial collapse
+- Type: fix
+- Scope: v4 objective subclass, offline same-36 runner, tests/docs and local-fit report
+- What: Macro-F1 plus two correct source cases per class replaces raw-accuracy selection, with v3 evidence/grammar unchanged. Partial recall 0→7/12; No/Partial/Yes 5/7/9 correct, macro-F1 0.492→0.608, local accuracy 22→21/36. 120 tests, 144 invariance checks, monotonicity and exact replay passed; zero API calls.
+- Why: Prevent the optimizer from maximizing total correct by abandoning the Partial class.
+- Details: logs/updates/details/261013-23:47:53-updates.md
+
+## 261013-23:21:51 — Correct three-label calibration and uncertainty handling
+- Type: fix
+- Scope: v3 evidence-rule calibrator, offline CLI, tests/docs and same-36 experiment
+- What: Removed immutable No/unknown guards; allow all three labels and resolve only decision-irrelevant uncertainty using monotone bounds. Local fit 22/36 versus 20/36, all 36 resolved; winning accuracy tree still has zero Partial recall, explicitly not a validated replacement. 110 tests, 144 invariance checks, 972-point monotonicity and exact replay passed; zero API calls.
+- Why: Make local boundary calibration capable of changing No decisions and ignore uncertainty only when the learned label is invariant.
+- Details: logs/updates/details/261013-23:21:51-updates.md
+
+## 261013-22:54:38 — Local recalibration of the exact 36 benchmark cases
+- Type: chore
+- Scope: offline same-case recalibration experiment and logs; learner/prompt unchanged
+- What: Fit and score all 36 cached labels under existing reusable-rule constraints. Exact search selects the same policy: 20/36 (55.6%), no prediction changes. Five unresolved, six uncorrectable No references and one protected wrong No limit fitting. 29 relevant tests, exact refit/replay and constraint audit passed; zero API calls.
+- Why: Measure the requested local fitting accuracy separately from frozen-policy transfer.
+- Details: logs/updates/details/261013-22:54:38-updates.md
+
+## 261013-22:47:00 — Matched 36-case flat versus frozen CaliTree comparison
+- Type: feature
+- Scope: benchmark runner/tests/docs; 36-case source-disjoint evaluation of latest rich-evidence pipeline
+- What: Frozen policy versus flat, GPT-6.1 Sol high, 72 one-attempt slots. Full sample flat 25/36 (69.4%), CaliTree 20/36 (55.6%); identical resolved cohort flat 22/29, CaliTree 19/29. Two flat SSL failures and five CaliTree abstentions retained. 95 offline tests, request/source audit and exact zero-call replay passed.
+- Why: Measure transfer beyond the previous 10/12 local fitting result without evaluation-label refitting.
+- Details: logs/updates/details/261013-22:47:00-updates.md
+
+## 261013-22:01:35 — Rich label-blind extraction and constrained local refit
+- Type: feature
+- Scope: v2 extractor/prompt, rich constrained rule learner, runner/tests/docs, 12-case live fit
+- What: Added generic collateral/visibility facts without label input. Rich fit ties previous 10/12; old grammar on identical fresh evidence scores 9/12. Bottle/poster match but anime/remote regress versus cached v1. All 12 calls completed; 91 offline tests, 48 invariance checks, 162-point monotonicity and exact replay passed.
+- Why: Test richer evidence without identity/text lookup rules and separate observation changes from richer-feature effects.
+- Details: logs/updates/details/261013-22:01:35-updates.md
+
+## 261013-18:24:57 — Constrained reusable-rule local calibration
+- Type: feature
+- Scope: local rule calibrator, offline runner, tests/docs, same-case fitting experiment
+- What: Fit a bounded monotone tree using anonymous evidence states only. Same-case fit 10/12 versus fixed checks 7/12 and flat 8/12; F01/F02/F03 corrected, no regressions. No identity/text/count predicates; four source cases per learned leaf. 79 offline tests, 48 actual-cache invariance checks and exact refit replay passed; zero API calls.
+- Why: Test local calibration while preventing case-specific lookup and unsupported singleton exceptions.
+- Details: logs/updates/details/261013-18:24:57-updates.md
+
+## 261013-18:15:53 — Separate-batch evidence calibration and cached evaluation
+- Type: feature
+- Scope: evidence calibrator, batch runner, tests, docs, 36-case fit and cached 12-case comparison
+- What: Fit a shared structured/text classifier on 36 source-disjoint balanced AURORA training cases. Cached evaluation: calibrated 5/12, uncalibrated 7/12, flat 8/12. All 36 calls completed; no evaluation calls or retuning; exact replay and separation audit passed; 62 offline tests passed.
+- Why: Test whether calibration learned across separate examples resolves the fixed policy's label-boundary mismatch.
+- Details: logs/updates/details/261013-18:15:53-updates.md
+
+## 261013-18:01:45 — Single-call evidence judge and matched flat comparison
+- Type: feature
+- Scope: decision single-call judge, versioned prompt, benchmark CLI, tests, docs, experiment logs
+- What: Implemented explicit evidence checks in one response plus a fixed Python label policy; benchmarked the same 12 AURORA cases with GPT-6.1 Sol high. Evidence 7/12 versus flat 8/12; one regression, no improvements. All 12 calls completed; exact replay made zero new calls; 50 offline tests passed.
+- Why: Test whether explicit evidence decomposition improves the flat baseline while keeping the model and presentation matched.
+- Details: logs/updates/details/261013-18:01:45-updates.md
+
+## 261013-16:37:20 — Benchmark a strong flat judge on twelve balanced AURORA cases
+- Type: experiment
+- Scope: logs-only flat benchmark, frozen sample/prompt/profile, live results and replay
+- What: GPT-6.1 Sol high scored 8/12 (66.7%): No 4/4, Partial 3/4, Yes 1/4. Twelve successful calls; replay adds zero calls; restored code unchanged.
+- Why: Establish the requested simple strong-model baseline before further architectural work.
+- Details: logs/updates/details/261013-16:37:20-updates.md
+
+## 261013-15:54:15 — Restore cleanup commit and preserve exploration evidence
+- Type: chore / rollback
+- Scope: code, prompts, tests, experimental docs/data, and retained logs
+- What: Restored non-log code to 6765741; archived eleven modified and 181 added files plus EditReward data. Preserved all experiment/update logs and recorded lessons.
+- Why: Follow the user's request to discard the exploration implementation while retaining its evidence and limitations.
+- Details: logs/updates/details/261013-15:54:15-updates.md
+
+## 261013-14:32:56 — Run balanced live two-level diagnostic
+- Type: feature / fix / experiment
+- Scope: explicit reused-source sampling, commentary validation, live two-level study, tests and docs
+- What: Ran 24 balanced test cases with 316 API calls; checks/combined score 10/24 versus baseline 8/24, mainly through resolution coverage. Replay adds zero calls; 52 relevant tests pass.
+- Why: Execute the requested live comparison despite the exhausted fresh pool, without overstating generalization or retrying failures.
+- Details: logs/updates/details/261013-14:32:56-updates.md
+
+## 261013-13:38:31 — Implement case-level checks and batch-level semantic boundaries
+- Type: feature / verification
+- Scope: experimental two-level optimizer, versioned prompts, runner, mocked tests and docs
+- What: Added six-arm compiler/evidence/overall policy study with shared traces, freezing and replay; 825 unit tests pass. Fresh preparation stops with zero eligible Yes cases and zero live calls.
+- Why: Separate reusable satisfaction semantics from instruction-specific check construction and measure their contributions independently.
+- Details: logs/updates/details/261013-13:38:31-updates.md
+
+## 261013-12:38:50 — Verify September prompt optimization changes satisfaction semantics
+- Type: docs / verification
+- Scope: historical prompt traces, offline integrity audit and evidence report
+- What: Confirmed semantic-boundary optimization and local gains; verified417 candidate hashes and transfer17/42→18/42. GEPA has nine unchanged acceptances; sole causality/generalization unproven.
+- Why: Distinguish satisfaction-condition learning from numeric calibration and prompt-format effects.
+- Details: logs/updates/details/261013-12:38:50-updates.md
+
+## 261013-09:53:30 — Add optional relaxed label thresholds and replay cached judgments
+- Type: feature / experiment
+- Scope: optional readout thresholds, Pareto CLI/metrics, tests and cached diagnostic results
+- What: Moderate0.9/0.6 changes cohort6/12→7/12 with unchanged cached training/heldout scores; aggressive relaxation regresses. Zero API calls; strict default retained.
+- Why: Test softer prediction rules while preserving dataset labels, uncertainty and semantic qualification.
+- Details: logs/updates/details/261013-09:53:30-updates.md
+
+## 261013-07:20:36 — Enable Luna reasoning and measure count-grounded optimization
+- Type: feature / fix / experiment
+- Scope: provider reasoning, count observer/features, Pareto/diagnostic runners, audit qualification, tests/docs and live evidence
+- What: Cube/mug improve, but original cohort falls 8/12→6/12; five-bank search has zero qualified programs and diagnostic holdout 8/12. 85 offline tests pass; no promotion.
+- Why: Test stronger reasoning and grounded counts without introducing case checks, and prevent failed audits from looking like a selected generalized program.
+- Details: logs/updates/details/261013-07:20:36-updates.md
+
+## 261013-05:44:40 — Correct Pareto feedback and test source-disjoint transfer
+- Type: fix / experiment
+- Scope: calibrated Pareto feedback, fresh transfer runner/tests, reports and live studies
+- What: OOF/class-balanced feedback implemented; consumed validation 6/12→7/12, but fresh transfer remains 6/12 for both. 48 tests and zero-call replay pass; no promotion.
+- Why: Expose hidden readout errors and qualify proposed generalization on new source groups.
+- Details: logs/updates/details/261013-05:44:40-updates.md
+
+## 261013-05:32:09 — Implement and measure an experimental coordinate observer
+- Type: feature / experiment
+- Scope: coordinate observer/template, staged runner, tests, report and live evidence
+- What: One pilot plus three hard-case calls preserve the mug fix; four-case agreement 0/4→1/4, other errors unchanged. No promotion.
+- Why: Ground simple endpoint relations numerically while testing whether visual-fact errors remain.
+- Details: logs/updates/details/261013-05:32:09-updates.md
+
+## 261013-05:10:59 — Measure and reject the explicit-obligation observer
+- Type: feature / experiment
+- Scope: obligation observer, versioned prompt, diagnostic runner/tests, report and live evidence
+- What: Tested thirteen consumed rows with four workers; agreement fell 7/13→5/13, so the observer is not promoted. 43 offline tests pass; zero-call replay verified.
+- Why: Test whether explicit requested-part consistency fixes the observed visual and semantic errors.
+- Details: logs/updates/details/261013-05:10:59-updates.md
+
+## 261013-04:02:52 — Integrate contrast and cross-validated readouts into Pareto search
+- Type: feature
+- Scope: calibrated Pareto runner, observation schema, tests/docs and live study
+- What: Evaluated nine banks / 33 programs with four workers; heldout remains 6/12 and Partial recall drops to 0/4, so goal is not achieved.
+- Why: Compare observation/decision sets on broader source-disjoint data instead of perfect tiny-development fit.
+- Details: logs/updates/details/261013-04:02:52-updates.md
+
+## 261013-03:21:02 — Implement and measure a Pareto observation-set leaf pilot
+- Type: feature
+- Scope: Pareto leaf algorithm/runner, observation prompts, calibration foundation, tests/docs and live pilot
+- What: Tested seven banks with four workers: mug matched and development 4/6→6/6, but heldout 3/6→2/6; generalization failed and goal remains active.
+- Why: Search multiple observation/decision sets without case lookups or sacrificing measured accuracy, and measure transfer rather than assume it.
+- Details: logs/updates/details/261013-03:21:02-updates.md
+
+## 261013-01:11:00 — Run a balanced twelve-case AURORA-only single-pass study
+- Type: feature
+- Scope: balanced sampling, single-pass live runner/tests/docs, experiment and case viewer
+- What: Ran all twelve with one editor/model and one pass; baseline/selected both 8/12, four proposals and zero accepted, 50 successful API calls.
+- Why: Measure the current framework on an explicitly balanced diagnostic sample.
+- Details: logs/updates/details/261013-01:11:00-updates.md
+
+## 261013-00:44:30 — Switch AURORA optimization to one editor and one pass
+- Type: feature
+- Scope: current check-study CLI, single-pass optimizer, AURORA dataset, templates/tests/docs
+- What: Default to 400 AURORA-editor rows, one consistent judge, one pass per version and no teacher consensus; prepared 78 train / 322 test with no downsampling.
+- Why: Follow the user's ordinary-dataset, one-output/one-pass requirement and avoid provisional-target label overrides.
+- Details: logs/updates/details/261013-00:44:30-updates.md
+
+## 261012-23:20:48 — Prepare strict AURORA human-majority labels without downsampling
+- Type: feature
+- Scope: offline dataset preparation, AURORA tests/docs, majority-v1 audit artifacts
+- What: Implemented majority filtering and no downsampling; audited 2,000 cases, all pending missing raw human votes.
+- Why: Mean scores cannot distinguish 110 from 002 or 111 from 012.
+- Details: logs/updates/details/261012-23:20:48-updates.md
+
+## 261012-20:53:03 — Run updated AURORA optimization and refresh the case tree
+- Type: chore
+- Scope: AURORA experiment, comparison report, interactive tree, provenance/replay records
+- What: Completed all 12 cases with four workers and a fresh v2 arm; updated check accuracy 42/60 versus v2 48/60, with the mug supervision conflict exposed in the tree.
+- Why: Measure the revised optimizer rather than infer full-run outcomes from component tests.
+- Details: logs/updates/details/261012-20:53:03-updates.md
+
+## 261012-19:12:02 — Correct check audits and relax intermediate gates
+- Type: fix
+- Scope: check optimizers, causal audits, sparse proposer, sealed validation, study runner, tests/docs
+- What: Permit measured intermediate improvement with modest noise; preserve semantic blockers and add trusted source-transfer final qualification. Live component/replay checks completed.
+- Why: Avoid rejecting baseline debt or malformed full-field proposals, and prevent API recovery from masquerading as learning.
+- Details: logs/updates/details/261012-19:12:02-updates.md
+
+## 261012-18:24:09 — Check-level optimization and matched AURORA pilot
+- Type: feature / experiment
+- Scope: check-level supervision, AURORA paired runner, frozen verification/replay and acceptance regression fix
+- What: Completed the twelve-case parallel AURORA comparison; both methods achieved 10/12 case majorities. Flagged an infrastructure-driven acceptance and fixed its guard in v1.1.
+- Why: Supervise individual judgments independently of whole-leaf labels and measure the method without overstating model-consensus references.
+- Details: logs/updates/details/261012-18:24:09-updates.md
+
+## 261012-17:05:11 — Complete parallel v2 generalization study
+- Type: experiment
+- Scope: four-worker live v2 run, v1 comparison, evidence replay and analysis reports
+- What: Accepted 19 field revisions in 41 attempts; 59/60 original-case labels correct, but all twelve leaves remain blocked by rubric coverage. Verified all 345 traces and offline replay.
+- Why: Measure optimizer progress and transfer under the requested parallel execution.
+- Details: logs/updates/details/261012-17:05:11-updates.md
+
+## 261012-16:46:29 — Improve incremental leaf generalization
+- Type: feature
+- Scope: v2 generalizer, stable audit findings, field patches, bounded search, runner protocol pinning and tests
+- What: Added one-field revisions, stable issue IDs, duplicate suppression, separate rubric/infrastructure statuses and conflict diagnostics; prepared v2 offline.
+- Why: Address avoidable search and audit failures observed in the completed twelve-leaf study without relaxing merge criteria.
+- Details: logs/updates/details/261012-16:46:29-updates.md
+
+## 261012-16:01:43 — Complete live leaf generalization study
+- Type: experiment
+- Scope: frozen twelve-leaf generalization, alternative-output diagnostics and verified reports
+- What: Completed 530 approved calls; retained 60/60 local labels but only 5/12 leaves passed all gates. Revised-leaf diagnostic accuracy was 11/24 → 10/24.
+- Why: Measure whether removing case-specific checks preserves local behavior and improves transfer before merging.
+- Details: logs/updates/details/261012-16:01:43-updates.md
+
+## 261012-14:58:34 — Incremental leaf generalization and merge eligibility
+- Type: feature
+- Scope: fulfillment generalizer, versioned prompts, EditReward v2 merge gate, saved-leaf runner, tests and docs
+- What: Added one-condition abstraction with rollback, fresh verification, protected scoring, frozen resume and diagnostic contrast outputs; prepared the twelve-leaf experiment.
+- Why: Remove case-specific checks before merging while separating local repeatability from evidence of transfer.
+- Details: logs/updates/details/261012-14:58:34-updates.md
+
+## 261012-12:33:30 — Leaf repeatability and robustness analysis
+- Type: docs
+- Scope: local leaf report, saved-data per-case/atomic audits and exact numerical sensitivity
+- What: Confirmed 60/60 fresh verification labels and disjoint confirmation queries; identified one unstable auxiliary check and limits from same-case fitting, image-specific criteria and disabled semantic auditing.
+- Why: State what the 100% result supports without conflating conditional repeatability with semantic or general robustness.
+- Details: logs/updates/details/261012-12:33:30-updates.md
+
+## 261012-11:33:08 — Complete EditReward twelve-case leaf and pipeline experiment
+- Type: experiment
+- Scope: dataset-specific end-to-end runner, frozen case/model/source protocol, durability/accounting tests, live artifacts and report
+- What: Local leaf matches improved 25/60 to 60/60. Held-out majority accuracy was 66.7% baseline versus 33.3% CaliTree; partial recall rose while yes recall collapsed. Saved verification and zero-call replay passed; 1,516 unit tests passed.
+- Why: Measure actual transfer from optimized leaves through merged criteria and a frozen parent on the prepared EditReward data.
+- Details: logs/updates/details/261012-11:33:08-updates.md
+
+## 261012-09:38:22 — TIGER-Lab EditReward preparation for CaliTree
+- Type: feature
+- Scope: dataset loader, pinned range-based setup, source exclusions, CaliTree cohort exports, tests and docs
+- What: Indexed 170,772 pairs into 56,924 unique outputs; materialized 630 edits and prepared 81 independent parent-study cases after excluding five known AURORA sources. Offline replay and 1,510 unit tests passed.
+- Why: Provide separate instruction-following/quality targets without duplicating pairwise cases or leaking source images across splits.
+- Details: logs/updates/details/261012-09:38:22-updates.md
+
+## 261012-02:48:16 — Shared components and >90% parent generalization investigation
+- Type: feature
+- Scope: shared evidence, component merging, learned readout, corrected cohort joins, development runners and tests
+- What: Retains nine learned checks, fixes composite inputs for new studies, and reserves source-independent evaluation. Current live development remains in progress; >90% is not achieved.
+- Why: Move from restrictive whole-program merging to reusable semantic decision facts.
+- Details: logs/updates/details/261012-02:48:16-updates.md
+
+## 261012-01:22:39 — Completed expanded capability training study
+- Type: docs
+- Scope: live artifacts, verification and completed experiment report
+- What: Completed full training-to-inference test; 12 verified leaves, one proposed parent, zero accepted after confidence rejection. Both fallback arms reached 56% case accuracy.
+- Why: Measure actual learned-capability reuse on source-disjoint cases under the approved protocol.
+- Details: logs/updates/details/261012-01:22:39-updates.md
+
+## 261012-00:16:07 — Learned capability registry and expanded training
+- Type: feature
+- Scope: capability contracts/providers/runtime, training runner, tests and docs
+- What: Added dynamic validated parent routing and complete training-to-inference workflow; all offline checks pass.
+- Why: Expand beyond the prototype’s two hardcoded families while preserving saved artifacts.
+- Details: logs/updates/details/261012-00:16:07-updates.md
+
+## 261011-23:01:39 — Fifty-case frozen CaliTree inference evaluation
+- Type: feature
+- Scope: fifty-case runner, tests, usage docs, live artifacts and report
+- What: Completed source-disjoint paired test: majority accuracy 54% baseline versus 62% tree; strict robustness 38% in both arms.
+- Why: Broaden evaluation beyond the prior twelve cases and separate parent reuse from fallback effects.
+- Details: logs/updates/details/261011-23:01:39-updates.md
+
+## 261011-20:49:49 — Frozen CaliTree twelve-case live comparison
+- Type: feature
+- Scope: comparison runner, tests, prototype docs, experiment reports
+- What: Completed fresh 12-case before/after inference; 45.0% baseline versus 66.7% tree accuracy, with fitting/transfer/fallback results separated.
+- Why: Expand the two-case pilot without tuning the saved tree.
+- Details: logs/updates/details/261011-20:49:49-updates.md
+
+## 261011-18:32:16 — Real end-to-end CaliTree tree pilot completed
+- Type: experiment
+- Scope: live leaf fitting, parent validation, frozen tree, new-case inference, saved artifacts and completed report
+- What: 127 GPT-6 Luna calls; one accepted style parent; chalk matched partial in all five fresh parent executions. Recolor fallback matched all five; both baselines tied. Independent verification and exact zero-call replay passed.
+- Why: Complete the approved small train → merge → label-free inference prototype on real test data.
+- Details: logs/updates/details/261011-18:32:16-updates.md
+
+## 261011-16:14:25 — Program-tree recovery and independent verification
+- Type: fix
+- Scope: inference error isolation, phase/draw checkpoints, explicit transport continuation, saved-run verifier and tests
+- What: Preserve failed cases and completed draws; never retry interrupted slots. Added independent artifact/request/metric verification. Twenty-six focused tests and 1,428 unit tests passed; real-data preflight ready, live approval pending.
+- Why: Make the bounded end-to-end prototype durable and its evidence auditable before the real-image run.
+- Details: logs/updates/details/261011-16:14:25-updates.md
+
+## 261011-15:51:20 — End-to-end executable program-tree prototype
+- Type: feature
+- Scope: reusable parent contracts, literal new-case binding, tree inference, merge selection, durable runner, tests and docs
+- What: Connected v7 leaf fitting to frozen parent templates and label-free new-case inference. Synthetic end-to-end/replay passed; real eight-case preflight frozen; live approval pending.
+- Why: Demonstrate the requested training → merging → inference architecture without weakening local artifact or robustness contracts.
+- Details: logs/updates/details/261011-15:51:20-updates.md
+
+## 261011-13:00:13 — Standalone current-system architecture flowchart
+- Type: docs
+- Scope: new HTML flowchart, browser interactions, source/rule inspector and visualization usage
+- What: Independently authored three connected diagrams with 36 components and 37 edges, covering leaf optimization, saved inference and system boundaries. Verified offline interactions, label bounds, desktop/mobile and both themes.
+- Why: Deliver the requested new interactive HTML architecture without reusing earlier visualizations.
+- Details: logs/updates/details/261011-13:00:13-updates.md
+
+## 261011-12:26:49 — Standalone current architecture HTML
+- Type: docs
+- Scope: portable interactive architecture export
+- What: Exported the existing walkthrough with sandbox/CSP preserved; verified all nineteen components and responsive light/dark views. Zero model calls.
+- Why: Let the user open the current architecture outside the inline conversation.
+- Details: logs/updates/details/261011-12:26:49-updates.md
+
+## 261011-00:00:22 — Current CaliTree architecture walkthrough
+- Type: docs
+- Scope: interactive execution/repair and code/compatibility architecture views
+- What: Nineteen selectable components expose exact inputs, outputs, rules and modules for the consolidated fulfillment pipeline. Verified desktop/mobile and light/dark behavior; zero model calls.
+- Why: Make the active algorithm, shared components and preserved legacy execution easy to distinguish.
+- Details: logs/updates/details/261011-00:00:22-updates.md
+
 ## 261010-21:50:50 — Canonical fulfillment pipeline and archived optimizers
 - Type: refactor
 - Scope: shared decision/search/feedback infrastructure, optimizer archive, default runner/API, compatibility, tests and documentation
@@ -800,3 +1192,15 @@
 - What: Replaced target-bearing failure-mode routing with a support-pruned top-prediction context tree and added a non-regressing optimized-prompt cascade. On a disjoint 120-case GPT-4o holdout, CaliTree scored 75.83% versus the plain judge's 70.00%, with 53.51% versus 46.39% balanced accuracy and zero invalids.
 - Why: Make leaf routing reproducible at inference, eliminate unsupported semantic diversion, and obtain a real held-out accuracy gain from the optimize–merge–optimize system.
 - Details: logs/updates/details/260902-23:57:59-updates.md
+## 261012-08:28:37 — Refine parent evidence and expand source-disjoint fitting
+- Type: feature
+- Scope: experimental parent components, scopes, readouts, frozen execution, runners, tests and documentation
+- What: Added target integrity, portable parent ensembles, 96 additional fitting groups, exact saved execution and source-verified replay. Precision/quality/ensemble development results are 76%/74%/76%; expanded live fitting is ongoing.
+- Why: Improve reusable parent generalization while retaining the reserved fifty-case >90% completion test and historical pipelines.
+- Details: logs/updates/details/261012-08:28:37-updates.md
+## 261012-10:25:11 — Verify parent inference and retain criterion context
+- Type: fix
+- Scope: parent runtime/readouts, independent verification, offline calibration, tests and usage docs
+- What: Added independent gate/final accounting verification and saved-parent execution. Preserving criterion identity raised expanded development accuracy from 76% to 78%; all 576 live fitting calls completed with failures retained.
+- Why: Preserve measurement semantics and prevent unsupported completion claims while pursuing >90% parent case accuracy.
+- Details: logs/updates/details/261012-10:25:11-updates.md
