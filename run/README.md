@@ -448,3 +448,55 @@ currently uses two M1 model calls plus one text-only semantic interpretation.
 All model calls for the recorded study are cached. See
 [the v8 report](../docs/calitree_m2_portable_semantic_v8.md) for rule definitions,
 verification, the preserved transfer failures, and limitations.
+
+# M3–M7: portable semantic hierarchy experiments
+
+`calitree_semantic_hierarchy` extends the frozen M2 v8 evidence with local
+alternatives, instruction-only routing, semantic/behavioral merge proposals,
+cross-batch-supported parent fitting, and bounded iterative promotion. It is
+offline and opt-in. The recorded study rejects all thirteen parent proposals
+and retains pooled M2 at 44/48 locally; grouped development is 24/48 and the
+separate twelve-case development score is 9/12. The final fifty remain reserved.
+
+```bash
+.venv/bin/python -m run.calitree_semantic_hierarchy --stage all --replay --output-dir logs/exps/261015-semantic-hierarchy-m3-m7-v9.2
+.venv/bin/python -m run.audit_calitree_semantic_hierarchy --stage hierarchy --output-dir logs/exps/261015-semantic-hierarchy-m3-m7-v9.2
+.venv/bin/python -m run.audit_calitree_hierarchy_invariance --output-dir logs/exps/261015-semantic-hierarchy-m3-m7-v9.2
+```
+
+Omit `--replay` and choose a new output directory for a new study using the same
+local cached input artifacts. Replay forbids new fits and model calls.
+
+The deployment-only package is `examples/calitree_semantic_hierarchy_v9`.
+Its CLI authenticates bound upstream outputs and executes without training logs,
+reference labels, refitting, or model calls:
+
+```bash
+.venv/bin/python -m run.calitree_semantic_hierarchy_predict --bundle examples/calitree_semantic_hierarchy_v9 --evidence /path/to/bound_evidence.json
+```
+
+See [the M3–M7 report](../docs/calitree_m3_m7_semantic_hierarchy.md) for gates,
+the preserved routing failure, the complete parent results, and the distinction
+between tested algorithm behavior and a useful learned hierarchy.
+
+# Router-free M5–M7: union merging and child-predicate reuse
+
+The opt-in `calitree_union_merge` control and `calitree_union_reuse` learner
+skip M4. Each parent is fitted and accepted on the complete original-reference
+union of its children. Eight semantic six-case groups form a 48-case root through
+seven accepted merges. The selected root scores 46/48 locally and 10/12 on the
+separate historical development cohort, with fourteen rules. It uses only its
+immediate children's predicates; five lower-level merges require full-grammar
+repair. No model calls or final-fifty predictions were made.
+
+```bash
+.venv/bin/python -m run.calitree_union_reuse --run semantic8_reuse --replay --output-dir logs/exps/261015-union-reuse-v11
+.venv/bin/python -m run.audit_calitree_union_merge --output-dir logs/exps/261015-union-reuse-v11
+.venv/bin/python -m run.audit_calitree_union_invariance --output-dir logs/exps/261015-union-reuse-v11
+.venv/bin/python -m run.calitree_union_predict --package examples/calitree_union_reuse_v11 --evidence /path/to/bound_evidence.json
+```
+
+The deployed package contains one policy and no router or training memberships.
+The existing three upstream model passes are unchanged; final rule execution
+makes zero model calls. See [the detailed report](../docs/calitree_router_free_union_merging.md)
+for the seven selected merges, cold-refit controls, and honest reuse/transfer limits.

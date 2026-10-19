@@ -1,3 +1,17 @@
+## 261015 — Router-free M5–M7 learn seven accepted merges and a 46/48 reused root
+- Type: experimental implementation and offline comparison
+- Scope: smaller semantic groups, exact-union acceptance, child-predicate recombination, bounded repair, single-policy inference, audits and preserved controls
+- What: Eight label-blind six-case groups form a 48-source root through seven accepted merges. The selected root scores 46/48 locally with fourteen rules over eleven inherited predicates, and 10/12 on historical development after freezing selection. Five lower merges need full-grammar repair; no uniform child-rule-transfer claim. 969 tests and 515 invariance probes pass; zero new model calls or final-fifty predictions.
+- Why: Follow the user's instruction to skip M4. Judge merged parents on complete descendant unions instead of letting broad routing scopes take over unrelated cases. Separate fresh refitting from genuine final-root predicate reuse.
+- Details: logs/updates/details/261015-router-free-union-reuse.md
+
+## 261015 — M3–M7 add guarded semantic hierarchy learning; retain M2 after negative merge study
+- Type: experimental implementation and offline evaluation
+- Scope: pooled/local alternatives, instruction-only routing, shared-rule parents, actual-system gates, bounded iteration, frozen inference, and independent audits
+- What: Eight local fits yield six distinct candidates; thirteen parent proposals are rejected. Final system preserves M2 at 44/48 local, 24/48 grouped development, and 9/12 separate development. 954 tests pass; 515 invariance probes and exact replay pass; zero new model calls or final-fifty predictions.
+- Why: Implement milestones in dependency order without promoting locally accurate parents that damage the complete system. Preserve the failed v9.1 router and the full negative merge history.
+- Details: logs/updates/details/261015-m3-m7-semantic-hierarchy.md
+
 ## 261014 — M2 v8 implements reusable semantic rules above 90% local accuracy
 - Type: experimental semantic calibration and portability verification
 - Scope: case-independent predicate language, count/majority removal, semantic exception pruning, and deployment-only rules
