@@ -1,3 +1,248 @@
+## 261022-23:57:29 — Prepare the verified visual-semantic result for publication
+- Type: chore
+- Scope: publication evidence, frozen v69 artifact and supporting research snapshot
+- What: Records 29 passing focused tests and the broader 1,304-pass/40-skip/eight-failure run; the eight failures require missing historical fixtures or the GEPA interpreter. Packages the unchanged 222/276 result and audits, excluding machine configuration and visual caches.
+- Why: Commit and push the current result at the user's request without changing inference or fitting.
+- Details: logs/updates/details/261022-23:57:29-updates.md
+
+## 261021-03:39:05 — Verify and freeze the updated over80% visual policy
+- Type: feature
+- Scope: v64–v66 visual/geometry controls, v69 independent audit, portable runtime/encoder/judge, tests and docs
+- What: Reproduces222/276 (80.4%) in all five source-held folds with99/99 originals and144/144 slots retained. Frozen JSON and fresh reusable GPU inference match all915 cases with zero feature changes.32 tests pass. Updated80% target met under the established development protocol; no additional paid evaluation calls or serving changes.
+- Why: Finish the user-updated objective with independent evidence and a reusable bound inference artifact.
+- Details: logs/updates/details/261021-03:39:05-updates.md
+
+## 261021-02:02:25 — Test semantic intent, source-held mixtures and visual comparisons
+- Type: feature
+- Scope: v60 intent/explanation features and audit, v61 nested mixture, v62 ordinal objectives, v63 local vision extraction, tests
+- What: Independently verifies217/276 with99/99 retained; nested router tops out214. Ordinal/relative boosting screens reach217 with prior coverage, replay pending. Frozen local vision extracts915 cases/1096 images in174s;173 generic comparison predicates, zero API charges/uploads.20 tests pass. No serving changes.
+- Why: Improve grade discrimination and recover relative visual information lost by coarse Boolean endpoints.
+- Details: logs/updates/details/261021-02:02:25-updates.md
+
+## 261021-01:12:44 — Complete matched-editor expansion and retain the prior policy
+- Type: feature
+- Scope: approved v57 completion/audit, v58 comparison/replay, v59 analysis/freeze, result docs and seals
+- What: Processes all 540 outputs with 531 valid feature records in 1,612 slots within both caps (~$0.893 including failed output reservations). Expansion does not beat prior 216/276 (78.3%): same-coverage best 211; tighter gate 215 with fewer routes. Independently retains 99/99 and 144/144 slots; all 915 JSON decisions match. No serving change.
+- Why: Complete the authorized experiment and preserve the better policy after matched-editor data improves No recall but harms Partial/Yes recall.
+- Details: logs/updates/details/261021-01:12:44-updates.md
+
+## 261021-00:53:00 — Resume unattempted stages after the SSL stop guard
+- Type: fix
+- Scope: v57-r1 continuation/rehearsal, completion auditor, coverage doc
+- What: Preserves the first epoch's 1,019 slots and stop/failure records after SSL failures. Rehearses and starts at most 596 unattempted stages on 200 unfinished outputs under the same original caps; no failed-slot retries. Four-worker mock rehearsal passes.
+- Why: Finish the authorized matched-editor data while retaining durable failures and the transport stop history.
+- Details: logs/updates/details/261021-00:53:00-updates.md
+
+## 261021-00:37:30 — Add portable forest and boundary-policy freezing
+- Type: feature
+- Scope: v59 semantic JSON runtime/freeze, contract tests, coverage doc
+- What: Adds pure inference for both comparison families with explicit routing, ties, support thresholds and missing-evidence fallback. Five tests pass; full 915-case replay awaits the running collection and independent selection. No serving default changes.
+- Why: Preserve selected policy behavior in a reviewable artifact for later frozen evaluation.
+- Details: logs/updates/details/261021-00:37:30-updates.md
+
+## 261021-00:32:45 — Start approved matched-editor collection and fix comparison protocol
+- Type: feature
+- Scope: approved v57 collection, completion auditor, v58 fixed comparison/replay, tests and coverage doc
+- What: Starts the user-approved four-worker 540-output collection under existing caps. Freezes eight offline model/coverage controls before collection completion, with unchanged primary folds and explicit sibling exclusion. 28 tests pass; live results and fitting pending.
+- Why: Measure whether broader matched-editor training improves the same source-held cases while preserving original accuracy and coverage.
+- Details: logs/updates/details/261021-00:32:45-updates.md
+
+## 261021-00:25:00 — Verify boundary experts and prepare matched-editor coverage
+- Type: feature
+- Scope: v53–v56 offline policies/audits, v57 matched-editor collector/rehearsal, tests and research docs
+- What: Independently replayed best rises to 216/276 (78.3%), with original 99/99 retained. Finds 540 missing outputs on existing single-editor tasks and prepares a four-worker, 1,620-request/14,376,960-token collection; all 1,620 mocked slots pass. No new paid calls or serving changes.
+- Why: Complete matched success/failure coverage across editors after stability/qualifier/fidelity changes fail to close the remaining 19-case accuracy gap.
+- Details: logs/updates/details/261021-00:25:00-updates.md
+
+## 261020-23:44:00 — Complete paired observer diagnostic and test visibility predicates
+- Type: feature
+- Scope: approved v51-r1 collection/audit, cached v52 visibility predicates/policy, contract tests and results
+- What: All 48 paid calls complete for ~$0.30; fresh Luna 6/12, Sol 4/12. Seven examples change predicates and three change predictions on fresh Luna reads. Added visibility fields reach 214/276 versus exact 215/276 control with original 99/99 retained; no serving changes.
+- Why: Separate observer model effects, repeat-read instability and discarded observation confidence before changing the deployed policy.
+- Details: logs/updates/details/261020-23:44:00-updates.md
+
+## 261020-23:28:00 — Test shared semantic weights and prepare observer isolation
+- Type: feature
+- Scope: v50 sparse semantic policy/error audit, v51-r1 paired observer preparation/rehearsal, tests and docs
+- What: Sparse rules do not beat the 215/276 forest; 53 errors still have the correct action available. Prepares a 12-case fresh Luna/Sol observer diagnostic with frozen source-held controllers, capped at 48 requests/589,824 completion tokens. All 48 mocked slots and 54 tests pass; zero real model calls.
+- Why: Test an upstream evidence change under fixed decision rules before buying broader evaluation or more training volume.
+- Details: logs/updates/details/261020-23:28:00-updates.md
+
+## 261020-23:12:00 — Complete training expansion and freeze verified semantic selector
+- Type: feature
+- Scope: approved v42 collection, enlarged-data v43–v49 studies/audits, optional JSON selector, tests and results
+- What: Completes 160 outputs in 511 requests within both caps (~$0.28 including failed output reservation). Best independently verified source-held selector scores 215/276 (77.9%) versus regular 183/276, retaining original 99/99 cases. Corrects routing-retention bookkeeping; 52 tests and all 375 JSON round trips pass.
+- Why: Measure the benefit of new fitting sources and save a concrete candidate without confusing fitting accuracy or selected development scores with the unmet >85% target.
+- Details: logs/updates/details/261020-23:12:00-updates.md
+
+## 261020-22:30:00 — Test score learning, semantic simplification and evidence views
+- Type: feature
+- Scope: offline policy runners v43–v46, independent v42 collector auditor, train-only feature-selection test, results and docs
+- What: Regression, simpler vocabularies, confidence fallback and 213 compatible cached views do not beat the protected 82/116 control. Prepares request/feature audit and matched-fold expansion-volume comparison; 11 focused tests pass.
+- Why: Distinguish feature weighting, compiler-view sensitivity and training-volume effects while keeping the approved paid scope and reserved evaluation separate.
+- Details: logs/updates/details/261020-22:30:00-updates.md
+
+## 261020-22:25:00 — Probe protected accuracy and collect disjoint fitting data
+- Type: feature
+- Scope: semantic policy studies v37–v43, paired Sol diagnostic, source reservation, bounded fitting collector, tests, audits and docs
+- What: Best of 22 offline policies retains all original training cases and scores 82/116; approved Sol arms each score 15/24. Reserves 80 fitting-disjoint sources and starts separately approved 160-output training collection; continuous-score comparison is in progress.
+- Why: Pursue >85% overall accuracy without confusing oracle headroom, training fit or reviewed development results with fresh validation.
+- Details: logs/updates/details/261020-22:25:00-updates.md
+
+## 261020-15:26:24 — Reject bank-2 harmful disagreements while preserving local decisions
+- Type: fix
+- Scope: per-label-pair semantic coverage veto, offline 52-source replay, provenance, tests and documentation
+- What: Identifies N102's collateral-driven Partial as the sole loss versus regular. The final guard restores bank 2 to 20/36, retains all 144 local routes and 685 correct prior judge-label variants; 38 tests and 156-fold/432-wrapper audits pass. Source-held-out accuracy stays unchanged; zero model calls.
+- Why: Correct a demonstrated harmful override without disabling useful expert rules or claiming transfer from one counterexample.
+- Details: logs/updates/details/261020-15:26:24-updates.md
+
+## 261020-15:01:43 — Complete approved 36-case baseline and default optional serving to verification
+- Type: fix
+- Scope: authorized forward collection, independent completion audit, serving configuration, tests and results
+- What: Regular scores 20/36; v27 21/19/21; verification-only 21/19/22 with all 144 local routes retained. New correction regions remain opt-in after false acceptances. Exactly 36 attempts and 3,966 completion tokens/reservations; 31 focused tests and all 432 serving scenarios pass.
+- Why: Verify a modest source-disjoint accuracy gain without refitting frozen rules or trading extra coverage for unsafe corrections.
+- Details: logs/updates/details/261020-15:01:43-updates.md
+
+## 261020-14:38:40 — Validate frozen forward inference and rule out compatible cached baselines
+- Type: feature
+- Scope: forward bounds/scoring, actual-wrapper replay, durable budget audit, cache search and docs
+- What: Reproduces all 432 wrapper scenarios and passes 28 focused tests. Searches 37,380 cached jobs and finds no matching baseline. Exact bounds show bank 2 cannot lose to v27 on this cohort; banks 1/3 still could. No fitted policy changes or model calls.
+- Why: Complete offline validation without mistaking reviewed-pilot gains or hypothetical bounds for measured forward improvement; the separate paid baseline remains pending approval.
+- Details: logs/updates/details/261020-14:38:40-updates.md
+
+## 261020-14:26:19 — Verify guarded semantic merges and regular-aware expert decisions
+- Type: feature
+- Scope: v32–v35 policy/merge studies, optional inference wrapper, source-held-out audit, forward preparation and docs
+- What: Preserves local routes, symbolically guards merges and tests conditional regular-judge corrections. Final exploratory scores are 59/57/56 versus v27's 57/50/50; all 48 fold refits and 21 focused tests pass. Broader suite: 1,217 pass, eight dependency/asset failures. Zero new model calls.
+- Why: Address unsupported verdicts and expert selection without weakening protected local accuracy; freeze forward policies before a separately approved baseline.
+- Details: logs/updates/details/261020-14:26:19-updates.md
+
+## 261020-13:27:29 — Trace rejected-case failures to policy shortcuts, selection gaps and evidence errors
+- Type: feature
+- Scope: offline attribution diagnostics, visual review, isolated evidence repair, audit and documentation
+- What: Correct experts exist for 30/23/12 wrong rejected votes, while all experts fail on 4/16/29. Finds Yes paths that ignore available goal failures and a concrete false missing-cat observation. Manual repair fixes one bank but leaves two wrong. Seventeen tests and audit pass; no model calls.
+- Why: Separate actionable evidence, rule and routing problems without claiming unsupported causal error percentages.
+- Details: logs/updates/details/261020-13:27:29-updates.md
+
+## 261020-13:11:18 — Ungated voting substantially underperforms v27 on cached pilot
+- Type: feature
+- Scope: fixed vote/tie ablation, independent replay audit, tests and results
+- What: Ungated banks score 43/35/27 out of 80 versus v27's 57/50/50 and regular's 53. Most losses occur on deferred cases. All 26 targeted tests and 720-output independent audit pass; zero model calls.
+- Why: Directly test removing coverage under predeclared voting and tie rules.
+- Details: logs/updates/details/261020-13:11:18-updates.md
+
+## 261020-12:44:22 — Complete AURORA pilot; semantic widening hurts newly accepted cases
+- Type: fix
+- Scope: versioned collector recovery, authorized inference, budget/request audit, paired analysis and results
+- What: Completes 80 outputs within 258 counted attempts and 176,166 completion tokens/reservations. Regular scores 53/80; v27 scores 57/50/50 and v28 56/50/47. All seven extra v28 acceptances are wrong. Eleven tests, full replay and usage audit pass.
+- Why: Evaluate the prepared pipeline at larger scale while preserving limits and retaining failed cases honestly.
+- Details: logs/updates/details/261020-12:44:22-updates.md
+
+## 261020-11:58:21 — Prepare 80-output AURORA pilot with exposure audit and cost estimate
+- Type: feature
+- Scope: historical source audit, frozen pilot/collector, token forecast, tests and documentation
+- What: Prepares 80 outputs from 16 sources, with user-approved older exposure and zero overlap with 244 recent exclusions. Pins regular/v27/v28 comparison and estimates $0.13–$0.18; max 272 requests and 2,392,064 completion tokens. All 124 tests pass; no paid calls made.
+- Why: Make the larger pilot concrete and reviewable before execution, while documenting actual source reuse.
+- Details: logs/updates/details/261020-11:58:21-updates.md
+
+## 261020-10:53:32 — Merge similar cross-expert regions while retaining known coverage
+- Type: feature
+- Scope: empirical region merge search, contributor-aware runtime, offline study/audit, tests, docs and examples
+- What: Accepts 19 merges, reducing 63→44 regions with seven cross-expert regions. Preserves all 144 local predictions, 294 recorded decisions and 115 fallbacks. All 116 tests and the search/replay audit pass; remains opt-in.
+- Why: Permit semantic sharing beyond exact equivalence without spending local accuracy or erasing known deferrals.
+- Details: logs/updates/details/261020-10:53:32-updates.md
+
+## 261020-10:22:43 — Share equivalent semantic region definitions without coverage changes
+- Type: feature
+- Scope: exact region compiler, shared literal/task catalogs, offline audit, tests, docs and examples
+- What: Reduces evidence definitions 149→63 and canonical artifact bytes by 10.1%; preserves all 144 local predictions, all 294 recorded decisions and 115 fallbacks. All 105 tests and symbolic/replay audit pass. Task-specific support sparsity remains unchanged; no real cross-expert equivalents were found.
+- Why: Remove redundant region definitions without masking thin support or changing trusted coverage.
+- Details: logs/updates/details/261020-10:22:43-updates.md
+
+## 261020-10:00:49 — Define semantic regions for mixed expert routing and coverage
+- Type: feature
+- Scope: semantic region gate, local-only builder, offline replay/audit, tests and portable examples
+- What: Adds task shortlisting plus supported evidence/path coverage with the full-bank veto. Preserves all 144 local predictions; three new development deferrals reduce score 116→115/150. All 96 tests and the 294-case audit pass; remains opt-in.
+- Why: Make expert applicability and decision coverage explicit without letting a semantic shortlist erase disagreement.
+- Details: logs/updates/details/261020-10:00:49-updates.md
+
+## 261019-15:37:21 — Compare semantic merge scheduling under fixed fit budgets
+- Type: feature
+- Scope: semantic profiles, pair scheduling, paired offline comparison, independent audit and documentation
+- What: Adds an opt-in scheduler. Both orderings preserve 144/144 local predictions and all 294 routes per arm, reaching 56 rules with 10/18/30 fits at the three budgets. No fit-count advantage; the smallest semantic budget saves two coverage rebuilds. All 89 tests and the six-arm audit pass.
+- Why: Measure whether semantic compatibility can prioritize useful merges without spending local accuracy or coverage.
+- Details: logs/updates/details/261019-15:37:21-updates.md
+
+## 261019-15:06:23 — Start pairwise shared-rule merging with rebuilt coverage and routing preservation
+- Type: feature
+- Scope: shared parent search, pairwise coordinator, recomputed coverage, abstention preservation, offline study and audit
+- What: Accepts one learned merge in split 2: experts 4→3, terminal rules 22→19, stored conditions 476→442, shared correct support 15→17. All 144 local predictions and 294 recorded pipeline decisions are preserved; 82 tests and the independent audit pass.
+- Why: Progress into merge development with strict child accuracy and whole-pipeline routing protection, without hiding removed experts or trading fit for compression.
+- Details: logs/updates/details/261019-15:06:23-updates.md
+
+## 261019-12:42:21 — Reject reviewed transfer errors without losing local or correct transfer routes
+- Type: feature
+- Scope: counterexample-calibrated coverage, 22-case review, replay audit, tests and portable gates
+- What: Rejects all 22 known false acceptances, retains all 38 correct transfer routes, and preserves 144/144 raw local tree predictions. Development system accuracy rises 104→116/150; all 70 tests pass, with zero new model calls.
+- Why: Address reviewed gate failures without sacrificing local fit or hiding the calibration/generalization boundary.
+- Details: logs/updates/details/261019-12:42:21-updates.md
+
+## 261019-12:23:56 — Preserve local accuracy with supported expert coverage and content-cached evidence
+- Type: feature
+- Scope: evidence coverage guards, semantic support, retained-child completion, stable evidence cache, audits and documentation
+- What: Preserves 144/144 raw local tree predictions and all twelve child batches. Exploratory accepted-prediction precision improves from 40.0% to 63.3%; unfamiliar-case errors remain. All 62 tests and independent audits pass; zero new model calls.
+- Why: Retain trained accuracy while replacing task-only reference prompting with evidence-supported execution and explicit fallback.
+- Details: logs/updates/details/261019-12:23:56-updates.md
+
+## 261019-11:01:44 — Add task coverage gate and test reference-guided judging
+- Type: feature
+- Scope: task coverage, conditional references, regular-judge fallback, paired local evaluation and audits
+- What: Implements the opt-in gate and completes 141 approved requests. Hybrid scores 33/48, 31/48, 36/48 versus regular 33/48, 28/48, 37/48; two child batches regress. All 30 tests and the full request/response audit pass.
+- Why: Test whether instruction-scoped tree references retain local accuracy while preserving the regular judging path for uncovered inputs.
+- Details: logs/updates/details/261019-11:01:44-updates.md
+
+## 261018-22:14:23 — Preserve child accuracy during bounded compression and merging
+- Type: feature
+- Scope: v18 local optimizer, runner, audit, 14 tests, portable trees and experiment documentation
+- What: Hard local accuracy constraints replace error/rule tradeoffs. Rules fall 22→21, 18→15, 19→16 while scope-local accuracy stays or improves to 48/48. All seven accepted merges verified; incomplete forests retained.
+- Why: Follow the user’s revised priority: keep local fit and room for generalization, without requiring held-out gains before continuing merging.
+- Details: logs/updates/details/261018-22:14:23-updates.md
+
+## 261018-22:14:22 — Add opt-in source-anchored support compiler and defer live evaluation
+- Type: feature
+- Scope: source_support v17 compiler, templates, offline preview and 25 tests
+- What: Adds source-bound identity/preservation modes, atomic property checks, explicit authorized waivers, ambiguity propagation and observation binding. Five unverified preview programs expand eight support checks into fifteen; no live calls or default adoption.
+- Why: Record the completed structural candidate while honoring the revised priority of local-fit-preserving compression.
+- Details: logs/updates/details/261018-22:14:22-updates.md
+
+## 261018-21:22:44 — Test macro pruning and paired evidence-contract clarification
+- Type: feature
+- Scope: experimental pruning, matched training-only comparison, approved paired extraction diagnostic, audits and tests
+- What: V15 merged validation falls from matched v14's 78/144 to 73/144 and is not promoted. The approved 12-case paired diagnostic completes 48 calls using 32,393 completion tokens; prompt clarification gives mixed results and reveals identity checks that presuppose edit completion. Thirteen tests and both audits pass.
+- Why: Investigate Partial failures without using final outcomes for tuning, and locate the next actionable representation defect.
+- Details: logs/updates/details/261018-21:22:44-updates.md
+
+## 261018-20:50:02 — Complete the approved frozen fifty-case evaluation
+- Type: feature
+- Scope: approved final collection, offline audit/reporting, result artifacts and reservation-consumption tracking
+- What: V14 scores 26/50, 26/50 and 25/50 versus v12's 21/50, 27/50 and 18/50; merged and direct predictions are identical. All 450 predictions replayed. Used 149 requests and 101,643 reported completion tokens; one failed observation retained.
+- Why: Test the frozen candidates on the reserved cohort without fitting or selecting on final outcomes; distinguish compression gains from unproven merging/generalization gains.
+- Details: logs/updates/details/261018-20:50:02-updates.md
+
+## 261018-20:24:14 — Audit v14 construction stability and semantic limits
+- Type: feature
+- Scope: offline semantic probes, training-identifier invariance, evidence review and candidate documentation
+- What: All 15 renaming/order checks preserve runtime policies. Synthetic incidental-only/missing-endpoint evidence still receives Yes; nine natural conflict slots include seven reference-correct predictions. Compound requirements are scarcely represented. Four tests pass; policies and labels are unchanged.
+- Why: Establish the limits of the apparent generalization gains before consuming the reserved final set; separate reference agreement from semantic evidence consistency.
+- Details: logs/updates/details/261018-20:24:14-updates.md
+
+## 261018-20:14:57 — Regularized child optimization and compressed semantic parents
+- Type: feature
+- Scope: v13/v14 semantic child/parent learners, nested experiments, audits, portable policies, tests and documentation
+- What: V14 reaches 83/144 nested validation versus 72/144 for direct fitting, compressing 14/14/16 child rules into 5/5/3. Historical development improves from v12's 18/36 to 22/36 and ties the new direct control. No model calls or reserved-fifty predictions.
+- Why: Address fitting instability, minority-class loss, noncompressing merges and expensive search; preserve the old experiments and require independent validation before promotion.
+- Details: logs/updates/details/261018-20:14:57-updates.md
+
 ## 261015 — Router-free M5–M7 learn seven accepted merges and a 46/48 reused root
 - Type: experimental implementation and offline comparison
 - Scope: smaller semantic groups, exact-union acceptance, child-predicate recombination, bounded repair, single-policy inference, audits and preserved controls

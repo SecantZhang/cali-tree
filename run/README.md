@@ -500,3 +500,265 @@ The deployed package contains one policy and no router or training memberships.
 The existing three upstream model passes are unchanged; final rule execution
 makes zero model calls. See [the detailed report](../docs/calitree_router_free_union_merging.md)
 for the seven selected merges, cold-refit controls, and honest reuse/transfer limits.
+
+## Regularized child optimization and compressed parents (v14)
+
+The v14 opt-in research path uses bounded semantic child fitting, explicit
+predicate alternatives, class-preserving pruning, and a measured parent rule
+reduction of at least 20%. It is evaluated with nested training-only folds and a
+matched direct-fitting control. The v13/v14 comparison changes pruning alone;
+the older v8–v12 experiments remain frozen.
+
+```bash
+.venv/bin/python -m run.calitree_supported_pruning_v14 --output-dir logs/exps/261018-supported-child-compression-v14
+.venv/bin/python -m run.verify_calitree_supported_pruning_v14 --output-dir logs/exps/261018-supported-child-compression-v14
+.venv/bin/python -m run.report_calitree_supported_pruning_v14 --output-dir logs/exps/261018-supported-child-compression-v14
+```
+
+All three commands are offline. See [the algorithm, explicit acceptance change,
+validation boundaries and results](../docs/calitree_regularized_children.md).
+The [portable candidates](../examples/calitree_supported_children_v14) contain no
+training memberships or labels. A separate reserved-fifty runner defaults to
+preflight; do not consume that final set without approval of its paid-call and
+model protocol.
+
+The approved frozen-fifty evaluation has now completed: v14 merged scores are
+26/50, 26/50 and 25/50, versus v12's 21/50, 27/50 and 18/50. V14 matches its direct
+controls on every prediction, so a merging advantage is not confirmed. Historical
+sections above describe the earlier reservation state; these final outcomes are
+now exposed and must not be reused for tuning a claimed fresh final result.
+
+```bash
+.venv/bin/python -m run.verify_calitree_frozen_final_v14 --output-dir logs/exps/261018-frozen-final-v14
+.venv/bin/python -m run.report_calitree_frozen_final_v14 --output-dir logs/exps/261018-frozen-final-v14
+```
+
+Both commands are offline. See [the complete final result](../docs/experiments/calitree_frozen_final_v14.json).
+
+## Local-accuracy-preserving child optimization and merging (v18)
+
+The current opt-in path follows the revised local-fit-first objective. Each
+parent preserves every child's local accuracy and removes at least one rule;
+bounded search keeps a forest when a complete merge cannot pass. It uses the
+full reusable feature vocabulary and cached v12 training evidence. No paid calls
+or held-out predictions are made.
+
+```bash
+.venv/bin/python -m run.calitree_local_compression_v18 --output-dir logs/exps/my-local-compression-v18
+.venv/bin/python -m run.verify_calitree_local_compression_v18 --output-dir logs/exps/my-local-compression-v18
+```
+
+Use a fresh output directory. The recorded run is
+`logs/exps/261018-local-compression-v18-r1`: rules decrease 22→21, 18→15, 19→16;
+scope-local accuracy is preserved or improves to 48/48 in all three splits.
+These are partial forests with no inferred router, not complete merged roots.
+See [the method and limitations](../docs/calitree_local_compression.md).
+
+## Task coverage gate and reference-guided judge (v19)
+
+`run.calitree_task_coverage` prepares a frozen paired local-accuracy comparison.
+The gate uses compiled task structure to offer conditional tree rules; uncovered
+inputs use the exact regular-judge request. It does not require the observer or
+semantic interpreter. Live comparison requires `--live` and a paid-call budget;
+preflight and `run.verify_calitree_task_coverage` are offline.
+
+See [coverage semantics, inference usage and the evaluation protocol](../docs/calitree_task_coverage.md).
+The approved comparison is complete: hybrid 33/48, 31/48, 36/48 versus regular
+33/48, 28/48, 37/48. Two child batches regress; this remains opt-in and is not
+promoted as a local-accuracy-preserving replacement.
+
+## Evidence coverage with preserved local accuracy (v20–v22)
+
+The newer opt-in path keeps the trained expert's verdict when observed features
+pass supported guards and semantic-support checks. Otherwise it uses the regular
+judge. A content-addressed evidence cache stabilizes known inputs without storing
+human labels or final verdicts. Retained hierarchy children fill supported local
+coverage gaps.
+
+All 144 local slots retain their correct tree outputs, including all twelve
+original child batches. The exploratory transfer diagnostic improves accepted-
+prediction precision from task-only routing's 40.0% to 63.3%, with 104/150 full-
+system accuracy versus 100/150 for the regular judge. Unseen errors remain.
+
+`run.calitree_evidence_coverage_v20` learns initial guards;
+`run.calitree_evidence_support_v21` adds semantic support;
+`run.calitree_complete_evidence_coverage` reuses retained children.
+`run.verify_calitree_complete_coverage` and `run.verify_calitree_raw_coverage`
+audit the final selectors and raw-input cache replay. These runners are offline.
+See [the contracts, results and inference example](../docs/calitree_evidence_coverage.md).
+
+## Reviewed-error rejection without local regressions (v23)
+
+`run.calitree_counterexample_coverage_v23` adds monotone rejection checks to the
+frozen v22 gate. All 22 reviewed wrong acceptances are rejected, all 38 correct
+transfer acceptances remain covered, and all 144 local raw-input tree predictions
+remain correct. The reviewed transfer outcomes are now calibration data; the
+post-fit score is not an untouched validation result.
+
+`run.verify_calitree_counterexample_coverage` independently replays the full
+comparison and protected routes. Both commands are offline. See [the method,
+22-case review and limitations](../docs/calitree_counterexample_coverage.md).
+
+## Pairwise merge development with routing checks (v24)
+
+`run.calitree_pairwise_merge_v24` fits compact parents with correct cross-batch
+support, preserves child and original-batch accuracy floors, rebuilds coverage,
+and preserves the frozen system's accept/defer decisions. Existing v23 rejection
+checks are unchanged. Additional short coverage clauses retain abstention behavior
+when removing an expert removes a disagreement signal.
+
+The audited first phase accepts one learned parent in split 2: experts 4→3,
+terminal rules 22→19, stored Boolean conditions 476→442. All 144 local predictions
+and all 294 recorded pipeline decisions are unchanged. Other candidates remain
+rejected or bounded-search failures. Both the runner and
+`run.verify_calitree_pairwise_merge_v24` are offline.
+See [the full result and acceptance contract](../docs/calitree_pairwise_merge.md).
+
+### Semantic merge candidate scheduling (v25)
+
+`calitree_semantic_merge_v25.py` adds `--ordering semantic|artifact_id` and
+`--fit-budget` to the offline pairwise workflow. Profiles prioritize compatible
+supported task distributions, prediction agreement, and shallow predicates;
+parent fitting and accuracy/coverage acceptance stay unchanged.
+
+`compare_calitree_semantic_merge_v25.py --previous-run PATH --output-dir NEW_PATH`
+runs both orderings at 4, 8, and 24 fits per split. Identical computations are
+memoized across arms while each arm pays a separate logical fit budget. Run
+`verify_calitree_semantic_merge_v25.py --output-dir NEW_PATH` for candidate-order,
+budget, child-retention, coverage and raw-input replay audits. These commands
+are offline and make no model calls. See `docs/calitree_semantic_merge.md`.
+
+### Semantic rule regions (v26)
+
+`calitree_semantic_regions_v26.py --parent-run PATH --output-dir NEW_PATH`
+builds explicit task-and-evidence regions on the original local examples and
+replays the mixed judge offline. `--verify --output-dir NEW_PATH` checks the
+source/code hashes, refits the regions and replays all 294 cases. The opt-in gate
+preserves local accuracy but adds three development deferrals, reducing the
+recorded development score 116→115/150. Task shortlisting is separate from
+final evidence coverage; the original full-bank disagreement veto stays active.
+See `docs/calitree_semantic_regions.md` for the API and support limitations.
+
+### Shared region definitions (v27)
+
+`calitree_shared_regions_v27.py --parent-run PATH --output-dir NEW_PATH` compiles
+v26 regions into canonical evidence definitions shared across supported task
+scopes and, when equivalent, experts. It pools duplicate conditions, supports
+exact Boolean simplification, and retains per-task support counts. `--verify
+--output-dir NEW_PATH` checks symbolic equivalence, deduplicated support and
+all 294 recorded predictions/routes. The audited run reduces definitions
+149→63 and canonical JSON size by 10.1%, with 144/144 local predictions preserved.
+Real cross-expert equivalents were not found; thin task-specific support remains.
+See `docs/calitree_shared_regions.md`. No new model calls; remains opt-in.
+
+### Semantic cross-expert region merging (v28)
+
+`calitree_semantic_region_merge_v28.py --parent-run PATH --output-dir NEW_PATH`
+relaxes exact equivalence: similar same-verdict regions from different expert
+sets share common conditions and combine supported task scopes. Every candidate
+must retain child local support and all recorded routes. The full-bank veto and
+a supported match from a contributing expert remain required. `--verify
+--output-dir NEW_PATH` reproduces the search and replays all 294 cases.
+The opt-in run reduces 63→44 regions, with seven cross-expert regions and no
+recorded coverage regressions. See `docs/calitree_semantic_region_merge.md`.
+
+### Source-audited 80-output AURORA pilot (v29)
+
+`calitree_aurora_pilot_v29.py --source-root PATH --output-dir PATH --audit`
+audits original/worktree exposure and prepares the cohort. Its current protocol
+uses the user's approved alternative: two tasks per category, all five editors,
+prefer unused sources, and exclude 244 recent-study/declaration groups while
+allowing explicitly disclosed older exposure. `--verify --output-dir PATH`
+checks the sealed preflight.
+
+`collect_calitree_aurora_pilot_v29.py --prepare --output-dir PATH` pins the execution
+plan without calls. `--live` requires separate explicit user authorization;
+`--report` replays completed collection. Six v27/v28 banks share extraction and
+one regular response per output. The prepared pilot has 256 normal requests,
+at most 272 including compiler repairs, and a 2,392,064 completion-token ceiling.
+Estimated cost is approximately $0.13–$0.18; the full completion allowance alone
+costs $1.196032 plus input. See `docs/calitree_aurora_pilot.md`.
+
+The authorized v29 pilot has completed in
+`logs/exps/261020-aurora-pilot80-v29-run1`. The corrected collector
+`collect_calitree_aurora_pilot_v29r1.py` removes an unsupported local adapter
+argument while preserving the approved Luna wire settings, and deducts the
+three pre-HTTP reservations from its available budget. It does not retry any
+provider request. Audit with `verify_calitree_aurora_pilot_v29.py`; derive paired
+comparisons with `analyze_calitree_aurora_pilot_v29.py`. Results are in
+`docs/calitree_aurora_pilot_results.md`. The run used 255 API attempts (258 counting
+local failures); v28's seven extra acceptances were all incorrect.
+
+### Ungated cached-pilot ablation (v30)
+
+`calitree_ungated_ablation_v30.py --parent-run PATH --output-dir NEW_PATH`
+freezes equal expert voting, plurality selection, and the Partial-then-No tie
+rule before scoring the cached pilot. It bypasses all coverage filters; failed
+extraction stays unresolved with no regular fallback. `--verify` independently
+walks the expert trees and reproduces results. No model calls or fitting.
+Ungated scores 43/35/27 out of 80 versus v27's 57/50/50 and regular's 53.
+See `docs/calitree_ungated_ablation.md` for deferred-case and tie breakdowns.
+
+### Rejected-case diagnostics (v31)
+
+`diagnose_calitree_rejections_v31.py --ablation-run PATH --output-dir NEW_PATH`
+measures correct-expert availability and rule/evidence disagreements on cached
+rejected cases, exports six targeted review traces, and runs one isolated manual
+doodle-evidence counterfactual. `verify_calitree_rejections_v31.py --output-dir PATH`
+checks counts, images, source-leaf provenance and the counterfactual. Zero model
+calls or fitting; causal error percentages are not inferred from oracle counts.
+See `docs/calitree_rejection_diagnostics.md`.
+
+### Guarded semantic policy development (v32–v35)
+
+`calitree_guarded_generalization_v32.py --output-dir NEW_PATH` fits verdict
+support clauses and tests semantic-obligation-preserving region merges with
+all five outputs of each validation source excluded. The subsequent
+`calitree_decision_warrants_v33.py`, `calitree_fallback_routing_v34.py` and
+`calitree_regular_aware_v35.py` compare affirmative outcome warrants, supported
+regular-judge corrections and regular-aware verdict verification, respectively.
+All reuse cached evidence and regular judgments without new model calls.
+
+`verify_calitree_guarded_development_v35.py --output-dir PATH` independently
+refits the v34/v35 folds and checks held-source replay, local retention and
+accepted merge proofs. `--freeze-forward` freezes supplemental v35 models for
+the prepared 36-source comparison. `collect_calitree_guarded_forward_v32.py
+--prepare --output-dir PATH` pins its paid execution plan; `--live` requires
+separate approval for at most 36 regular calls and 73,728 completion tokens.
+See `docs/calitree_guarded_development.md`. Defaults remain unchanged.
+
+`analyze_calitree_guarded_forward_v35.py --bounds --output-dir PATH` enumerates
+all possible regular labels without calls; `--report` scores the completed
+matched baseline and independently reconciles its durable request/token ledger.
+`verify_calitree_regular_aware_runtime_v35.py --forward-dir PATH --output-dir
+NEW_PATH` replays all 432 scenarios through the real optional inference wrapper
+with cached evidence and a stub regular judge. `audit_calitree_forward_cache_v35.py
+--forward-dir PATH --output-dir NEW_PATH --search-root PATH` searches exact
+historical flat-judge slots without reading references for scoring. See
+`docs/calitree_guarded_forward_validation.md` for bounds and remaining validation.
+
+The authorized 36-case baseline is now complete. See
+`docs/calitree_guarded_forward_results.md`: regular scores 20/36, v27 scores
+21/19/21 and verification-only scores 21/19/22. The optional
+`VerifiedSemanticJudge` serves that predeclared verification arm by default;
+new correction regions require `enable_corrections=True` because they added
+false forward acceptances. It always calls regular and preserves all 144 local
+routes. `verify_calitree_verified_serving.py` replays the serving default;
+`verify_calitree_guarded_forward_completion.py` independently checks all 25
+metric arms and the 36-attempt durable budget. No new calls are needed to audit.
+
+### Bank-2 harmful-disagreement coverage (v36)
+
+`calitree_disagreement_coverage_v36r1.py --output-dir NEW_PATH` diagnoses the
+accepted errors and fits per tree/regular-label-pair semantic vetoes, protecting
+correct prior routes under every possible regular label. All 116 recent cases
+are development data for this revision. The final bank-2 guard rejects one
+harmful Partial override on a removal task, restoring 19→20/36 while retaining
+all 144 local routes. Banks 1/3 stay unchanged. The source-held-out replay does
+not improve, so transfer is not claimed.
+
+`verify_calitree_disagreement_coverage_v36r1.py --output-dir PATH` independently
+refits all 156 source/bank guards, checks retained prior routes and replays 432
+serving scenarios. Both commands are offline. Initial v36 prototype runners and
+results are retained; use the `r1` run for the stronger preservation contract.
+See `docs/calitree_bank2_disagreement_gate.md` for the exact rule and limitations.
