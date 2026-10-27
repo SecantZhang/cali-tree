@@ -43,6 +43,7 @@ from .optimization.textgrad import TextGradLeafOptimizer
 from .optimization.gepa import gepa_leaf_optimizer
 from .merge.base import MultiMergeAlgorithm
 from .merge.callback import CallbackMultiMergeAlgorithm, ConcatenateMergeAlgorithm
+from .current import CaliTreeJudge, load_current_policy
 
 __all__ = [
     "CaliTreeBuilder", "CaliTreeNode", "LABELS", "ORDINAL_VALUE",
@@ -66,4 +67,5 @@ __all__ = [
     "LeafController", "LeafBuildResult", "validate_tree", "OptimizerPlan",
     "MultiMergeAlgorithm", "CallbackMultiMergeAlgorithm", "ConcatenateMergeAlgorithm",
     "TextGradLeafOptimizer", "gepa_leaf_optimizer",
+    "CaliTreeJudge", "load_current_policy",
 ]

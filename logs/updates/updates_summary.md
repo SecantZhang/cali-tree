@@ -1,3 +1,206 @@
+## 261027-09:27:26 — Publish selected V112 and verified boosted-factor compression
+- Type: chore
+- Scope: source/prompts/tests/reports, selected artifacts, compact scorer and verification receipts
+- What:Prepare current post-revert changes for commit/push on existing branch. Fresh915-case V112 replay passes; broader1502 tests pass with legacy missing-fixture failures and unavailable GEPA setup recorded. Credentials/local settings/raw datasets excluded.
+- Why: Save and publish the user's current research result without changing the selected inference version.
+- Details: logs/updates/details/261027-09:27:26-updates.md
+
+## 261027-09:21:25 — Revert the latest rubric-distillation experiment
+- Type: chore
+- Scope: remove V177–V179 source/tests/reports; retain prior pipeline and exact boosted-factor compression
+- What:Removed six latest-distillation files and five scoped bytecode files; preserved experiment archives and recoverable source copies. V112 remains selected; ten prior files verified unchanged and20 retained tests pass.
+- Why: Apply the user's request to revert the latest distillation without resetting unrelated prior work.
+- Details: logs/updates/details/261027-09:21:25-updates.md
+
+## 261026-16:30:38 — Distill scoring distributions into semantic rubrics
+- Type: feature
+- Scope: v177 soft-target rubric,v178 source-held comparison,v179 re-induction audit,tests and reports
+- What:64 configurations/384 exports tested; primary accepts0, accuracy-matching variant10/276, widest24/276 with23 correct and81.9% hybrid accuracy. No useful25% acceptance or standalone replacement.48 searches/351360 scalar rows audited,25 tests pass. Local99/144 and273 coverage retained with fallback; no new model calls/default change.
+- Why: Test semantic rubric learning from score distributions while exposing fallback reliance and fallible grading warrants.
+- Details: logs/updates/details/261026-16:30:38-updates.md
+
+## 261026-14:01:09 — Merge equivalent semantic factors in boosted trees
+- Type: feature
+- Scope: v175 factor compiler/scorer,v176 exhaustive and bound audit,tests and reports
+- What:1200 trees→513 shared factors; scoring bytes fall59.9%, condition occurrences57.2%. V112/V144 accuracy/local99/144/coverage/routes preserved;760368 assignments/5490 scalar cases/915 bound requests audited,20 tests pass. Zero new model calls/fits; default unchanged.
+- Why: Reduce boosted-model complexity by sharing equivalent named semantic predicates without the accuracy loss of single-tree distillation.
+- Details: logs/updates/details/261026-14:01:09-updates.md
+
+## 261026-13:32:18 — Compare standalone semantic and visual decision trees
+- Type: feature
+- Scope: v173 single-tree calibrator/study,v174 native audit,tests and reports
+- What:60 configurations/360 models tested; best eligible64-leaf tree73.6% overall/64.1% balanced trails V11282.2%/67.9%. No8/16-leaf arm preserves99 originals;30 arms qualify.35352 topology nodes/329400 scalar rows audited;16 tests pass. No new neural/API calls or default change.
+- Why: Test a true single-tree replacement using primitive evidence, without retaining a hidden boosted teacher at inference.
+- Details: logs/updates/details/261026-13:32:18-updates.md
+
+## 261025-21:41:45 — Test cached opinion routing and correct fitting masks
+- Type: fix
+- Scope: v162 vocabulary refactor,v170 cached experts,v171 fitting projection,v172 audit,tests and reports
+- What: Cached-only best67.4%BA/224correct trails V11267.9%/227; no promotion.13-row mask skew fixed and both fitting/actual parity verified;48 models/43920 scalar/96944 Boolean rows replay,46 tests pass.351-call approval still pending;zero real new calls.
+- Why: Exhaust the prepared no-charge semantic alternative and ensure new-selector inputs match inference before requesting stronger evidence.
+- Details: logs/updates/details/261025-21:41:45-updates.md
+
+## 261025-20:36:21 — Bind semantic facet inference and audit cached opinion limits
+- Type: feature
+- Scope: v165–v169 bound observer/runtime, fold deployment bindings, six-context/high-level parity, cached ceilings and tests
+- What:42 tests pass;1219050 feature/5490 priority checks match,915 parent judgments/routes/rationales preserved. Cached goal-only oracle ceiling74.8%BA; with regular81.4%, not achieved. No new real calls or fits;351-call approval pending, V112 retained.
+- Why: Prevent training/inference skew and source-fold leakage while investigating a free semantic-expert path toward the full accuracy goal.
+- Details: logs/updates/details/261025-20:36:21-updates.md
+
+## 261025-18:05:03 — Implement compact semantic selectors and full native audits
+- Type: feature
+- Scope: v162–v164 semantic calibrator/study, exact region merging, native/fit auditors, mock integration and tests
+- What: Closed four-rule selector with positive outcome witnesses, local veto and source support implemented. Full351-slot mock/native audit passes;36 tests pass and8 affected tests rerun pass. Real collection approval pending;zero real new calls/fits or accuracy claims.
+- Why: Make the semantic policy and its source-held/local/coverage verification executable before collecting further paid evidence.
+- Details: logs/updates/details/261025-18:05:03-updates.md
+
+## 261025-17:34:46 — Prepare the complete source-held semantic-facet experiment
+- Type: feature
+- Scope: v161375-case preparation, source/upload audit, bounded four-worker collector, tests and request protocol
+- What:351 new Sol slots prepared,23 cached successes reused and one failure retained.524288 completion-token cap; expected$1.87/full-output$5.24 plus input.509 image files,zero reserved overlap.28 tests pass; new approval pending,zero new calls.
+- Why: Evaluate a meaningful outcome rubric on all276 development cases with99/144 local protection instead of treating training accuracy as the goal.
+- Details: logs/updates/details/261025-17:34:46-updates.md
+
+## 261025-17:14:57 — Complete facet diagnostics and reconstruct outcome priority
+- Type: feature
+- Scope: v153–v160 completed local/paid diagnostics, native audits, authenticated recovery, outcome rubric, tests and reports
+- What: Local13/24 and10/24; strict Luna15/24,Sol17/24. Outcome-primary Sol19/24 recovers4 Yes,loses2 Partial; training-only, V112 retained.48 paid slots terminal/46 valid/2 preserved401s,25 tests pass. Full276 evaluation remains pending.
+- Why: Separate requested-outcome fulfillment from overstrict universal preservation caps and verify every approved request before a bounded larger experiment.
+- Details: logs/updates/details/261025-17:14:57-updates.md
+
+## 261025-14:49:10 — Prepare paid facet comparison and correct credential discovery
+- Type: fix
+- Scope: v155–v157 bounded paid diagnostic, credential recovery/discovery, tests and reviewable protocol
+- What: User approved48 requests/245760 tokens. Two distinct slots rejected401; preserved failures,46 slots remain. Read-only auth check still401 after credit recharge. Credential-settings lookup corrected in separate adapter;21 tests pass. Local153 diagnostic continues.
+- Why: Compare stronger semantic observers under explicit budget/upload approval while preventing retries, hidden key fallback or unsupported accuracy claims.
+- Details: logs/updates/details/261025-14:49:10-updates.md
+
+## 261025-14:26:23 — Reconstruct semantic gates and diagnose facet observations
+- Type: feature
+- Scope: v149–v154 semantic gates, facet rubric, bounded local diagnostics, audits, tests and reports
+- What:72 gate pairs audited; best68.1% balanced, V112 retained. Training-only facet tree9/24 versus regular12/24; decoder391/391 alternatives reachable, seven state/gap contradictions. Explicit-contract48-attempt local diagnostic running;13 tests pass. No paid calls or reserved sources.
+- Why: Improve the meaning and reliability of Partial evidence while keeping source-held accuracy distinct from training retention.
+- Details: logs/updates/details/261025-14:26:23-updates.md
+
+## 261025-10:32:20 — Search for higher balanced accuracy with compact semantic policies
+- Type: feature
+- Scope: v143–v148 objectives, semantic corrections/expert regions, moderate weights, audits, tests and reports
+- What:37 exploratory arms audited. Best four-rule extension reaches71.1% balanced/81.9% overall versus v11267.9%/82.2%, but Partial recall53.6%→42.9%; selected v112 retained.24 tests pass;168 small models and18 main classifiers replay;99/144 and273 coverage retained. No new neural/API calls.
+- Why: Directly optimize balanced decisions and test semantic expert routing instead of repeating failed full class balancing.
+- Details: logs/updates/details/261025-10:32:20-updates.md
+
+## 261025-00:37:44 — Select v112 for default CaliTree inference
+- Type: feature
+- Scope: selected artifact manifest, configuration, public judge/loader, cached CLI/replay, tests and usage docs
+- What: Default AURORA entry point now loads the exact v11260-term policy.24 tests pass and all915 cached predictions/coverage/source routes match, with99 originals correct. Existing82.2% overall/67.9% balanced result retained; no new fits or model calls.
+- Why: Apply the user's version choice through a concrete runnable inference path while preserving historical experiments.
+- Details: logs/updates/details/261025-00:37:44-updates.md
+
+## 261023-19:40:08 — Train the existing model with class-balanced weights
+- Type: feature
+- Scope: v141-v142 class weighting, same-architecture comparison/audit, tests and reports
+- What: Primary balanced-both model217/276 (78.6%),67.4% balanced accuracy; current control227/276 (82.2%),67.9%. All99/144 and273 coverage retained;36 teachers/24 semantic heads independently replay,20 tests pass. Parent-directory race fixed with11 verified complete fits recovered; no promotion or paid calls.
+- Why: Directly test balanced training without discarding examples or changing the model/evidence, and measure the Partial/Yes tradeoff.
+- Details: logs/updates/details/261023-19:40:08-updates.md
+
+## 261023-16:15:47 — Collect larger-model evidence and complete interpretable controls
+- Type: feature
+- Scope: v128-v136 local model/cache/calibration/audits, v140 additive policy, tests and reports
+- What: Bounded32B probe yields12 valid records; fixed224-input collection and audit/fitting supervisor are live. Wider-strength/legacy refits top226; additive whole-policy arms191-213 are not promoted.80 tests pass; best verified227 remains, with99/144 and273 coverage retained.
+- Why: Test whether new factual evidence improves the learned rubric, while rejecting simpler or more aggressive policies that lose accuracy and retaining the full235 target.
+- Details: logs/updates/details/261023-16:15:47-updates.md
+
+## 261023-14:30:05 — Complete observer ablations and prepare a larger local checkpoint
+- Type: feature
+- Scope: v118-v127 native MLX profiles/audits, resolution comparison, tests, runtime-cache records and reports
+- What: Resolution arms219-225 do not beat227; compact observers remain4/12 or worse on the training-only warrant diagnostic. Native channel/budget audits and70 tests pass; no promotion or paid calls.32B checkpoint downloaded and incumbent8B files restored exactly.
+- Why: Identify semantic-observation failures before fitting more controllers, preserve the verified60-term policy, and obtain a stronger evidence source toward235/276.
+- Details: logs/updates/details/261023-14:30:05-updates.md
+
+## 261023-13:08:06 — Compress the semantic rubric exactly and audit evidence novelty
+- Type: feature
+- Scope: v111–v117 compiler/audits, compact controls, public local-model preparation, tests and opt-in artifact
+- What: Shrinks100 branches to60 shared terms with227/276 unchanged, all original decisions/coverage retained; six native models,5,490 residuals and915 bound judgments match.52 tests pass. Proves187/224 higher-resolution inputs identical; prepares a separate compact local observer while the frozen collection continues.
+- Why: Improve rubric meaning/size without losing accuracy, and obtain genuinely different visual evidence toward235/276 rather than repeatedly refitting the same claims.
+- Details: logs/updates/details/261023-13:08:06-updates.md
+
+## 261023-12:35:35 — Verify weighted semantic accuracy gain and start higher-resolution evidence
+- Type: feature
+- Scope: v98–v110 audits, weighted semantic runtime/judge, source-held controls, tests and opt-in artifact
+- What: Verifies227/276 versus225 with99/144 original retention and273 coverage; six models,5,490 residuals and915 bound judgments match.48 tests pass. Separate224-case high-resolution local collection and one-shot audit/fitting supervisor are running; zero new paid calls.
+- Why: Improve accuracy with executable task/preservation concepts while retaining the full235/276 target and exact evidence/routing controls.
+- Details: logs/updates/details/261023-12:35:35-updates.md
+
+## 261023-10:40:31 — Add local task/preservation observations and start review collection
+- Type: feature
+- Scope: v93 headroom, v94/v95 local engine/grammar, v96 cache, v97 warrants/runner, tests and docs
+- What:Prefix selector oracle229 is insufficient. Pinned local observer gives12/12 valid constrained records;224-case offline review collection is running.28 tests and existing225/276 regression audit pass; no new policy or paid calls.
+- Why: Obtain new task-relevant evidence while preserving original decisions, coverage and the full235/276 target.
+- Details: logs/updates/details/261023-10:40:31-updates.md
+
+## 261023-09:51:06 — Verify calibration and ordered visual-rubric controls
+- Type: feature
+- Scope: v89 fitting views, v90 ordered models, v91 auditor, v92 logical counterfactual, tests/reports
+- What:22 offline controls do not beat225/276; no promotion.24 native models/132 equations replay,24 tests pass. Two local-retention failures are rejected. Removing the collateral cap would admit four original Partial cases as Yes.
+- Why: Continue the accuracy/rubric goal with measured offline alternatives and explain the semantic prompt's over-penalization without applying an unsafe blanket fix.
+- Details: logs/updates/details/261023-09:51:06-updates.md
+
+## 261023-09:23:17 — Complete the approved contrastive-rubric pilot
+- Type: docs
+- Scope: v75 pilot logs, v88 diagnostic report and over85 progress
+- What:72 approved attempts and accounting audit complete. Regular15/24, semanticLuna14/24, semanticSol13/24; no promotion, retries or repairs. Three certificate failures and one TLS failure retained.
+- Why: Finish the authorized comparison and distinguish diagnostic results from the unchanged225/276 development score.
+- Details: logs/updates/details/261023-09:23:17-updates.md
+
+## 261023-08:46:22 — Block the goal on pending explicit upload authorization
+- Type: chore
+- Scope: goal status, progress JSON and upload-authorization audit
+- What: Revalidates the same rejection across three resumed goal turns: budget approved, payload/destination consent missing, zero pilot requests. Marks the goal blocked;235/276 remains unmet at225/276.
+- Why: Stop repeated continuations while preserving the approved budget and awaiting the specific consent required by automatic approval review.
+- Details: logs/updates/details/261023-08:46:22-updates.md
+
+## 261023-08:39:30 — Record pilot approval and prepare independent completion accounting
+- Type: feature
+- Scope: v75 authorization/provenance records, v88 accounting auditor, tests and status documentation
+- What: Records explicit budget approval. Automatic review rejects the upload launch before process creation; zero requests/tokens.94 images match the dataset manifest. Prepares paired/certificate/cost reconciliation;9 focused tests pass. Explicit payload-to-OpenAI authorization is pending under the same limits.
+- Why: Complete all unaffected checks and preserve the approved protocol while resolving the reviewer's specific destination-authorization requirement.
+- Details: logs/updates/details/261023-08:39:30-updates.md
+
+## 261023-06:12:36 — Recover independent judge evidence and verify semantic expert routing
+- Type: feature
+- Scope: v84 cache audit, v85/v86 support comparisons, v87 optional expert runtime/judge, native audit, tests and docs
+- What: Recovers15 valid primary Sol views and verifies225/276 versus223/276: two corrections/no losses,99/99 and144/144 retained, unchanged coverage.36 native models and915 bound inference replays pass;67 focused tests. Standalone semantic closure regresses to218/276; no paid calls or serving changes.
+- Why: Improve accuracy and semantic routing with already paid independent evidence while preserving local decisions;235/276 remains unmet and v75 approval remains pending.
+- Details: logs/updates/details/261023-06:12:36-updates.md
+
+## 261023-05:20:35 — Test localized evidence and explicit semantic rubric concepts
+- Type: feature
+- Scope: v77 region evidence, v78 experts, v79 caption audits, v80–v83 policies, native/equation audits, tests and docs
+- What: Completes915-case local evidence/concept extraction and fixed-fold comparisons. Best new pool ties223/276; none reaches235/276.59 focused tests pass;28 native models and54 score artifacts replay with99/99 and144/144 retained. Zero paid calls; v75 approval remains pending.
+- Why: Pursue the >85% target with meaningful rubric concepts while retaining the better verified policy when new evidence does not improve accuracy.
+- Details: logs/updates/details/261023-05:20:35-updates.md
+
+## 261023-03:20:57 — Develop the over85% semantic rubric and prepare a new image-judge pilot
+- Type: feature
+- Scope: v73 aligned witnesses/seeded rules, v74 review routers, v75 contrastive judge pilot, v76 local detector, tests and docs
+- What: New cached methods do not beat223/276; current target235/276 remains unmet.67 tests and72 mock slots pass. Prepares72 paid-gated Luna/Sol requests with344,064 completion tokens; zero real calls so far. Local frozen detector smoke succeeds with documented false positives.
+- Why: Improve the semantic rubric and obtain new evidence without claiming that cached routing alone reaches85%.
+- Details: logs/updates/details/261023-03:20:57-updates.md
+
+## 261023-00:48:44 — Verify the warranted semantic-rubric accuracy improvement
+- Type: feature
+- Scope: v71 source-excluded corrections, v72 semantic compiler/auditor, portable judge, tests and docs
+- What: Independently verifies223/276 versus222/276, one gain/zero losses, 99/99 and144/144 retained, unchanged coverage. Checks36 native models, re-induces six rubrics and replays915 bound judgments. Final correction rubric has one rule/three evidence conditions;50 tests pass, zero paid calls.
+- Why: Complete the requested accuracy improvement with explicit semantic warrants and a frozen boosted fallback.
+- Details: logs/updates/details/261023-00:48:44-updates.md
+
+## 261023-00:32:28 — Reconstruct bounded semantic rubrics from the boosted teacher
+- Type: feature
+- Scope: v70 rubric induction/runtime/judge, v71 grading warrants, source-excluded teacher preparation, tests and docs
+- What: Completes reconstructed-rubric comparisons; a 223/276 candidate uses an inadequate identity warrant and is not promoted. Warranted rubrics preserve 222/276, 99/99 originals and coverage.19 tests pass; 30 inner teacher fits are running for correction learning, with zero paid calls.
+- Why: Pursue the user's accuracy goal while retaining an explicit semantic judging policy.
+- Details: logs/updates/details/261023-00:32:28-updates.md
+
 ## 261022-23:57:29 — Prepare the verified visual-semantic result for publication
 - Type: chore
 - Scope: publication evidence, frozen v69 artifact and supporting research snapshot

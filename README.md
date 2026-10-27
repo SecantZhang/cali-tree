@@ -66,6 +66,23 @@ and `criti-cal-smoke` refuses outright. Unit tests, dry-runs, and item matching 
 Outputs land in `logs/exps/<YYMMDD-HH:MM:SS>-exps/`: `run.log`, `llm-histories.log`,
 `run_config.json`, `gap_result.json`, `aligned_pairs.csv`, and a `gap_report.*` table/chart.
 
+## Selected CaliTree image-editing pipeline
+
+The selected AURORA CaliTree inference version is **v112**, with its verified
+60-term semantic correction. Its existing development result is **82.2% overall
+accuracy and 67.9% balanced accuracy**. The selection and frozen component
+identities live in `critical/core/calibration/artifacts/calitree_current.json`.
+
+```bash
+python -m run.calitree_current --describe
+```
+
+Use `CaliTreeJudge` from `critical.core.optimization.prompt.calitree` for the
+selected Python inference API. The command above loads no neural model and
+makes no API calls. See [v112 usage](examples/calitree_weighted_semantic_v112/README.md)
+for cached inference and fresh-stage integration. Historical experiment runners
+continue to pin their original versions.
+
 ## Running the visual interface
 
 A ComfyUI-style node-graph interface (`critical/interface/`, spec in

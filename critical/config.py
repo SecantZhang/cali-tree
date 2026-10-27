@@ -68,6 +68,13 @@ DEFAULT_TEXT_MODEL: str = os.environ.get("CRITICAL_TEXT_MODEL", "gpt-4.1")
 # Default judge *engine* family. Gemini is video-capable and is the project default.
 DEFAULT_JUDGE_ENGINE: str = os.environ.get("CRITICAL_JUDGE_ENGINE", "gemini")
 
+# Selected AURORA CaliTree inference stack; historical experiment runners pin
+# their own versions. Loading this selection does not call a model.
+CALITREE_SELECTION: Path = _env_path(
+    "CRITICAL_CALITREE_SELECTION",
+    PROJECT_ROOT / "critical/core/calibration/artifacts/calitree_current.json",
+)
+
 # --- Model-name -> on-disk rendered-output dir aliases ------------------------
 # Human annotations record model="peanut" but the rendered videos live under the
 # full pipeline dir name. v1 targets peanut only; others map to themselves.

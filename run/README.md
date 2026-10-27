@@ -26,6 +26,8 @@ for you; the free ones never do. When unsure what a run will cost, use
 
 | Script | Calls gateway? | Use case |
 |---|---|---|
+| `calitree_current.py` | no | Selected AURORA inference stack, currently v112. `--describe` reports the pinned selection; `--input cached_requests.json --output-dir NEW_RUN` executes explicit cached stages. |
+| `verify_calitree_current.py` | no | Replay the selected default on all915 bound cached inputs and compare predictions, coverage and source routes against verified v112. |
 | `setup_env.sh` | no | **Run once.** Create `.venv` and install dev/interface/video Python deps. |
 | `setup_imagenhub.sh` | no gateway calls (downloads public data) | Materialize and hash the 179-task ImagenHub + eight publicly available editor outputs with resumable downloads. See `docs/calitree.md`. |
 | `setup_aurora_bench.sh` | no gateway calls (downloads public data) | Materialize and hash AURORA-Bench's 2,000 human-rated outputs (400 prompts × five editors), extract the right output panel from the 150 known comparison composites while preserving raw images, then write task-grouped 20/80 calibration splits. |
@@ -762,3 +764,354 @@ refits all 156 source/bank guards, checks retained prior routes and replays 432
 serving scenarios. Both commands are offline. Initial v36 prototype runners and
 results are retained; use the `r1` run for the stronger preservation contract.
 See `docs/calitree_bank2_disagreement_gate.md` for the exact rule and limitations.
+
+### Teacher-guided semantic rubric and boosted fallback (v70–v72)
+
+`calitree_semantic_rubric_v70.py --output-dir NEW_PATH` reconstructs short
+ordered semantic clauses from the frozen visual teacher. The warranted path
+adds explicit No/Partial/Yes justification requirements. Prepare its 30 local
+inner teacher caches with `prepare_calitree_rubric_teachers_v70.py --output-dir
+logs/exps/261023-rubric-inner-teachers-v70 --workers 3`, then run
+`calitree_warranted_rubric_v71.py --output-dir NEW_PATH --correction`.
+
+`verify_calitree_semantic_rubric_v72.py --study
+logs/exps/261023-warranted-rubric-v71-r2 --output-dir NEW_PATH` checks all native
+teacher caches, independently re-induces the selected rubrics, proves semantic
+all/any simplification, recounts 144-slot retention and replays 915 actual bound
+high-level judgments. All commands are offline; CatBoost1.2.10 is needed for
+teacher fitting/auditing, not for portable rubric execution.
+
+The selected warranted hybrid gets 223/276 versus v69's 222/276 in source-held
+development, with no losses, 99/99 originals retained, unchanged coverage and
+50 focused tests passing. Its final rubric is one three-condition exception;
+the ensemble remains the fallback. Standalone prose-only execution and fresh
+reserved validation have not been established. Serving defaults are unchanged.
+See `docs/calitree_semantic_rubric_v70.md` for code, evidence and scope.
+
+### Local evidence and semantic rubric concepts (v77–v83)
+
+`calitree_grounded_regions_v77.py --prepare --output-dir NEW_PATH` freezes
+label-free object-region plans; `--extract` runs the pinned local detector and
+encoder. `calitree_region_policy_v78.py --output-dir NEW_PATH` compares explicit
+physical experts and region-augmented grade learners on the fixed source folds.
+Object binding can fail; an undetected object never automatically proves absence.
+
+`calitree_caption_audit_v79.py --prepare/--extract --output-dir NEW_PATH` audits
+bound visible descriptions against existing image vectors.
+`calitree_caption_policy_v80.py --output-dir NEW_PATH` evaluates those scalar
+comparisons without raw embedding or identifier inputs.
+
+`calitree_nli_rubric_v81.py --prepare/--extract --output-dir NEW_PATH` maps existing
+explanations to16 fixed semantic concepts using a pinned local NLI checkpoint.
+Extraction uses the isolated vision environment with Metal, native safetensors
+and offline model loading; it makes no API calls. NLI supports are language
+claims, not image-truth confidence.
+
+`calitree_rubric_score_v82.py --output-dir NEW_PATH` fits a small explicit
+additive semantic correction using cached inner source-excluded teacher views.
+Add `--with-nli` only after the fixed v81 extraction completes. The boosted score
+remains an explicit offset; protected originals veto harmful strengths.
+`verify_calitree_local_evidence_v82.py --kind region/caption/score --study PATH
+--output-dir NEW_PATH` independently replays native model supports or explicit
+score equations and all144 original training slots. Histogram controls receive
+saved-support/membership/metric checks only.
+
+`calitree_evidence_pool_v83.py --output-dir NEW_PATH` compares fixed equal-weight
+class-support pools and a semantic region qualification route, retaining each
+v72 correction's original teacher binding. These pools do not beat v72.
+See `docs/calitree_local_evidence_v77.md` for completed results and experiment roots.
+
+### Cached independent experts and semantic routing (v84–v87)
+
+`audit_calitree_regular_views_v84.py --search-root PATH --output-dir NEW_PATH`
+finds only exact generic regular-judge request matches, including ordered textual
+SOURCE/EDITED markers. It reads no human references and makes no model calls.
+
+`calitree_cached_sol_router_v85.py --output-dir NEW_PATH` compares fixed support
+and protection choices for the optional cached Sol view; all source-held folds
+and actual original local decisions remain protected. `calitree_sparse_rubric_v86.py`
+tests the support change across the full existing semantic evidence.
+
+`verify_calitree_independent_expert_v87.py --study PATH --output-dir NEW_PATH`
+cold-replays36 native teachers, re-induces selected gates and runs915 bound
+judgments through the exported optional-expert wrapper. The selected replay gets
+225/276 with two gains/no losses,99/99 and144/144 retained, and unchanged coverage.
+Only15 primary cases have valid cached Sol records; no complete fresh-Sol result
+or >85% claim is made. See `docs/calitree_independent_semantic_v87.md` and
+`examples/calitree_independent_semantic_v87` for the opt-in artifact and API.
+
+### Independent contrastive-pilot accounting (v88)
+
+`verify_calitree_contrastive_pilot_v88.py --prepared-dir PATH --output-dir NEW_PATH`
+reconciles the frozen72-slot v75 plan, source exclusions, actual request hashes,
+model routes, token usage/reservations and certificate validity. After collection,
+add `--require-complete` to require all72 wrappers and compute paired accuracy,
+class confusions and error/control strata. Failures/unresolved cases stay in the
+denominator. The auditor makes no API calls or fits and refuses mock artifacts.
+
+### Calibration fitting views and ordered visual grades (v89–v92)
+
+`calitree_source_excluded_calibration_v89.py --output-dir NEW_PATH` separates
+source-excluded inner teacher residuals from always-fitted original-source views.
+It compares fixed class biases (with/without affirmative grade warrants) and
+compact explicit semantic score corrections, retaining the current v72/v87
+rule context and priority. The fresh v75 pilot responses never enter fitting.
+
+`calitree_ordered_visual_rubric_v90.py --output-dir NEW_PATH` fits the existing
+ordinal and within-task-relative human-score objectives to the stronger frozen
+Boolean visual/semantic vocabulary. It compares fixed support blends and
+affirmative-warrant controls on the unchanged source folds; ineligible local
+retention arms must not be promoted.
+
+`verify_calitree_calibration_controls_v91.py --calibration-study PATH
+--ordered-study PATH --output-dir NEW_PATH` cold-loads saved native models,
+replays explicit score equations and checks fitting memberships, original
+slots, prior-rule priority and coverage. It makes no API/encoder calls.
+
+`audit_calitree_collateral_cap_context_v92.py --output-dir NEW_PATH` is a
+read-only logical counterfactual: ignore only material collateral in the Yes
+warrant while retaining uncertainty and every other requirement. It saves no
+modified evidence, fits no policy and reports no achieved accuracy gain.
+
+### Local task/preservation evidence (v93–v97)
+
+`calitree_prefix_experts_v93.py --output-dir NEW_PATH` audits frozen teacher
+stages without fitting. The tested direct-selector oracle tops out at229/276,
+so no prefix gate is fitted.
+
+`download_calitree_local_vlm_v94.py --output-dir NEW_PATH --destination LOCAL_PATH`
+retrieves the pinned public Qwen3-VL8B safetensors/config files and records hashes;
+it uploads no project data. `calitree_local_observer_v94.py` prepares/collects a
+12-case local observation diagnostic. `calitree_local_grammar_probe_v95.py` uses
+a separately frozen native JSON-constrained profile; no old responses are repaired.
+
+`calitree_local_review_cache_v96.py --prepare --output-dir NEW_PATH` freezes224
+observations needed by fixed actual/source-excluded review regions. Collection
+uses `--collect` in the isolated vision environment with Metal and offline flags.
+Do not start a duplicate while its recorded process is live. Every new input
+gets one attempt, and compatible smoke results are reused by exact identity.
+
+`calitree_local_warranted_rules_v97.py --cache COMPLETE_CACHE --output-dir NEW_PATH`
+refuses incomplete caches, fits bounded source-held task/preservation clauses
+and protects all99 original decisions/144 slots. It scores all276 cases; absent
+local evidence and cases outside review retain the existing policy. No policy
+is promoted merely from the observation smoke or a partial collection.
+
+See `docs/calitree_local_observer_v96.md` for current status, hardware/runtime
+identity, preserved failures, source controls and the next fitting command.
+
+### Local-cache verification and weighted semantic review (v98–v107)
+
+`verify_calitree_local_review_cache_v98.py --cache PATH --output-dir NEW_PATH
+--require-complete` cold-replays36 native teachers and reconciles source masks,
+raw responses, exact bindings, history and budgets. Without`--require-complete`
+the output is explicitly a snapshot and cannot authorize fitting.
+
+`calitree_local_score_v102.py --cache PATH --cache-audit COMPLETE_AUDIT
+--output-dir NEW_PATH` tests additive named semantic corrections. Add
+`--method tree_residual` for v103:128 depth-two/three residual trees, no raw
+visual vectors or IDs. Both score-only and affirmative/review-guarded arms are
+measured; original99/144 decisions and all276 scoring cases remain required.
+
+`verify_calitree_semantic_residual_v105.py --cache PATH --cache-audit PATH
+--study PATH --output-dir NEW_PATH --candidate contextual_depth2_guarded`
+re-induces all six selected models, merges shared weighted clauses, checks5,490
+native/portable residuals and replays915 real bound judgments. The verified
+guarded result is227/276, up from225. Serving defaults remain unchanged; the
+strict235/276 target remains unmet. The opt-in artifact is in
+`examples/calitree_weighted_semantic_v105`; its report is
+`docs/calitree_weighted_semantic_v105.md`.
+
+`verify_calitree_local_policy_v100.py` and`calitree_local_policy_pipeline_v101.py`
+support the earlier compact-rule path; its best224/276 result was not promoted.
+`calitree_anchored_semantic_residual_v106.py` compares original-case anchors and
+primary-only fitting pools. `calitree_semantic_expert_advantage_v107.py` learns
+the paired correctness benefit of an admissible alternative expert. Neither
+control raises the maximum above227. All studies use complete audited caches
+and make no paid/extraction calls.
+
+### Separate higher-resolution local evidence (v108–v110)
+
+`calitree_high_resolution_observer_v108.py --prepare --previous-cache PATH
+--output-dir NEW_PATH` freezes exactly the existing224 review slots with1024
+visual tokens/image and512 output tokens, the same checkpoint/prompt/schema,
+one worker and no retries. Run`--collect --output-dir PREPARED_PATH` with the
+isolated vision runtime, Metal and offline flags. It uploads nothing and never
+reuses/replaces a record from the different256-token profile.
+
+`verify_calitree_high_resolution_cache_v109.py --previous-cache PATH
+--previous-audit PATH --cache PATH --output-dir NEW_PATH --require-complete`
+checks the full profile transformation, unchanged selection, native masks and
+response accounting. Omitting the final flag produces only a partial snapshot.
+
+`calitree_high_resolution_pipeline_v110.py` waits for the recorded collector's
+terminal result, audits completion and runs the frozen v103 comparison. It
+independently verifies a guarded candidate only if it beats227. It never
+launches/restarts an observer, changes serving defaults or completes the goal.
+Inspect its protocol/state before continuing; do not duplicate a live run.
+
+### Exact shared terms and evidence novelty (v111–v117)
+
+`verify_calitree_semantic_polynomial_v112.py --cache PATH --cache-audit PATH
+--study PATH --verified V105_AUDIT --output-dir NEW_PATH` re-induces the selected
+six residuals, compiles their Boolean-lattice expansion and compares5,490 native
+residuals plus915 bound judgments. The full artifact compresses100 branches to
+60 shared terms with unchanged227/276 accuracy, original decisions and routing.
+Its artifact is`examples/calitree_weighted_semantic_v112`, selected as the default
+AURORA inference version on2026-10-25 through `CaliTreeJudge` and
+`run.calitree_current`. Historical explicit-version runners remain reproducible.
+
+`calitree_sparse_interaction_rubric_v113.py` tests12/24 selected interactions;
+`calitree_semantic_abstraction_v114.py` removes rationale-word proxies. Neither
+comparison beats227. They use complete audited caches and preserve99/144 local
+decisions; they do not silently replace the verified artifact.
+
+`calitree_observer_agreement_v115.py --previous-cache PATH --current-cache PATH
+--output-dir NEW_PATH` compares completed bound observation fields without
+human references. Partial snapshots are labeled and never authorize fitting.
+
+`calitree_effective_image_inputs_v117.py --previous-cache PATH --current-cache
+PATH --checkpoint IDENTITY_JSON --output-dir NEW_PATH` hashes every actual CPU
+processor tensor under both image budgets without loading model weights or
+references. It finds187/224 identical complete inputs,37 different inputs.
+
+`download_calitree_mlx_observer_v116.py --output-dir NEW_PATH --destination
+LOCAL_PATH` downloads the pinned public5.95GB Qwen3.5 MLX checkpoint without
+authentication or project uploads, retaining12GiB disk headroom. This is an
+untested candidate observer; no accuracy claim follows from its download.
+
+### Native MLX semantic-observer diagnostics (v118–v127)
+
+`calitree_mlx_observer_probe_v119.py --prepare/--collect --output-dir PATH`
+freezes the same12 balanced original-training cases under the local9B MLX
+profile. The successful r4 run produces12 valid records; earlier setup failures
+remain separate. `verify_calitree_mlx_probe_v120.py --probe PATH
+--previous-probe PATH --checkpoint IDENTITY --output-dir NEW_PATH
+--require-complete` replays raw outputs, processor inputs, source bindings,
+history and budgets. Its warrant-only diagnostic is4/12 versus the old5/12;
+this is not pipeline accuracy or a reason to promote the model.
+
+`calitree_evidence_first_probe_v122.py` tests two new native field-order
+profiles. `verify_calitree_evidence_first_v123.py` checks their actual JSON
+order,360-character limit and CPU processor replay. The two12-case arms yield
+four and three correct warrants, without a policy change.
+
+`calitree_native_sampling_probe_v125.py` compares seeded published instruct
+and thinking sampling settings using one shared model. Native thinking/final
+channels and all emitted token IDs are retained; unfinished thoughts never
+become observations. `verify_calitree_native_sampling_v126.py` independently
+replays channels, seeds, processors and budgets. Use`--require-terminal` to
+audit a finished experiment that stopped early, and`--require-complete` only
+when every planned slot has a response. The instruct arm remains4/12; the
+thinking arm stops after three2,048-token truncations and has no accuracy claim.
+
+`download_calitree_large_mlx_v127.py --output-dir NEW_PATH --destination
+LOCAL_PATH` fetches the pinned public19.62GB32B checkpoint with12GiB disk
+headroom and no task uploads. Existing runtime/records are unchanged by the
+download. See`docs/calitree_observer_diagnostics_v126.md` for current status,
+cache restoration and70 passing focused tests. No paid API calls are made.
+
+### Larger observer and fixed calibration comparison (v128–v136)
+
+`calitree_large_observer_probe_v129.py` tests the pinned32B model on the same12
+training cases. The unbounded profile stops after three consecutive evidence
+truncations. `calitree_bounded_large_probe_v131.py` freezes a separate1–360-char
+evidence schema and completes12 valid records. `verify_calitree_large_probe_v130.py`
+audits both profiles; the bounded warrant-only result is3/12 versus the old5/12,
+not pipeline accuracy.
+
+`calitree_large_review_cache_v132.py --prepare --legacy-cache PATH
+--legacy-audit PATH --probe PATH --probe-audit PATH --output-dir NEW_PATH`
+keeps the fixed224 input/mask union. `--collect` uses one exclusive GPU observer,
+exact compatible probe reuse and no retries. `verify_calitree_large_cache_v134.py
+--cache PATH --output-dir NEW_PATH --require-complete` checks new raw/native
+records and hash-reuses the unchanged36-model source audit. Partial snapshots
+never permit fitting.
+
+`calitree_large_semantic_policy_v135.py --cache PATH --cache-audit PATH
+--output-dir NEW_PATH` compares eight source-held residual fits and three fixed
+guard/score modes. `--legacy-control` uses the old8B cache with the same fitting
+algorithm. The legacy control tops out at226/276. Strengths up to2 are selected
+fit-only after actual guard fallback, protecting all99/144 original decisions.
+
+`calitree_large_policy_pipeline_v136.py` is the tracked one-shot collector wait,
+complete audit and frozen comparison. It never launches/resumes an observer,
+promotes a policy or completes the goal. Inspect its live state before any new
+dispatch. See`docs/calitree_large_observer_v136.md`.
+
+### Additive whole-policy control (v140)
+
+`calitree_additive_policy_v140.py` fits InterpretML0.7.8 on the same cached source
+folds, with named univariate/pairwise tables exported through
+`additive_tables_v140.py`. Every915-case native/portable probability comparison
+passes before scoring. The16 actual-local-retaining arms score191–213/276 and
+are not promoted. Multiclass pair terms are retained explicitly despite their
+omission by the library's global visualizer. This is CPU-only; no new image/API
+calls are made. The incumbent remains227/276; the235 target is unmet.
+
+### Same-architecture class-balanced training (v141–v142)
+
+`calitree_class_balanced_v141.py --output-dir NEW_PATH --workers 3` gives each
+training grade equal total weight while retaining every fitting example. It
+refits the same depth8/1200-tree visual CatBoost and depth2/128-tree semantic
+correction on the existing five outer source folds and30 inner teacher folds.
+Original-case anchor weights are normalized within each grade, so protecting
+the99 local cases does not undo equal class mass. No new model/encoder calls
+or reserved sources are used.
+
+The primary arm balances both learned layers. Separate arms balance only the
+semantic head or main booster, and the unchanged control must reproduce227/276.
+Older semantic/expert rules retain their original teacher context and priority.
+Review routing is recomputed; missing cached local observations keep the new
+base decision. Every comparison uses the same276 evaluation cases and reports
+ordinary/balanced accuracy, macro F1, per-grade recall, local retention and
+coverage. `--head-only` runs the two frozen-teacher arms alone.
+
+`--reuse-teachers STOPPED_RUN` is an explicit recovery option for the initial
+parent-directory race. It accepts only complete fits with identical training
+contracts, weight receipts, loaded-model predictions and an AST-equivalent
+fitting function after the single parent-mkdir correction. The original run
+remains interrupted and no partial model is repaired or substituted.
+
+`verify_calitree_class_balanced_v142.py --study RUN --output-dir NEW_PATH`
+independently executes native classifier JSON, re-induces all semantic heads,
+checks the compressed named terms, source exclusions, equal class weights,
+denominators, actual routes and99/144 local protection. This is a development
+comparison; it does not change serving defaults or promote a new policy.
+
+The completed primary balanced-both-layers arm scores217/276 (78.6%),67.4%
+balanced accuracy and66.6% macro F1, versus227/276 (82.2%),67.9% and70.6% for
+the reproduced control. Balancing only the semantic head scores221/276 (80.1%).
+All99/144 original checks and273 upstream coverage are retained. See
+`docs/calitree_class_balanced_v142.md` for all seven arms and the routing audit.
+
+### Further balanced-accuracy search (v143–v148)
+
+`calitree_compact_balance_v143.py --output-dir NEW_PATH` optimizes final balanced
+accuracy with two score offsets or two ordinal cutoffs, keeping original-case
+protection and optionally requiring semantic warrants or fitting recall floors.
+Its eight arms do not improve selected v112.
+
+`calitree_balanced_patches_v144.py --output-dir NEW_PATH` learns at most four
+class-normalized-gain semantic corrections, each seeded by a grade warrant.
+`calitree_balanced_experts_v146.py --output-dir NEW_PATH` additionally supports
+review regions selecting the existing regular judge. The independent auditor
+`verify_calitree_balanced_search_v145.py --output-dir NEW_PATH` re-induces all168
+small models and checks153,720 scalar/native rows across these three studies.
+
+`calitree_tempered_balance_v147.py --output-dir NEW_PATH --workers 3` trains18
+main classifiers using moderate inverse-frequency exponents0.25/0.5/0.75 with
+the frozen semantic head. `verify_calitree_tempered_balance_v148.py --study PATH
+--output-dir NEW_PATH` executes every main classifier/head from native numeric
+JSON and checks weights, source masks, protected strengths and metrics.
+
+These CPU-only experiments use the isolated pinned CatBoost1.2.10 dependency
+at `/tmp/calitree-catboost-v143` via `PYTHONPATH=/tmp/calitree-catboost-v143:.`.
+No new image/encoder/observer/API calls or reserved-source reads occur.
+
+The best exploratory four-rule arm scores71.1% balanced accuracy and81.9%
+overall accuracy, versus67.9%/82.2% for selected v112. Partial recall falls
+53.6%→42.9%, so it is not selected. All99/144 original checks and273 coverage
+remain intact. See `docs/calitree_balanced_accuracy_v148.md` for all37 arms,
+independent audits and the distinction between reference-informed oracle
+headroom and actual learned performance. The80% balanced target remains unmet.
