@@ -1,0 +1,32 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{Experimental setup}
+\paragraph{Dataset.}
+We evaluate \critical on the public VE-Bench benchmark~\cite{vebench}, constructing 986 pairwise comparisons of candidate video edits across 128 source-video groups with human preference labels. Comparison features combine counterbalanced native-video judgments, contact-sheet frame judgments, and multi-agent debate factors, with binary missingness masks tracking unavailable modalities.
+
+\paragraph{Validation protocol and baselines.}
+All experiments use five-fold source-grouped cross-validation (repeated across five split seeds) so that edits sharing the same source video never appear in both training and test splits. Feature normalization, calibration weights $\beta$, and routing thresholds are fitted strictly on training folds and evaluated via pooled out-of-fold predictions. We report human-agreement accuracy (with 95\% grouped-bootstrap confidence intervals resampling source groups) and compare the unified \critical router against four baselines: (1)~the primary native-video judge, (2)~the stronger secondary native-video judge, (3)~a random-routing control, and (4)~a two-expert native-video router.
+
+\begin{figure}[t]
+\centering
+\input{figures/evaluation/fusion-accuracy}
+\caption{Full-coverage pairwise human-agreement accuracy on VE-Bench across individual judges, routing controls, and the unified \critical router.}
+\Description{Full-coverage accuracy is 75.96 percent for the primary native-video judge, 79.92 for a random router, 82.96 for the secondary native-video judge, 83.98 for a two-expert router, and 85.40 for the unified Criti-Cal router.}
+\label{fig:fusion-accuracy}
+\end{figure}
+
+\subsection{Full-coverage fusion results}
+Figure~\ref{fig:fusion-accuracy} compares full-coverage pairwise accuracy across all evaluated configurations on VE-Bench. A single primary native-video judge achieves 75.96\% human agreement, while the stronger secondary native-video judge reaches 82.96\% and a two-expert router over both video judges reaches 83.98\% (versus 79.92\% for random expert routing). Incorporating complementary contact-sheet frame judgments and grounded debate features in the unified \critical router raises full-coverage accuracy to \textbf{85.40\%}---gaining $+9.44$ percentage points over the primary video judge, $+2.43$ points over the strongest single video judge (95\% grouped-bootstrap CI $[0.95, 4.04]$), and $+1.42$ points over the two-expert video router (95\% CI $[0.21, 2.71]$). Comparing against the stronger video judge and two-expert router confirms that the gain comes from cross-modal perception and grounded features rather than simply replacing a weaker judge.
+
+% Balance the final page from its first column.
+\begin{figure}[t]
+\centering
+\input{figures/evaluation/selective-routing}
+\caption{Selective accuracy on VE-Bench across accepted coverage levels when deferring high-risk comparisons via the reliability gate.}
+\Description{Accepted-case accuracy is 93.40, 93.00, 91.30, 89.60, 87.10, and 85.40 percent at nominal coverage 50, 60, 70, 80, 90, and 100 percent.}
+\label{fig:selective-routing}
+\end{figure}
+
+\subsection{Selective routing}
+When the reliability gate (Section~\ref{sec:gate}) is enabled, comparisons are ranked by risk score $r_i$ and pairs exceeding the acceptance threshold are deferred, trading \emph{accepted coverage} (the fraction of pairs decided automatically) for higher \emph{selective accuracy} (human agreement on the accepted subset). As shown in Figure~\ref{fig:selective-routing}, deferring the highest-risk comparisons steadily increases human agreement on the accepted subset: accuracy rises from 85.40\% at 100\% coverage to 87.10\% (90\% coverage), 89.60\% (80\%), 91.30\% (70\%), 93.00\% (60\%), and \textbf{93.40\%} when retaining the most reliable 50\% of comparisons. In practice, ($t_{\mathrm{accept}}$, $t_{\mathrm{investigate}}$) can be tuned on training groups to match review capacity, resolving low-risk pairs in one pass while reserving deliberation and human review for high-risk cases.

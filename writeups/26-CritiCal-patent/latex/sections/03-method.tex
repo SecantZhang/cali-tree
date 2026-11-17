@@ -1,0 +1,113 @@
+\section{Method and System Architecture}
+\label{sec:method}
+
+\critical comprises three coupled stages: (1)~diverse-perceiver measurement, (2)~adversarial feature discovery with independent media grounding, and (3)~calibrated decision routing (Figure~\ref{fig:flowchart}; core notation in Table~\ref{tab:notation}). Given an editing instruction and two candidate videos with canonical identities $A$ and $B$ (invariant to display position), each stage transforms multimodal observations into versioned, inspectable records. Offline calibration fits parameters against human preference targets $y_i\in[0,1]$ on source-disjoint groups, while inference-time model requests receive only the instruction and permitted media without $y_i$ or target-revealing metadata.
+
+\begin{figure*}[t]
+\centering
+\input{figures/flowchart/flowchart}
+\caption{\critical system overview across three stages: (1)~counterbalanced native-video and contact-sheet perceiver measurement, (2)~adversarial feature discovery with independent media-grounded referee verification, and (3)~statistical fusion and reliability-gated routing.}
+\Description{An illustrative instruction, Show pink-dress making in steps, and synthetic frames representing videos A and B feed native-video and frame-based perceivers in Stage 1 and opposing advocates plus an independent referee in Stage 2. A shows a medium sewing shot; B shows a close-up with a numbered step overlay. Canonical consensus and grounded factors feed fusion and a reliability gate in Stage 3 to accept, investigate, or defer. The frames are illustrative and do not depict a measured benchmark pair.}
+\label{fig:flowchart}
+\end{figure*}
+
+\begin{table}[t]
+\centering
+\caption{Core notation used in \critical.}
+\label{tab:notation}
+\footnotesize
+\begin{tabular}{@{}lp{5.5cm}@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$A,\; B,\; y_i\in[0,1]$ & Canonical candidate identities and offline human vote fraction favoring $A$ on pair $i$. \\
+$p^{AB}_{ij},\; p^{BA}_{ij}$ & Perceiver $j$'s left-preferred probability when $A$ or $B$ is shown first. \\
+$\bar p_{ij},\; \iota_{ij}$ & Swap-averaged preference for $A$ and order-instability diagnostic (Eq.~\ref{eq:swap}). \\
+$\phi_i,\; \beta,\; \hat p_i$ & Comparison feature vector, fitted calibration weights, and calibrated $P(A\succ B)$ (Eq.~\ref{eq:bt}). \\
+$r_i,\; t_{\mathrm{accept}},\; t_{\mathrm{investigate}}$ & Reliability risk score and frozen decision-routing thresholds (Eq.~\ref{eq:route}). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Stage 1: Diverse-perceiver measurement}
+\label{sec:perceivers}
+Two native-video judges (e.g., Gemini-2.5-Pro and Gemini-3.7-Flash) share an accuracy ceiling when they perceive decoded video in the same way. \critical therefore pairs native-video perceivers with a \textbf{frame-based perceiver} that inspects a different representation so its errors are only weakly correlated with the video judges:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=2pt]
+  \item \textbf{Native-video perceivers} (e.g., Gemini-family video models) ingest the decoded video stream directly to evaluate temporal motion, pacing, transitions, and available audio, emitting structured rubric scores, timestamp-grounded evidence, and a pairwise preference probability.
+  \item \textbf{Contact-sheet frame perceiver:} Scene-aware frame extraction and deduplication produce a timestamped $4\times 2$ contact sheet per clip~\cite{clauderealvideo}. An image-only VLM receives the two sheets side by side and emits the same structured judgment schema, with audio quality marked not applicable.
+\end{itemize}
+
+\paragraph{Counterbalanced judging and order stability.}
+VLM judges frequently exhibit position bias, favoring whichever video is shown first. To factor this out, each perceiver $j$ evaluates the pair twice---once in display order $(A,B)$ and once in swapped order $(B,A)$. From the left-video preference probabilities $p^{AB}_{ij}$ and $p^{BA}_{ij}$, \critical computes the canonical preference for $A$ and an order-instability score:
+\begin{equation}
+\bar p_{ij}=\frac{p^{AB}_{ij}+(1-p^{BA}_{ij})}{2},
+\qquad
+\iota_{ij}=\bigl|p^{AB}_{ij}-(1-p^{BA}_{ij})\bigr|.
+\label{eq:swap}
+\end{equation}
+Keeping $\iota_{ij}$ separates genuine indifference ($\bar p_{ij}\approx 0.5$ with low $\iota_{ij}$) from a position-biased flip ($\bar p_{ij}\approx 0.5$ with high $\iota_{ij}$). Alongside overall preference, each perceiver scores individual rubric criteria (instruction alignment, temporal consistency, visual quality, narrative coherence, and audio quality when applicable), yielding signed candidate differences and cross-perceiver disagreement signals.
+
+\subsection{Stage 2: Adversarial debate and grounded factors}
+\label{sec:debate}
+Fixed rubric scores often fail on borderline video edits for two reasons: (1)~\emph{off-rubric criteria}, where the decisive factor is task-specific (e.g., instructional clarity for a classroom lesson) rather than a generic visual metric, and (2)~\emph{unchallenged surface impressions}, where a single-pass judge penalizes an apparent visual flaw without checking whether it is an intentional editing choice. To overcome both blind spots, \critical separates case generation from verification across three roles:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=2pt]
+  \item \textbf{Opposing advocates ($A$ vs.\ $B$):} Each agent is assigned one canonical candidate and must build the strongest timestamp-grounded case for its side while explicitly conceding undeniable weaknesses.
+  \item \textbf{Independent referee:} Rather than letting persuasive rhetoric decide the winner, an independent referee inspects the competing arguments alongside the permitted media (including source videos when source preservation is disputed), verifies which claims hold up visually, and extracts the decisive contested factors.
+\end{itemize}
+
+\paragraph{Why multi-turn rebuttal matters (Figure~\ref{fig:factor-distillation}).}
+When advocates only produce isolated monologues, they often talk past each other. A multi-turn exchange forces each side to test the other's visual evidence. Figure~\ref{fig:factor-distillation} illustrates this mechanism on a task asking an edit to \emph{explain flower types and lifespans to students}:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=1pt]
+  \item \textbf{Turn~1 (Surfacing task-specific criteria):} Advocate~$A$ identifies a task-specific advantage that a generic rubric misses---$A$'s bouquet shows multiple species side by side, making lifespan comparison more educational.
+  \item \textbf{Turn~2 (Challenging visual evidence):} Advocate~$B$ attacks the visual quality of that exact shot, pointing out that $A$'s bouquet starts blurred whereas $B$'s single-flower close-up is immediately sharp.
+  \item \textbf{Turn~3 (Disambiguating technique vs.\ defect):} Forced to respond to Turn~2, Advocate~$A$ re-examines the clip and explains that the initial blur is a deliberate focus pull that resolves cleanly, whereas $B$'s single-flower shot suffers from camera shake.
+\end{itemize}
+
+\paragraph{From debate transcript to structured calibration features.}
+After the advocate turns conclude, the referee adjudicates the exchange and distills the dispute into structured \emph{factor records} rather than free-form text. Each factor stores a reusable label (e.g., \emph{educational value}, \emph{shot quality}), the favored canonical candidate ($\{-1,0,+1\}$), a referee-assessed decisiveness weight in $[0,1]$ (0.9 and 0.6 in Figure~\ref{fig:factor-distillation}), its mapping to a base rubric dimension, and timestamped supporting evidence. For downstream statistical fusion (Section~\ref{sec:fusion}), these records are summarized into a compact numerical block---comprising the referee's preference logit ($P(A)=0.85$ in the example), net signed factor lean, mean decisiveness, risk flags, and advocate concession asymmetry---along with an availability indicator in case a model call times out or fails schema validation.
+
+\begin{figure}[t]
+\centering
+\input{figures/factor-distillation/factor-distillation}
+\caption{Multi-turn adversarial debate and factor distillation on an instructional flower-editing comparison. Three responsive advocate turns are adjudicated by the referee into structured factor weights and a preference probability.}
+\Description{Turn 1: A favors a bouquet for its educational variety. Turn 2: B challenges its initial blur and favors a clearer single-flower shot. Turn 3: A identifies an intentional focus pull and contrasts B's shaky shot. The final referee favors A for educational value, importance 0.9, and shot quality, importance 0.6, and reports preference probability 0.85 for A. The referee adjudicates after the three advocate turns rather than steering between them.}
+\label{fig:factor-distillation}
+\end{figure}
+
+\subsection{Stage 3a: Statistical fusion and calibration}
+\label{sec:fusion}
+Simple majority voting or score averaging treats every perceiver and every rubric dimension as equally trustworthy, even when one judge is unstable across display orders or blind to a modality. Instead, \critical stacks all signals from Stage~1 (Section~\ref{sec:perceivers}) and Stage~2 (Section~\ref{sec:debate}) into a single feature vector $\phi_i$ and learns how strongly each signal predicts human preference:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=1pt]
+  \item \textbf{Directional preference signals} (positive favors $A$, negative favors $B$): each perceiver's swap-averaged preference logit $\operatorname{logit}(\bar p_{ij})$, signed rubric-criterion differences between $A$ and $B$, and the referee's verified factor scores from Stage~2 (Section~\ref{sec:debate}).
+  \item \textbf{Diagnostic and missingness signals:} order instability $\iota_{ij}$, cross-perceiver disagreement, and explicit binary missingness masks (so an unmeasured modality, such as audio on a frame-only judge, is never mistaken for a zero score).
+\end{itemize}
+Given $\phi_i$, \critical predicts the calibrated human preference probability via a logistic linear model:
+\begin{equation}
+\hat p_i = P(A\succ B\mid \phi_i,\beta)=\sigma(\beta^\top\phi_i),\qquad
+\sigma(z)=(1+e^{-z})^{-1}.
+\label{eq:bt}
+\end{equation}
+
+\paragraph{Two lightweight calibration heads.}
+Because human preference datasets are often modest in size, $\beta$ must be regularized to avoid overfitting. \critical supports two lightweight fitting options depending on the task:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=2pt]
+  \item \textbf{Bayesian Bradley--Terry head (for swap-symmetric, small-sample calibration):} Uses only the directional difference features (with no intercept, so swapping $A$ and $B$ exactly flips $\hat p_i$ to $1-\hat p_i$). It fits $\beta$ against soft human vote fractions $y_i\in[0,1]$ under Gaussian priors and uses the local parameter uncertainty around $\hat\beta$ to temper overconfident predictions on unusual feature combinations.
+  \item \textbf{Regularized expert-router head (for multi-perceiver fusion):} Combines all perceiver logits, criterion differences, stability/disagreement diagnostics, and Stage~2 debate features (Section~\ref{sec:debate}) in an $L_2$-regularized logistic stacker trained on majority human preferences. This is the head used by the unified \critical router in Section~\ref{sec:evaluation}.
+\end{itemize}
+In both cases, feature normalization and weights $\beta$ are fitted strictly on source-disjoint training groups, and held-out evaluations use grouped out-of-fold predictions so human labels never leak into inference.
+
+\subsection{Stage 3b: Reliability gate and decision routing}
+\label{sec:gate}
+Predicting \emph{which} video is better ($\hat p_i$) is not the same as knowing \emph{whether the prediction can be trusted}. For example, $\hat p_i=0.62$ may still be unsafe for automatic acceptance if the judges flipped their answers when display order was swapped, disagreed across rubric criteria, or lacked key modalities.
+
+To separate preference from confidence, \critical computes a scalar risk score $r_i\in[0,1]$ from six diagnostic signals: (1)~calibrated uncertainty ($1-2|\hat p_i-0.5|$), (2)~order instability $\iota_{ij}$, (3)~cross-perceiver and rubric-criterion disagreement, (4)~shift between raw and calibrated probabilities, (5)~missingness fraction, and (6)~weak raw margin. The risk score can be computed either as a fixed weighted sum of these six diagnostics (when labeled data are scarce) or as the predicted probability of a wrong verdict from a lightweight classifier trained on held-out training-fold mistakes. Given frozen thresholds $t_{\mathrm{accept}}<t_{\mathrm{investigate}}$ tuned on training groups, the gate routes each comparison to one of three actions:
+\begin{equation}
+\operatorname{action}(r_i)=
+\begin{cases}
+\text{accept}, & r_i\le t_{\mathrm{accept}},\\
+\text{investigate}, & t_{\mathrm{accept}}<r_i\le t_{\mathrm{investigate}},\\
+\text{defer}, & r_i>t_{\mathrm{investigate}}.
+\end{cases}
+\label{eq:route}
+\end{equation}
+Low-risk comparisons (\textit{accept}) are emitted automatically. Medium-risk comparisons (\textit{investigate}) trigger a bounded follow-up pass---such as extracting denser keyframes, running a targeted criterion check, or invoking the Stage~2 debate referee---and re-evaluate $\hat p_i$ and $r_i$. If risk remains above $t_{\mathrm{accept}}$ or the call budget is exhausted, the comparison is routed to \textit{defer} for human review. Every run saves a versioned decision record linking the canonical pair, model/prompt versions, feature vector, grounded factors with timestamps, and routing action so each verdict can be audited or replayed.

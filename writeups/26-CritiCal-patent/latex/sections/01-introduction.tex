@@ -1,0 +1,17 @@
+\section{Introduction}
+\label{sec:intro}
+
+Multimodal language models are increasingly deployed as automated judges in content-creation and quality-control pipelines. In AI-assisted video editing, an editing system receives source assets and a user instruction and produces one or more candidate edited videos. A judge evaluates whether the outputs satisfy the instruction, preserve relevant content, and form a coherent audiovisual experience. However, even when a model writes a fluent explanation, its verdict often disagrees with human evaluators---for example, it may prefer a visually smooth clip that misses a requested step, get fooled by an on-screen text label that does not match the actual video, or change its answer simply because the two candidate videos are presented in reverse order.
+
+Existing methods attempt to fix judge errors through evaluator fine-tuning~\cite{prometheusvision,videoscore}, prompt and rubric engineering~\cite{geval,autocalibrate}, or post-hoc score calibration~\cite{quantllmj,mtbench}. Yet none of these can recover visual evidence that a single judge failed to see, resolve trade-offs between competing editing criteria, or tell when a model's verdict is too unstable to trust. Closing this gap requires looking at the video through multiple lenses, actively testing competing claims against the footage~\cite{chateval}, and knowing when to defer to a human.
+
+\paragraph{Our approach.}
+We introduce \critical, an evidence-grounded calibration framework that turns noisy multimodal judgments into reproducible, human-aligned preference decisions without retraining the underlying models. Given two candidate video edits, \critical pairs native-video and frame-level perceivers in counterbalanced display orders with an adversarial debate-and-referee stage that verifies contested claims directly against the footage. A lightweight statistical model and a reliability gate then fuse these signals into a calibrated preference probability and route each comparison to automatic acceptance, bounded follow-up inspection, or human review.
+
+\paragraph{Contributions.}
+Our main contributions are:
+\begin{itemize}[leftmargin=*, topsep=2pt, itemsep=1pt]
+  \item \textbf{Counterbalanced multi-perceiver judging:} We combine complementary native-video and frame-based judges across swapped display orders to separate genuine indifference from position bias and track modality missingness explicitly.
+  \item \textbf{Media-grounded adversarial factor discovery:} We pair opposing advocate agents with an independent referee that verifies claims against the video footage and distills contested points into structured, reusable factors.
+  \item \textbf{Calibrated fusion and selective reliability routing:} We fuse perceiver scores, stability diagnostics, and verified factors into calibrated preference probabilities and decouple preference prediction from decision reliability---reaching \textbf{85.40\%} full-coverage human agreement on VE-Bench and \textbf{93.40\%} at 50\% selective coverage.
+\end{itemize}
