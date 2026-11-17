@@ -1,12 +1,12 @@
 \section{Method and System Architecture}
 \label{sec:method}
 
-\critical comprises three coupled stages: (1)~diverse-perceiver measurement, (2)~adversarial feature discovery with independent media grounding, and (3)~calibrated decision routing (Figure~\ref{fig:flowchart}; core notation in Table~\ref{tab:notation}). Given an editing instruction and two candidate videos with canonical identities $A$ and $B$ (invariant to display position), each stage transforms multimodal observations into versioned, inspectable records. Offline calibration fits parameters against human preference targets $y_i\in[0,1]$ on source-disjoint groups, while inference-time model requests receive only the instruction and permitted media without $y_i$ or target-revealing metadata.
+\critical comprises three coupled stages: (1)~diverse-perceiver measurement, (2)~adversarial feature discovery with independent media grounding, and (3)~calibrated fusion and selective prediction (Figure~\ref{fig:flowchart}; core notation in Table~\ref{tab:notation}). Given an editing instruction and two candidate videos with canonical identities $A$ and $B$ (invariant to display position), each stage transforms multimodal observations into versioned, inspectable records. Offline calibration fits parameters against human preference targets $y_i\in[0,1]$ on source-disjoint groups, while inference-time model requests receive only the instruction and permitted media without $y_i$ or target-revealing metadata.
 
 \begin{figure*}[t]
 \centering
 \input{figures/flowchart/flowchart}
-\caption{\critical system overview across three stages: (1)~counterbalanced native-video and contact-sheet perceiver measurement, (2)~adversarial feature discovery with independent media-grounded referee verification, and (3)~statistical fusion and reliability-gated routing.}
+\caption{\critical system overview across three stages: (1)~counterbalanced native-video and contact-sheet perceiver measurement, (2)~adversarial feature discovery with independent media-grounded referee verification, and (3)~statistical fusion and reliability-gated selective prediction.}
 \Description{An illustrative instruction, Show pink-dress making in steps, and synthetic frames representing videos A and B feed native-video and frame-based perceivers in Stage 1 and opposing advocates plus an independent referee in Stage 2. A shows a medium sewing shot; B shows a close-up with a numbered step overlay. Canonical consensus and grounded factors feed fusion and a reliability gate in Stage 3 to accept, investigate, or defer. The frames are illustrative and do not depict a measured benchmark pair.}
 \label{fig:flowchart}
 \end{figure*}
@@ -96,11 +96,11 @@ Because human preference datasets are often modest in size, $\beta$ must be regu
 \end{itemize}
 In both cases, feature normalization and weights $\beta$ are fitted strictly on source-disjoint training groups, and held-out evaluations use grouped out-of-fold predictions so human labels never leak into inference.
 
-\subsection{Stage 3b: Reliability gate and decision routing}
+\subsection{Stage 3b: Reliability gate and selective prediction}
 \label{sec:gate}
 Predicting \emph{which} video is better ($\hat p_i$) is not the same as knowing \emph{whether the prediction can be trusted}. For example, $\hat p_i=0.62$ may still be unsafe for automatic acceptance if the judges flipped their answers when display order was swapped, disagreed across rubric criteria, or lacked key modalities.
 
-To separate preference from confidence, \critical computes a scalar risk score $r_i\in[0,1]$ from six diagnostic signals: (1)~calibrated uncertainty ($1-2|\hat p_i-0.5|$), (2)~order instability $\iota_{ij}$, (3)~cross-perceiver and rubric-criterion disagreement, (4)~shift between raw and calibrated probabilities, (5)~missingness fraction, and (6)~weak raw margin. The risk score can be computed either as a fixed weighted sum of these six diagnostics (when labeled data are scarce) or as the predicted probability of a wrong verdict from a lightweight classifier trained on held-out training-fold mistakes. Given frozen thresholds $t_{\mathrm{accept}}<t_{\mathrm{investigate}}$ tuned on training groups, the gate routes each comparison to one of three actions:
+To support selective prediction with a deferral option~\cite{geifman2017selective,madras2018predict}, \critical computes a scalar risk score $r_i\in[0,1]$ from six diagnostic signals: (1)~calibrated uncertainty ($1-2|\hat p_i-0.5|$), (2)~order instability $\iota_{ij}$, (3)~cross-perceiver and rubric-criterion disagreement, (4)~shift between raw and calibrated probabilities, (5)~missingness fraction, and (6)~weak raw margin. The risk score can be computed either as a fixed weighted sum of these six diagnostics (when labeled data are scarce) or as the predicted probability of a wrong verdict from a lightweight classifier trained on held-out training-fold mistakes~\cite{kamath2020selective}. Given frozen thresholds $t_{\mathrm{accept}}<t_{\mathrm{investigate}}$ tuned on training groups, the gate selects one of three actions:
 \begin{equation}
 \operatorname{action}(r_i)=
 \begin{cases}
