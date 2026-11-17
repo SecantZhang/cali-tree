@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Auto-sync writeups/26-CritiCal-patent/latex/ to https://github.com/SecantZhang/write-up-critical.git
+# whenever pushing to origin (avoids recursion when pushing to writeup).
+remote="$1"
+if [ "$remote" = "writeup" ]; then
+  exit 0
+fi
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -n "$repo_root" ] && [ -d "$repo_root/writeups/26-CritiCal-patent/latex" ]; then
+  split_sha="$(git -C "$repo_root" subtree split --prefix=writeups/26-CritiCal-patent/latex HEAD 2>/dev/null || true)"
+  if [ -n "$split_sha" ]; then
+    echo "[pre-push] Syncing writeups/26-CritiCal-patent/latex/ -> writeup (main)..."
+    git -C "$repo_root" -c http.postBuffer=524288000 push writeup "${split_sha}:refs/heads/main"
+  fi
+fi
+exit 0
